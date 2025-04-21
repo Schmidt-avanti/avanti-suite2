@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateResponse } from "./validator.ts";
@@ -59,13 +58,13 @@ serve(async (req) => {
     console.log("Prepared metadata for API call:", preparedMetadata);
 
     const payload = {
-      model: "gpt-4.1",
+      model: "gpt-4.1-2025-04-14",
       instructions: prompt,
       input: userInput,
       metadata: preparedMetadata,
     };
 
-    console.log("Sending request to OpenAI Responses API...");
+    console.log("Sending request to OpenAI Responses API with model:", payload.model);
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -119,7 +118,6 @@ serve(async (req) => {
     
     let parsedContent: UseCaseResponse;
     try {
-      // Content may already be an object if OpenAI returns it as JSON
       parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
       console.log("Successfully parsed content");
     } catch (err) {
@@ -136,7 +134,6 @@ serve(async (req) => {
       });
     }
 
-    // Validate the response structure
     console.log("Validating parsed content...");
     const validationResult = validateResponse(parsedContent);
     
@@ -156,12 +153,10 @@ serve(async (req) => {
 
     console.log("Response validation successful");
 
-    // Add response_id if available
     if (responseData.id) {
       parsedContent.response_id = responseData.id;
     }
 
-    // If debug mode is enabled, include raw response
     if (debug) {
       return new Response(JSON.stringify({
         ...parsedContent,
