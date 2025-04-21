@@ -104,7 +104,9 @@ const UsersAdminPage: React.FC = () => {
               role: user.role,
               "Full Name": user.name,
               needs_password_reset: true
-            }
+            },
+            // Add this option to prevent automatic sign-in
+            shouldCreateUser: false
           }
         });
 
