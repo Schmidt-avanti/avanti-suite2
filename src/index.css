@@ -89,12 +89,12 @@
   * {
     @apply border-border;
   }
-
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
   
-  /* Einheitliche Typografie */
+  /* Typography Scale */
   h1 {
     @apply text-2xl font-semibold tracking-tight;
   }
@@ -112,14 +112,14 @@
   }
 }
 
-/* Base Layout-Klassen */
+/* Base Layout Classes */
 @layer components {
   .content-container {
-    @apply max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-8;
+    @apply min-w-[960px] max-w-[1200px] w-full mx-auto px-8;
   }
   
   .card-container {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+    @apply bg-white rounded-xl border border-gray-100 shadow-sm p-6;
   }
   
   .section-spacing {

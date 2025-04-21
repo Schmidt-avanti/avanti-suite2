@@ -23,12 +23,13 @@ const CustomersAdminPage: React.FC = () => {
   };
 
   return (
-    <div className="section-spacing">
-      <Card className="shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between pb-4">
-          <CardTitle className="text-2xl">Kundenverwaltung</CardTitle>
-          <Button onClick={handleCreate} className="gap-2" size="sm">
-            <Plus className="h-5 w-5" /> Kunde anlegen
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardTitle className="text-2xl font-semibold">Kundenverwaltung</CardTitle>
+          <Button onClick={handleCreate} size="sm">
+            <Plus className="h-5 w-5" />
+            <span>Kunde anlegen</span>
           </Button>
         </CardHeader>
         <CardContent>
@@ -40,6 +41,7 @@ const CustomersAdminPage: React.FC = () => {
           />
         </CardContent>
       </Card>
+      
       <CustomerFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
