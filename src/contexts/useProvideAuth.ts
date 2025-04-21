@@ -11,44 +11,33 @@ export interface AuthState {
   signOut: () => Promise<void>;
 }
 
-// Hilfsfunction, um Profilfehler zu protokollieren
-const logProfileError = (error: any, message: string) => {
-  console.error(`${message}:`, error);
-  console.error("Error details:", {
-    message: error?.message,
-    details: error?.details,
-    hint: error?.hint,
-    code: error?.code
-  });
-};
-
-// Separate Funktion zum Abrufen des Benutzerprofils
+// Verbesserte Funktion zum Abrufen des Benutzerprofils mit detaillierter Fehlerbehandlung
 const fetchUserProfile = async (userId: string) => {
   console.log("Fetching profile for user ID:", userId);
   
-  try {
-    const { data: profile, error } = await supabase
-      .from("profiles")
-      .select("role, \"Full Name\"")
-      .eq("id", userId)
-      .maybeSingle();
-    
-    if (error) {
-      logProfileError(error, "Profile fetch error");
-      throw error;
-    }
-    
-    if (!profile) {
-      console.error("No profile found for user ID:", userId);
-      throw new Error("Profil nicht gefunden");
-    }
-    
-    console.log("Profile successfully fetched:", profile);
-    return profile;
-  } catch (error) {
-    logProfileError(error, "Profile fetch error");
-    throw error;
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("role, \"Full Name\"")
+    .eq("id", userId)
+    .maybeSingle();
+  
+  if (error) {
+    console.error("Profile fetch error:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
+    throw new Error(`Profilabruf fehlgeschlagen: ${error.message}`);
   }
+  
+  if (!profile) {
+    console.error("No profile found for user ID:", userId);
+    throw new Error("Kein Profil gefunden");
+  }
+  
+  console.log("Profile successfully fetched:", profile);
+  return profile;
 };
 
 export function useProvideAuth(): AuthState {
@@ -56,18 +45,21 @@ export function useProvideAuth(): AuthState {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
-  // Load session and handle user+role
+  // Session laden und Benutzer + Rolle verarbeiten
   useEffect(() => {
-    const init = async () => {
-      setIsLoading(true);
+    let mounted = true;
+    
+    const loadSession = async () => {
       try {
         console.log("Initializing auth state...");
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session?.user) {
           console.log("No active session");
-          setUser(null);
-          setIsLoading(false);
+          if (mounted) {
+            setUser(null);
+            setIsLoading(false);
+          }
           return;
         }
         
@@ -76,14 +68,16 @@ export function useProvideAuth(): AuthState {
         try {
           const profile = await fetchUserProfile(session.user.id);
           
-          setUser({
-            id: session.user.id,
-            email: session.user.email ?? "",
-            role: (profile.role || "customer") as UserRole,
-            createdAt: session.user.created_at,
-            firstName: profile["Full Name"] || undefined,
-            lastName: undefined,
-          });
+          if (mounted) {
+            setUser({
+              id: session.user.id,
+              email: session.user.email ?? "",
+              role: (profile.role || "customer") as UserRole,
+              createdAt: session.user.created_at,
+              firstName: profile["Full Name"] || undefined,
+              lastName: undefined,
+            });
+          }
         } catch (err) {
           console.error("Failed to fetch profile during initialization:", err);
           
@@ -93,21 +87,24 @@ export function useProvideAuth(): AuthState {
             description: "Ihr Profil konnte nicht gefunden werden. Bitte kontaktieren Sie Ihren Administrator.",
           });
           
-          try {
-            await supabase.auth.signOut();
-          } finally {
+          await supabase.auth.signOut();
+          if (mounted) {
             setUser(null);
           }
         }
       } catch (err) {
         console.error("Auth initialization error:", err);
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    // Supabase auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Auth-Statusänderungslistener von Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state change event:", event);
+      
       if (!session?.user) {
         setUser(null);
         setIsLoading(false);
@@ -116,18 +113,22 @@ export function useProvideAuth(): AuthState {
       
       // Verwenden von setTimeout, um einen Deadlock im Auth-Listener zu vermeiden
       setTimeout(async () => {
+        if (!mounted) return;
+        
         setIsLoading(true);
         try {
           const profile = await fetchUserProfile(session.user.id);
           
-          setUser({
-            id: session.user.id,
-            email: session.user.email ?? "",
-            role: (profile.role || "customer") as UserRole,
-            createdAt: session.user.created_at,
-            firstName: profile["Full Name"] || undefined,
-            lastName: undefined,
-          });
+          if (mounted) {
+            setUser({
+              id: session.user.id,
+              email: session.user.email ?? "",
+              role: (profile.role || "customer") as UserRole,
+              createdAt: session.user.created_at,
+              firstName: profile["Full Name"] || undefined,
+              lastName: undefined,
+            });
+          }
         } catch (err) {
           console.error("Failed to fetch profile during auth state change:", err);
           
@@ -140,17 +141,24 @@ export function useProvideAuth(): AuthState {
           try {
             await supabase.auth.signOut();
           } finally {
-            setUser(null);
+            if (mounted) {
+              setUser(null);
+            }
           }
         } finally {
-          setIsLoading(false);
+          if (mounted) {
+            setIsLoading(false);
+          }
         }
       }, 0);
     });
 
-    void init();
+    void loadSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [toast]);
 
   const signIn = async (email: string, password: string) => {
@@ -161,11 +169,6 @@ export function useProvideAuth(): AuthState {
       
       if (error || !data.session?.user) {
         console.error("Sign in error:", error);
-        toast({
-          variant: "destructive",
-          title: "Login fehlgeschlagen",
-          description: error?.message || "Falsche Zugangsdaten.",
-        });
         throw error;
       }
       
@@ -190,12 +193,12 @@ export function useProvideAuth(): AuthState {
           description: "Willkommen zurück!",
         });
       } catch (err: any) {
-        logProfileError(err, "Failed to fetch profile after sign in");
+        console.error("Failed to fetch profile after sign in:", err);
         
         toast({
           variant: "destructive",
           title: "Profil fehlt",
-          description: "Es existiert kein Profil für diesen Nutzer / Rolle. Bitte kontaktieren Sie Ihren Administrator.",
+          description: "Es existiert kein Profil für diesen Nutzer. Bitte kontaktieren Sie Ihren Administrator.",
         });
         
         await supabase.auth.signOut();

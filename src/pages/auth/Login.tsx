@@ -16,6 +16,9 @@ const Login: React.FC = () => {
           <p className="mt-2 text-sm text-gray-600">
             Bitte melden Sie sich mit Ihren Zugangsdaten an
           </p>
+          <div className="mt-4 p-3 bg-avanti-50 border border-avanti-100 rounded-md text-sm text-avanti-700">
+            <strong>Hinweis:</strong> Neues Benutzerprofil benötigt? Ein Administrator muss für Sie ein Profil anlegen.
+          </div>
         </div>
         <LoginForm />
       </div>

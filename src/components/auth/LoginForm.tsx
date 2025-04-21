@@ -7,14 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { AlertCircle, Info } from "lucide-react";
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
@@ -28,68 +28,21 @@ const LoginForm = () => {
 
     setIsSubmitting(true);
     setError(null);
+    setInfo(null);
     
     try {
       console.log("Attempting login for:", email);
       
-      // Prüfen ob Benutzer existiert, bevor wir versuchen einzuloggen
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
-        email, 
-        password 
-      });
-      
-      if (authError) {
-        console.error('Auth error:', authError);
-        if (authError.message.includes('Invalid login credentials')) {
-          setError('Falsche E-Mail oder Passwort. Bitte versuchen Sie es erneut.');
-        } else {
-          setError(authError.message || 'Bei der Anmeldung ist ein Fehler aufgetreten.');
-        }
-        setIsSubmitting(false);
-        return;
-      }
-      
-      if (!authData.user) {
-        setError('Benutzer konnte nicht authentifiziert werden.');
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Jetzt versuchen wir das Profil zu holen - reine Überprüfung
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role, \"Full Name\"")
-        .eq("id", authData.user.id)
-        .maybeSingle();
-      
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        setError('Fehler beim Abrufen des Benutzerprofils. Bitte kontaktieren Sie Ihren Administrator.');
-        // Abmelden, da wir kein Profil haben
-        await supabase.auth.signOut();
-        setIsSubmitting(false);
-        return;
-      }
-      
-      if (!profile) {
-        console.log("Kein Profil gefunden für:", authData.user.id);
-        setError('Es existiert kein Profil für diesen Nutzer. Bitte kontaktieren Sie Ihren Administrator.');
-        // Abmelden, da wir kein Profil haben
-        await supabase.auth.signOut();
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Wenn wir bis hier kommen, haben wir ein Profil und können jetzt signIn ausführen
       await signIn(email, password);
       console.log("Login successful, navigating to home");
       navigate('/');
     } catch (error: any) {
       console.error('Login error:', error);
       
-      if (error.message === 'Profil fehlt') {
+      if (error.message?.includes('Profil fehlt') || error.message === 'Kein Profil gefunden') {
         setError('Es existiert kein Profil für diesen Nutzer. Bitte kontaktieren Sie Ihren Administrator.');
-      } else if (error.message?.includes('incorrect')) {
+        setInfo('Ein Administrator muss zuerst ein Profil für Ihren Account anlegen, bevor Sie sich anmelden können.');
+      } else if (error.message?.includes('Invalid login credentials')) {
         setError('Falsche E-Mail oder Passwort. Bitte versuchen Sie es erneut.');
       } else if (typeof error.message === 'string') {
         setError(error.message);
@@ -119,6 +72,17 @@ const LoginForm = () => {
             </AlertDescription>
           </Alert>
         )}
+        
+        {info && (
+          <Alert className="mb-4 bg-avanti-50 border-avanti-200">
+            <Info className="h-4 w-4 text-avanti-600" />
+            <AlertTitle className="text-avanti-700">Information</AlertTitle>
+            <AlertDescription className="text-avanti-600">
+              {info}
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">E-Mail</Label>
@@ -159,10 +123,17 @@ const LoginForm = () => {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex justify-center">
-        <p className="text-sm text-muted-foreground">
+      <CardFooter className="flex flex-col justify-center space-y-2">
+        <p className="text-sm text-muted-foreground text-center">
           Nur für autorisierte Nutzer. Bitte kontaktieren Sie Ihren Administrator für Zugang.
         </p>
+        <div className="text-xs text-center text-gray-500 bg-gray-50 p-2 rounded-md border border-gray-100">
+          <p>Um sich anzumelden, benötigen Sie:</p>
+          <ul className="list-disc list-inside mt-1">
+            <li>Einen gültigen Benutzeraccount in Supabase</li>
+            <li>Ein zugehöriges Profil in der "profiles" Tabelle</li>
+          </ul>
+        </div>
       </CardFooter>
     </Card>
   );
