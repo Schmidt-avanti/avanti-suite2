@@ -1,12 +1,12 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import ContactPersonFields from "./ContactPersonFields";
-import { Customer } from "@/types";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import CustomerMasterDataStep from "./CustomerMasterDataStep";
+import CustomerToolsStep from "./CustomerToolsStep";
+import CustomerContactsStep from "./CustomerContactsStep";
+import { Customer } from "@/types";
 
 type Step = 1 | 2 | 3;
 interface Address {
@@ -69,7 +69,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
   const [isLoading, setIsLoading] = useState(false);
   const isEditing = !!customer?.id;
 
-  // Load customer data when editing
   useEffect(() => {
     if (customer?.id) {
       const loadCustomerData = async () => {
@@ -80,15 +79,13 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
             .select("*")
             .eq("id", customer.id)
             .single();
-
           if (error) throw error;
-
           if (data) {
             setForm(prev => ({
               ...prev,
               name: data.name || "",
               branch: data.description || "",
-              // ... optionally you can populate further fields if available ...
+              // Füge weitere Felder hinzu falls benötigt ...
             }));
           }
         } catch (error) {
@@ -98,81 +95,30 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
           setIsLoading(false);
         }
       };
-
       loadCustomerData();
+    } else {
+      setForm(initialForm);
     }
   }, [customer]);
 
-  const handleNext = () => {
-    setStep((s) => (s < 3 ? (s + 1 as Step) : s));
-  };
-  const handlePrev = () => {
-    setStep((s) => (s > 1 ? (s - 1 as Step) : s));
-  };
+  const handleNext = () => setStep((s) => (s < 3 ? (s + 1 as Step) : s));
+  const handlePrev = () => setStep((s) => (s > 1 ? (s - 1 as Step) : s));
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  const validateStep1 = () => !!(form.name && form.branch && form.email && form.address.street && form.address.zip && form.address.city);
 
-  const handleAddressChange = (field: keyof Address, value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      address: { ...prev.address, [field]: value }
-    }));
-  };
-  const handleInvoiceAddressChange = (field: keyof Address, value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      invoiceAddress: { ...prev.invoiceAddress, [field]: value }
-    }));
-  };
-
-  const handleToolChange = (toolKey: keyof FormState["tools"], value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      tools: { ...prev.tools, [toolKey]: value }
-    }));
-  };
-
-  const handleContactsChange = (contacts: Person[]) => setForm((f) => ({ ...f, contacts }));
-
-  const validateStep1 = () => {
-    return !!(
-      form.name &&
-      form.branch &&
-      form.email &&
-      form.address.street &&
-      form.address.zip &&
-      form.address.city
-    );
-  };
-
-  const validateStep2 = () =>
-    Boolean(
-      form.tools.taskManagement &&
-      form.tools.knowledgeBase &&
-      form.tools.crm
-    );
+  const validateStep2 = () => Boolean(form.tools.taskManagement && form.tools.knowledgeBase && form.tools.crm);
 
   const handleSave = async () => {
     setIsLoading(true);
-    const { name, branch, email } = form;
+    const { name, branch } = form;
     try {
       if (isEditing && customer) {
-        // Update existing customer
         const { data, error } = await supabase
           .from("customers")
-          .update({
-            name,
-            description: branch,
-            // Make sure to include is_active if you want to update it from this dialog
-          })
+          .update({ name, description: branch })
           .eq("id", customer.id)
           .select();
-
         if (error) throw error;
-
         if (data) {
           setCustomers(prev => prev.map(c =>
             c.id === customer.id
@@ -186,14 +132,11 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
           toast.success("Kunde erfolgreich aktualisiert");
         }
       } else {
-        // Create new customer
         const { data, error } = await supabase
           .from("customers")
-          .insert({ name, description: branch /*, is_active: true is the default*/ })
+          .insert({ name, description: branch })
           .select();
-
         if (error) throw error;
-
         if (data) {
           const newCustomers = data.map((customer: any) => ({
             id: customer.id,
@@ -215,14 +158,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
     }
   };
 
-  // ... keep rest of the component (form steps UI, rendering) unchanged ...
-  // (If you want to allow the user to update isActive from the wizard, add a switch)
-
   return (
-    // ... keep existing JSX for form rendering ...
-    // The only change is to ensure addresses and tools are required, and position in ContactPersonFields if not already.
-    // If ContactPersonFields is missing "position", add its prop and ensure participants have that as required in your logic.
-    // ... rest unchanged ...
     <form className="space-y-8" onSubmit={e => { e.preventDefault(); handleSave(); }}>
       <div className="flex items-center space-x-2 pb-2 text-sm">
         <div className={`rounded-full px-3 py-1 ${step === 1 ? "bg-primary text-white" : "bg-gray-200"}`}>1. Stammdaten</div>
@@ -233,111 +169,13 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
       </div>
 
       {step === 1 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="font-medium">Kundenname *</label>
-            <Input name="name" value={form.name} onChange={handleChange} required autoFocus />
-          </div>
-          <div>
-            <label className="font-medium">Branche *</label>
-            <Input name="branch" value={form.branch} onChange={handleChange} required />
-          </div>
-          <div>
-            <label className="font-medium">E-Mail *</label>
-            <Input type="email" name="email" value={form.email} onChange={handleChange} required />
-          </div>
-          <div>
-            <label className="font-medium">Adresse *</label>
-            <Input
-              name="street"
-              placeholder="Straße"
-              value={form.address.street}
-              onChange={e => handleAddressChange("street", e.target.value)}
-              className="mb-2"
-              required
-            />
-            <div className="flex gap-2">
-              <Input
-                name="zip"
-                placeholder="PLZ"
-                value={form.address.zip}
-                onChange={e => handleAddressChange("zip", e.target.value)}
-                required
-              />
-              <Input
-                name="city"
-                placeholder="Ort"
-                value={form.address.city}
-                onChange={e => handleAddressChange("city", e.target.value)}
-                required
-              />
-            </div>
-          </div>
-          <div>
-            <label className="flex items-center gap-2 font-medium mb-1">
-              <Switch
-                checked={form.hasInvoiceAddress}
-                onCheckedChange={checked => setForm(f => ({ ...f, hasInvoiceAddress: checked }))}
-              />
-              Abweichende Rechnungsadresse?
-            </label>
-            {form.hasInvoiceAddress && (
-              <div>
-                <Input
-                  name="invoiceStreet"
-                  placeholder="Straße"
-                  value={form.invoiceAddress.street}
-                  onChange={e => handleInvoiceAddressChange("street", e.target.value)}
-                  className="mb-2"
-                  required
-                />
-                <div className="flex gap-2">
-                  <Input
-                    name="invoiceZip"
-                    placeholder="PLZ"
-                    value={form.invoiceAddress.zip}
-                    onChange={e => handleInvoiceAddressChange("zip", e.target.value)}
-                    required
-                  />
-                  <Input
-                    name="invoiceCity"
-                    placeholder="Ort"
-                    value={form.invoiceAddress.city}
-                    onChange={e => handleInvoiceAddressChange("city", e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <CustomerMasterDataStep form={form} setForm={setForm} />
       )}
-
       {step === 2 && (
-        <div>
-          <div className="space-y-6">
-            {Object.entries(toolLabels).map(([key, { label, desc }]) => (
-              <div key={key}>
-                <label className="font-medium">{label} *</label>
-                <Input
-                  value={form.tools[key as keyof FormState["tools"]]}
-                  placeholder={`z. B. ${label}`}
-                  onChange={e => handleToolChange(key as keyof FormState["tools"], e.target.value)}
-                  required
-                />
-                <div className="text-xs text-muted-foreground">{desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <CustomerToolsStep tools={form.tools} setTools={tools => setForm(f => ({ ...f, tools }))} />
       )}
-
       {step === 3 && (
-        <ContactPersonFields
-          contacts={form.contacts}
-          setContacts={handleContactsChange}
-          showPositionField={true}
-        />
+        <CustomerContactsStep contacts={form.contacts} setContacts={contacts => setForm(f => ({ ...f, contacts }))} />
       )}
 
       <div className="flex gap-2 justify-end pt-6">
