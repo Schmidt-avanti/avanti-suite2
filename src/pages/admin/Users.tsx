@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ const UsersAdminPage: React.FC = () => {
   const handleSave = async (user: User & { customers: Customer[]; is_active: boolean; name: string }) => {
     try {
       if (user.id) {
+        // Update existing user
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
@@ -54,30 +56,47 @@ const UsersAdminPage: React.FC = () => {
           description: "Der Benutzer wurde aktualisiert.",
         });
       } else {
-        const { data, error } = await supabase.auth.admin.createUser({
+        // Create new user using signUp instead of admin.createUser
+        // This bypasses the admin API requirement but requires admin to handle profile creation
+        const { data, error } = await supabase.auth.signUp({
           email: user.email,
           password: "W1llkommen@avanti",
-          user_metadata: {
-            role: user.role,
-            "Full Name": user.name,
-            needs_password_reset: true
-          },
-          email_confirm: true
+          options: {
+            data: {
+              role: user.role,
+              "Full Name": user.name,
+              needs_password_reset: true
+            }
+          }
         });
 
         if (error) throw error;
 
         if (data?.user) {
+          // Also create a profile for the new user
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              role: user.role, 
+              "Full Name": user.name,
+              is_active: true
+            });
+            
+          if (profileError) throw profileError;
+
           const newUser: User & { customers: Customer[], is_active: boolean } = {
             id: data.user.id,
-            email: data.user.email || user.email,
+            email: user.email,
             role: user.role,
             createdAt: new Date().toISOString(),
             customers: user.customers,
             is_active: true,
             firstName: user.name
           };
+          
           setUsers(prev => [...prev, newUser]);
+          
           toast({
             title: "Benutzer angelegt",
             description: `Der Benutzer wurde erfolgreich angelegt. Passwort: W1llkommen@avanti`,
@@ -85,6 +104,7 @@ const UsersAdminPage: React.FC = () => {
         }
       }
     } catch (error: any) {
+      console.error("User save error:", error);
       toast({
         variant: "destructive",
         title: "Fehler",
