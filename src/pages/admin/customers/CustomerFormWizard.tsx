@@ -48,7 +48,7 @@ const initialForm: FormState = {
 interface Props {
   customer?: Customer;
   onFinish: () => void;
-  setCustomers: (c: Customer[]) => void;
+  setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
 }
 
 // For now, tools and contacts are simply arrays of objects.
@@ -69,10 +69,10 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }));
   };
 
@@ -93,10 +93,24 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
   const handleSave = async () => {
     // Save logic: create customer, contacts, tools
     const { name, description } = form;
-    const { data, error } = await supabase.from("customers").insert({ name, description }).select();
-    if (!error && data) {
-      setCustomers((prev) => [ ...prev, ...data ]);
-      onFinish();
+    try {
+      const { data, error } = await supabase.from("customers").insert({ name, description }).select();
+      if (error) throw error;
+      
+      if (data) {
+        // Map the snake_case fields from Supabase to camelCase for our frontend model
+        const newCustomers = data.map(customer => ({
+          id: customer.id,
+          name: customer.name,
+          description: customer.description,
+          createdAt: customer.created_at
+        }));
+        
+        setCustomers(prev => [...prev, ...newCustomers]);
+        onFinish();
+      }
+    } catch (error) {
+      console.error("Error saving customer:", error);
     }
   };
 
@@ -131,7 +145,10 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
           </div>
           <div>
             <label className="flex items-center gap-2 font-medium mb-1">
-              <Switch checked={form.hasInvoiceAddress} onCheckedChange={checked => setForm(f => ({ ...f, hasInvoiceAddress: checked }))}/>
+              <Switch 
+                checked={form.hasInvoiceAddress} 
+                onCheckedChange={checked => setForm(f => ({ ...f, hasInvoiceAddress: checked }))}
+              />
               Abweichende Rechnungsadresse?
             </label>
             {form.hasInvoiceAddress && (

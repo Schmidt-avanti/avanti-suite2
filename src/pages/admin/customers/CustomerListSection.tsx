@@ -18,7 +18,14 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
     const fetchCustomers = async () => {
       const { data, error } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
       if (!error && data) {
-        setCustomers(data);
+        // Map Supabase snake_case to our frontend camelCase model
+        const mappedCustomers = data.map(customer => ({
+          id: customer.id,
+          name: customer.name,
+          description: customer.description,
+          createdAt: customer.created_at
+        }));
+        setCustomers(mappedCustomers);
       }
     };
     fetchCustomers();
