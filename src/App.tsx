@@ -16,7 +16,7 @@ import Register from "@/pages/auth/Register";
 
 // Admin Pages
 import AdminDashboard from "@/pages/admin/Dashboard";
-import UsersAdminPage from "@/pages/admin/Users"; // <-- NEU
+import UsersAdminPage from "@/pages/admin/Users";
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
@@ -27,6 +27,7 @@ import CustomerDashboard from "@/pages/customer/Dashboard";
 // Public Pages
 import Landing from "@/pages/Landing";
 import NotFound from "@/pages/NotFound";
+import Index from "@/pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -39,63 +40,52 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             {/* Public routes */}
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={<Index />} />
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/register" element={<Register />} />
 
-            {/* Protected routes inside AppLayout */}
+            {/* Admin routes, geschützt */}
             <Route element={<AppLayout />}>
-              {/* Admin routes */}
-              <Route 
-                path="/admin/dashboard" 
+              <Route
+                path="/admin/dashboard"
                 element={
-                  <ProtectedRoute allowedRoles={['admin']}>
+                  <ProtectedRoute allowedRoles={["admin"]}>
                     <AdminDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
+              <Route
                 path="/admin/users"
                 element={
-                  <ProtectedRoute allowedRoles={['admin']}>
+                  <ProtectedRoute allowedRoles={["admin"]}>
                     <UsersAdminPage />
                   </ProtectedRoute>
-                } 
+                }
               />
 
               {/* Agent routes */}
-              <Route 
-                path="/agent/dashboard" 
+              <Route
+                path="/dashboard"
                 element={
-                  <ProtectedRoute allowedRoles={['agent']}>
+                  <ProtectedRoute allowedRoles={["agent"]}>
                     <AgentDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
 
               {/* Customer routes */}
-              <Route 
-                path="/customer/dashboard" 
+              <Route
+                path="/meine-aufgaben"
                 element={
-                  <ProtectedRoute allowedRoles={['customer']}>
+                  <ProtectedRoute allowedRoles={["customer"]}>
                     <CustomerDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
 
-              {/* Root redirect based on role */}
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <Navigate to="/customer/dashboard" replace />
-                  </ProtectedRoute>
-                } 
-              />
+              {/* Catch-all for unauthorized */}
+              <Route path="*" element={<NotFound />} />
             </Route>
-
-            {/* Catch-all route */}
-            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

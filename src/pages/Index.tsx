@@ -1,9 +1,30 @@
 
-import { Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) {
+      navigate("/auth/login", { replace: true });
+      return;
+    }
+
+    // Routing basierend auf Rollen aus profile
+    if (user.role === "admin") {
+      navigate("/admin/users", { replace: true });
+    } else if (user.role === "agent") {
+      navigate("/dashboard", { replace: true });
+    } else if (user.role === "customer") {
+      navigate("/meine-aufgaben", { replace: true });
+    } else {
+      navigate("/error", { replace: true });
+    }
+  }, [user, isLoading, navigate]);
 
   if (isLoading) {
     return (
@@ -13,21 +34,7 @@ const Index = () => {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Redirect based on user role
-  if (user.role === 'admin') {
-    return <Navigate to="/admin/dashboard" replace />;
-  } else if (user.role === 'agent') {
-    return <Navigate to="/agent/dashboard" replace />;
-  } else if (user.role === 'customer') {
-    return <Navigate to="/customer/dashboard" replace />;
-  }
-
-  // Fallback
-  return <Navigate to="/" replace />;
+  return null;
 };
 
 export default Index;
