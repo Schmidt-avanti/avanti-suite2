@@ -1,1 +1,5 @@
+
 project_id = "knoevkvjyuchhcmzsdpq"
+
+[functions.generate-use-case]
+verify_jwt = true

@@ -160,6 +160,98 @@ export type Database = {
         }
         Relationships: []
       }
+      prompt_templates: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      use_cases: {
+        Row: {
+          chat_response: Json | null
+          created_at: string | null
+          created_by: string | null
+          customer_id: string | null
+          decision_logic: Json[] | null
+          expected_result: string | null
+          id: string
+          information_needed: string | null
+          is_active: boolean | null
+          next_question: string | null
+          process_map: Json[] | null
+          steps: string | null
+          title: string
+          type: string | null
+          typical_activities: string | null
+        }
+        Insert: {
+          chat_response?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          decision_logic?: Json[] | null
+          expected_result?: string | null
+          id?: string
+          information_needed?: string | null
+          is_active?: boolean | null
+          next_question?: string | null
+          process_map?: Json[] | null
+          steps?: string | null
+          title: string
+          type?: string | null
+          typical_activities?: string | null
+        }
+        Update: {
+          chat_response?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          decision_logic?: Json[] | null
+          expected_result?: string | null
+          id?: string
+          information_needed?: string | null
+          is_active?: boolean | null
+          next_question?: string | null
+          process_map?: Json[] | null
+          steps?: string | null
+          title?: string
+          type?: string | null
+          typical_activities?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "use_cases_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_customer_assignments: {
         Row: {
           created_at: string

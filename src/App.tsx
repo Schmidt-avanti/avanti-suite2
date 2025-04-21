@@ -16,6 +16,9 @@ import Login from "@/pages/auth/Login";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import UsersAdminPage from "@/pages/admin/Users";
 import CustomersAdminPage from "@/pages/admin/Customers";
+import UseCasesPage from "@/pages/admin/UseCases";
+import CreateUseCasePage from "@/pages/admin/CreateUseCase";
+import PromptTemplatesPage from "@/pages/admin/PromptTemplates";
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
@@ -67,6 +70,30 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={["admin"]}>
                     <CustomersAdminPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/use-cases"
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <UseCasesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/use-cases/create"
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <CreateUseCasePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/prompts"
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <PromptTemplatesPage />
                   </ProtectedRoute>
                 }
               />
