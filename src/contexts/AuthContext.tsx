@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .select("role, \"Full Name\"")
           .eq("id", session.user.id)
           .maybeSingle()
-          .then(async ({ data: profile, error }) => {
+          .then(({ data: profile, error }) => {
             if (!profile || error) {
               console.error("Profile fetch error in auth state change:", error);
               toast({
@@ -82,8 +82,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 description: error?.message || "Ihr Profil konnte nicht gefunden werden. Bitte kontaktieren Sie Ihren Administrator.",
               });
               // Auto-Logout bei fehlendem Profil
-              await supabase.auth.signOut();
-              setUser(null);
+              supabase.auth.signOut().then(() => {
+                setUser(null);
+                setIsLoading(false);
+              });
             } else {
               setUser({
                 id: session.user.id,
@@ -93,15 +95,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 firstName: profile["Full Name"] || undefined,
                 lastName: undefined,
               });
+              setIsLoading(false);
             }
-            setIsLoading(false);
           })
-          .catch(async (err) => {
+          .catch((err) => {
             console.error("Profile fetch error:", err);
             // Auto-Logout bei Fehler
-            await supabase.auth.signOut();
-            setUser(null);
-            setIsLoading(false);
+            supabase.auth.signOut().then(() => {
+              setUser(null);
+              setIsLoading(false);
+            });
           });
       } else {
         setUser(null);
@@ -142,7 +145,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             title: "Profil fehlt",
             description: "Es existiert kein Profil für diesen Nutzer / Rolle. Bitte kontaktieren Sie Ihren Administrator.",
           });
-          await supabase.auth.signOut(); // Auto logout bei fehlendem Profil
+          // Auto logout bei fehlendem Profil - DIREKT AUFRUFEN, NICHT AUF PROMISE WARTEN
+          await supabase.auth.signOut();
           setIsLoading(false);
           throw new Error("Profil fehlt");
         }
@@ -162,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       } catch (error) {
         console.error("Profile fetch error:", error);
-        // Auto-Logout bei Fehler
+        // Auto-Logout bei Fehler - DIREKT AUFRUFEN, NICHT AUF PROMISE WARTEN
         await supabase.auth.signOut();
         setUser(null);
         throw error;
