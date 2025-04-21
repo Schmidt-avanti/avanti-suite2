@@ -79,7 +79,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
             .from("customers")
             .select("*")
             .eq("id", customer.id)
-            .single();
+            .maybeSingle();
 
           if (error) throw error;
           const customerData = data;
@@ -90,19 +90,19 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
           const { data: contactRows } = await supabase.from("customer_contacts").select("*").eq("customer_id", customer.id);
 
           setForm({
-            name: customerData.name || "",
-            branch: customerData.description || "",
-            email: customerData.email || "",
+            name: customerData?.name || "",
+            branch: customerData?.branch || customerData?.description || "",
+            email: customerData?.email || "",
             address: {
-              street: customerData.street || "",
-              zip: customerData.zip || "",
-              city: customerData.city || ""
+              street: customerData?.street || "",
+              zip: customerData?.zip || "",
+              city: customerData?.city || ""
             },
-            hasInvoiceAddress: !!customerData.has_invoice_address,
+            hasInvoiceAddress: !!customerData?.has_invoice_address,
             invoiceAddress: {
-              street: customerData.invoice_street || "",
-              zip: customerData.invoice_zip || "",
-              city: customerData.invoice_city || ""
+              street: customerData?.invoice_street || "",
+              zip: customerData?.invoice_zip || "",
+              city: customerData?.invoice_city || ""
             },
             tools: {
               taskManagement: toolsData?.task_management || "",
@@ -162,7 +162,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
           .from("customers")
           .update({
             name,
-            description: branch,
+            branch,
             email,
             street: address.street,
             zip: address.zip,
@@ -183,7 +183,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
             ? {
                 ...c,
                 name: data[0].name,
-                description: data[0].description,
+                description: data[0].branch ?? data[0].description, // keep old if branch not set in DB
               }
             : c
         ));
@@ -193,7 +193,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
           .from("customers")
           .insert({
             name,
-            description: branch,
+            branch,
             email,
             street: address.street,
             zip: address.zip,
@@ -212,7 +212,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
         const newCustomers = data.map((customer: any) => ({
           id: customer.id,
           name: customer.name,
-          description: customer.description,
+          description: customer.branch ?? customer.description, // keep old if branch not set in DB
           createdAt: customer.created_at,
           isActive: customer.is_active !== false
         }));
