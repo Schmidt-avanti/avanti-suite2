@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -60,12 +61,15 @@ export default function CreateUseCasePage() {
   const prompt = prompts?.find((p: PromptTemplate) => p.type === type)?.content;
 
   async function sendChatToAI() {
-    if (!prompt || !chatInput) return;
+    if (!prompt || !chatInput.trim()) return;
 
     setError(null);
     setLoadingAI(true);
     setRawResponse(null);
-    setMessages((prev) => [...prev, { role: "user", content: chatInput }]);
+    
+    // Erst Nachricht zum lokalen State hinzufügen
+    const newMessage = { role: "user" as const, content: chatInput };
+    setMessages(prev => [...prev, newMessage]);
     
     try {
       const selectedCustomer = customers.find((c: Customer) => c.id === customerId);

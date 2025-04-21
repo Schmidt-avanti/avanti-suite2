@@ -27,6 +27,7 @@ const UseCaseChat = ({
   loading 
 }: UseCaseChatProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Automatisches Scrollen zum neuesten Nachricht
   useEffect(() => {
@@ -42,6 +43,16 @@ const UseCaseChat = ({
     if (e.key === 'Enter' && !e.shiftKey && chatInput.trim()) {
       e.preventDefault();
       onSendMessage();
+    }
+  };
+
+  const handleSendClick = () => {
+    if (chatInput.trim()) {
+      onSendMessage();
+      // Nach dem Senden auf das Textarea fokussieren
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
     }
   };
 
@@ -93,6 +104,7 @@ const UseCaseChat = ({
       <div className="p-4 border-t">
         <div className="flex gap-2">
           <Textarea
+            ref={textareaRef}
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -101,9 +113,10 @@ const UseCaseChat = ({
             rows={3}
           />
           <Button 
-            onClick={onSendMessage}
+            onClick={handleSendClick}
             disabled={loading || !chatInput.trim()}
             className="self-end"
+            type="button"
           >
             <Send className="h-4 w-4 mr-2" />
             Senden
