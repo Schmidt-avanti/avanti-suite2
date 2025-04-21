@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,10 +31,8 @@ const UsersAdminPage: React.FC = () => {
     setDialogOpen(true);
   };
 
-  // Hilfsfunktion zur Speicherung der Kundenzuweisungen
   const saveCustomerAssignments = async (userId: string, customerIds: string[]) => {
     try {
-      // Zuerst vorhandene Zuweisungen für den Benutzer löschen
       const { error: deleteError } = await supabase
         .from('user_customer_assignments')
         .delete()
@@ -43,10 +40,8 @@ const UsersAdminPage: React.FC = () => {
       
       if (deleteError) throw deleteError;
       
-      // Keine Zuweisungen hinzufügen, wenn keine Kunden ausgewählt wurden
       if (customerIds.length === 0) return;
       
-      // Neue Zuweisungen erstellen
       const assignments = customerIds.map(customerId => ({
         user_id: userId,
         customer_id: customerId
@@ -67,7 +62,6 @@ const UsersAdminPage: React.FC = () => {
   const handleSave = async (user: User & { customers: Customer[]; is_active: boolean; name: string }) => {
     try {
       if (user.id) {
-        // Update existing user
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
@@ -79,7 +73,6 @@ const UsersAdminPage: React.FC = () => {
 
         if (profileError) throw profileError;
 
-        // Kundenzuweisungen aktualisieren
         await saveCustomerAssignments(
           user.id, 
           user.customers.map(c => c.id)
@@ -94,8 +87,6 @@ const UsersAdminPage: React.FC = () => {
           description: "Der Benutzer wurde aktualisiert.",
         });
       } else {
-        // Create new user using signUp instead of admin.createUser
-        // This bypasses the admin API requirement but requires admin to handle profile creation
         const { data, error } = await supabase.auth.signUp({
           email: user.email,
           password: "W1llkommen@avanti",
@@ -105,15 +96,13 @@ const UsersAdminPage: React.FC = () => {
               "Full Name": user.name,
               needs_password_reset: true
             },
-            // Add this option to prevent automatic sign-in
-            shouldCreateUser: false
+            emailRedirectTo: window.location.origin + '/auth/reset-password'
           }
         });
 
         if (error) throw error;
 
         if (data?.user) {
-          // Also create a profile for the new user
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
@@ -125,7 +114,6 @@ const UsersAdminPage: React.FC = () => {
             
           if (profileError) throw profileError;
 
-          // Kundenzuweisungen für den neuen Benutzer speichern
           await saveCustomerAssignments(
             data.user.id, 
             user.customers.map(c => c.id)
