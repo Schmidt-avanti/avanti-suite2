@@ -7,23 +7,22 @@ interface UserEditSectionProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (user: User & { customers: Customer[]; is_active: boolean; name: string }) => void;
-  customers: Customer[];
+  customers?: Customer[];
   defaultValues?: (User & { customers: Customer[], is_active: boolean });
 }
 
+// Kundenprop ist obsolet, greift darauf nicht mehr zu!
 const UserEditSection: React.FC<UserEditSectionProps> = ({
   open,
   onOpenChange,
   onSave,
-  customers,
-  defaultValues
+  defaultValues,
 }) => {
   return (
     <UserEditDialog
       open={open}
       onOpenChange={onOpenChange}
       onSave={onSave}
-      customers={customers}
       defaultValues={defaultValues}
     />
   );

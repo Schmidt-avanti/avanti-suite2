@@ -4,14 +4,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { User, UserRole, Customer } from "@/types";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useFetchCustomers } from "./useFetchCustomers";
+import { ChevronDown, ChevronUp, Check, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (user: User & { customers: Customer[]; is_active: boolean; name: string }) => void;
-  customers: Customer[];
+  customers?: Customer[]; // Deprecated, use fetched customers instead
   defaultValues?: (User & { customers: Customer[], is_active: boolean });
 }
 
@@ -25,9 +27,9 @@ const UserEditDialog: React.FC<Props> = ({
   open,
   onOpenChange,
   onSave,
-  customers,
   defaultValues,
 }) => {
+  const { customers, loading, error } = useFetchCustomers();
   const [name, setName] = useState(defaultValues?.firstName || "");
   const [email, setEmail] = useState(defaultValues?.email || "");
   const [role, setRole] = useState<UserRole>(defaultValues?.role || "agent");
@@ -54,14 +56,16 @@ const UserEditDialog: React.FC<Props> = ({
     }
   }, [role, selectedCustomers]);
 
-  const handleCustomerSelect = (custId: string, checked: boolean) => {
+  const handleCustomerSelect = (customerId: string) => {
     if (role === "client") {
-      setSelectedCustomers(checked ? [custId] : []);
+      setSelectedCustomers((current) =>
+        current[0] === customerId ? [] : [customerId]
+      );
     } else {
       setSelectedCustomers((current) =>
-        checked
-          ? [...current, custId]
-          : current.filter((id) => id !== custId)
+        current.includes(customerId)
+          ? current.filter((id) => id !== customerId)
+          : [...current, customerId]
       );
     }
   };
@@ -75,10 +79,87 @@ const UserEditDialog: React.FC<Props> = ({
       createdAt: defaultValues?.createdAt || "",
       customers: mappedCustomers,
       is_active: isActive,
-      name: name // <-- Full Name
+      name: name
     };
     onSave(user);
   };
+
+  // --- Multiselect UI ---
+  function MultiSelectCustomers() {
+    if (loading) return (
+      <div className="py-2 text-sm text-muted-foreground">Lädt Kunden ...</div>
+    );
+    if (error) return (
+      <div className="py-2 text-sm text-destructive">{error}</div>
+    );
+    if (!customers.length) {
+      return <div className="py-2 text-sm text-muted-foreground">Keine Firmen gefunden</div>;
+    }
+    return (
+      <div className="relative w-full">
+        <button
+          type="button"
+          data-testid="customers-multiselect-trigger"
+          className={cn(
+            "flex w-full min-h-[40px] items-center gap-2 rounded-2xl border px-3 py-2 cursor-pointer",
+            "bg-white shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-avanti-500",
+            "transition-colors",
+            "text-base"
+          )}
+          tabIndex={0}
+        >
+          <Users className="h-4 w-4 mr-2 text-avanti-500" />
+          <span className={cn(
+            !selectedCustomers.length && "text-muted-foreground"
+          )}>
+            {selectedCustomers.length > 0
+              ? customers
+                  .filter((c) => selectedCustomers.includes(c.id))
+                  .map((c) => c.name)
+                  .join(", ")
+              : "Kunde auswählen"
+            }
+          </span>
+          <ChevronDown className="ml-auto h-4 w-4 opacity-50 pointer-events-none" />
+        </button>
+        <div className="absolute z-50 left-0 right-0 bg-white mt-2 rounded-xl shadow-lg border py-1 max-h-64 overflow-auto animate-in fade-in-0">
+          {customers.map((cust) => {
+            const checked = selectedCustomers.includes(cust.id);
+            const disabled = (role === "client"
+              && selectedCustomers.length > 0
+              && !selectedCustomers.includes(cust.id)
+            );
+            return (
+              <button
+                key={cust.id}
+                type="button"
+                className={cn(
+                  "flex w-full text-left items-center gap-2 px-4 py-2 text-base rounded hover:bg-avanti-50 transition",
+                  checked ? "bg-avanti-100 font-bold" : "",
+                  disabled && "opacity-60 pointer-events-none"
+                )}
+                onClick={() => handleCustomerSelect(cust.id)}
+                disabled={disabled}
+              >
+                <span className={cn(
+                  "inline-flex items-center justify-center w-4 h-4 rounded border border-avanti-400 mr-2",
+                  checked ? "bg-avanti-600 text-white border-avanti-600" : "bg-white"
+                )}>
+                  {checked && <Check className="w-3 h-3" />}
+                </span>
+                {cust.name}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {role === "client"
+            ? "Client kann nur einem Kunden zugeordnet sein"
+            : "Mehrfachauswahl ist möglich"}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -138,26 +219,7 @@ const UserEditDialog: React.FC<Props> = ({
             <label className="block text-base font-medium mb-1">
               Kunden: (Mehrfachauswahl, je nach Rolle)
             </label>
-            <div className="flex flex-wrap gap-2">
-              {customers.map((cust) => (
-                <label key={cust.id} className="flex items-center text-base rounded cursor-pointer px-2 py-1 bg-avanti-50 border border-avanti-100">
-                  <input
-                    type="checkbox"
-                    className="mr-2 accent-avanti-600"
-                    value={cust.id}
-                    checked={selectedCustomers.includes(cust.id)}
-                    onChange={(e) => handleCustomerSelect(cust.id, e.target.checked)}
-                    disabled={role === "client" && selectedCustomers.length > 0 && !selectedCustomers.includes(cust.id)}
-                  />
-                  {cust.name}
-                </label>
-              ))}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {role === "client"
-                ? "Client kann nur einem Kunden zugeordnet sein"
-                : "Mehrfachauswahl möglich"}
-            </p>
+            <MultiSelectCustomers />
           </div>
           <div>
             <label className="flex items-center gap-2 text-base">
@@ -196,3 +258,4 @@ const UserEditDialog: React.FC<Props> = ({
 };
 
 export default UserEditDialog;
+

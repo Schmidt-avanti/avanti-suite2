@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,13 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import UserListSection from "./users/UserListSection";
 import UserEditSection from "./users/UserEditSection";
-
-// Use valid UUIDs for mock customers
-const mockCustomers: Customer[] = [
-  { id: "550e8400-e29b-41d4-a716-446655440000", name: "Acme Corp", createdAt: "" },
-  { id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8", name: "Globex GmbH", createdAt: "" },
-  { id: "6ba7b811-9dad-11d1-80b4-00c04fd430c8", name: "Widget AG", createdAt: "" },
-];
+import { useFetchCustomers } from "./users/useFetchCustomers";
 
 const UsersAdminPage: React.FC = () => {
   const [users, setUsers] = useState<(User & { customers: Customer[], is_active: boolean })[]>([]);
@@ -22,6 +15,8 @@ const UsersAdminPage: React.FC = () => {
   const [editUser, setEditUser] = useState<(User & { customers: Customer[], is_active: boolean })|null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  const { customers: realCustomers, loading: loadingCustomers } = useFetchCustomers();
 
   const handleEdit = (user: User & { customers: Customer[], is_active: boolean }) => {
     setEditUser(user);
@@ -37,7 +32,6 @@ const UsersAdminPage: React.FC = () => {
     try {
       console.log('Saving customer assignments for user:', userId, 'customers:', customerIds);
       
-      // First delete any existing assignments
       const { error: deleteError } = await supabase
         .from('user_customer_assignments')
         .delete()
@@ -48,13 +42,11 @@ const UsersAdminPage: React.FC = () => {
         throw deleteError;
       }
       
-      // If no customer IDs, we're done (user has no assignments)
       if (customerIds.length === 0) {
         console.log('No customers to assign, finished.');
         return;
       }
       
-      // Create new assignments
       const assignments = customerIds.map(customerId => ({
         user_id: userId,
         customer_id: customerId
@@ -82,7 +74,6 @@ const UsersAdminPage: React.FC = () => {
   const handleSave = async (user: User & { customers: Customer[]; is_active: boolean; name: string }) => {
     try {
       if (user.id) {
-        // Update existing user
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
@@ -94,7 +85,6 @@ const UsersAdminPage: React.FC = () => {
 
         if (profileError) throw profileError;
 
-        // Save customer assignments
         await saveCustomerAssignments(
           user.id, 
           user.customers.map(c => c.id)
@@ -109,7 +99,6 @@ const UsersAdminPage: React.FC = () => {
           description: "Der Benutzer wurde aktualisiert.",
         });
       } else {
-        // Create new user with edge function
         const { data, error } = await supabase.functions.invoke('create-user', {
           body: {
             email: user.email,
@@ -125,7 +114,6 @@ const UsersAdminPage: React.FC = () => {
         if (error) throw error;
 
         if (data?.userId) {
-          // Create profile
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
@@ -137,7 +125,6 @@ const UsersAdminPage: React.FC = () => {
             
           if (profileError) throw profileError;
 
-          // Save customer assignments
           await saveCustomerAssignments(
             data.userId, 
             user.customers.map(c => c.id)
@@ -185,7 +172,7 @@ const UsersAdminPage: React.FC = () => {
         </CardHeader>
         <CardContent>
           <UserListSection
-            customers={mockCustomers}
+            customers={realCustomers}
             onEditUser={handleEdit}
             setUsers={setUsers}
             users={users}
@@ -199,7 +186,6 @@ const UsersAdminPage: React.FC = () => {
         open={isDialogOpen}
         onOpenChange={setDialogOpen}
         onSave={handleSave}
-        customers={mockCustomers}
         defaultValues={editUser ?? undefined}
       />
     </div>
