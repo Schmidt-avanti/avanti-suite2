@@ -15,11 +15,11 @@ const AppLayout: React.FC = () => {
         </div>
         
         {/* Main content */}
-        <div className="flex flex-col flex-1 ml-64 w-[calc(100%-16rem)]">
+        <div className="flex flex-col flex-1 ml-64">
           <Navbar />
           <main className="flex-1 overflow-y-auto p-8">
-            <div className="mx-auto max-w-7xl w-full">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="mx-auto w-full max-w-[1400px]">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
                 <Outlet />
               </div>
             </div>
