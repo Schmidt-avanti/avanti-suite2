@@ -90,10 +90,10 @@ export type Database = {
           branch: string | null
           city: string | null
           created_at: string
-          description: string | null
           email: string | null
           has_invoice_address: boolean | null
           id: string
+          industry: string | null
           invoice_city: string | null
           invoice_street: string | null
           invoice_zip: string | null
@@ -106,10 +106,10 @@ export type Database = {
           branch?: string | null
           city?: string | null
           created_at?: string
-          description?: string | null
           email?: string | null
           has_invoice_address?: boolean | null
           id?: string
+          industry?: string | null
           invoice_city?: string | null
           invoice_street?: string | null
           invoice_zip?: string | null
@@ -122,10 +122,10 @@ export type Database = {
           branch?: string | null
           city?: string | null
           created_at?: string
-          description?: string | null
           email?: string | null
           has_invoice_address?: boolean | null
           id?: string
+          industry?: string | null
           invoice_city?: string | null
           invoice_street?: string | null
           invoice_zip?: string | null

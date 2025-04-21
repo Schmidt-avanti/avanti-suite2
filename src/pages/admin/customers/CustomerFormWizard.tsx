@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
@@ -74,7 +73,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
       const loadCustomerData = async () => {
         setIsLoading(true);
         try {
-          // ALLE Daten laden, inklusive Tools & Kontakte:
           const { data, error } = await supabase
             .from("customers")
             .select("*")
@@ -84,14 +82,12 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
           if (error) throw error;
           const customerData = data;
 
-          // Tools laden:
           const { data: toolsData } = await supabase.from("customer_tools").select("*").eq("customer_id", customer.id).maybeSingle();
-          // Kontakte laden:
           const { data: contactRows } = await supabase.from("customer_contacts").select("*").eq("customer_id", customer.id);
 
           setForm({
             name: customerData?.name || "",
-            branch: customerData?.branch || customerData?.description || "",
+            branch: customerData?.industry || "",
             email: customerData?.email || "",
             address: {
               street: customerData?.street || "",
@@ -141,7 +137,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
   const handleSave = async () => {
     setIsLoading(true);
 
-    // ----- 1. Customer Stammdaten -----
     const {
       name,
       branch,
@@ -157,12 +152,11 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
       let customerId: string;
 
       if (isEditing && customer) {
-        // Update customer
         const { data, error } = await supabase
           .from("customers")
           .update({
             name,
-            branch, // BRANCHE jetzt immer verwenden!
+            industry: branch,
             email,
             street: address.street,
             zip: address.zip,
@@ -183,19 +177,17 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
             ? {
                 ...c,
                 name: data[0].name,
-                // Sicherstellen, dass der Kunden-State im FE weiterhin eine description/branch für Anzeige hat
-                description: data[0]?.branch ?? data[0]?.description ?? "",
-                branch: data[0]?.branch ?? data[0]?.description ?? ""
+                description: data[0]?.industry ?? data[0]?.description ?? "",
+                branch: data[0]?.industry ?? data[0]?.description ?? ""
               }
             : c
         ));
       } else {
-        // Insert new customer
         const { data, error } = await supabase
           .from("customers")
           .insert({
             name,
-            branch,
+            industry: branch,
             email,
             street: address.street,
             zip: address.zip,
@@ -214,16 +206,14 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
         const newCustomers = data.map((customer: any) => ({
           id: customer.id,
           name: customer.name,
-          description: customer.branch ?? customer.description ?? "",
-          branch: customer.branch ?? customer.description ?? "",
+          description: customer.industry ?? customer.description ?? "",
+          branch: customer.industry ?? customer.description ?? "",
           createdAt: customer.created_at,
           isActive: customer.is_active !== false
         }));
         setCustomers((prev) => [...prev, ...newCustomers]);
       }
 
-      // ----- 2. Tools - Fix: zuerst prüfen ob ein Eintrag existiert -----
-      // Wenn ein Eintrag existiert, updaten; sonst neu erstellen
       const { data: existingTools } = await supabase
         .from("customer_tools")
         .select("id")
@@ -231,7 +221,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
         .maybeSingle();
 
       if (existingTools?.id) {
-        // Update existing tool record
         const { error: toolsErr } = await supabase
           .from("customer_tools")
           .update({
@@ -243,7 +232,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
 
         if (toolsErr) throw toolsErr;
       } else {
-        // Insert new tool record
         const { error: toolsErr } = await supabase
           .from("customer_tools")
           .insert({
@@ -256,11 +244,10 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
         if (toolsErr) throw toolsErr;
       }
 
-      // ----- 3. Kontakte: Zunächst alte Kontakte löschen, dann alle neu als Insert -----
       if (isEditing && customer) {
         await supabase.from("customer_contacts").delete().eq("customer_id", customerId);
       }
-      // Insert alle Kontakte, nur wenn mind. Name ausgefüllt ist:
+
       const validContacts = contacts.filter(c => c.name.trim());
       if (validContacts.length) {
         const toInsert = validContacts.map(c => ({
@@ -331,4 +318,3 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
 };
 
 export default CustomerFormWizard;
-
