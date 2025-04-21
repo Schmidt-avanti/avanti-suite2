@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -49,6 +50,7 @@ const useCaseTypes = [
   { value: "information", label: "Information" },
   { value: "forwarding", label: "Weiterleitung" },
   { value: "processing", label: "Bearbeitung" },
+  { value: "knowledge_request", label: "Wissensfrage" },
 ];
 
 export default function CreateUseCasePage() {
@@ -60,6 +62,7 @@ export default function CreateUseCasePage() {
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiResponseJson, setAiResponseJson] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rawResponse, setRawResponse] = useState<string | null>(null);
 
   const { data: customers = [] } = useQuery({ queryKey: ["customers"], queryFn: fetchCustomers });
   const { data: prompts = [] } = useQuery({ queryKey: ["prompt_templates"], queryFn: fetchPrompts });
@@ -72,21 +75,34 @@ export default function CreateUseCasePage() {
 
     setError(null);
     setLoadingAI(true);
+    setRawResponse(null);
     setMessages((prev) => [...prev, { role: "user", content: chatInput }]);
     
     try {
+      const selectedCustomer = customers.find((c: Customer) => c.id === customerId);
+      console.log("Selected customer data:", selectedCustomer);
+      
       const res = await supabase.functions.invoke("generate-use-case", {
         body: {
           prompt,
-          metadata: customers.find((c: Customer) => c.id === customerId),
+          metadata: selectedCustomer,
           userInput: chatInput,
           type,
         },
       });
       
+      console.log("Edge function response:", res);
+      
       if (res.error) {
         console.error("Edge function error:", res.error);
         setError(`Fehler: ${res.error.message || "Unbekannter Fehler beim Generieren des Use Cases"}`);
+        
+        // Wenn es ein Validierungsfehler ist und wir haben Rohdaten, zeigen wir diese an
+        if (res.error.message && res.error.message.includes("Validation") && res.data?.raw_content) {
+          setRawResponse(JSON.stringify(res.data.raw_content, null, 2));
+          console.log("Raw invalid content:", res.data.raw_content);
+        }
+        
         toast({
           variant: "destructive",
           title: "Fehler bei der KI-Anfrage",
@@ -237,6 +253,13 @@ export default function CreateUseCasePage() {
               <Alert variant="destructive" className="mt-4">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
+            )}
+            
+            {rawResponse && (
+              <div className="mt-4">
+                <h3 className="text-sm font-medium mb-2">Ungeparste Antwort der API:</h3>
+                <pre className="bg-slate-100 p-3 rounded text-xs overflow-auto max-h-60">{rawResponse}</pre>
+              </div>
             )}
           </div>
           
