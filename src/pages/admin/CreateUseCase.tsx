@@ -67,7 +67,7 @@ export default function CreateUseCasePage() {
     setLoadingAI(true);
     setRawResponse(null);
     
-    // Erst Nachricht zum lokalen State hinzufügen
+    // Add message to local state first
     const newMessage = { role: "user" as const, content: chatInput };
     setMessages(prev => [...prev, newMessage]);
     

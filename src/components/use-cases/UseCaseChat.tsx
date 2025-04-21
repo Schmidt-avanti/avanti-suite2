@@ -49,7 +49,7 @@ const UseCaseChat = ({
   const handleSendClick = () => {
     if (chatInput.trim()) {
       onSendMessage();
-      // Nach dem Senden auf das Textarea fokussieren
+      // Focus on the textarea after sending
       if (textareaRef.current) {
         textareaRef.current.focus();
       }
