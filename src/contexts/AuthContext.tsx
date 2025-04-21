@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 title: "Profil konnte nicht geladen werden",
                 description: error?.message || "Ihr Profil konnte nicht gefunden werden. Bitte kontaktieren Sie Ihren Administrator.",
               });
-              // Auto-Logout bei fehlendem Profil
+              // Auto-Logout bei fehlendem Profil - Verwende Promise Chaining statt .catch()
               supabase.auth.signOut().then(() => {
                 setUser(null);
                 setIsLoading(false);
@@ -98,10 +98,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setIsLoading(false);
             }
           })
+          // Verwende einen separaten Block mit Promise Chaining für Fehlerbehandlung
+          // anstatt .catch auf der Promise-Kette
           .catch((err) => {
             console.error("Profile fetch error:", err);
-            // Auto-Logout bei Fehler
-            supabase.auth.signOut().then(() => {
+            // Auto-Logout bei Fehler mit Promise Chaining
+            void supabase.auth.signOut().then(() => {
               setUser(null);
               setIsLoading(false);
             });
@@ -202,3 +204,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
