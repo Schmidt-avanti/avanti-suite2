@@ -77,8 +77,18 @@ serve(async (req) => {
       body: JSON.stringify(payload),
     });
 
+    console.log("OpenAI API response status:", response.status);
+    
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorText = await response.text();
+      let errorData;
+      
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { raw: errorText };
+      }
+      
       console.error("OpenAI API error:", {
         status: response.status,
         statusText: response.statusText,
@@ -95,7 +105,23 @@ serve(async (req) => {
       });
     }
 
-    const data = await response.json();
+    const responseText = await response.text();
+    console.log("Raw OpenAI response:", responseText);
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (err) {
+      console.error("JSON parsing error for response:", err, responseText);
+      return new Response(JSON.stringify({
+        error: "Fehler beim Parsen der OpenAI-Antwort",
+        raw_response: responseText,
+        status: "parsing_error"
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     console.log("OpenAI Response received, status:", response.status);
     console.log("OpenAI Response structure:", JSON.stringify(Object.keys(data), null, 2));
@@ -116,15 +142,22 @@ serve(async (req) => {
     let jsonResponse: any = {};
     try {
       // Parse JSON directly from the content field
-      jsonResponse = JSON.parse(data.choices[0].content);
+      const contentString = data.choices[0].content;
+      console.log("Content to parse:", contentString);
+      jsonResponse = JSON.parse(contentString);
       console.log("Successfully parsed JSON response");
     } catch (err) {
       console.error("JSON parsing error:", err);
       console.log("Raw content:", data.choices[0].content);
-      jsonResponse = { 
+      
+      return new Response(JSON.stringify({ 
         error: "OpenAI Antwort war kein valides JSON.", 
-        raw_content: data.choices[0].content 
-      };
+        raw_content: data.choices[0].content,
+        status: "parsing_error" 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
     
     // Pass OpenAI response + (optionally) response_id to the frontend for follow-ups
@@ -132,7 +165,9 @@ serve(async (req) => {
       jsonResponse.response_id = data.id;
     }
 
+    // Erfolgreiche Antwort
     return new Response(JSON.stringify(jsonResponse), {
+      status: 200, // Explizit 200 setzen
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
