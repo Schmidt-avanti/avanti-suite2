@@ -19,6 +19,10 @@ export default {
       }
     },
     extend: {
+      spacing: {
+        // Define the sidebar width as a fixed value
+        'sidebar': '16rem', // 256px or 16rem
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',

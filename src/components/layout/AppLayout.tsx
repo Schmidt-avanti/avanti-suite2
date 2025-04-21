@@ -9,8 +9,10 @@ const AppLayout: React.FC = () => {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full bg-gray-50">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col ml-[var(--sidebar-width)]">
+        <div className="fixed left-0 top-0 h-full">
+          <AppSidebar />
+        </div>
+        <div className="flex-1 flex flex-col ml-64">
           <Navbar />
           <main className="flex-1 p-8">
             <div className="mx-auto max-w-7xl w-full">
