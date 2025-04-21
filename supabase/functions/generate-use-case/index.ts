@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateResponse } from "./validator.ts";
@@ -11,16 +10,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper to construct metadata object for OpenAI
 function prepareMetadata(raw: any) {
   if (!raw) return {};
-  return {
-    ...raw,
+  
+  // Ensure all tool references are present
+  const metadata = {
     industry: raw.industry ?? "",
-    sw_tasks: raw.taskManagement ?? raw.task_management ?? raw.sw_tasks ?? "",
-    sw_knowledge: raw.knowledgeBase ?? raw.knowledge_base ?? raw.sw_knowledge ?? "",
-    sw_CRM: raw.crm ?? raw.CRM ?? raw.sw_CRM ?? "",
+    sw_tasks: raw.sw_tasks ?? raw.taskManagement ?? raw.task_management ?? "",
+    sw_knowledge: raw.sw_knowledge ?? raw.knowledgeBase ?? raw.knowledge_base ?? "",
+    sw_CRM: raw.sw_CRM ?? raw.crm ?? raw.CRM ?? "",
   };
+  
+  console.log("Prepared metadata:", metadata);
+  return metadata;
 }
 
 function sanitizeToolReferences(content: string, metadata: any): string {
@@ -37,7 +39,7 @@ serve(async (req) => {
   try {
     console.log("Function called, checking payload...");
     
-    const { prompt, metadata, userInput, type, previous_response_id } = await req.json();
+    const { prompt, metadata, userInput, type } = await req.json();
     
     console.log("Received request data:", { 
       promptLength: prompt?.length, 
@@ -57,16 +59,15 @@ serve(async (req) => {
       });
     }
 
+    const preparedMetadata = prepareMetadata(metadata);
+    console.log("Prepared metadata for OpenAI:", preparedMetadata);
+
     const payload = {
       model: "gpt-4.1",
       instructions: prompt,
       input: userInput,
-      metadata: prepareMetadata({ ...(metadata ?? {}), type }),
+      metadata: preparedMetadata,
     };
-
-    if (previous_response_id) {
-      payload.previous_response_id = previous_response_id;
-    }
 
     console.log("Sending payload to OpenAI:", JSON.stringify(payload, null, 2));
 

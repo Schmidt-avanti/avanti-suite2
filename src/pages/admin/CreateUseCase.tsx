@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -25,13 +24,41 @@ type Customer = {
   industry: string | null;
 };
 
+type CustomerWithTools = Customer & {
+  tools?: {
+    task_management: string | null;
+    knowledge_base: string | null;
+    crm: string | null;
+  };
+};
+
 const fetchCustomers = async () => {
-  const { data, error } = await supabase
+  const { data: customers, error: customersError } = await supabase
     .from("customers")
     .select("id, name, industry")
     .order("name");
-  if (error) throw error;
-  return data;
+
+  if (customersError) throw customersError;
+
+  const { data: tools, error: toolsError } = await supabase
+    .from("customer_tools")
+    .select("customer_id, task_management, knowledge_base, crm");
+
+  if (toolsError) throw toolsError;
+
+  return customers.map((customer) => {
+    const customerTools = tools.find((t) => t.customer_id === customer.id);
+    return {
+      ...customer,
+      tools: customerTools
+        ? {
+            task_management: customerTools.task_management,
+            knowledge_base: customerTools.knowledge_base,
+            crm: customerTools.crm,
+          }
+        : undefined,
+    };
+  });
 };
 
 const fetchPrompts = async () => {
@@ -67,19 +94,25 @@ export default function CreateUseCasePage() {
     setLoadingAI(true);
     setRawResponse(null);
     
-    // Add message to local state first
     const newMessage = { role: "user" as const, content: chatInput };
     setMessages(prev => [...prev, newMessage]);
     
     try {
-      const selectedCustomer = customers.find((c: Customer) => c.id === customerId);
-      console.log("Selected customer data:", selectedCustomer);
-      console.log("Selected use case type:", type);
+      const selectedCustomer = customers.find((c: CustomerWithTools) => c.id === customerId);
+      
+      const metadata = {
+        industry: selectedCustomer?.industry || "",
+        sw_tasks: selectedCustomer?.tools?.task_management || "",
+        sw_knowledge: selectedCustomer?.tools?.knowledge_base || "",
+        sw_CRM: selectedCustomer?.tools?.crm || "",
+      };
+      
+      console.log("Sending metadata to edge function:", metadata);
       
       const res = await supabase.functions.invoke("generate-use-case", {
         body: {
           prompt,
-          metadata: selectedCustomer,
+          metadata,
           userInput: chatInput,
           type,
         },
