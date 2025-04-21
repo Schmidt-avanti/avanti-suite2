@@ -6,7 +6,7 @@ import { Edit, Trash2, KeyRound, ToggleRight, ToggleLeft } from "lucide-react";
 import { User, Customer } from "@/types";
 
 interface Props {
-  users: (User & { customers: Customer[], is_active?: boolean })[];
+  users: (User & { customers: Customer[], is_active: boolean })[];
   customers: Customer[];
   onEdit: (user: User & { customers: Customer[], is_active: boolean }) => void;
   onDelete: (id: string) => void;
@@ -67,7 +67,7 @@ const UserListTable: React.FC<Props> = ({
                 <Button
                   size="icon"
                   variant={user.is_active ? "outline" : "secondary"}
-                  onClick={() => onToggleActive(user.id, !!user.is_active)}
+                  onClick={() => onToggleActive(user.id, user.is_active)}
                   title={user.is_active ? "Deaktivieren" : "Aktivieren"}
                 >
                   {user.is_active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
