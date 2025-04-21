@@ -1,9 +1,9 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import UseCaseChat from "./UseCaseChat";
 import UseCasePreview from "./UseCasePreview";
+import UseCaseErrorDisplay from "./UseCaseErrorDisplay";
 
 interface UseCaseChatAndPreviewProps {
   messages: Array<{ role: "user" | "assistant"; content: string }>;
@@ -41,20 +41,9 @@ const UseCaseChatAndPreview: React.FC<UseCaseChatAndPreviewProps> = ({
           loading={loadingAI}
         />
 
-        {error && (
-          <Alert variant="destructive" className="mt-4">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {rawResponse && (
-          <div className="mt-4">
-            <h3 className="text-sm font-medium mb-2">Ungeparste Antwort der API:</h3>
-            <pre className="bg-slate-100 p-3 rounded text-xs overflow-auto max-h-60">
-              {rawResponse}
-            </pre>
-          </div>
-        )}
+        <div className="mt-4">
+          <UseCaseErrorDisplay error={error} rawResponse={rawResponse} />
+        </div>
       </div>
 
       <div>
