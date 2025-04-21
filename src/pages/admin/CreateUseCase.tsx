@@ -1,11 +1,10 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 type PromptTemplate = {
@@ -60,7 +59,6 @@ export default function CreateUseCasePage() {
 
   const navigate = useNavigate();
 
-  // Call Edge Function for OpenAI Responses API
   async function sendChatToAI() {
     if (!prompt || !chatInput) return;
 
@@ -126,24 +124,32 @@ export default function CreateUseCasePage() {
           <div className="mb-4">
             <label className="block mb-1 font-medium">Kunde</label>
             <Select value={customerId} onValueChange={setCustomerId}>
-              <option value="">Bitte auswählen</option>
-              {customers?.map((c: Customer) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              <SelectTrigger className="w-full">{
+                  customers.find((c:Customer) => c.id === customerId)?.name || "Bitte auswählen"
+              }</SelectTrigger>
+              <SelectContent>
+                {customers?.map((c: Customer) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
 
           <div className="mb-4">
             <label className="block mb-1 font-medium">Typ</label>
             <Select value={type} onValueChange={setType}>
-              <option value="">Bitte auswählen</option>
-              {useCaseTypes.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
+              <SelectTrigger className="w-full">
+                {useCaseTypes.find(t => t.value === type)?.label || "Bitte auswählen"}
+              </SelectTrigger>
+              <SelectContent>
+                {useCaseTypes.map(type => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
           <Button
