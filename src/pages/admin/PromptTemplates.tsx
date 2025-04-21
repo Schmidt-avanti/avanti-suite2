@@ -32,7 +32,7 @@ export default function PromptTemplatesPage() {
     content: "",
   });
 
-  const addPromptMutation = useMutation({
+  const { mutateAsync, status } = useMutation({
     mutationFn: async (template: typeof newTemplate) => {
       const { error } = await supabase.from("prompt_templates").insert([template]);
       if (error) throw error;
@@ -78,10 +78,10 @@ export default function PromptTemplatesPage() {
           />
         </div>
         <Button
-          disabled={!newTemplate.name || !newTemplate.type || !newTemplate.content || addPromptMutation.isLoading}
-          onClick={() => addPromptMutation.mutateAsync(newTemplate)}
+          disabled={!newTemplate.name || !newTemplate.type || !newTemplate.content || status === "loading"}
+          onClick={() => mutateAsync(newTemplate)}
         >
-          {addPromptMutation.isLoading ? "Speichern..." : "Neues Prompt speichern"}
+          {status === "loading" ? "Speichern..." : "Neues Prompt speichern"}
         </Button>
       </div>
       <div>
