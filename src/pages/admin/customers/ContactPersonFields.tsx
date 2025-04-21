@@ -7,17 +7,31 @@ interface Person {
   name: string;
   email: string;
   phone: string;
+  position?: string;
   isMain: boolean;
 }
 interface Props {
   contacts: Person[];
   setContacts: (c: Person[]) => void;
+  showPositionField?: boolean;
 }
-const ContactPersonFields: React.FC<Props> = ({ contacts, setContacts }) => {
+
+const ContactPersonFields: React.FC<Props> = ({ contacts, setContacts, showPositionField = false }) => {
   const handleChange = (idx: number, field: keyof Person, value: string | boolean) => {
     setContacts(contacts.map((c, i) => i === idx ? { ...c, [field]: value } : c));
   };
-  const addPerson = () => setContacts([...contacts, { name: "", email: "", phone: "", isMain: false }]);
+  
+  const addPerson = () => setContacts([
+    ...contacts, 
+    { 
+      name: "", 
+      email: "", 
+      phone: "", 
+      ...(showPositionField ? { position: "" } : {}),
+      isMain: contacts.length === 0 
+    }
+  ]);
+  
   const removePerson = (idx: number) => setContacts(contacts.filter((_, i) => i !== idx));
   const setMain = (idx: number) => setContacts(contacts.map((c, i) => ({ ...c, isMain: i === idx })));
 
@@ -26,12 +40,12 @@ const ContactPersonFields: React.FC<Props> = ({ contacts, setContacts }) => {
       <label className="block font-medium mb-2">Ansprechpartner *</label>
       {contacts.map((person, idx) => (
         <div key={idx} className="border rounded-2xl mb-4 p-4 space-y-2 relative shadow-sm bg-gray-50">
-          <div className="flex gap-2 mb-2">
+          <div className="flex gap-2 mb-2 flex-wrap">
             <Input
               placeholder="Name"
               value={person.name}
               onChange={e => handleChange(idx, "name", e.target.value)}
-              className="flex-1"
+              className="flex-1 min-w-[200px]"
               required={person.isMain}
             />
             <Input
@@ -39,7 +53,7 @@ const ContactPersonFields: React.FC<Props> = ({ contacts, setContacts }) => {
               value={person.email}
               onChange={e => handleChange(idx, "email", e.target.value)}
               type="email"
-              className="flex-1"
+              className="flex-1 min-w-[200px]"
               required={person.isMain}
             />
             <Input
@@ -47,8 +61,17 @@ const ContactPersonFields: React.FC<Props> = ({ contacts, setContacts }) => {
               value={person.phone}
               onChange={e => handleChange(idx, "phone", e.target.value)}
               type="tel"
-              className="flex-1"
+              className="flex-1 min-w-[200px]"
             />
+            {showPositionField && (
+              <Input
+                placeholder="Position"
+                value={person.position || ""}
+                onChange={e => handleChange(idx, "position", e.target.value)}
+                className="flex-1 min-w-[200px]"
+                required={person.isMain}
+              />
+            )}
           </div>
           <div className="flex gap-2 items-center">
             <input

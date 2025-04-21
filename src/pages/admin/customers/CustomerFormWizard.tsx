@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,10 +12,6 @@ interface Address {
   street: string;
   zip: string;
   city: string;
-}
-interface Tool {
-  key: "taskManagement" | "knowledgeBase" | "crm";
-  name: string;
 }
 interface Person {
   name: string;
@@ -62,16 +57,15 @@ interface Props {
 }
 
 const toolLabels: Record<keyof FormState["tools"], { label: string; desc: string }> = {
-  taskManagement: { label: "Task Management", desc: "Genutztes Tool für Aufgabenverwaltung (z. B. Asana, Jira). Falls nicht vorhanden, bitte 'N/A' eintragen." },
-  knowledgeBase: { label: "Wissensdatenbank", desc: "Tool für Dokumentation und Wissensmanagement (z. B. Confluence, Notion). Falls nicht vorhanden, bitte 'N/A' eintragen." },
-  crm: { label: "CRM", desc: "Kundenmanagement-System (z. B. HubSpot, Salesforce). Falls nicht vorhanden, bitte 'N/A' eintragen." }
+  taskManagement: { label: "Task Management", desc: "Genutztes Tool für Aufgabenverwaltung (z. B. Asana, Jira). Falls nicht vorhanden, bitte 'N/A' eintragen." },
+  knowledgeBase: { label: "Wissensdatenbank", desc: "Tool für Dokumentation und Wissensmanagement (z. B. Confluence, Notion). Falls nicht vorhanden, bitte 'N/A' eintragen." },
+  crm: { label: "CRM", desc: "Kundenmanagement-System (z. B. HubSpot, Salesforce). Falls nicht vorhanden, bitte 'N/A' eintragen." }
 };
 
 const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers }) => {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>(initialForm);
 
-  // Hilfsfunktionen
   const handleNext = () => {
     setStep((s) => (s < 3 ? (s + 1 as Step) : s));
   };
@@ -84,7 +78,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Adresshandling
   const handleAddressChange = (field: keyof Address, value: string) => {
     setForm((prev) => ({
       ...prev,
@@ -98,7 +91,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
     }));
   };
 
-  // Tool-Handling
   const handleToolChange = (toolKey: keyof FormState["tools"], value: string) => {
     setForm((prev) => ({
       ...prev,
@@ -106,7 +98,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
     }));
   };
 
-  // Kontakte
   const handleContactsChange = (contacts: Person[]) => setForm((f) => ({ ...f, contacts }));
 
   const validateStep1 = () => {
@@ -127,7 +118,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
       form.tools.crm
     );
 
-  // Save (nur name, branch und email gehen nach Supabase für Demo)
   const handleSave = async () => {
     const { name, branch, email } = form;
     try {
@@ -135,7 +125,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
       if (error) throw error;
 
       if (data) {
-        // Map the snake_case fields from Supabase to camelCase für unsere Typen
         const newCustomers = data.map((customer) => ({
           id: customer.id,
           name: customer.name,
@@ -152,7 +141,6 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
 
   return (
     <form className="space-y-8" onSubmit={e => { e.preventDefault(); handleSave(); }}>
-      {/* Stepper */}
       <div className="flex items-center space-x-2 pb-2 text-sm">
         <div className={`rounded-full px-3 py-1 ${step === 1 ? "bg-primary text-white" : "bg-gray-200"}`}>1. Stammdaten</div>
         <span className="text-gray-400">→</span>
@@ -250,7 +238,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
                 <label className="font-medium">{label} *</label>
                 <Input
                   value={form.tools[key as keyof FormState["tools"]]}
-                  placeholder={`z. B. ${label}`}
+                  placeholder={`z. B. ${label}`}
                   onChange={e => handleToolChange(key as keyof FormState["tools"], e.target.value)}
                   required
                 />
@@ -264,16 +252,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
       {step === 3 && (
         <ContactPersonFields
           contacts={form.contacts}
-          setContacts={contacts => {
-            // Beim Hinzufügen/Muten von Kontakten, das Pflichtfeld „Position“ sicherstellen
-            setForm(f => ({
-              ...f,
-              contacts: contacts.map(c => ({
-                ...c,
-                position: c.position ?? ""
-              }))
-            }));
-          }}
+          setContacts={handleContactsChange}
           showPositionField
         />
       )}
