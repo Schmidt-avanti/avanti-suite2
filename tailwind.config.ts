@@ -66,12 +66,12 @@ export default {
           950: '#06254a',
         },
         sidebar: {
-          DEFAULT: '#0E85EA',
-          foreground: '#FFFFFF',
+          DEFAULT: '#FFFFFF',
+          foreground: '#1A1F2C',
           primary: '#0E85EA',
           'primary-foreground': '#FFFFFF',
-          accent: '#0068C9',
-          'accent-foreground': '#FFFFFF',
+          accent: '#F1F0FB',
+          'accent-foreground': '#1A1F2C',
           border: '#E0EEFE',
           ring: '#0E85EA'
         }
