@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -30,6 +31,56 @@ const LoginForm = () => {
     
     try {
       console.log("Attempting login for:", email);
+      
+      // Prüfen ob Benutzer existiert, bevor wir versuchen einzuloggen
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
+      
+      if (authError) {
+        console.error('Auth error:', authError);
+        if (authError.message.includes('Invalid login credentials')) {
+          setError('Falsche E-Mail oder Passwort. Bitte versuchen Sie es erneut.');
+        } else {
+          setError(authError.message || 'Bei der Anmeldung ist ein Fehler aufgetreten.');
+        }
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (!authData.user) {
+        setError('Benutzer konnte nicht authentifiziert werden.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Jetzt versuchen wir das Profil zu holen - reine Überprüfung
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role, \"Full Name\"")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+      
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        setError('Fehler beim Abrufen des Benutzerprofils. Bitte kontaktieren Sie Ihren Administrator.');
+        // Abmelden, da wir kein Profil haben
+        await supabase.auth.signOut();
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (!profile) {
+        console.log("Kein Profil gefunden für:", authData.user.id);
+        setError('Es existiert kein Profil für diesen Nutzer. Bitte kontaktieren Sie Ihren Administrator.');
+        // Abmelden, da wir kein Profil haben
+        await supabase.auth.signOut();
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Wenn wir bis hier kommen, haben wir ein Profil und können jetzt signIn ausführen
       await signIn(email, password);
       console.log("Login successful, navigating to home");
       navigate('/');

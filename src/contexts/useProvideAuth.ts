@@ -22,38 +22,39 @@ const logProfileError = (error: any, message: string) => {
   });
 };
 
+// Separate Funktion zum Abrufen des Benutzerprofils
+const fetchUserProfile = async (userId: string) => {
+  console.log("Fetching profile for user ID:", userId);
+  
+  try {
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("role, \"Full Name\"")
+      .eq("id", userId)
+      .maybeSingle();
+    
+    if (error) {
+      logProfileError(error, "Profile fetch error");
+      throw error;
+    }
+    
+    if (!profile) {
+      console.error("No profile found for user ID:", userId);
+      throw new Error("Profil nicht gefunden");
+    }
+    
+    console.log("Profile successfully fetched:", profile);
+    return profile;
+  } catch (error) {
+    logProfileError(error, "Profile fetch error");
+    throw error;
+  }
+};
+
 export function useProvideAuth(): AuthState {
   const [user, setUser] = useState<(User & { role: UserRole }) | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
-
-  // Funktion zum Abrufen des Benutzerprofils
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      console.log("Fetching profile for user ID:", userId);
-      
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("role, \"Full Name\"")
-        .eq("id", userId)
-        .maybeSingle();
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log("Profile data received:", profile);
-      
-      if (!profile) {
-        throw new Error("Profil nicht gefunden");
-      }
-      
-      return profile;
-    } catch (error) {
-      logProfileError(error, "Profile fetch error");
-      throw error;
-    }
-  };
 
   // Load session and handle user+role
   useEffect(() => {
@@ -84,7 +85,7 @@ export function useProvideAuth(): AuthState {
             lastName: undefined,
           });
         } catch (err) {
-          logProfileError(err, "Failed to fetch profile during initialization");
+          console.error("Failed to fetch profile during initialization:", err);
           
           toast({
             variant: "destructive",
@@ -128,7 +129,7 @@ export function useProvideAuth(): AuthState {
             lastName: undefined,
           });
         } catch (err) {
-          logProfileError(err, "Failed to fetch profile during auth state change");
+          console.error("Failed to fetch profile during auth state change:", err);
           
           toast({
             variant: "destructive",
@@ -168,10 +169,12 @@ export function useProvideAuth(): AuthState {
         throw error;
       }
       
-      console.log("Authentication successful, fetching profile...");
+      console.log("Authentication successful for user:", data.session.user.id);
       
       try {
         const profile = await fetchUserProfile(data.session.user.id);
+        
+        console.log("Profile retrieved successfully:", profile);
         
         setUser({
           id: data.session.user.id,
@@ -186,7 +189,7 @@ export function useProvideAuth(): AuthState {
           title: "Login erfolgreich",
           description: "Willkommen zurück!",
         });
-      } catch (err) {
+      } catch (err: any) {
         logProfileError(err, "Failed to fetch profile after sign in");
         
         toast({
