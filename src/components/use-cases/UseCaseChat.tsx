@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Send } from "lucide-react";
+import { Send } from "lucide-react";
 
 interface Message {
   role: "assistant" | "user";
@@ -29,7 +29,6 @@ const UseCaseChat = ({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  // Automatisches Scrollen zum neuesten Nachricht
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -46,16 +45,6 @@ const UseCaseChat = ({
     }
   };
 
-  const handleSendClick = () => {
-    if (chatInput.trim()) {
-      onSendMessage();
-      // Focus on the textarea after sending
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-      }
-    }
-  };
-
   return (
     <Card className="flex flex-col h-[600px] rounded-2xl shadow-md">
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
@@ -69,39 +58,43 @@ const UseCaseChat = ({
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`p-4 rounded-2xl ${
-                message.role === "assistant"
-                  ? "bg-primary/10 mr-12"
-                  : "bg-secondary/10 ml-12"
+              className={`flex flex-col ${
+                message.role === "assistant" ? "items-start" : "items-end"
               }`}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <MessageSquare className="h-4 w-4" />
-                <span className="font-semibold">
-                  {message.role === "assistant" ? "Ava" : "Du"}
-                </span>
+              <div className={`max-w-[80%] p-4 rounded-2xl ${
+                message.role === "assistant"
+                  ? "bg-blue-100"
+                  : "bg-green-100"
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-semibold text-sm">
+                    {message.role === "assistant" ? "Ava" : "Du"}
+                  </span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
               </div>
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
             </div>
           ))}
           
           {loading && (
-            <div className="bg-primary/10 p-4 rounded-2xl mr-12">
-              <div className="flex items-center gap-2 mb-2">
-                <MessageSquare className="h-4 w-4" />
-                <span className="font-semibold">Ava</span>
-              </div>
-              <div className="flex space-x-2 mt-2">
-                <div className="w-2 h-2 rounded-full bg-primary/50 animate-bounce"></div>
-                <div className="w-2 h-2 rounded-full bg-primary/50 animate-bounce delay-75"></div>
-                <div className="w-2 h-2 rounded-full bg-primary/50 animate-bounce delay-150"></div>
+            <div className="flex items-start">
+              <div className="max-w-[80%] p-4 rounded-2xl bg-blue-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-semibold text-sm">Ava</span>
+                </div>
+                <div className="flex space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
+                </div>
               </div>
             </div>
           )}
         </div>
       </ScrollArea>
       
-      <div className="p-4 border-t">
+      <div className="p-4 border-t bg-gray-50">
         <div className="flex gap-2">
           <Textarea
             ref={textareaRef}
@@ -109,11 +102,11 @@ const UseCaseChat = ({
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Beschreibe den Use Case..."
-            className="flex-1 resize-none"
+            className="flex-1 resize-none bg-white"
             rows={3}
           />
           <Button 
-            onClick={handleSendClick}
+            onClick={onSendMessage}
             disabled={loading || !chatInput.trim()}
             className="self-end"
             type="button"
