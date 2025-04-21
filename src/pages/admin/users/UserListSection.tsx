@@ -41,13 +41,17 @@ const UserListSection: React.FC<UserListSectionProps> = ({
       // Hole optional E-Mail-Adressen aus auth.users (nur für Admins möglich)
       const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
-      // Fix the type issue - properly type the email map
+      // Create an email map from auth users data
       let emailMap: Record<string, string> = {};
+      
       if (!authError && authUsers?.users) {
+        // Explicitly type the authUsers.users array and use correct typing for the reducer
         emailMap = authUsers.users.reduce((acc: Record<string, string>, user: any) => {
-          acc[user.id] = user.email || '';
+          if (user && typeof user.id === 'string') {
+            acc[user.id] = user.email || '';
+          }
           return acc;
-        }, {});
+        }, {} as Record<string, string>);
       }
 
       // TODO: Laden von Kunden-Zuweisung per echte Daten aus user_customer_assignments
