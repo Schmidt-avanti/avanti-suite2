@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,8 +15,24 @@ const LoginForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const { signIn } = useAuth();
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  
+  const { signIn, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // If user is already logged in, redirect to home
+  useEffect(() => {
+    if (user) {
+      console.log("User already logged in, redirecting...", user);
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  const addDebugInfo = (message: string) => {
+    console.log("Debug:", message);
+    setDebugInfo(prev => [...prev, message]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,15 +45,21 @@ const LoginForm = () => {
     setIsSubmitting(true);
     setError(null);
     setInfo(null);
+    setDebugInfo([]);
     
     try {
-      console.log("Attempting login for:", email);
+      addDebugInfo(`Anmeldeversuch für: ${email}`);
       
       await signIn(email, password);
-      console.log("Login successful, navigating to home");
-      navigate('/');
+      addDebugInfo("Login erfolgreich, leite weiter...");
+      
+      // Small delay to ensure state updates
+      setTimeout(() => {
+        navigate('/');
+      }, 500);
     } catch (error: any) {
       console.error('Login error:', error);
+      addDebugInfo(`Fehler: ${error.message || 'Unbekannter Fehler'}`);
       
       if (error.message?.includes('Profil fehlt') || error.message === 'Kein Profil gefunden') {
         setError('Es existiert kein Profil für diesen Nutzer. Bitte kontaktiere deinen Administrator.');
@@ -123,12 +145,24 @@ const LoginForm = () => {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex flex-col justify-center space-y-2">
+      <CardFooter className="flex flex-col justify-center space-y-4">
         <p className="text-sm text-muted-foreground text-center">
           Nur für autorisierte Nutzer. Bitte kontaktiere deinen Administrator für Zugang.
         </p>
+        
+        {debugInfo.length > 0 && (
+          <div className="text-xs text-left w-full text-gray-700 bg-gray-50 p-3 rounded-md border border-gray-200">
+            <p className="font-semibold mb-1">Debug-Infos:</p>
+            <ul className="list-disc list-inside space-y-1">
+              {debugInfo.map((info, index) => (
+                <li key={index}>{info}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
         <div className="text-xs text-center text-gray-500 bg-gray-50 p-2 rounded-md border border-gray-100">
-          <p>Debug-Infos:</p>
+          <p>Test-Zugangsdaten:</p>
           <ul className="list-disc list-inside mt-1 text-left">
             <li>E-Mail: matthias.gawlich@gmail.com</li>
             <li>Passwort: Dein gewähltes Passwort</li>

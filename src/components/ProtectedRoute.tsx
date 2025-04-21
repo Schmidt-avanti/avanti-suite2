@@ -1,6 +1,6 @@
 
-import React from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types";
 
@@ -13,8 +13,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowedRoles = ["admin", "agent", "client"],
 }) => {
-  const { user, isLoading } = useAuth();
+  const { user, session, isLoading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Double-check session validity
+    if (!isLoading && !session) {
+      console.log("No valid session detected in protected route");
+    }
+  }, [isLoading, session]);
 
   if (isLoading) {
     return (
@@ -24,11 +32,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  if (!user) {
+  if (!session || !user) {
+    console.log("Redirecting to login: No session or user");
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
   if (!allowedRoles.includes(user.role)) {
+    console.log(`User role '${user.role}' not authorized for this route. Allowed roles:`, allowedRoles);
+    
     // Rolle stimmt nicht für Bereich! → harte Weiterleitung nach Startseite
     if (user.role === 'admin') {
       return <Navigate to="/admin/users" replace />;
