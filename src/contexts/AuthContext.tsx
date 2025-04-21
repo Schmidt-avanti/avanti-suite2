@@ -67,13 +67,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setIsLoading(true);
-        // Profil abfragen ohne RLS Policies zu verwenden
-        supabase
-          .from("profiles")
-          .select("role, \"Full Name\"")
-          .eq("id", session.user.id)
-          .maybeSingle()
-          .then(({ data: profile, error }) => {
+        
+        // Verwende Try-Catch-Block für Profilabfrage und Logout
+        const fetchUserProfile = async () => {
+          try {
+            // Profil abfragen ohne RLS Policies zu verwenden
+            const { data: profile, error } = await supabase
+              .from("profiles")
+              .select("role, \"Full Name\"")
+              .eq("id", session.user.id)
+              .maybeSingle();
+              
             if (!profile || error) {
               console.error("Profile fetch error in auth state change:", error);
               toast({
@@ -81,11 +85,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 title: "Profil konnte nicht geladen werden",
                 description: error?.message || "Ihr Profil konnte nicht gefunden werden. Bitte kontaktieren Sie Ihren Administrator.",
               });
-              // Auto-Logout bei fehlendem Profil - Verwende Promise Chaining statt .catch()
-              supabase.auth.signOut().then(() => {
+              
+              // Auto-Logout bei fehlendem Profil mit Try-Catch
+              try {
+                await supabase.auth.signOut();
                 setUser(null);
                 setIsLoading(false);
-              });
+              } catch (logoutError) {
+                console.error("Logout failed:", logoutError);
+                setUser(null);
+                setIsLoading(false);
+              }
             } else {
               setUser({
                 id: session.user.id,
@@ -97,22 +107,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
               setIsLoading(false);
             }
-          })
-          // Verwende einen separaten Block mit Promise Chaining für Fehlerbehandlung
-          // anstatt .catch auf der Promise-Kette
-          .catch((err) => {
+          } catch (err) {
             console.error("Profile fetch error:", err);
-            // Auto-Logout bei Fehler mit Promise Chaining
-            void supabase.auth.signOut().then(() => {
+            
+            // Auto-Logout bei Fehler mit Try-Catch
+            try {
+              await supabase.auth.signOut();
               setUser(null);
               setIsLoading(false);
-            });
-          });
+            } catch (logoutError) {
+              console.error("Logout failed:", logoutError);
+              setUser(null);
+              setIsLoading(false);
+            }
+          }
+        };
+        
+        // Sofort ausführen
+        void fetchUserProfile();
       } else {
         setUser(null);
         setIsLoading(false);
       }
     });
+    
     init();
 
     return () => subscription.unsubscribe();
@@ -204,4 +222,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
