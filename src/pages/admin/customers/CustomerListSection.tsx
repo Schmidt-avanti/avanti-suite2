@@ -34,13 +34,13 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
     const fetchCustomers = async () => {
       const { data, error } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
       if (!error && data) {
-        // Map Supabase snake_case to our frontend camelCase model
-        const mappedCustomers = data.map(customer => ({
+        // Map Supabase snake_case to our frontend camelCase model and include isActive
+        const mappedCustomers = data.map((customer: any) => ({
           id: customer.id,
           name: customer.name,
           description: customer.description,
           createdAt: customer.created_at,
-          isActive: customer.is_active !== false // default to true if undefined
+          isActive: customer.is_active !== false // default to true
         }));
         setCustomers(mappedCustomers);
       }
@@ -82,7 +82,7 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
   const handleToggleActive = async (customer: Customer) => {
     try {
       const newStatus = !customer.isActive;
-      
+
       const { error } = await supabase
         .from("customers")
         .update({ is_active: newStatus })
@@ -91,12 +91,12 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
       if (error) throw error;
 
       setCustomers(
-        customers.map(c => 
+        customers.map(c =>
           c.id === customer.id ? { ...c, isActive: newStatus } : c
         )
       );
-      
-      toast.success(`Kunde erfolgreich ${newStatus ? 'aktiviert' : 'deaktiviert'}`);
+
+      toast.success(`Kunde erfolgreich ${newStatus ? "aktiviert" : "deaktiviert"}`);
     } catch (error) {
       console.error("Error toggling customer status:", error);
       uiToast({
@@ -131,16 +131,16 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
                   <Button variant="ghost" size="icon" onClick={() => onEdit(customer)} title="Bearbeiten">
                     <Edit className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleToggleActive(customer)}
                     title={customer.isActive ? "Deaktivieren" : "Aktivieren"}
                   >
                     <Ban className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="icon"
                     onClick={() => handleDeleteClick(customer)}
                     title="Löschen"
@@ -159,7 +159,7 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
           <AlertDialogHeader>
             <AlertDialogTitle>Kunden löschen</AlertDialogTitle>
             <AlertDialogDescription>
-              Sind Sie sicher, dass Sie den Kunden "{customerToDelete?.name}" löschen möchten? 
+              Sind Sie sicher, dass Sie den Kunden "{customerToDelete?.name}" löschen möchten?
               Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
