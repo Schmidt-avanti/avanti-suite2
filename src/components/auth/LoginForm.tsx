@@ -29,14 +29,17 @@ const LoginForm = () => {
     setError(null);
     
     try {
+      console.log("Attempting login for:", email);
       await signIn(email, password);
-      // Redirect based on role will be handled by the router
+      console.log("Login successful, navigating to home");
       navigate('/');
     } catch (error: any) {
       console.error('Login error:', error);
       
       if (error.message === 'Profil fehlt') {
         setError('Es existiert kein Profil für diesen Nutzer. Bitte kontaktieren Sie Ihren Administrator.');
+      } else if (error.message?.includes('incorrect')) {
+        setError('Falsche E-Mail oder Passwort. Bitte versuchen Sie es erneut.');
       } else if (typeof error.message === 'string') {
         setError(error.message);
       } else {
