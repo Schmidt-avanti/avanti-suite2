@@ -1,15 +1,10 @@
 
 import React from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { AlertTriangle } from "lucide-react";  // Replace radix icon with Lucide
 import { Button } from "@/components/ui/button";
 
-interface UseCaseErrorDisplayProps {
-  error: string | null;
-  rawResponse: string | null;
-}
-
-const UseCaseErrorDisplay: React.FC<UseCaseErrorDisplayProps> = ({ error, rawResponse }) => {
+const UseCaseErrorDisplay = ({ error, rawResponse }) => {
   const [showRawResponse, setShowRawResponse] = React.useState(false);
 
   if (!error && !rawResponse) return null;
@@ -18,7 +13,7 @@ const UseCaseErrorDisplay: React.FC<UseCaseErrorDisplayProps> = ({ error, rawRes
     <div className="space-y-4">
       {error && (
         <Alert variant="destructive" className="border-destructive/50">
-          <ExclamationTriangleIcon className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4" />  {/* Updated icon */}
           <AlertTitle className="font-medium">Fehler</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
