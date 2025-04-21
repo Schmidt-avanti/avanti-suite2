@@ -11,10 +11,10 @@ const Login: React.FC = () => {
             avanti<span className="text-gray-800">task</span>
           </h1>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            Anmelden
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Access your tasks and manage your workflow
+            Bitte melden Sie sich mit Ihren Zugangsdaten an
           </p>
         </div>
         <LoginForm />

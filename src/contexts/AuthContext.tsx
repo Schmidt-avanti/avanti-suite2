@@ -24,9 +24,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         try {
+          // Direkte Abfrage, ohne RLS Policies zu verwenden, die rekursiv sind
           const { data: profile, error } = await supabase
             .from("profiles")
-            .select("*")
+            .select("role, \"Full Name\"")
             .eq("id", session.user.id)
             .maybeSingle();
           
@@ -37,6 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               title: "Profil konnte nicht geladen werden",
               description: error?.message || "Ihr Profil konnte nicht gefunden werden. Bitte kontaktieren Sie Ihren Administrator.",
             });
+            // Auto-Logout bei fehlendem Profil
+            await supabase.auth.signOut();
             setUser(null);
           } else {
             setUser({
@@ -44,12 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: session.user.email ?? "",
               role: (profile.role || "customer") as UserRole, // fallback auf customer
               createdAt: session.user.created_at,
-              firstName: undefined,
+              firstName: profile["Full Name"] || undefined,
               lastName: undefined,
             });
           }
         } catch (err) {
           console.error("Profile fetch error:", err);
+          // Auto-Logout bei Fehler
+          await supabase.auth.signOut();
           setUser(null);
         }
       } else {
@@ -62,12 +67,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setIsLoading(true);
+        // Profil abfragen ohne RLS Policies zu verwenden
         supabase
           .from("profiles")
-          .select("*")
+          .select("role, \"Full Name\"")
           .eq("id", session.user.id)
           .maybeSingle()
-          .then(({ data: profile, error }) => {
+          .then(async ({ data: profile, error }) => {
             if (!profile || error) {
               console.error("Profile fetch error in auth state change:", error);
               toast({
@@ -75,6 +81,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 title: "Profil konnte nicht geladen werden",
                 description: error?.message || "Ihr Profil konnte nicht gefunden werden. Bitte kontaktieren Sie Ihren Administrator.",
               });
+              // Auto-Logout bei fehlendem Profil
+              await supabase.auth.signOut();
               setUser(null);
             } else {
               setUser({
@@ -82,10 +90,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: session.user.email ?? "",
                 role: (profile.role || "customer") as UserRole,
                 createdAt: session.user.created_at,
-                firstName: undefined,
+                firstName: profile["Full Name"] || undefined,
                 lastName: undefined,
               });
             }
+            setIsLoading(false);
+          })
+          .catch(async (err) => {
+            console.error("Profile fetch error:", err);
+            // Auto-Logout bei Fehler
+            await supabase.auth.signOut();
+            setUser(null);
             setIsLoading(false);
           });
       } else {
@@ -112,10 +127,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
 
-      // Profile + Rolle nachloggen
+      // Profile + Rolle nachloggen ohne RLS Policies zu verwenden
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("*")
+        .select("role, \"Full Name\"")
         .eq("id", data.session.user.id)
         .maybeSingle();
 
@@ -136,7 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: data.session.user.email ?? "",
         role: (profile.role || "customer") as UserRole,
         createdAt: data.session.user.created_at,
-        firstName: undefined,
+        firstName: profile["Full Name"] || undefined,
         lastName: undefined,
       });
       
