@@ -24,12 +24,23 @@ function prepareMetadata(raw: any) {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  
   try {
+    console.log("Function called, checking payload...");
+    
     // Required: prompt (instructions), metadata (customer object), userInput, type, [optional]: previous_response_id
     const { prompt, metadata, userInput, type, previous_response_id } = await req.json();
+    
+    console.log("Received request data:", { 
+      promptLength: prompt?.length, 
+      metadata: JSON.stringify(metadata), 
+      userInput, 
+      type 
+    });
 
     if (!openAIApiKey) {
       console.error("OpenAI API Key is missing");
@@ -66,9 +77,27 @@ serve(async (req) => {
       body: JSON.stringify(payload),
     });
 
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("OpenAI API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        data: errorData
+      });
+      
+      return new Response(JSON.stringify({ 
+        error: `OpenAI API Error: ${response.status} ${response.statusText}`, 
+        details: errorData,
+        status: "api_error" 
+      }), {
+        status: 502, // Bad Gateway for API errors
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const data = await response.json();
 
-    console.log("OpenAI Response:", JSON.stringify(data, null, 2));
+    console.log("OpenAI Response received, status:", response.status);
 
     // OpenAI Responses API: primary result is in data.choices[0].content (usually JSON as string, e.g. { ... })
     let jsonResponse: any = {};
