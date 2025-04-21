@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import UserListTable from "./users/UserListTable";
 import UserEditDialog from "./users/UserEditDialog";
 
-// Mockdaten für Kunden
+// TODO: API für Kunden holen, statt Mockdaten (Demo bleibt erstmal).
 const mockCustomers: Customer[] = [
   { id: "c1", name: "Acme Corp", createdAt: "" },
   { id: "c2", name: "Globex GmbH", createdAt: "" },
@@ -17,9 +17,9 @@ const mockCustomers: Customer[] = [
 ];
 
 const UsersAdminPage: React.FC = () => {
-  const [users, setUsers] = useState<(User & { customers: Customer[] })[]>([]);
+  const [users, setUsers] = useState<(User & { customers: Customer[], is_active: boolean })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [editUser, setEditUser] = useState<(User & { customers: Customer[] })|null>(null);
+  const [editUser, setEditUser] = useState<(User & { customers: Customer[], is_active: boolean })|null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -27,43 +27,32 @@ const UsersAdminPage: React.FC = () => {
     fetchUsers();
   }, []);
 
+  // Updated: Nutzer inkl. Status, Rolle, Kunden laden
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      console.log("Starte Benutzerabfrage...");
-      
-      // Direkt aus der profiles-Tabelle alle Benutzer abrufen
+      // Lade Profile
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, role, "Full Name", created_at');
+        .select('id, role, "Full Name", created_at, is_active');
 
-      if (profilesError) {
-        console.error("Fehler beim Laden der Profile:", profilesError);
-        throw profilesError;
-      }
+      if (profilesError) throw profilesError;
 
-      console.log("Profile geladen:", profiles);
+      // Lade Kunden-Zuordnung (user_customer_assignments) - demo: leer
+      // Wir gehen davon aus, dass die Kundenliste (Demo) synchron ist.
+      // TODO: echte Daten!
+      const formattedUsers = profiles.map(profile => ({
+        id: profile.id,
+        email: "", // Email aus profile nicht lesbar
+        role: (profile.role || 'client') as UserRole,
+        firstName: profile["Full Name"] || undefined,
+        createdAt: profile.created_at,
+        is_active: profile.is_active ?? true,
+        customers: [], // TODO: Kunden laden
+      }));
 
-      // Nur falls wir später auch Auth-Details brauchen (optional):
-      // Wir könnten auth.users nicht direkt abfragen, daher verwenden wir
-      // nur die Profildaten für jetzt.
-
-      // Konvertieren der Profile in das erwartete Format
-      const formattedUsers = profiles.map(profile => {
-        return {
-          id: profile.id,
-          email: "", // E-Mail können wir nicht direkt bekommen ohne Admin-Rechte
-          role: (profile.role || 'client') as UserRole,
-          firstName: profile["Full Name"] || undefined,
-          createdAt: profile.created_at,
-          customers: [] as Customer[], 
-        };
-      });
-
-      console.log("Formatierte Benutzer:", formattedUsers);
       setUsers(formattedUsers);
     } catch (error) {
-      console.error('Fehler beim Laden der Benutzer:', error);
       toast({
         variant: "destructive",
         title: "Fehler",
@@ -74,34 +63,95 @@ const UsersAdminPage: React.FC = () => {
     }
   };
 
-  const handleCreate = () => {
-    setEditUser(null);
-    setDialogOpen(true);
+  // Aktiv/Inaktiv schalten
+  const handleToggleActive = async (userId: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_active: !isActive })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setUsers(users =>
+        users.map(u =>
+          u.id === userId ? { ...u, is_active: !isActive } : u
+        )
+      );
+      toast({
+        title: `Benutzer ${!isActive ? "aktiviert" : "deaktiviert"}`,
+        description: `Der Benutzer ist jetzt ${!isActive ? "aktiv" : "inaktiv"}.`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: error.message || "Status konnte nicht geändert werden.",
+      });
+    }
   };
 
-  const handleEdit = (user: User & { customers: Customer[] }) => {
+  // Rolle & Kunden aktualisieren + Aktiv-Status
+  const handleSave = async (user: User & { customers: Customer[]; is_active: boolean }) => {
+    try {
+      if (user.id) {
+        // Profile: Role, Name, is_active
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            role: user.role,
+            "Full Name": user.firstName || '',
+            is_active: user.is_active
+          })
+          .eq('id', user.id);
+
+        if (profileError) throw profileError;
+
+        // TODO: Kunden-Zuweisung (user_customer_assignments) synchronisieren
+
+        setUsers(prev =>
+          prev.map(u => (u.id === user.id ? { ...u, ...user } : u))
+        );
+
+        toast({
+          title: "Benutzer aktualisiert",
+          description: "Der Benutzer wurde aktualisiert.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: error.message || "Änderung konnte nicht gespeichert werden.",
+      });
+    } finally {
+      setDialogOpen(false);
+      setEditUser(null);
+    }
+  };
+
+  // Bearbeiten-Dialog öffnen
+  const handleEdit = (user: User & { customers: Customer[], is_active: boolean }) => {
     setEditUser(user);
     setDialogOpen(true);
   };
 
+  // Nutzer löschen
   const handleDelete = async (id: string) => {
     try {
-      // Da wir keine direkten Admin-Rechte haben, löschen wir nur das Profil
-      // Die auth.user würde dadurch nicht automatisch gelöscht
       const { error } = await supabase
         .from('profiles')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
-      
-      setUsers(users.filter(user => user.id !== id));
+
+      setUsers(users => users.filter(user => user.id !== id));
       toast({
         title: "Benutzer gelöscht",
-        description: "Das Profil wurde erfolgreich gelöscht.",
+        description: "Das Profil wurde gelöscht.",
       });
     } catch (error) {
-      console.error('Fehler beim Löschen des Benutzers:', error);
       toast({
         variant: "destructive",
         title: "Fehler",
@@ -110,68 +160,18 @@ const UsersAdminPage: React.FC = () => {
     }
   };
 
-  const handleSave = async (user: User & { customers: Customer[] }) => {
-    try {
-      if (user.id) {
-        // Bestehenden Nutzer aktualisieren
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ 
-            role: user.role,
-            "Full Name": user.firstName || ''
-          })
-          .eq('id', user.id);
-
-        if (profileError) throw profileError;
-
-        // Aktualisiere lokalen State
-        setUsers(prev =>
-          prev.map(u => (u.id === user.id ? { ...u, ...user } : u))
-        );
-
-        toast({
-          title: "Benutzer aktualisiert",
-          description: "Der Benutzer wurde erfolgreich aktualisiert.",
-        });
-      } else {
-        // Ohne Admin-Rechte können wir keine neuen Benutzer erstellen
-        // Wir müssten stattdessen eine Server-Funktion aufrufen oder Supabase Admin API verwenden
-        toast({
-          variant: "destructive",
-          title: "Nicht implementiert",
-          description: "Das Erstellen neuer Benutzer erfordert Admin-Rechte und muss über eine serverseitige Funktion erfolgen.",
-        });
-      }
-    } catch (error: any) {
-      console.error('Fehler beim Speichern des Benutzers:', error);
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: error.message || "Der Benutzer konnte nicht gespeichert werden.",
-      });
-    } finally {
-      setDialogOpen(false);
-      setEditUser(null);
-    }
+  // Passwort zurücksetzen: bleibt wie gehabt
+  const handleResetPassword = async (id: string) => {
+    toast({
+      variant: "destructive",
+      title: "Nicht implementiert",
+      description: "Das Zurücksetzen des Passworts erfordert die E-Mail-Adresse oder eine serverseitige Funktion.",
+    });
   };
 
-  const handleResetPassword = async (id: string) => {
-    try {
-      // Passwort-Reset ohne E-Mail ist nicht möglich
-      // Wir müssten die E-Mail kennen oder eine Server-Funktion aufrufen
-      toast({
-        variant: "destructive",
-        title: "Nicht implementiert",
-        description: "Das Zurücksetzen des Passworts erfordert die E-Mail-Adresse oder eine serverseitige Funktion.",
-      });
-    } catch (error: any) {
-      console.error('Fehler beim Zurücksetzen des Passworts:', error);
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: error.message || "Passwort konnte nicht zurückgesetzt werden.",
-      });
-    }
+  const handleCreate = () => {
+    setEditUser(null);
+    setDialogOpen(true);
   };
 
   return (
@@ -195,6 +195,7 @@ const UsersAdminPage: React.FC = () => {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onResetPassword={handleResetPassword}
+              onToggleActive={handleToggleActive}
             />
           ) : (
             <div className="text-center py-8 text-gray-500">

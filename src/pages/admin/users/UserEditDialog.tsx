@@ -8,9 +8,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (user: User & { customers: Customer[] }) => void;
+  onSave: (user: User & { customers: Customer[]; is_active: boolean }) => void;
   customers: Customer[];
-  defaultValues?: (User & { customers: Customer[] });
+  defaultValues?: (User & { customers: Customer[], is_active: boolean });
 }
 
 const userRoles: UserRole[] = ["admin", "agent", "client"];
@@ -27,21 +27,24 @@ const UserEditDialog: React.FC<Props> = ({
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>(
     defaultValues?.customers?.map((c) => c.id) || []
   );
+  const [isActive, setIsActive] = useState<boolean>(defaultValues?.is_active ?? true);
 
   useEffect(() => {
     setEmail(defaultValues?.email || "");
     setRole(defaultValues?.role || "agent");
     setSelectedCustomers(defaultValues?.customers?.map((c) => c.id) || []);
+    setIsActive(defaultValues?.is_active ?? true);
   }, [defaultValues, open]);
 
   const handleSave = () => {
     const mappedCustomers = customers.filter((c) => selectedCustomers.includes(c.id));
-    const user: User & { customers: Customer[] } = {
+    const user: User & { customers: Customer[]; is_active: boolean } = {
       id: defaultValues?.id || "",
       email,
       role,
       createdAt: defaultValues?.createdAt || "",
       customers: mappedCustomers,
+      is_active: isActive
     };
     onSave(user);
   };
@@ -93,6 +96,23 @@ const UserEditDialog: React.FC<Props> = ({
                 </RadioGroupItem>
               ))}
             </RadioGroup>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <span>Status</span>
+              <span className={`rounded px-2 py-1 text-xs ${isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                {isActive ? "Aktiv" : "Inaktiv"}
+              </span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={() => setIsActive(v => !v)}
+                className="w-5 h-5 accent-avanti-600 rounded"
+              />
+              <span>Nutzer ist aktiv</span>
+            </label>
           </div>
           {role !== "admin" && (
             <div>
