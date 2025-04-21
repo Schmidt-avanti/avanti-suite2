@@ -128,37 +128,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Profile + Rolle nachloggen ohne RLS Policies zu verwenden
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role, \"Full Name\"")
-        .eq("id", data.session.user.id)
-        .maybeSingle();
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role, \"Full Name\"")
+          .eq("id", data.session.user.id)
+          .maybeSingle();
 
-      if (!profile || profileError) {
-        console.error("Profile fetch error in signIn:", profileError);
-        toast({
-          variant: "destructive",
-          title: "Profil fehlt",
-          description: "Es existiert kein Profil für diesen Nutzer / Rolle. Bitte kontaktieren Sie Ihren Administrator.",
+        if (!profile || profileError) {
+          console.error("Profile fetch error in signIn:", profileError);
+          toast({
+            variant: "destructive",
+            title: "Profil fehlt",
+            description: "Es existiert kein Profil für diesen Nutzer / Rolle. Bitte kontaktieren Sie Ihren Administrator.",
+          });
+          await supabase.auth.signOut(); // Auto logout bei fehlendem Profil
+          setIsLoading(false);
+          throw new Error("Profil fehlt");
+        }
+
+        setUser({
+          id: data.session.user.id,
+          email: data.session.user.email ?? "",
+          role: (profile.role || "customer") as UserRole,
+          createdAt: data.session.user.created_at,
+          firstName: profile["Full Name"] || undefined,
+          lastName: undefined,
         });
-        await supabase.auth.signOut(); // Auto logout bei fehlendem Profil
-        setIsLoading(false);
-        throw new Error("Profil fehlt");
+        
+        toast({
+          title: "Login erfolgreich",
+          description: "Willkommen zurück!",
+        });
+      } catch (error) {
+        console.error("Profile fetch error:", error);
+        // Auto-Logout bei Fehler
+        await supabase.auth.signOut();
+        setUser(null);
+        throw error;
       }
-
-      setUser({
-        id: data.session.user.id,
-        email: data.session.user.email ?? "",
-        role: (profile.role || "customer") as UserRole,
-        createdAt: data.session.user.created_at,
-        firstName: profile["Full Name"] || undefined,
-        lastName: undefined,
-      });
-      
-      toast({
-        title: "Login erfolgreich",
-        description: "Willkommen zurück!",
-      });
     } catch (error) {
       console.error("Sign in error:", error);
       throw error;
