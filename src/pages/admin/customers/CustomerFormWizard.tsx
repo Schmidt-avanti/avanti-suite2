@@ -219,20 +219,39 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
         setCustomers((prev) => [...prev, ...newCustomers]);
       }
 
-      // ----- 2. Tools ("upsert") -----
-      // Es gibt immer genau einen Tools-Datensatz pro Kunde
-      const { error: toolsErr } = await supabase
+      // ----- 2. Tools - Fix: zuerst prüfen ob ein Eintrag existiert -----
+      // Wenn ein Eintrag existiert, updaten; sonst neu erstellen
+      const { data: existingTools } = await supabase
         .from("customer_tools")
-        .upsert([
-          {
+        .select("id")
+        .eq("customer_id", customerId)
+        .maybeSingle();
+
+      if (existingTools?.id) {
+        // Update existing tool record
+        const { error: toolsErr } = await supabase
+          .from("customer_tools")
+          .update({
+            task_management: tools.taskManagement,
+            knowledge_base: tools.knowledgeBase,
+            crm: tools.crm
+          })
+          .eq("id", existingTools.id);
+
+        if (toolsErr) throw toolsErr;
+      } else {
+        // Insert new tool record
+        const { error: toolsErr } = await supabase
+          .from("customer_tools")
+          .insert({
             customer_id: customerId,
             task_management: tools.taskManagement,
             knowledge_base: tools.knowledgeBase,
-            crm: tools.crm,
-          }
-        ], { onConflict: "customer_id" });
+            crm: tools.crm
+          });
 
-      if (toolsErr) throw toolsErr;
+        if (toolsErr) throw toolsErr;
+      }
 
       // ----- 3. Kontakte: Zunächst alte Kontakte löschen, dann alle neu als Insert -----
       if (isEditing && customer) {
