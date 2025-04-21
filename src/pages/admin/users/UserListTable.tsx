@@ -21,16 +21,16 @@ const UserListTable: React.FC<Props> = ({
   onResetPassword,
   onToggleActive
 }) => (
-  <div className="overflow-x-auto rounded-2xl border bg-white shadow">
+  <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
     <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>Name</TableHead>
-          <TableHead>Rolle</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Zugeordnete Kunden</TableHead>
-          <TableHead>Aktionen</TableHead>
+        <TableRow className="bg-muted/30">
+          <TableHead className="font-medium text-foreground">ID</TableHead>
+          <TableHead className="font-medium text-foreground">Name</TableHead>
+          <TableHead className="font-medium text-foreground">Rolle</TableHead>
+          <TableHead className="font-medium text-foreground">Status</TableHead>
+          <TableHead className="font-medium text-foreground">Zugeordnete Kunden</TableHead>
+          <TableHead className="font-medium text-foreground">Aktionen</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -43,12 +43,14 @@ const UserListTable: React.FC<Props> = ({
             </TableCell>
             <TableCell>{user.firstName || 'Kein Name'}</TableCell>
             <TableCell>
-              <span className="rounded px-2 py-1 bg-avanti-100 text-avanti-800 text-xs font-medium">{user.role}</span>
+              <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-avanti-100 text-avanti-800">
+                {user.role}
+              </span>
             </TableCell>
             <TableCell>
               {user.is_active
-                ? <span className="inline-flex items-center rounded-xl px-2 py-1 text-xs bg-green-50 text-green-700 gap-1"><ToggleRight className="w-4 h-4" />Aktiv</span>
-                : <span className="inline-flex items-center rounded-xl px-2 py-1 text-xs bg-gray-100 text-gray-500 gap-1"><ToggleLeft className="w-4 h-4" />Inaktiv</span>
+                ? <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-green-50 text-green-700 gap-1"><ToggleRight className="w-4 h-4" />Aktiv</span>
+                : <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-500 gap-1"><ToggleLeft className="w-4 h-4" />Inaktiv</span>
               }
             </TableCell>
             <TableCell>

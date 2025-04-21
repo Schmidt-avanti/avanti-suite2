@@ -1,10 +1,13 @@
+
 import React from 'react';
 import {
   HomeIcon,
   UsersIcon,
   SettingsIcon,
   Building2Icon,
-  FileTextIcon, ListCheckIcon, FolderOpenIcon
+  FileTextIcon, 
+  ListCheckIcon, 
+  FolderOpenIcon
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useState } from "react";
@@ -17,26 +20,27 @@ const Sidebar: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
     <aside className={`sidebar fixed top-0 left-0 z-40 h-full w-64 flex-none transition-transform duration-300 ease-in-out bg-white border-r border-gray-200 ${sidebarClass} md:translate-x-0`}>
       <div className="flex flex-col h-full">
         <div className="flex-grow p-4">
-          <nav>
-            <div className="space-y-2">
+          <nav className="space-y-1">
+            <div className="space-y-1">
               <NavLink
                 to="/admin/dashboard"
                 className={({ isActive }) =>
-                  `flex items-center space-x-3 p-2 rounded-md hover:bg-gray-100 transition ${
-                    isActive ? 'bg-gray-100 font-semibold' : ''
+                  `flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
+                    isActive ? 'bg-gray-100 font-medium text-avanti-700' : 'text-gray-700'
                   }`
                 }
               >
                 <FolderOpenIcon className="h-5 w-5" />
                 <span>Admin</span>
               </NavLink>
+              
               {/* Submenu für Admin */}
-              <div className="ml-7 mt-1 space-y-1">
+              <div className="ml-7 space-y-1">
                 <NavLink
                   to="/admin/use-cases"
                   className={({ isActive }) =>
-                    `flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-primary/10 transition
-                    ${isActive ? "bg-primary/20 font-semibold" : ""}`
+                    `flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors
+                    ${isActive ? "bg-primary/10 font-medium text-primary" : "text-gray-600"}`
                   }
                 >
                   <ListCheckIcon className="h-4 w-4" />
@@ -45,20 +49,20 @@ const Sidebar: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
                 <NavLink
                   to="/admin/prompts"
                   className={({ isActive }) =>
-                    `flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-primary/10 transition
-                    ${isActive ? "bg-primary/20 font-semibold" : ""}`
+                    `flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors
+                    ${isActive ? "bg-primary/10 font-medium text-primary" : "text-gray-600"}`
                   }
                 >
                   <FileTextIcon className="h-4 w-4" />
                   <span>Prompts</span>
                 </NavLink>
               </div>
-              {/* ... andere NavLinks wenn nötig ... */}
+              
               <NavLink
                 to="/admin/users"
                 className={({ isActive }) =>
-                  `flex items-center space-x-3 p-2 rounded-md hover:bg-gray-100 transition ${
-                    isActive ? 'bg-gray-100 font-semibold' : ''
+                  `flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
+                    isActive ? 'bg-gray-100 font-medium text-avanti-700' : 'text-gray-700'
                   }`
                 }
               >
@@ -67,33 +71,28 @@ const Sidebar: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
               </NavLink>
             </div>
 
-            <div className="mt-8">
-              <ul>
-                <li>
-                  <NavLink
-                    to="/admin/customers"
-                    className={({ isActive }) =>
-                      `flex items-center gap-2 px-4 py-2 rounded-2xl hover:bg-primary/10 transition ${
-                        isActive ? 'bg-primary/20 font-semibold' : ''
-                      }`
-                    }
-                  >
-                    <Building2Icon className="h-5 w-5" />
-                    <span>Kunden</span>
-                  </NavLink>
-                </li>
-              </ul>
+            <div className="pt-4">
+              <NavLink
+                to="/admin/customers"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
+                    isActive ? 'bg-gray-100 font-medium text-avanti-700' : 'text-gray-700'
+                  }`
+                }
+              >
+                <Building2Icon className="h-5 w-5" />
+                <span>Kunden</span>
+              </NavLink>
             </div>
           </nav>
         </div>
         
-        <div className="p-4 mt-auto">
-          <hr className="my-4 border-gray-200" />
+        <div className="p-4 mt-auto border-t border-gray-200">
           <NavLink
             to="/admin/settings"
             className={({ isActive }) =>
-              `flex items-center space-x-3 p-2 rounded-md hover:bg-gray-100 transition ${
-                isActive ? 'bg-gray-100 font-semibold' : ''
+              `flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
+                isActive ? 'bg-gray-100 font-medium text-avanti-700' : 'text-gray-700'
               }`
             }
           >

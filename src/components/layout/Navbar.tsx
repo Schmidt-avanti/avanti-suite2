@@ -23,12 +23,12 @@ const Navbar = () => {
     <header className="sticky top-0 z-30 w-full bg-white border-b border-gray-100">
       <div className="flex h-16 items-center justify-between px-8">
         <div className="flex items-center gap-4 flex-1">
-          <div className="w-72 relative">
+          <div className="relative max-w-md w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input 
               type="search"
               placeholder="Suche..."
-              className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 text-sm outline-none focus:border-avanti-500 focus:ring-1 focus:ring-avanti-500"
+              className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm outline-none focus:border-avanti-500 focus:ring-1 focus:ring-avanti-500"
             />
           </div>
         </div>
@@ -40,7 +40,7 @@ const Navbar = () => {
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.avatarUrl} alt={user.firstName || user.email} />
-                    <AvatarFallback className="bg-avanti-100 text-avanti-800">
+                    <AvatarFallback className="bg-avanti-100 text-avanti-800 text-sm">
                       {user.firstName?.charAt(0) || user.email.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>

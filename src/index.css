@@ -93,6 +93,46 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Einheitliche Typografie */
+  h1 {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+  
+  h2 {
+    @apply text-xl font-semibold tracking-tight;
+  }
+  
+  h3 {
+    @apply text-lg font-medium;
+  }
+  
+  p {
+    @apply text-base leading-relaxed;
+  }
+}
+
+/* Base Layout-Klassen */
+@layer components {
+  .content-container {
+    @apply max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .card-container {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+  }
+  
+  .section-spacing {
+    @apply space-y-6;
+  }
+  
+  .table-spacing {
+    @apply py-3;
+  }
+  
+  .icon-container {
+    @apply flex items-center justify-center h-9 w-9;
+  }
 }
 
 .avanti-logo {
@@ -102,9 +142,20 @@
 }
 
 .page-container {
-  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6;
+  @apply content-container py-6;
 }
 
 .dashboard-container {
-  @apply container mx-auto px-4 sm:px-6 py-8;
+  @apply content-container py-8;
+}
+
+/* Einheitliches Icon styling */
+[class^="lucide-"],
+[class*=" lucide-"] {
+  @apply w-5 h-5;
+}
+
+/* Buttons mit konsistentem Spacing */
+button {
+  @apply flex items-center justify-center gap-2;
 }

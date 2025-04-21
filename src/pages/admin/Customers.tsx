@@ -23,12 +23,12 @@ const CustomersAdminPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Kundenverwaltung</CardTitle>
+    <div className="section-spacing">
+      <Card className="shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between pb-4">
+          <CardTitle className="text-2xl">Kundenverwaltung</CardTitle>
           <Button onClick={handleCreate} className="gap-2" size="sm">
-            <Plus className="h-4 w-4" /> Kunde anlegen
+            <Plus className="h-5 w-5" /> Kunde anlegen
           </Button>
         </CardHeader>
         <CardContent>

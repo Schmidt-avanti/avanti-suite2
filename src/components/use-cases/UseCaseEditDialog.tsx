@@ -13,8 +13,8 @@ export function UseCaseEditDialog({ useCase, open, onOpenChange }: UseCaseEditDi
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Use Case bearbeiten</DialogTitle>
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-xl font-semibold">Use Case bearbeiten</DialogTitle>
         </DialogHeader>
         <UseCaseEditForm useCase={useCase} onSuccess={() => onOpenChange(false)} />
       </DialogContent>
