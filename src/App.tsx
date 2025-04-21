@@ -42,7 +42,8 @@ const App = () => (
             {/* Public routes */}
             <Route path="/" element={<Index />} />
             <Route path="/auth/login" element={<Login />} />
-            <Route path="/auth/register" element={<Register />} />
+            {/* Entferne Registrierung, leite ggf. weiter */}
+            <Route path="/auth/register" element={<Navigate to="/auth/login" replace />} />
 
             {/* Admin routes, geschützt */}
             <Route element={<AppLayout />}>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -23,12 +22,7 @@ const Landing: React.FC = () => {
                 </p>
                 <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
                   <div className="rounded-md shadow">
-                    <Button 
-                      className="w-full bg-avanti-600 hover:bg-avanti-700 text-white px-8 py-3 text-base font-medium" 
-                      asChild
-                    >
-                      <Link to="/auth/register">Get started</Link>
-                    </Button>
+                    {/* Registrierung entfernt */}
                   </div>
                   <div className="mt-3 sm:mt-0 sm:ml-3">
                     <Button 
@@ -128,7 +122,7 @@ const Landing: React.FC = () => {
           <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
             <div className="inline-flex rounded-md shadow">
               <Button className="bg-white text-avanti-600 hover:bg-gray-100 px-5 py-3 text-base font-medium" asChild>
-                <Link to="/auth/register">Get started</Link>
+                <Link to="/auth/login">Get started</Link>
               </Button>
             </div>
           </div>
