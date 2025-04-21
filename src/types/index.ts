@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'agent' | 'client';
 
 export interface User {
@@ -13,7 +14,7 @@ export interface User {
 export interface Customer {
   id: string;
   name: string;
-  description?: string;
+  branch?: string;
   createdAt: string;
   isActive?: boolean;
 }

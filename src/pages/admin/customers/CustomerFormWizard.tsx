@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
@@ -177,8 +178,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
             ? {
                 ...c,
                 name: data[0].name,
-                description: data[0]?.industry ?? data[0]?.description ?? "",
-                branch: data[0]?.industry ?? data[0]?.description ?? ""
+                branch: data[0]?.industry ?? ""
               }
             : c
         ));
@@ -206,8 +206,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
         const newCustomers = data.map((customer: any) => ({
           id: customer.id,
           name: customer.name,
-          description: customer.industry ?? customer.description ?? "",
-          branch: customer.industry ?? customer.description ?? "",
+          branch: customer.industry ?? "",
           createdAt: customer.created_at,
           isActive: customer.is_active !== false
         }));
