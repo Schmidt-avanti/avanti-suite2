@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import ContactPersonFields from "./ContactPersonFields";
 import { Customer } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/sonner";
 
 type Step = 1 | 2 | 3;
 interface Address {
@@ -65,6 +67,44 @@ const toolLabels: Record<keyof FormState["tools"], { label: string; desc: string
 const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers }) => {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>(initialForm);
+  const [isLoading, setIsLoading] = useState(false);
+  const isEditing = !!customer?.id;
+
+  // Load customer data when editing
+  useEffect(() => {
+    if (customer?.id) {
+      const loadCustomerData = async () => {
+        setIsLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from("customers")
+            .select("*")
+            .eq("id", customer.id)
+            .single();
+
+          if (error) throw error;
+
+          if (data) {
+            // Here we'd usually fetch and populate all customer details from the database
+            // For now, we'll just populate with the data we have
+            setForm(prev => ({
+              ...prev,
+              name: data.name || "",
+              branch: data.description || "",
+              // We'd fetch and populate other fields here as well
+            }));
+          }
+        } catch (error) {
+          console.error("Error loading customer data:", error);
+          toast.error("Kundendaten konnten nicht geladen werden");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      loadCustomerData();
+    }
+  }, [customer]);
 
   const handleNext = () => {
     setStep((s) => (s < 3 ? (s + 1 as Step) : s));
@@ -119,23 +159,62 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
     );
 
   const handleSave = async () => {
+    setIsLoading(true);
     const { name, branch, email } = form;
     try {
-      const { data, error } = await supabase.from("customers").insert({ name, description: branch }).select();
-      if (error) throw error;
+      if (isEditing && customer) {
+        // Update existing customer
+        const { data, error } = await supabase
+          .from("customers")
+          .update({ 
+            name, 
+            description: branch
+            // In a real implementation, we'd save all fields here
+          })
+          .eq("id", customer.id)
+          .select();
 
-      if (data) {
-        const newCustomers = data.map((customer) => ({
-          id: customer.id,
-          name: customer.name,
-          description: customer.description,
-          createdAt: customer.created_at
-        }));
-        setCustomers((prev) => [...prev, ...newCustomers]);
-        onFinish();
+        if (error) throw error;
+
+        if (data) {
+          setCustomers(prev => prev.map(c => 
+            c.id === customer.id 
+              ? {
+                  ...c,
+                  name: data[0].name,
+                  description: data[0].description,
+                }
+              : c
+          ));
+          toast.success("Kunde erfolgreich aktualisiert");
+        }
+      } else {
+        // Create new customer
+        const { data, error } = await supabase
+          .from("customers")
+          .insert({ name, description: branch })
+          .select();
+
+        if (error) throw error;
+
+        if (data) {
+          const newCustomers = data.map((customer) => ({
+            id: customer.id,
+            name: customer.name,
+            description: customer.description,
+            createdAt: customer.created_at,
+            isActive: true
+          }));
+          setCustomers((prev) => [...prev, ...newCustomers]);
+          toast.success("Kunde erfolgreich angelegt");
+        }
       }
+      onFinish();
     } catch (error) {
       console.error("Error saving customer:", error);
+      toast.error("Fehler beim Speichern des Kunden");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -253,17 +332,18 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
         <ContactPersonFields
           contacts={form.contacts}
           setContacts={handleContactsChange}
-          showPositionField
+          showPositionField={true}
         />
       )}
 
       <div className="flex gap-2 justify-end pt-6">
-        {step > 1 && <Button type="button" variant="outline" onClick={handlePrev}>Zurück</Button>}
+        {step > 1 && <Button type="button" variant="outline" onClick={handlePrev} disabled={isLoading}>Zurück</Button>}
         {step < 3 && (
           <Button
             type="button"
             onClick={handleNext}
             disabled={
+              isLoading ||
               (step === 1 && !validateStep1()) ||
               (step === 2 && !validateStep2())
             }
@@ -271,7 +351,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
             Weiter
           </Button>
         )}
-        {step === 3 && <Button type="submit">Speichern</Button>}
+        {step === 3 && <Button type="submit" disabled={isLoading}>{isEditing ? "Aktualisieren" : "Speichern"}</Button>}
       </div>
     </form>
   );

@@ -1,4 +1,3 @@
-
 export type UserRole = 'admin' | 'agent' | 'client';
 
 export interface User {
@@ -16,6 +15,7 @@ export interface Customer {
   name: string;
   description?: string;
   createdAt: string;
+  isActive?: boolean;
 }
 
 export interface UserCustomerAssignment {
