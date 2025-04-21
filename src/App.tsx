@@ -16,6 +16,7 @@ import Register from "@/pages/auth/Register";
 
 // Admin Pages
 import AdminDashboard from "@/pages/admin/Dashboard";
+import UsersAdminPage from "@/pages/admin/Users"; // <-- NEU
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
@@ -50,6 +51,14 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/users"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <UsersAdminPage />
                   </ProtectedRoute>
                 } 
               />
