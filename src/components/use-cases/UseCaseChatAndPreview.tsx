@@ -1,6 +1,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UseCaseChat from "./UseCaseChat";
 import UseCasePreview from "./UseCasePreview";
 import UseCaseErrorDisplay from "./UseCaseErrorDisplay";
@@ -30,33 +31,82 @@ const UseCaseChatAndPreview: React.FC<UseCaseChatAndPreviewProps> = ({
   onSave,
   onBack,
 }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div>
-        <UseCaseChat
-          messages={messages}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          onSendMessage={onSendMessage}
-          loading={loadingAI}
-        />
+  const [activeTab, setActiveTab] = React.useState("chat");
 
-        <div className="mt-4">
-          <UseCaseErrorDisplay error={error} rawResponse={rawResponse} />
-        </div>
+  // If we get a response, switch to preview tab
+  React.useEffect(() => {
+    if (aiResponseJson && !activeTab.includes("preview")) {
+      setActiveTab("preview");
+    }
+  }, [aiResponseJson]);
+
+  return (
+    <div className="space-y-6">
+      {/* Mobile view uses tabs */}
+      <div className="block md:hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="chat">Chat</TabsTrigger>
+            <TabsTrigger value="preview" disabled={!aiResponseJson}>
+              Vorschau
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="chat" className="mt-4">
+            <UseCaseChat
+              messages={messages}
+              chatInput={chatInput}
+              setChatInput={setChatInput}
+              onSendMessage={onSendMessage}
+              loading={loadingAI}
+            />
+            <div className="mt-4">
+              <UseCaseErrorDisplay error={error} rawResponse={rawResponse} />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="preview" className="mt-4">
+            <UseCasePreview aiResponseJson={aiResponseJson} />
+            {aiResponseJson && (
+              <div className="mt-6 flex gap-2">
+                <Button onClick={onSave}>Speichern</Button>
+                <Button variant="outline" onClick={onBack}>
+                  Zurück zum Chat
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
-      <div>
-        <UseCasePreview aiResponseJson={aiResponseJson} />
-
-        {aiResponseJson && (
-          <div className="mt-4 flex gap-2">
-            <Button onClick={onSave}>Speichern</Button>
-            <Button variant="outline" onClick={onBack}>
-              Zurück
-            </Button>
+      {/* Desktop view shows side by side */}
+      <div className="hidden md:grid md:grid-cols-2 md:gap-6">
+        <div>
+          <h3 className="text-lg font-medium mb-4">Chat</h3>
+          <UseCaseChat
+            messages={messages}
+            chatInput={chatInput}
+            setChatInput={setChatInput}
+            onSendMessage={onSendMessage}
+            loading={loadingAI}
+          />
+          <div className="mt-4">
+            <UseCaseErrorDisplay error={error} rawResponse={rawResponse} />
           </div>
-        )}
+        </div>
+
+        <div>
+          <h3 className="text-lg font-medium mb-4">Vorschau</h3>
+          <UseCasePreview aiResponseJson={aiResponseJson} />
+          {aiResponseJson && (
+            <div className="mt-6 flex gap-2">
+              <Button onClick={onSave}>Speichern</Button>
+              <Button variant="outline" onClick={onBack}>
+                Zurück zum Chat
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

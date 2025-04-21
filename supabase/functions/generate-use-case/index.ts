@@ -14,43 +14,38 @@ const corsHeaders = {
 function prepareMetadata(raw: any) {
   if (!raw) return {};
   
-  // Ensure all tool references are present
   const metadata = {
     industry: raw.industry ?? "",
-    sw_tasks: raw.sw_tasks ?? raw.taskManagement ?? raw.task_management ?? "",
-    sw_knowledge: raw.sw_knowledge ?? raw.knowledgeBase ?? raw.knowledge_base ?? "",
-    sw_CRM: raw.sw_CRM ?? raw.crm ?? raw.CRM ?? "",
+    sw_tasks: raw.tools?.task_management ?? "",
+    sw_knowledge: raw.tools?.knowledge_base ?? "",
+    sw_CRM: raw.tools?.crm ?? "",
   };
   
   console.log("Prepared metadata:", metadata);
   return metadata;
 }
 
-function sanitizeToolReferences(content: string, metadata: any): string {
-  return content.replace(/{{metadata\.([\w]+)}}/g, (match, key) => {
-    return metadata[key] || match;
-  });
-}
-
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
   
   try {
-    console.log("Function called, checking payload...");
+    console.log("Function called, parsing request payload...");
     
-    const { prompt, metadata, userInput, type } = await req.json();
+    const { prompt, metadata, userInput, type, debug = false } = await req.json();
     
-    console.log("Received request data:", { 
+    console.log("Request data:", { 
       promptLength: prompt?.length, 
       metadata: JSON.stringify(metadata), 
-      userInput, 
-      type 
+      userInput: userInput?.substring(0, 50) + "...", 
+      type,
+      debug
     });
 
     if (!openAIApiKey) {
-      console.error("OpenAI API Key is missing");
+      console.error("OpenAI API Key not configured");
       return new Response(JSON.stringify({ 
         error: "OpenAI API Key not configured", 
         status: "configuration_error" 
@@ -61,7 +56,7 @@ serve(async (req) => {
     }
 
     const preparedMetadata = prepareMetadata(metadata);
-    console.log("Prepared metadata for OpenAI:", preparedMetadata);
+    console.log("Prepared metadata for API call:", preparedMetadata);
 
     const payload = {
       model: "gpt-4.1",
@@ -70,7 +65,7 @@ serve(async (req) => {
       metadata: preparedMetadata,
     };
 
-    console.log("Sending payload to OpenAI:", JSON.stringify(payload, null, 2));
+    console.log("Sending request to OpenAI Responses API...");
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -85,6 +80,8 @@ serve(async (req) => {
     
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("OpenAI API error response:", errorText);
+      
       let errorData;
       try {
         errorData = JSON.parse(errorText);
@@ -93,7 +90,7 @@ serve(async (req) => {
       }
       
       return new Response(JSON.stringify({ 
-        error: `OpenAI API Error: ${response.status}`,
+        error: `OpenAI API Error (${response.status})`,
         details: errorData,
         status: "api_error" 
       }), {
@@ -102,59 +99,52 @@ serve(async (req) => {
       });
     }
 
-    const responseText = await response.text();
-    console.log("Raw OpenAI response:", responseText);
+    const responseData = await response.json();
+    console.log("OpenAI response structure:", Object.keys(responseData));
     
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (err) {
-      console.error("JSON parsing error for response:", err, responseText);
+    if (!responseData.choices?.[0]?.content) {
+      console.error("Unexpected OpenAI response format:", JSON.stringify(responseData, null, 2));
       return new Response(JSON.stringify({
-        error: "Fehler beim Parsen der OpenAI-Antwort",
-        raw_response: responseText,
-        status: "parsing_error"
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (!data.choices?.[0]?.content) {
-      console.error("Unexpected OpenAI response format:", data);
-      return new Response(JSON.stringify({
-        error: "Unerwartetes Antwortformat von OpenAI",
-        raw_response: data,
+        error: "Unexpected response format from OpenAI",
+        raw_response: responseData,
         status: "format_error"
       }), {
-        status: 500,
+        status: 422,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const content = responseData.choices[0].content;
+    console.log("OpenAI content received:", typeof content);
+    
     let parsedContent: UseCaseResponse;
     try {
-      const contentString = data.choices[0].content;
-      console.log("Content to parse:", contentString);
-      parsedContent = JSON.parse(contentString);
+      // Content may already be an object if OpenAI returns it as JSON
+      parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
+      console.log("Successfully parsed content");
     } catch (err) {
       console.error("JSON parsing error:", err);
+      console.error("Raw content that failed to parse:", content);
+      
       return new Response(JSON.stringify({ 
-        error: "OpenAI Antwort war kein valides JSON",
-        raw_content: data.choices[0].content,
+        error: "Failed to parse OpenAI response as JSON",
+        raw_content: content,
         status: "parsing_error" 
       }), {
-        status: 500,
+        status: 422,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Validate the response structure
+    console.log("Validating parsed content...");
     const validationResult = validateResponse(parsedContent);
+    
     if (!validationResult.isValid) {
       console.error("Validation errors:", validationResult.errors);
+      
       return new Response(JSON.stringify({
-        error: "Ungültige Antwortstruktur",
+        error: "Invalid response structure",
         details: validationResult.errors,
         raw_content: parsedContent,
         status: "validation_error"
@@ -164,17 +154,25 @@ serve(async (req) => {
       });
     }
 
-    // Sanitize tool references in process_map
-    if (parsedContent.process_map) {
-      parsedContent.process_map = parsedContent.process_map.map(step => ({
-        ...step,
-        tool: sanitizeToolReferences(step.tool, metadata)
-      }));
-    }
+    console.log("Response validation successful");
 
     // Add response_id if available
-    if (data.id) {
-      parsedContent.response_id = data.id;
+    if (responseData.id) {
+      parsedContent.response_id = responseData.id;
+    }
+
+    // If debug mode is enabled, include raw response
+    if (debug) {
+      return new Response(JSON.stringify({
+        ...parsedContent,
+        _debug: {
+          raw_response: responseData,
+          validation: "passed"
+        }
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(JSON.stringify(parsedContent), {
@@ -186,6 +184,7 @@ serve(async (req) => {
     console.error("Edge Function Error:", err);
     return new Response(JSON.stringify({ 
       error: err.message, 
+      stack: err.stack,
       status: "runtime_error" 
     }), {
       status: 500,

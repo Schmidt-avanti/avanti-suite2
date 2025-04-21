@@ -13,19 +13,10 @@ type Message = {
   content: string;
 };
 
-type PromptTemplate = {
-  id: string;
-  type: string;
-  content: string;
-};
-
 type Customer = {
   id: string;
   name: string;
   industry: string | null;
-};
-
-type CustomerWithTools = Customer & {
   tools?: {
     task_management: string | null;
     knowledge_base: string | null;
@@ -33,21 +24,44 @@ type CustomerWithTools = Customer & {
   };
 };
 
+type PromptTemplate = {
+  id: string;
+  type: string;
+  content: string;
+};
+
+// The different steps in the creation process
+enum Step {
+  FORM = 1,
+  CHAT = 2,
+  REVIEW = 3
+}
+
+// Fetch all customers with their tools
 const fetchCustomers = async () => {
+  console.log("Fetching customers data...");
+  
   const { data: customers, error: customersError } = await supabase
     .from("customers")
     .select("id, name, industry")
     .order("name");
 
-  if (customersError) throw customersError;
+  if (customersError) {
+    console.error("Error fetching customers:", customersError);
+    throw customersError;
+  }
 
   const { data: tools, error: toolsError } = await supabase
     .from("customer_tools")
     .select("customer_id, task_management, knowledge_base, crm");
 
-  if (toolsError) throw toolsError;
+  if (toolsError) {
+    console.error("Error fetching customer tools:", toolsError);
+    throw toolsError;
+  }
 
-  return customers.map((customer) => {
+  // Combine customers with their tools
+  const customersWithTools = customers.map((customer) => {
     const customerTools = tools.find((t) => t.customer_id === customer.id);
     return {
       ...customer,
@@ -60,74 +74,148 @@ const fetchCustomers = async () => {
         : undefined,
     };
   });
+  
+  console.log(`Found ${customersWithTools.length} customers with tools`);
+  return customersWithTools;
 };
 
+// Fetch active prompt templates
 const fetchPrompts = async () => {
+  console.log("Fetching prompt templates...");
+  
   const { data, error } = await supabase
     .from("prompt_templates")
     .select("id, type, content")
     .eq("is_active", true);
-  if (error) throw error;
+    
+  if (error) {
+    console.error("Error fetching prompt templates:", error);
+    throw error;
+  }
+  
+  console.log(`Found ${data.length} active prompt templates`);
   return data;
 };
 
 export default function CreateUseCasePage() {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Current step in the creation process
+  const [step, setStep] = useState<Step>(Step.FORM);
+  
+  // Form data
   const [customerId, setCustomerId] = useState<string>("");
   const [type, setType] = useState<UseCaseType | "">("");
+  
+  // Chat state
   const [chatInput, setChatInput] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
+  
+  // AI response and loading state
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiResponseJson, setAiResponseJson] = useState<any>(null);
+  
+  // Error handling
   const [error, setError] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<string | null>(null);
 
-  const { data: customers = [] } = useQuery({ queryKey: ["customers"], queryFn: fetchCustomers });
-  const { data: prompts = [] } = useQuery({ queryKey: ["prompt_templates"], queryFn: fetchPrompts });
+  // Data fetching with React Query
+  const { 
+    data: customers = [], 
+    isLoading: isLoadingCustomers,
+    error: customersError 
+  } = useQuery({ 
+    queryKey: ["customers"], 
+    queryFn: fetchCustomers 
+  });
+  
+  const { 
+    data: prompts = [], 
+    isLoading: isLoadingPrompts,
+    error: promptsError 
+  } = useQuery({ 
+    queryKey: ["prompt_templates"], 
+    queryFn: fetchPrompts 
+  });
+
   const { toast } = useToast();
   const navigate = useNavigate();
-  const prompt = prompts?.find((p: PromptTemplate) => p.type === type)?.content;
+  
+  // Find the prompt template for the selected type
+  const promptTemplate = prompts?.find((p: PromptTemplate) => p.type === type)?.content;
 
-  async function sendChatToAI() {
-    if (!prompt || !chatInput.trim()) return;
-
-    setError(null);
-    setLoadingAI(true);
-    setRawResponse(null);
+  // Handle initial validation issues
+  React.useEffect(() => {
+    if (customersError) {
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Laden der Kunden",
+        description: (customersError as Error).message,
+      });
+    }
     
+    if (promptsError) {
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Laden der Prompt-Vorlagen",
+        description: (promptsError as Error).message,
+      });
+    }
+  }, [customersError, promptsError, toast]);
+
+  // Send chat message to AI
+  async function sendChatToAI() {
+    if (!promptTemplate || !customerId || !chatInput.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Eingabe unvollständig",
+        description: "Bitte füllen Sie alle erforderlichen Felder aus.",
+      });
+      return;
+    }
+
+    // Reset error states
+    setError(null);
+    setRawResponse(null);
+    setLoadingAI(true);
+    
+    // Add user message to chat
     const newMessage = { role: "user" as const, content: chatInput };
     setMessages(prev => [...prev, newMessage]);
     
     try {
-      const selectedCustomer = customers.find((c: CustomerWithTools) => c.id === customerId);
+      // Find the selected customer with tools
+      const selectedCustomer = customers.find((c: Customer) => c.id === customerId);
       
-      const metadata = {
-        industry: selectedCustomer?.industry || "",
-        sw_tasks: selectedCustomer?.tools?.task_management || "",
-        sw_knowledge: selectedCustomer?.tools?.knowledge_base || "",
-        sw_CRM: selectedCustomer?.tools?.crm || "",
-      };
+      if (!selectedCustomer) {
+        throw new Error("Kunde nicht gefunden");
+      }
       
-      console.log("Sending metadata to edge function:", metadata);
+      console.log("Sending request to edge function with customer:", selectedCustomer.name);
       
+      // Call the edge function with payload
       const res = await supabase.functions.invoke("generate-use-case", {
         body: {
-          prompt,
-          metadata,
+          prompt: promptTemplate,
+          metadata: selectedCustomer,
           userInput: chatInput,
           type,
+          debug: true // Enable debug mode for troubleshooting
         },
       });
       
       console.log("Edge function response:", res);
       
+      // Handle errors from the edge function
       if (res.error) {
         console.error("Edge function error:", res.error);
-        setError(`Fehler: ${res.error.message || "Unbekannter Fehler beim Generieren des Use Cases"}`);
+        setError(`Fehler: ${res.error.message || "Unbekannter Fehler"}`);
         
-        if (res.error.message && res.error.message.includes("Validation") && res.data?.raw_content) {
-          setRawResponse(JSON.stringify(res.data.raw_content, null, 2));
-          console.log("Raw invalid content:", res.data.raw_content);
+        // If we have raw response data from a validation error, show it
+        if (res.data && typeof res.data === 'object') {
+          if (res.data.raw_content) {
+            setRawResponse(JSON.stringify(res.data.raw_content, null, 2));
+          } else if (res.data.details) {
+            setRawResponse(JSON.stringify(res.data.details, null, 2));
+          }
         }
         
         toast({
@@ -139,44 +227,73 @@ export default function CreateUseCasePage() {
         return;
       }
 
-      if (res.data?.chat_response?.info_block) {
-        setMessages((prev) => [...prev, { 
-          role: "assistant", 
-          content: res.data.chat_response.info_block 
-        }]);
-      }
-      
-      if (res.data?.next_question) {
-        setMessages((prev) => [...prev, { 
-          role: "assistant", 
-          content: res.data.next_question 
-        }]);
-      }
+      // Handle successful response
+      if (res.data) {
+        console.log("Received valid response from edge function");
+        
+        // Add AI response to chat
+        if (res.data.chat_response?.info_block) {
+          setMessages((prev) => [...prev, { 
+            role: "assistant", 
+            content: res.data.chat_response.info_block 
+          }]);
+        }
+        
+        // Add follow-up question if available
+        if (res.data.next_question) {
+          setMessages((prev) => [...prev, { 
+            role: "assistant", 
+            content: res.data.next_question 
+          }]);
+        }
 
-      setAiResponseJson(res.data);
-      setChatInput("");
-      
-      if (!messages.length) {
-        setStep(3);
+        // Save the full response for the preview
+        setAiResponseJson(res.data);
+        setChatInput("");
+        
+        // If this is the first response, move to review step
+        if (messages.length === 0) {
+          setStep(Step.REVIEW);
+        }
+      } else {
+        setError("Keine Daten in der Antwort erhalten");
+        toast({
+          variant: "destructive",
+          title: "Leere Antwort",
+          description: "Die Anfrage war erfolgreich, aber es wurden keine Daten zurückgegeben.",
+        });
       }
     } catch (err: any) {
-      console.error("Chat error:", err);
-      setError(`Fehler bei der Verbindung: ${err.message}`);
+      console.error("Request error:", err);
+      setError(`Fehler bei der Anfrage: ${err.message}`);
       toast({
         variant: "destructive",
         title: "Verbindungsfehler",
         description: err.message,
       });
+    } finally {
+      setLoadingAI(false);
     }
-    setLoadingAI(false);
   }
 
+  // Save the use case to the database
   async function handleSave() {
-    if (!aiResponseJson || !customerId) return;
+    if (!aiResponseJson || !customerId) {
+      toast({
+        variant: "destructive",
+        title: "Unvollständige Daten",
+        description: "Der Use Case kann nicht gespeichert werden.",
+      });
+      return;
+    }
     
     try {
-      const { type, title, information_needed, steps, typical_activities, expected_result, chat_response,
-        next_question, process_map, decision_logic } = aiResponseJson;
+      console.log("Saving use case to database...");
+      
+      const { 
+        type, title, information_needed, steps, typical_activities, 
+        expected_result, chat_response, next_question, process_map, decision_logic 
+      } = aiResponseJson;
 
       const { error } = await supabase.from("use_cases").insert([
         {
@@ -196,6 +313,7 @@ export default function CreateUseCasePage() {
       ]);
       
       if (error) {
+        console.error("Error saving use case:", error);
         toast({
           variant: "destructive",
           title: "Fehler beim Speichern",
@@ -210,6 +328,7 @@ export default function CreateUseCasePage() {
       });
       navigate("/admin/use-cases");
     } catch (err: any) {
+      console.error("Save error:", err);
       toast({
         variant: "destructive",
         title: "Fehler beim Speichern",
@@ -218,22 +337,24 @@ export default function CreateUseCasePage() {
     }
   }
 
+  // Main component render
   return (
     <div className="max-w-6xl mx-auto p-6">
       <h2 className="text-xl font-bold mb-6">Neuen Use Case anlegen</h2>
 
-      {step === 1 && (
+      {step === Step.FORM && (
         <CreateUseCaseForm
           customers={customers}
           customerId={customerId}
           setCustomerId={setCustomerId}
           type={type}
           setType={setType}
-          onNext={() => setStep(2)}
+          onNext={() => setStep(Step.CHAT)}
+          isLoading={isLoadingCustomers || isLoadingPrompts}
         />
       )}
 
-      {(step === 2 || step === 3) && (
+      {(step === Step.CHAT || step === Step.REVIEW) && (
         <UseCaseChatAndPreview
           messages={messages}
           chatInput={chatInput}
@@ -244,7 +365,7 @@ export default function CreateUseCasePage() {
           rawResponse={rawResponse}
           aiResponseJson={aiResponseJson}
           onSave={handleSave}
-          onBack={() => setStep(2)}
+          onBack={() => setStep(Step.CHAT)}
         />
       )}
     </div>
