@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -30,14 +29,12 @@ type PromptTemplate = {
   content: string;
 };
 
-// The different steps in the creation process
 enum Step {
   FORM = 1,
   CHAT = 2,
   REVIEW = 3
 }
 
-// Fetch all customers with their tools
 const fetchCustomers = async () => {
   console.log("Fetching customers data...");
   
@@ -60,7 +57,6 @@ const fetchCustomers = async () => {
     throw toolsError;
   }
 
-  // Combine customers with their tools
   const customersWithTools = customers.map((customer) => {
     const customerTools = tools.find((t) => t.customer_id === customer.id);
     return {
@@ -79,7 +75,6 @@ const fetchCustomers = async () => {
   return customersWithTools;
 };
 
-// Fetch active prompt templates
 const fetchPrompts = async () => {
   console.log("Fetching prompt templates...");
   
@@ -97,27 +92,21 @@ const fetchPrompts = async () => {
   return data;
 };
 
-export default function CreateUseCasePage() {
-  // Current step in the creation process
+const CreateUseCasePage = () => {
   const [step, setStep] = useState<Step>(Step.FORM);
   
-  // Form data
   const [customerId, setCustomerId] = useState<string>("");
   const [type, setType] = useState<UseCaseType | "">("");
   
-  // Chat state
   const [chatInput, setChatInput] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
   
-  // AI response and loading state
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiResponseJson, setAiResponseJson] = useState<any>(null);
   
-  // Error handling
   const [error, setError] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<string | null>(null);
 
-  // Data fetching with React Query
   const { 
     data: customers = [], 
     isLoading: isLoadingCustomers,
@@ -139,10 +128,8 @@ export default function CreateUseCasePage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Find the prompt template for the selected type
   const promptTemplate = prompts?.find((p: PromptTemplate) => p.type === type)?.content;
 
-  // Handle initial validation issues
   React.useEffect(() => {
     if (customersError) {
       toast({
@@ -161,7 +148,6 @@ export default function CreateUseCasePage() {
     }
   }, [customersError, promptsError, toast]);
 
-  // Send chat message to AI
   async function sendChatToAI() {
     if (!promptTemplate || !customerId || !chatInput.trim()) {
       toast({
@@ -172,17 +158,14 @@ export default function CreateUseCasePage() {
       return;
     }
 
-    // Reset error states
     setError(null);
     setRawResponse(null);
     setLoadingAI(true);
     
-    // Add user message to chat
     const newMessage = { role: "user" as const, content: chatInput };
     setMessages(prev => [...prev, newMessage]);
     
     try {
-      // Find the selected customer with tools
       const selectedCustomer = customers.find((c: Customer) => c.id === customerId);
       
       if (!selectedCustomer) {
@@ -191,25 +174,22 @@ export default function CreateUseCasePage() {
       
       console.log("Sending request to edge function with customer:", selectedCustomer.name);
       
-      // Call the edge function with payload
       const res = await supabase.functions.invoke("generate-use-case", {
         body: {
           prompt: promptTemplate,
           metadata: selectedCustomer,
           userInput: chatInput,
           type,
-          debug: true // Enable debug mode for troubleshooting
+          debug: true
         },
       });
       
       console.log("Edge function response:", res);
       
-      // Handle errors from the edge function
       if (res.error) {
         console.error("Edge function error:", res.error);
         setError(`Fehler: ${res.error.message || "Unbekannter Fehler"}`);
         
-        // If we have raw response data from a validation error, show it
         if (res.data && typeof res.data === 'object') {
           if (res.data.raw_content) {
             setRawResponse(JSON.stringify(res.data.raw_content, null, 2));
@@ -227,11 +207,9 @@ export default function CreateUseCasePage() {
         return;
       }
 
-      // Handle successful response
       if (res.data) {
         console.log("Received valid response from edge function");
         
-        // Add AI response to chat
         if (res.data.chat_response?.info_block) {
           setMessages((prev) => [...prev, { 
             role: "assistant", 
@@ -239,7 +217,6 @@ export default function CreateUseCasePage() {
           }]);
         }
         
-        // Add follow-up question if available
         if (res.data.next_question) {
           setMessages((prev) => [...prev, { 
             role: "assistant", 
@@ -247,11 +224,9 @@ export default function CreateUseCasePage() {
           }]);
         }
 
-        // Save the full response for the preview
         setAiResponseJson(res.data);
         setChatInput("");
         
-        // If this is the first response, move to review step
         if (messages.length === 0) {
           setStep(Step.REVIEW);
         }
@@ -276,7 +251,6 @@ export default function CreateUseCasePage() {
     }
   }
 
-  // Save the use case to the database
   async function handleSave() {
     if (!aiResponseJson || !customerId) {
       toast({
@@ -290,9 +264,8 @@ export default function CreateUseCasePage() {
     try {
       console.log("Saving use case to database...");
       
-      // Extrahieren und vorbereiten der Daten
       const { 
-        type: responseType, 
+        type, 
         title, 
         information_needed, 
         steps, 
@@ -304,11 +277,9 @@ export default function CreateUseCasePage() {
         decision_logic 
       } = aiResponseJson;
 
-      // Hier ist die wichtige Änderung: Wir stellen sicher, dass der Typ
-      // exakt dem entspricht, was die Datenbank erwartet
       const { error } = await supabase.from("use_cases").insert([
         {
-          type: responseType,  // Verwende direkt den Wert aus der API-Antwort
+          type,
           customer_id: customerId,
           title,
           information_needed,
@@ -348,7 +319,6 @@ export default function CreateUseCasePage() {
     }
   }
 
-  // Main component render
   return (
     <div className="max-w-6xl mx-auto p-6">
       <h2 className="text-xl font-bold mb-6">Neuen Use Case anlegen</h2>
@@ -381,4 +351,6 @@ export default function CreateUseCasePage() {
       )}
     </div>
   );
-}
+};
+
+export default CreateUseCasePage;
