@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import UserListSection from "./users/UserListSection";
 import UserEditSection from "./users/UserEditSection";
 
-// TODO: API für Kunden holen, statt Mockdaten (Demo bleibt erstmal).
 const mockCustomers: Customer[] = [
   { id: "c1", name: "Acme Corp", createdAt: "" },
   { id: "c2", name: "Globex GmbH", createdAt: "" },
@@ -23,7 +21,6 @@ const UsersAdminPage: React.FC = () => {
   const [isDialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  // Edit & Save
   const handleEdit = (user: User & { customers: Customer[], is_active: boolean }) => {
     setEditUser(user);
     setDialogOpen(true);
@@ -34,26 +31,22 @@ const UsersAdminPage: React.FC = () => {
     setDialogOpen(true);
   };
 
-  // Speichern (weiterhin im Root - kann später als Hook ausgelagert werden)
-  const handleSave = async (user: User & { customers: Customer[]; is_active: boolean }) => {
+  const handleSave = async (user: User & { customers: Customer[]; is_active: boolean; name: string }) => {
     try {
       if (user.id) {
-        // Benutzer aktualisieren
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
             role: user.role,
-            "Full Name": user.firstName || '',
+            "Full Name": user.name || '',
             is_active: user.is_active
           })
           .eq('id', user.id);
 
         if (profileError) throw profileError;
 
-        // TODO: Kunden-Zuweisung synchronisieren
-
         setUsers(prev =>
-          prev.map(u => (u.id === user.id ? { ...u, ...user } : u))
+          prev.map(u => (u.id === user.id ? { ...u, ...user, firstName: user.name } : u))
         );
 
         toast({
@@ -61,33 +54,33 @@ const UsersAdminPage: React.FC = () => {
           description: "Der Benutzer wurde aktualisiert.",
         });
       } else {
-        // Neuen Benutzer anlegen
-        const { data, error } = await supabase.auth.admin.inviteUserByEmail(user.email, {
-          data: {
+        const { data, error } = await supabase.auth.admin.createUser({
+          email: user.email,
+          password: "W1llkommen@avanti",
+          user_metadata: {
             role: user.role,
-            "Full Name": "",
+            "Full Name": user.name,
             needs_password_reset: true
-          }
+          },
+          email_confirm: true
         });
 
         if (error) throw error;
 
         if (data?.user) {
-          // Neuen Benutzer zur Liste hinzufügen
           const newUser: User & { customers: Customer[], is_active: boolean } = {
             id: data.user.id,
             email: data.user.email || user.email,
             role: user.role,
             createdAt: new Date().toISOString(),
             customers: user.customers,
-            is_active: true
+            is_active: true,
+            firstName: user.name
           };
-
           setUsers(prev => [...prev, newUser]);
-
           toast({
-            title: "Benutzer eingeladen",
-            description: `Eine Einladung wurde an ${user.email} gesendet.`,
+            title: "Benutzer angelegt",
+            description: `Der Benutzer wurde erfolgreich angelegt. Passwort: W1llkommen@avanti`,
           });
         }
       }

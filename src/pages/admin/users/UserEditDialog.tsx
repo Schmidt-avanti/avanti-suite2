@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (user: User & { customers: Customer[]; is_active: boolean }) => void;
+  onSave: (user: User & { customers: Customer[]; is_active: boolean; name: string }) => void;
   customers: Customer[];
   defaultValues?: (User & { customers: Customer[], is_active: boolean });
 }
@@ -28,6 +28,7 @@ const UserEditDialog: React.FC<Props> = ({
   customers,
   defaultValues,
 }) => {
+  const [name, setName] = useState(defaultValues?.firstName || "");
   const [email, setEmail] = useState(defaultValues?.email || "");
   const [role, setRole] = useState<UserRole>(defaultValues?.role || "agent");
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>(
@@ -38,6 +39,7 @@ const UserEditDialog: React.FC<Props> = ({
 
   useEffect(() => {
     if (open) {
+      setName(defaultValues?.firstName || "");
       setEmail(defaultValues?.email || "");
       setRole(defaultValues?.role || "agent");
       setSelectedCustomers(defaultValues?.customers?.map((c) => c.id) || []);
@@ -45,7 +47,7 @@ const UserEditDialog: React.FC<Props> = ({
     }
   }, [defaultValues, open]);
 
-  // Wenn Rolle auf 'client' gesetzt wird, kann nur ein Kunde ausgewählt werden
+  // Nur ein Kunde für Client möglich
   useEffect(() => {
     if (role === "client" && selectedCustomers.length > 1) {
       setSelectedCustomers([selectedCustomers[0]]);
@@ -54,10 +56,8 @@ const UserEditDialog: React.FC<Props> = ({
 
   const handleCustomerSelect = (custId: string, checked: boolean) => {
     if (role === "client") {
-      // Für Client-Rolle: Nur ein Kunde erlaubt (sich selbst)
       setSelectedCustomers(checked ? [custId] : []);
     } else {
-      // Für andere Rollen: Mehrfachauswahl möglich
       setSelectedCustomers((current) =>
         checked
           ? [...current, custId]
@@ -68,52 +68,23 @@ const UserEditDialog: React.FC<Props> = ({
 
   const handleSave = () => {
     const mappedCustomers = customers.filter((c) => selectedCustomers.includes(c.id));
-    const user: User & { customers: Customer[]; is_active: boolean } = {
+    const user: User & { customers: Customer[]; is_active: boolean; name: string } = {
       id: defaultValues?.id || "",
       email,
       role,
       createdAt: defaultValues?.createdAt || "",
       customers: mappedCustomers,
-      is_active: isActive
+      is_active: isActive,
+      name: name // <-- Full Name
     };
     onSave(user);
-  };
-
-  const handlePasswordReset = async () => {
-    if (!defaultValues?.email) {
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: "Keine E-Mail-Adresse für diesen Benutzer verfügbar",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(defaultValues.email, {
-        redirectTo: window.location.origin + '/auth/reset-password',
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Passwort-Link versendet",
-        description: `Ein Link zum Zurücksetzen des Passworts wurde an ${defaultValues.email} gesendet.`,
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive", 
-        title: "Fehler beim Zurücksetzen",
-        description: error.message || "Das Passwort konnte nicht zurückgesetzt werden.",
-      });
-    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle>{defaultValues ? "Nutzer bearbeiten" : "Nutzer anlegen"}</DialogTitle>
+          <DialogTitle>{defaultValues ? "Nutzer bearbeiten" : "NEUEN BENUTZER ANLEGEN"}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -123,9 +94,19 @@ const UserEditDialog: React.FC<Props> = ({
           className="space-y-4 p-6 pt-2"
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              E-Mail
-            </label>
+            <label className="block text-base font-medium mb-1">Name:</label>
+            <input
+              className="w-full rounded-md border px-3 py-2 outline-none focus:border-avanti-500"
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={!!defaultValues}
+              autoComplete="name"
+            />
+          </div>
+          <div>
+            <label className="block text-base font-medium mb-1">E-Mail:</label>
             <input
               className="w-full rounded-md border px-3 py-2 outline-none focus:border-avanti-500"
               type="email"
@@ -137,9 +118,7 @@ const UserEditDialog: React.FC<Props> = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Rolle
-            </label>
+            <label className="block text-base font-medium mb-1">Rolle:</label>
             <RadioGroup
               value={role}
               onValueChange={(val) => setRole(val as UserRole)}
@@ -156,63 +135,50 @@ const UserEditDialog: React.FC<Props> = ({
             </RadioGroup>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-              <span>Status</span>
-              <span className={`rounded px-2 py-1 text-xs ${isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                {isActive ? "Aktiv" : "Inaktiv"}
-              </span>
+            <label className="block text-base font-medium mb-1">
+              Kunden: (Mehrfachauswahl, je nach Rolle)
             </label>
-            <label className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-2">
+              {customers.map((cust) => (
+                <label key={cust.id} className="flex items-center text-base rounded cursor-pointer px-2 py-1 bg-avanti-50 border border-avanti-100">
+                  <input
+                    type="checkbox"
+                    className="mr-2 accent-avanti-600"
+                    value={cust.id}
+                    checked={selectedCustomers.includes(cust.id)}
+                    onChange={(e) => handleCustomerSelect(cust.id, e.target.checked)}
+                    disabled={role === "client" && selectedCustomers.length > 0 && !selectedCustomers.includes(cust.id)}
+                  />
+                  {cust.name}
+                </label>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {role === "client"
+                ? "Client kann nur einem Kunden zugeordnet sein"
+                : "Mehrfachauswahl möglich"}
+            </p>
+          </div>
+          <div>
+            <label className="flex items-center gap-2 text-base">
               <input
                 type="checkbox"
                 checked={isActive}
                 onChange={() => setIsActive(v => !v)}
                 className="w-5 h-5 accent-avanti-600 rounded"
               />
-              <span>Nutzer ist aktiv</span>
+              Benutzer ist aktiv
             </label>
           </div>
-          {role !== "admin" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Zugeordnete Kunden {role === "client" && "(nur einer möglich)"}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {customers.map((cust) => (
-                  <label key={cust.id} className="flex items-center text-sm rounded cursor-pointer px-2 py-1 bg-avanti-50 border border-avanti-100">
-                    <input
-                      type="checkbox"
-                      className="mr-2 accent-avanti-600"
-                      value={cust.id}
-                      checked={selectedCustomers.includes(cust.id)}
-                      onChange={(e) => handleCustomerSelect(cust.id, e.target.checked)}
-                      disabled={role === "client" && selectedCustomers.length > 0 && !selectedCustomers.includes(cust.id)}
-                    />
-                    {cust.name}
-                  </label>
-                ))}
+          {!defaultValues && (
+            <div className="bg-gray-50 border rounded-xl p-3 text-sm mt-4">
+              <div>
+                Das erste Passwort lautet:<br />
+                <span className="font-mono font-semibold text-avanti-600 break-all">W1llkommen@avanti</span>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {role === "client" 
-                  ? "Client kann nur einem Kunden (sich selbst) zugeordnet sein" 
-                  : "Mehrfachauswahl möglich (Agent)"
-                }
-              </p>
-            </div>
-          )}
-          {defaultValues && (
-            <div className="pt-2 border-t">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handlePasswordReset}
-                className="w-full"
-              >
-                Passwort zurücksetzen
-              </Button>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Sendet einen Link zum Zurücksetzen des Passworts an die E-Mail-Adresse des Benutzers
-              </p>
+              <div className="mt-2">
+                Der neue Benutzer muss beim ersten Einloggen ein neues Passwort auswählen!
+              </div>
             </div>
           )}
           <DialogFooter className="pt-4">
@@ -220,7 +186,7 @@ const UserEditDialog: React.FC<Props> = ({
               Abbrechen
             </Button>
             <Button type="submit">
-              {defaultValues ? "Speichern" : "Einladen"}
+              {defaultValues ? "Speichern" : "Anlegen"}
             </Button>
           </DialogFooter>
         </form>

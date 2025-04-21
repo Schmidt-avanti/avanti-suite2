@@ -6,7 +6,7 @@ import { User, Customer } from "@/types";
 interface UserEditSectionProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (user: User & { customers: Customer[]; is_active: boolean }) => void;
+  onSave: (user: User & { customers: Customer[]; is_active: boolean; name: string }) => void;
   customers: Customer[];
   defaultValues?: (User & { customers: Customer[], is_active: boolean });
 }
@@ -30,4 +30,3 @@ const UserEditSection: React.FC<UserEditSectionProps> = ({
 };
 
 export default UserEditSection;
-
