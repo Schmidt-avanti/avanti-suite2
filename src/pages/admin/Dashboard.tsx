@@ -7,27 +7,27 @@ const AdminDashboard: React.FC = () => {
   // This would come from an API in a real app
   const stats = [
     {
-      title: 'Total Users',
+      title: 'Benutzer gesamt',
       value: '24',
-      description: '3 new this month',
+      description: '3 neu in diesem Monat',
       icon: <Users className="h-6 w-6 text-avanti-600" />,
     },
     {
-      title: 'Total Customers',
+      title: 'Kunden gesamt',
       value: '8',
-      description: '1 new this month',
+      description: '1 neu in diesem Monat',
       icon: <Building className="h-6 w-6 text-avanti-600" />,
     },
     {
-      title: 'Total Tasks',
+      title: 'Aufgaben gesamt',
       value: '156',
-      description: '32 completed this week',
+      description: '32 erledigt diese Woche',
       icon: <CheckSquare className="h-6 w-6 text-avanti-600" />,
     },
     {
-      title: 'Pending Tasks',
+      title: 'Ausstehende Aufgaben',
       value: '38',
-      description: '12 due this week',
+      description: '12 fällig diese Woche',
       icon: <Clock className="h-6 w-6 text-avanti-600" />,
     },
   ];
@@ -54,28 +54,28 @@ const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Recent Users</CardTitle>
+            <CardTitle>Neueste Benutzer</CardTitle>
             <CardDescription>
-              Recently registered users in the system
+              Kürzlich registrierte Benutzer im System
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              User data will be loaded here from Supabase in the future implementation.
+              Benutzerdaten werden in der zukünftigen Implementierung aus Supabase geladen.
             </p>
           </CardContent>
         </Card>
 
         <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Task Overview</CardTitle>
+            <CardTitle>Aufgabenübersicht</CardTitle>
             <CardDescription>
-              Distribution of tasks by status
+              Verteilung der Aufgaben nach Status
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Task chart will be implemented here using Recharts.
+              Hier wird in der zukünftigen Implementierung ein Aufgabendiagramm mittels Recharts umgesetzt.
             </p>
           </CardContent>
         </Card>

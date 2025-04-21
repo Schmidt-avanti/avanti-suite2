@@ -22,7 +22,7 @@ const LoginForm = () => {
     e.preventDefault();
     
     if (!email || !password) {
-      setError('Bitte geben Sie E-Mail und Passwort ein.');
+      setError('Bitte gib E-Mail und Passwort ein.');
       return;
     }
 
@@ -40,14 +40,14 @@ const LoginForm = () => {
       console.error('Login error:', error);
       
       if (error.message?.includes('Profil fehlt') || error.message === 'Kein Profil gefunden') {
-        setError('Es existiert kein Profil für diesen Nutzer. Bitte kontaktieren Sie Ihren Administrator.');
-        setInfo('Ein Administrator muss zuerst ein Profil für Ihren Account anlegen, bevor Sie sich anmelden können.');
+        setError('Es existiert kein Profil für diesen Nutzer. Bitte kontaktiere deinen Administrator.');
+        setInfo('Ein Administrator muss zuerst ein Profil für deinen Account anlegen, bevor du dich anmelden kannst.');
       } else if (error.message?.includes('Invalid login credentials')) {
-        setError('Falsche E-Mail oder Passwort. Bitte versuchen Sie es erneut.');
+        setError('Falsche E-Mail oder Passwort. Bitte versuche es erneut.');
       } else if (typeof error.message === 'string') {
         setError(error.message);
       } else {
-        setError('Bei der Anmeldung ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.');
+        setError('Bei der Anmeldung ist ein Fehler aufgetreten. Bitte versuche es später erneut.');
       }
     } finally {
       setIsSubmitting(false);
@@ -59,7 +59,7 @@ const LoginForm = () => {
       <CardHeader>
         <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
         <CardDescription className="text-center">
-          Melden Sie sich mit Ihren Zugangsdaten an
+          Melde dich mit deinen Zugangsdaten an
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -125,10 +125,10 @@ const LoginForm = () => {
       </CardContent>
       <CardFooter className="flex flex-col justify-center space-y-2">
         <p className="text-sm text-muted-foreground text-center">
-          Nur für autorisierte Nutzer. Bitte kontaktieren Sie Ihren Administrator für Zugang.
+          Nur für autorisierte Nutzer. Bitte kontaktiere deinen Administrator für Zugang.
         </p>
         <div className="text-xs text-center text-gray-500 bg-gray-50 p-2 rounded-md border border-gray-100">
-          <p>Um sich anzumelden, benötigen Sie:</p>
+          <p>Um dich anzumelden, benötigst du:</p>
           <ul className="list-disc list-inside mt-1">
             <li>Einen gültigen Benutzeraccount in Supabase</li>
             <li>Ein zugehöriges Profil in der "profiles" Tabelle</li>

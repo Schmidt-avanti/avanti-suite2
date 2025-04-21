@@ -31,22 +31,22 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
         icon: LayoutDashboard,
       },
       {
-        name: 'Users',
+        name: 'Benutzer',
         href: '/admin/users',
         icon: Users,
       },
       {
-        name: 'Customers',
-        href: '/admin/customers',
+        name: 'Kunden',
+        href: '/admin/clients',
         icon: Building,
       },
       {
-        name: 'Tasks',
+        name: 'Aufgaben',
         href: '/admin/tasks',
         icon: CheckSquare,
       },
       {
-        name: 'Settings',
+        name: 'Einstellungen',
         href: '/admin/settings',
         icon: Settings,
       },
@@ -59,36 +59,36 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
         icon: LayoutDashboard,
       },
       {
-        name: 'My Customers',
-        href: '/agent/customers',
+        name: 'Meine Kunden',
+        href: '/agent/clients',
         icon: Building,
       },
       {
-        name: 'Tasks',
+        name: 'Aufgaben',
         href: '/agent/tasks',
         icon: CheckSquare,
       },
       {
-        name: 'Settings',
+        name: 'Einstellungen',
         href: '/agent/settings',
         icon: Settings,
       },
     ];
 
-    const customerItems = [
+    const clientItems = [
       {
         name: 'Dashboard',
-        href: '/customer/dashboard',
+        href: '/client/dashboard',
         icon: LayoutDashboard,
       },
       {
-        name: 'My Tasks',
-        href: '/customer/tasks',
+        name: 'Meine Aufgaben',
+        href: '/client/tasks',
         icon: ClipboardList,
       },
       {
-        name: 'Settings',
-        href: '/customer/settings',
+        name: 'Einstellungen',
+        href: '/client/settings',
         icon: Settings,
       },
     ];
@@ -98,8 +98,8 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
         return adminItems;
       case 'agent':
         return agentItems;
-      case 'customer':
-        return customerItems;
+      case 'client':
+        return clientItems;
       default:
         return [];
     }
@@ -115,6 +115,13 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen }) => {
       )}
     >
       <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
+        <div className="flex items-center justify-center px-4 mb-6">
+          <img 
+            src="/lovable-uploads/3c158096-fc25-4baf-9656-166ec5ac6dcb.png"
+            alt="avanti suite"
+            className="h-8"
+          />
+        </div>
         <div className="flex-1 space-y-1 px-2">
           {navItems.map((item) => (
             <Link

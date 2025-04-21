@@ -12,7 +12,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Auth Pages
 import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/Register";
 
 // Admin Pages
 import AdminDashboard from "@/pages/admin/Dashboard";
@@ -21,8 +20,8 @@ import UsersAdminPage from "@/pages/admin/Users";
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
 
-// Customer Pages
-import CustomerDashboard from "@/pages/customer/Dashboard";
+// Client Pages
+import ClientDashboard from "@/pages/customer/Dashboard";
 
 // Public Pages
 import Landing from "@/pages/Landing";
@@ -74,12 +73,12 @@ const App = () => (
                 }
               />
 
-              {/* Customer routes */}
+              {/* Client routes */}
               <Route
                 path="/meine-aufgaben"
                 element={
-                  <ProtectedRoute allowedRoles={["customer"]}>
-                    <CustomerDashboard />
+                  <ProtectedRoute allowedRoles={["client"]}>
+                    <ClientDashboard />
                   </ProtectedRoute>
                 }
               />

@@ -72,7 +72,7 @@ export function useProvideAuth(): AuthState {
             setUser({
               id: session.user.id,
               email: session.user.email ?? "",
-              role: (profile.role || "customer") as UserRole,
+              role: (profile.role || "client") as UserRole,
               createdAt: session.user.created_at,
               firstName: profile["Full Name"] || undefined,
               lastName: undefined,
@@ -84,7 +84,7 @@ export function useProvideAuth(): AuthState {
           toast({
             variant: "destructive",
             title: "Profil konnte nicht geladen werden",
-            description: "Ihr Profil konnte nicht gefunden werden. Bitte kontaktieren Sie Ihren Administrator.",
+            description: "Dein Profil konnte nicht gefunden werden. Bitte kontaktiere deinen Administrator.",
           });
           
           await supabase.auth.signOut();
@@ -123,7 +123,7 @@ export function useProvideAuth(): AuthState {
             setUser({
               id: session.user.id,
               email: session.user.email ?? "",
-              role: (profile.role || "customer") as UserRole,
+              role: (profile.role || "client") as UserRole,
               createdAt: session.user.created_at,
               firstName: profile["Full Name"] || undefined,
               lastName: undefined,
@@ -135,7 +135,7 @@ export function useProvideAuth(): AuthState {
           toast({
             variant: "destructive",
             title: "Profil konnte nicht geladen werden",
-            description: "Ihr Profil konnte nicht gefunden werden. Bitte kontaktieren Sie Ihren Administrator.",
+            description: "Dein Profil konnte nicht gefunden werden. Bitte kontaktiere deinen Administrator.",
           });
           
           try {
@@ -182,7 +182,7 @@ export function useProvideAuth(): AuthState {
         setUser({
           id: data.session.user.id,
           email: data.session.user.email ?? "",
-          role: (profile.role || "customer") as UserRole,
+          role: (profile.role || "client") as UserRole,
           createdAt: data.session.user.created_at,
           firstName: profile["Full Name"] || undefined,
           lastName: undefined,
@@ -198,7 +198,7 @@ export function useProvideAuth(): AuthState {
         toast({
           variant: "destructive",
           title: "Profil fehlt",
-          description: "Es existiert kein Profil für diesen Nutzer. Bitte kontaktieren Sie Ihren Administrator.",
+          description: "Es existiert kein Profil für diesen Nutzer. Bitte kontaktiere deinen Administrator.",
         });
         
         await supabase.auth.signOut();
@@ -218,14 +218,14 @@ export function useProvideAuth(): AuthState {
       setUser(null);
       toast({
         title: "Abgemeldet",
-        description: "Sie wurden erfolgreich abgemeldet.",
+        description: "Du wurdest erfolgreich abgemeldet.",
       });
     } catch (error) {
       console.error("Sign out error:", error);
       toast({
         variant: "destructive",
         title: "Abmeldung fehlgeschlagen",
-        description: "Es gab ein Problem bei der Abmeldung. Bitte versuchen Sie es erneut.",
+        description: "Es gab ein Problem bei der Abmeldung. Bitte versuche es erneut.",
       });
     }
   };

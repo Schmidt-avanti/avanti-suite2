@@ -13,7 +13,7 @@ interface Props {
   defaultValues?: (User & { customers: Customer[] });
 }
 
-const userRoles: UserRole[] = ["admin", "agent", "customer"];
+const userRoles: UserRole[] = ["admin", "agent", "client"];
 
 const UserEditDialog: React.FC<Props> = ({
   open,
@@ -120,7 +120,7 @@ const UserEditDialog: React.FC<Props> = ({
                 ))}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Mehrfachauswahl möglich (Agent/Kunde)
+                Mehrfachauswahl möglich (Agent/Client)
               </p>
             </div>
           )}

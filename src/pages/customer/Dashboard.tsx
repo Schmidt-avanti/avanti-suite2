@@ -3,38 +3,38 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckSquare, Clock, AlertCircle, Users } from 'lucide-react';
 
-const CustomerDashboard: React.FC = () => {
+const ClientDashboard: React.FC = () => {
   // This would come from an API in a real app
   const stats = [
     {
-      title: 'My Tasks',
+      title: 'Meine Aufgaben',
       value: '12',
-      description: '3 completed this week',
+      description: '3 erledigt diese Woche',
       icon: <CheckSquare className="h-6 w-6 text-avanti-600" />,
     },
     {
-      title: 'Due Soon',
+      title: 'Bald fällig',
       value: '2',
-      description: 'Due in the next 48 hours',
+      description: 'Fällig in den nächsten 48 Stunden',
       icon: <Clock className="h-6 w-6 text-avanti-600" />,
     },
     {
-      title: 'Urgent Tasks',
+      title: 'Dringende Aufgaben',
       value: '1',
-      description: 'High priority items',
+      description: 'Aufgaben mit hoher Priorität',
       icon: <AlertCircle className="h-6 w-6 text-avanti-600" />,
     },
     {
-      title: 'Assigned Agents',
+      title: 'Zugewiesene Agents',
       value: '3',
-      description: 'Supporting your account',
+      description: 'Unterstützen dein Konto',
       icon: <Users className="h-6 w-6 text-avanti-600" />,
     },
   ];
 
   return (
     <div className="dashboard-container">
-      <h1 className="text-2xl font-bold mb-6">Customer Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6">Client Dashboard</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
@@ -54,14 +54,14 @@ const CustomerDashboard: React.FC = () => {
       <div className="grid grid-cols-1 gap-6">
         <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Recent Tasks</CardTitle>
+            <CardTitle>Neueste Aufgaben</CardTitle>
             <CardDescription>
-              Your most recent tasks
+              Deine neuesten Aufgaben
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Task list will be loaded here from Supabase in the future implementation.
+              Die Aufgabenliste wird in der zukünftigen Implementierung aus Supabase geladen.
             </p>
           </CardContent>
         </Card>
@@ -70,4 +70,4 @@ const CustomerDashboard: React.FC = () => {
   );
 };
 
-export default CustomerDashboard;
+export default ClientDashboard;
