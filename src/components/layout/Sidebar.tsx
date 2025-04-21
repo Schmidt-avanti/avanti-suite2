@@ -1,8 +1,10 @@
+
 import React from 'react';
 import {
   HomeIcon,
   UsersIcon,
   SettingsIcon,
+  Building2Icon,
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
@@ -38,18 +40,27 @@ const Sidebar: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
                 <span>Benutzer</span>
               </NavLink>
             </div>
+
+            <div className="mt-8">
+              <ul>
+                <li>
+                  <NavLink
+                    to="/admin/customers"
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 px-4 py-2 rounded-2xl hover:bg-primary/10 transition ${
+                        isActive ? 'bg-primary/20 font-semibold' : ''
+                      }`
+                    }
+                  >
+                    <Building2Icon className="h-5 w-5" />
+                    <span>Kunden</span>
+                  </NavLink>
+                </li>
+              </ul>
+            </div>
+          </nav>
         </div>
-        <div className="mt-8">
-          <ul>
-            <li>
-              <a href="/admin/customers" className="flex items-center gap-2 px-4 py-2 rounded-2xl hover:bg-primary/10 transition">
-                <span role="img" aria-label="Kunden">🏢</span>
-                <span>Kunden</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-      </nav>
+        
         <div className="p-4 mt-auto">
           <hr className="my-4 border-gray-200" />
           <NavLink
@@ -68,4 +79,5 @@ const Sidebar: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
     </aside>
   );
 };
+
 export default Sidebar;
