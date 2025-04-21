@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { User, UserRole, Customer } from "@/types";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Props {
   open: boolean;
@@ -13,7 +15,11 @@ interface Props {
   defaultValues?: (User & { customers: Customer[], is_active: boolean });
 }
 
-const userRoles: UserRole[] = ["admin", "agent", "client"];
+const userRoles: { value: UserRole, label: string }[] = [
+  { value: "admin", label: "Admin" },
+  { value: "agent", label: "Agent" },
+  { value: "client", label: "Client" }
+];
 
 const UserEditDialog: React.FC<Props> = ({
   open,
@@ -28,13 +34,37 @@ const UserEditDialog: React.FC<Props> = ({
     defaultValues?.customers?.map((c) => c.id) || []
   );
   const [isActive, setIsActive] = useState<boolean>(defaultValues?.is_active ?? true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    setEmail(defaultValues?.email || "");
-    setRole(defaultValues?.role || "agent");
-    setSelectedCustomers(defaultValues?.customers?.map((c) => c.id) || []);
-    setIsActive(defaultValues?.is_active ?? true);
+    if (open) {
+      setEmail(defaultValues?.email || "");
+      setRole(defaultValues?.role || "agent");
+      setSelectedCustomers(defaultValues?.customers?.map((c) => c.id) || []);
+      setIsActive(defaultValues?.is_active ?? true);
+    }
   }, [defaultValues, open]);
+
+  // Wenn Rolle auf 'client' gesetzt wird, kann nur ein Kunde ausgewählt werden
+  useEffect(() => {
+    if (role === "client" && selectedCustomers.length > 1) {
+      setSelectedCustomers([selectedCustomers[0]]);
+    }
+  }, [role, selectedCustomers]);
+
+  const handleCustomerSelect = (custId: string, checked: boolean) => {
+    if (role === "client") {
+      // Für Client-Rolle: Nur ein Kunde erlaubt (sich selbst)
+      setSelectedCustomers(checked ? [custId] : []);
+    } else {
+      // Für andere Rollen: Mehrfachauswahl möglich
+      setSelectedCustomers((current) =>
+        checked
+          ? [...current, custId]
+          : current.filter((id) => id !== custId)
+      );
+    }
+  };
 
   const handleSave = () => {
     const mappedCustomers = customers.filter((c) => selectedCustomers.includes(c.id));
@@ -47,6 +77,36 @@ const UserEditDialog: React.FC<Props> = ({
       is_active: isActive
     };
     onSave(user);
+  };
+
+  const handlePasswordReset = async () => {
+    if (!defaultValues?.email) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Keine E-Mail-Adresse für diesen Benutzer verfügbar",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(defaultValues.email, {
+        redirectTo: window.location.origin + '/auth/reset-password',
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Passwort-Link versendet",
+        description: `Ein Link zum Zurücksetzen des Passworts wurde an ${defaultValues.email} gesendet.`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive", 
+        title: "Fehler beim Zurücksetzen",
+        description: error.message || "Das Passwort konnte nicht zurückgesetzt werden.",
+      });
+    }
   };
 
   return (
@@ -86,14 +146,12 @@ const UserEditDialog: React.FC<Props> = ({
               className="flex gap-4"
             >
               {userRoles.map((r) => (
-                <RadioGroupItem
-                  key={r}
-                  value={r}
-                  id={r}
-                  className="mr-1"
-                >
-                  <span className="capitalize pl-2">{r}</span>
-                </RadioGroupItem>
+                <div key={r.value} className="flex items-center space-x-2">
+                  <RadioGroupItem value={r.value} id={r.value} />
+                  <label htmlFor={r.value} className="cursor-pointer">
+                    {r.label}
+                  </label>
+                </div>
               ))}
             </RadioGroup>
           </div>
@@ -117,7 +175,7 @@ const UserEditDialog: React.FC<Props> = ({
           {role !== "admin" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Zugeordnete Kunden
+                Zugeordnete Kunden {role === "client" && "(nur einer möglich)"}
               </label>
               <div className="flex flex-wrap gap-2">
                 {customers.map((cust) => (
@@ -127,20 +185,33 @@ const UserEditDialog: React.FC<Props> = ({
                       className="mr-2 accent-avanti-600"
                       value={cust.id}
                       checked={selectedCustomers.includes(cust.id)}
-                      onChange={(e) => {
-                        setSelectedCustomers((current) =>
-                          e.target.checked
-                            ? [...current, cust.id]
-                            : current.filter((id) => id !== cust.id)
-                        );
-                      }}
+                      onChange={(e) => handleCustomerSelect(cust.id, e.target.checked)}
+                      disabled={role === "client" && selectedCustomers.length > 0 && !selectedCustomers.includes(cust.id)}
                     />
                     {cust.name}
                   </label>
                 ))}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Mehrfachauswahl möglich (Agent/Client)
+                {role === "client" 
+                  ? "Client kann nur einem Kunden (sich selbst) zugeordnet sein" 
+                  : "Mehrfachauswahl möglich (Agent)"
+                }
+              </p>
+            </div>
+          )}
+          {defaultValues && (
+            <div className="pt-2 border-t">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handlePasswordReset}
+                className="w-full"
+              >
+                Passwort zurücksetzen
+              </Button>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Sendet einen Link zum Zurücksetzen des Passworts an die E-Mail-Adresse des Benutzers
               </p>
             </div>
           )}

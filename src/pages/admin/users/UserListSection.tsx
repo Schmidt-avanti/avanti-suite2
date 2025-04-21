@@ -37,10 +37,22 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         .from('profiles')
         .select('id, role, "Full Name", created_at, is_active');
       if (profilesError) throw profilesError;
+
+      // Hole optional E-Mail-Adressen aus auth.users (nur für Admins möglich)
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      
+      let emailMap: Record<string, string> = {};
+      if (!authError && authUsers) {
+        emailMap = authUsers.users.reduce((acc: Record<string, string>, user) => {
+          acc[user.id] = user.email || '';
+          return acc;
+        }, {});
+      }
+
       // TODO: Laden von Kunden-Zuweisung per echte Daten aus user_customer_assignments
       const formattedUsers = profiles.map(profile => ({
         id: profile.id,
-        email: "", // Email ist nicht im Profile
+        email: emailMap[profile.id] || "",
         role: (profile.role || 'client') as UserRole,
         firstName: profile["Full Name"] || undefined,
         createdAt: profile.created_at,
@@ -48,7 +60,7 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         customers: [],
       }));
       setUsers(formattedUsers);
-    } catch {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Fehler",
@@ -58,8 +70,6 @@ const UserListSection: React.FC<UserListSectionProps> = ({
       setIsLoading(false);
     }
   };
-
-  // Delegiert Statehandling an den Parent, UserEditSection
 
   // Aktiv/Inaktiv umschalten
   const handleToggleActive = async (userId: string, isActive: boolean) => {
@@ -92,10 +102,7 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   // Löschen
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.auth.admin.deleteUser(id);
 
       if (error) throw error;
 
@@ -113,13 +120,36 @@ const UserListSection: React.FC<UserListSectionProps> = ({
     }
   };
 
-  // Passwort zurücksetzen (Mock)
+  // Passwort zurücksetzen
   const handleResetPassword = async (id: string) => {
-    toast({
-      variant: "destructive",
-      title: "Nicht implementiert",
-      description: "Das Zurücksetzen des Passworts erfordert die E-Mail-Adresse oder eine serverseitige Funktion.",
-    });
+    const user = users.find(u => u.id === id);
+    if (!user?.email) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Keine E-Mail-Adresse für diesen Benutzer verfügbar",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: window.location.origin + '/auth/reset-password',
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Passwort-Link versendet",
+        description: `Ein Link zum Zurücksetzen des Passworts wurde an ${user.email} gesendet.`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive", 
+        title: "Fehler beim Zurücksetzen",
+        description: error.message || "Das Passwort konnte nicht zurückgesetzt werden.",
+      });
+    }
   };
 
   return (
@@ -147,4 +177,3 @@ const UserListSection: React.FC<UserListSectionProps> = ({
 };
 
 export default UserListSection;
-

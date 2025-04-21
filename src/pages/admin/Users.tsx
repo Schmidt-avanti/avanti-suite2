@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -37,6 +38,7 @@ const UsersAdminPage: React.FC = () => {
   const handleSave = async (user: User & { customers: Customer[]; is_active: boolean }) => {
     try {
       if (user.id) {
+        // Benutzer aktualisieren
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
@@ -58,6 +60,36 @@ const UsersAdminPage: React.FC = () => {
           title: "Benutzer aktualisiert",
           description: "Der Benutzer wurde aktualisiert.",
         });
+      } else {
+        // Neuen Benutzer anlegen
+        const { data, error } = await supabase.auth.admin.inviteUserByEmail(user.email, {
+          data: {
+            role: user.role,
+            "Full Name": "",
+            needs_password_reset: true
+          }
+        });
+
+        if (error) throw error;
+
+        if (data?.user) {
+          // Neuen Benutzer zur Liste hinzufügen
+          const newUser: User & { customers: Customer[], is_active: boolean } = {
+            id: data.user.id,
+            email: data.user.email || user.email,
+            role: user.role,
+            createdAt: new Date().toISOString(),
+            customers: user.customers,
+            is_active: true
+          };
+
+          setUsers(prev => [...prev, newUser]);
+
+          toast({
+            title: "Benutzer eingeladen",
+            description: `Eine Einladung wurde an ${user.email} gesendet.`,
+          });
+        }
       }
     } catch (error: any) {
       toast({
