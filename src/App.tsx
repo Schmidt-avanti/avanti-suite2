@@ -19,6 +19,7 @@ import CustomersAdminPage from "@/pages/admin/Customers";
 import UseCasesPage from "@/pages/admin/UseCases";
 import CreateUseCasePage from "@/pages/admin/CreateUseCase";
 import PromptTemplatesPage from "@/pages/admin/PromptTemplates";
+import UseCaseDetailPage from "@/pages/admin/UseCaseDetailPage";
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
@@ -78,6 +79,14 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={["admin"]}>
                     <UseCasesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/use-cases/:id"
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <UseCaseDetailPage />
                   </ProtectedRoute>
                 }
               />

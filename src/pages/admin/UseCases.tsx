@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,7 +68,11 @@ export default function UseCasesPage() {
             </TableHeader>
             <TableBody>
               {data.map((uc: any) => (
-                <TableRow key={uc.id}>
+                <TableRow 
+                  key={uc.id}
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => navigate(`/admin/use-cases/${uc.id}`)}
+                >
                   <TableCell className="font-medium">{uc.title}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="font-normal">
