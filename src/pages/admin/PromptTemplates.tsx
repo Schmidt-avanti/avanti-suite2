@@ -78,10 +78,10 @@ export default function PromptTemplatesPage() {
           />
         </div>
         <Button
-          disabled={!newTemplate.name || !newTemplate.type || !newTemplate.content || status === "loading"}
+          disabled={!newTemplate.name || !newTemplate.type || !newTemplate.content || status === "pending"}
           onClick={() => mutateAsync(newTemplate)}
         >
-          {status === "loading" ? "Speichern..." : "Neues Prompt speichern"}
+          {status === "pending" ? "Speichern..." : "Neues Prompt speichern"}
         </Button>
       </div>
       <div>
@@ -108,4 +108,3 @@ export default function PromptTemplatesPage() {
     </div>
   );
 }
-
