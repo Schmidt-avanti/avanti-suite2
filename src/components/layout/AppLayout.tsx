@@ -1,28 +1,25 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
-import Sidebar from './Sidebar';
-import { useAuth } from '@/contexts/AuthContext';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import AppSidebar from './AppSidebar';
 
 const AppLayout: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useAuth();
-
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      <div className="flex flex-1">
-        {user && <Sidebar sidebarOpen={sidebarOpen} />}
-        <main className={`flex-1 transition-all ${user ? 'md:ml-64' : ''}`}>
-          <div className="py-6">
-            <div className="mx-auto px-4 sm:px-6 md:px-8">
+    <SidebarProvider defaultOpen={true}>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar />
+        <div className="flex-1 flex flex-col">
+          <Navbar />
+          <main className="flex-1 p-6 bg-gray-50">
+            <div className="mx-auto max-w-7xl">
               <Outlet />
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
