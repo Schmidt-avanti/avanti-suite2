@@ -10,7 +10,7 @@ const AppLayout: React.FC = () => {
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full bg-gray-50">
         <AppSidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col ml-[var(--sidebar-width)]">
           <Navbar />
           <main className="flex-1 p-8">
             <div className="mx-auto max-w-7xl w-full">
