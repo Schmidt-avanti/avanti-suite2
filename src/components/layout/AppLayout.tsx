@@ -8,13 +8,15 @@ import AppSidebar from './AppSidebar';
 const AppLayout: React.FC = () => {
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-gray-50">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
           <Navbar />
-          <main className="flex-1 p-6 bg-gray-50">
-            <div className="mx-auto max-w-7xl">
-              <Outlet />
+          <main className="flex-1 p-8">
+            <div className="mx-auto max-w-7xl w-full">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <Outlet />
+              </div>
             </div>
           </main>
         </div>
