@@ -20,7 +20,7 @@ export default {
     },
     extend: {
       spacing: {
-        // Define the sidebar width as a fixed value
+        // Define the sidebar width as a fixed value for consistent spacing
         'sidebar': '16rem', // 256px or 16rem
       },
       colors: {
