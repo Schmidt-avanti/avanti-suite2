@@ -88,26 +88,26 @@ const UsersAdminPage: React.FC = () => {
           description: "Der Benutzer wurde aktualisiert.",
         });
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: user.email,
-          password: "W1llkommen@avanti",
-          options: {
-            data: {
+        // Use the admin authorization endpoint for user creation
+        const { data, error } = await supabase.functions.invoke('create-user', {
+          body: {
+            email: user.email,
+            password: "W1llkommen@avanti",
+            userData: {
               role: user.role,
               "Full Name": user.name,
               needs_password_reset: true
-            },
-            emailRedirectTo: window.location.origin + '/auth/reset-password'
+            }
           }
         });
 
         if (error) throw error;
 
-        if (data?.user) {
+        if (data?.userId) {
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
-              id: data.user.id,
+              id: data.userId,
               role: user.role, 
               "Full Name": user.name,
               is_active: true
@@ -116,12 +116,12 @@ const UsersAdminPage: React.FC = () => {
           if (profileError) throw profileError;
 
           await saveCustomerAssignments(
-            data.user.id, 
+            data.userId, 
             user.customers.map(c => c.id)
           );
 
           const newUser: User & { customers: Customer[], is_active: boolean } = {
-            id: data.user.id,
+            id: data.userId,
             email: user.email,
             role: user.role,
             createdAt: new Date().toISOString(),
