@@ -45,8 +45,18 @@ const UserListSection: React.FC<UserListSectionProps> = ({
       let emailMap: Record<string, string> = {};
       
       if (!authError && authUsers?.users) {
-        // Explicitly type the authUsers.users array and use correct typing for the reducer
-        emailMap = authUsers.users.reduce((acc: Record<string, string>, user: any) => {
+        // Define the expected shape of a user object from auth.users
+        interface AuthUser {
+          id: string;
+          email?: string;
+          [key: string]: any; // For other properties we don't care about now
+        }
+        
+        // Explicitly cast the users array to the correct type
+        const usersArray = authUsers.users as AuthUser[];
+        
+        // Now use the typed array in the reduce function
+        emailMap = usersArray.reduce((acc: Record<string, string>, user: AuthUser) => {
           if (user && typeof user.id === 'string') {
             acc[user.id] = user.email || '';
           }
