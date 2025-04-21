@@ -84,13 +84,7 @@ const LoginForm = () => {
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-muted-foreground">
-          Don't have an account?{' '}
-          <a 
-            href="/auth/register" 
-            className="text-avanti-600 hover:text-avanti-800 font-medium"
-          >
-            Sign up
-          </a>
+          Administrative access only. Contact your admin for access.
         </p>
       </CardFooter>
     </Card>

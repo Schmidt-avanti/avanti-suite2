@@ -9,7 +9,6 @@ interface AuthContextType {
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signUp: (email: string, password: string, role: UserRole) => Promise<void>; // Added signUp method
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -30,7 +29,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .select("*")
             .eq("id", session.user.id)
             .maybeSingle();
+          
           if (!profile || error) {
+            console.error("Profile fetch error:", error);
+            toast({
+              variant: "destructive",
+              title: "Profil konnte nicht geladen werden",
+              description: error?.message || "Ihr Profil konnte nicht gefunden werden. Bitte kontaktieren Sie Ihren Administrator.",
+            });
             setUser(null);
           } else {
             setUser({
@@ -43,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           }
         } catch (err) {
+          console.error("Profile fetch error:", err);
           setUser(null);
         }
       } else {
@@ -62,6 +69,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .maybeSingle()
           .then(({ data: profile, error }) => {
             if (!profile || error) {
+              console.error("Profile fetch error in auth state change:", error);
+              toast({
+                variant: "destructive",
+                title: "Profil konnte nicht geladen werden",
+                description: error?.message || "Ihr Profil konnte nicht gefunden werden. Bitte kontaktieren Sie Ihren Administrator.",
+              });
               setUser(null);
             } else {
               setUser({
@@ -83,104 +96,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     init();
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [toast]);
 
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error || !data.session?.user) {
-      toast({
-        variant: "destructive",
-        title: "Login fehlgeschlagen",
-        description: error?.message || "Falsche Zugangsdaten.",
-      });
-      setIsLoading(false);
-      throw error;
-    }
-
-    // Profile + Rolle nachloggen
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", data.session.user.id)
-      .maybeSingle();
-
-    if (!profile || profileError) {
-      toast({
-        variant: "destructive",
-        title: "Profil fehlt",
-        description: "Es existiert kein Profil für diesen Nutzer / Rolle.",
-      });
-      setIsLoading(false);
-      throw new Error("Profil fehlt");
-    }
-
-    setUser({
-      id: data.session.user.id,
-      email: data.session.user.email ?? "",
-      role: (profile.role || "customer") as UserRole,
-      createdAt: data.session.user.created_at,
-      firstName: undefined,
-      lastName: undefined,
-    });
-    
-    toast({
-      title: "Login erfolgreich",
-      description: "Willkommen zurück!",
-    });
-    setIsLoading(false);
-  };
-
-  // Add signUp implementation
-  const signUp = async (email: string, password: string, role: UserRole) => {
-    setIsLoading(true);
     try {
-      // Register the user with Supabase Auth
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          data: {
-            role: role, // Store role in user_metadata
-          },
-        }
-      });
-      
-      if (error || !data.user) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error || !data.session?.user) {
         toast({
           variant: "destructive",
-          title: "Registrierung fehlgeschlagen",
-          description: error?.message || "Fehler bei der Erstellung des Accounts.",
+          title: "Login fehlgeschlagen",
+          description: error?.message || "Falsche Zugangsdaten.",
         });
+        setIsLoading(false);
         throw error;
       }
 
-      // Create profile entry for the user with the selected role
-      const { error: profileError } = await supabase
+      // Profile + Rolle nachloggen
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .insert([
-          { 
-            id: data.user.id, 
-            role: role,
-            "Full Name": email.split('@')[0] // Default name from email
-          }
-        ]);
+        .select("*")
+        .eq("id", data.session.user.id)
+        .maybeSingle();
 
-      if (profileError) {
+      if (!profile || profileError) {
+        console.error("Profile fetch error in signIn:", profileError);
         toast({
           variant: "destructive",
-          title: "Profil konnte nicht erstellt werden",
-          description: profileError.message,
+          title: "Profil fehlt",
+          description: "Es existiert kein Profil für diesen Nutzer / Rolle. Bitte kontaktieren Sie Ihren Administrator.",
         });
-        throw profileError;
+        await supabase.auth.signOut(); // Auto logout bei fehlendem Profil
+        setIsLoading(false);
+        throw new Error("Profil fehlt");
       }
 
+      setUser({
+        id: data.session.user.id,
+        email: data.session.user.email ?? "",
+        role: (profile.role || "customer") as UserRole,
+        createdAt: data.session.user.created_at,
+        firstName: undefined,
+        lastName: undefined,
+      });
+      
       toast({
-        title: "Registrierung erfolgreich",
-        description: "Ihr Account wurde erstellt. Sie können sich jetzt anmelden.",
+        title: "Login erfolgreich",
+        description: "Willkommen zurück!",
       });
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error("Sign in error:", error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -197,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signOut, signUp }}>
+    <AuthContext.Provider value={{ user, isLoading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

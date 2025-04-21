@@ -87,11 +87,8 @@ const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           </DropdownMenu>
         ) : (
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" asChild>
-              <Link to="/auth/login">Sign in</Link>
-            </Button>
             <Button className="bg-avanti-600 hover:bg-avanti-700" asChild>
-              <Link to="/auth/register">Sign up</Link>
+              <Link to="/auth/login">Sign in</Link>
             </Button>
           </div>
         )}

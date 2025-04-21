@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -21,13 +22,9 @@ const Landing: React.FC = () => {
                   Assign tasks, track progress, and ensure your customers receive the best service.
                 </p>
                 <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
-                  <div className="rounded-md shadow">
-                    {/* Registrierung entfernt */}
-                  </div>
-                  <div className="mt-3 sm:mt-0 sm:ml-3">
+                  <div className="mt-3 sm:mt-0">
                     <Button 
-                      variant="outline" 
-                      className="w-full px-8 py-3 text-base font-medium"
+                      className="w-full bg-avanti-600 hover:bg-avanti-700 px-8 py-3 text-base font-medium"
                       asChild
                     >
                       <Link to="/auth/login">Sign in</Link>
@@ -117,12 +114,12 @@ const Landing: React.FC = () => {
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
           <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
             <span className="block">Ready to get started?</span>
-            <span className="block text-avanti-100">Create your account today.</span>
+            <span className="block text-avanti-100">Contact your administrator for access.</span>
           </h2>
           <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
             <div className="inline-flex rounded-md shadow">
               <Button className="bg-white text-avanti-600 hover:bg-gray-100 px-5 py-3 text-base font-medium" asChild>
-                <Link to="/auth/login">Get started</Link>
+                <Link to="/auth/login">Sign in</Link>
               </Button>
             </div>
           </div>
