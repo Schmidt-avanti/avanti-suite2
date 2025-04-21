@@ -31,17 +31,30 @@ serve(async (req) => {
     // Required: prompt (instructions), metadata (customer object), userInput, type, [optional]: previous_response_id
     const { prompt, metadata, userInput, type, previous_response_id } = await req.json();
 
+    if (!openAIApiKey) {
+      console.error("OpenAI API Key is missing");
+      return new Response(JSON.stringify({ 
+        error: "OpenAI API Key not configured", 
+        status: "configuration_error" 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Strictly use documented parameters ONLY!
     const payload: Record<string, any> = {
       model: "gpt-4.1",
       instructions: prompt,
       input: userInput,
       metadata: prepareMetadata({ ...(metadata ?? {}), type }),
-      // type kann bei Bedarf als Teil von metadata übergeben werden!
     };
+
     if (previous_response_id) {
       payload.previous_response_id = previous_response_id;
     }
+
+    console.log("Sending payload to OpenAI:", JSON.stringify(payload, null, 2));
 
     // Call OpenAI Responses API (official per docs)
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -55,13 +68,20 @@ serve(async (req) => {
 
     const data = await response.json();
 
+    console.log("OpenAI Response:", JSON.stringify(data, null, 2));
+
     // OpenAI Responses API: primary result is in data.choices[0].content (usually JSON as string, e.g. { ... })
     let jsonResponse: any = {};
     try {
       jsonResponse = JSON.parse(data.choices?.[0]?.content ?? "{}");
     } catch (err) {
-      jsonResponse = { error: "OpenAI Antwort war kein valides JSON.", raw_content: data.choices?.[0]?.content };
+      console.error("JSON parsing error:", err);
+      jsonResponse = { 
+        error: "OpenAI Antwort war kein valides JSON.", 
+        raw_content: data.choices?.[0]?.content 
+      };
     }
+    
     // Pass OpenAI response + (optionally) response_id to the frontend for follow-ups
     if (data.id) {
       jsonResponse.response_id = data.id;
@@ -72,7 +92,11 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error("Edge Function Error:", err);
+    return new Response(JSON.stringify({ 
+      error: err.message, 
+      status: "runtime_error" 
+    }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
