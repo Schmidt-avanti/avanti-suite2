@@ -1,8 +1,9 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { validateResponse } from "./validator.ts";
+import type { UseCaseResponse } from "./types.ts";
 
-// Load OpenAI API key from environment variable
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
@@ -13,18 +14,22 @@ const corsHeaders = {
 // Helper to construct metadata object for OpenAI
 function prepareMetadata(raw: any) {
   if (!raw) return {};
-  // Map to unified metadata if desired (flexible for your variable substitution)
   return {
     ...raw,
-    industry: raw.industry ?? "", // Branche
+    industry: raw.industry ?? "",
     sw_tasks: raw.taskManagement ?? raw.task_management ?? raw.sw_tasks ?? "",
     sw_knowledge: raw.knowledgeBase ?? raw.knowledge_base ?? raw.sw_knowledge ?? "",
     sw_CRM: raw.crm ?? raw.CRM ?? raw.sw_CRM ?? "",
   };
 }
 
+function sanitizeToolReferences(content: string, metadata: any): string {
+  return content.replace(/{{metadata\.([\w]+)}}/g, (match, key) => {
+    return metadata[key] || match;
+  });
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -32,7 +37,6 @@ serve(async (req) => {
   try {
     console.log("Function called, checking payload...");
     
-    // Required: prompt (instructions), metadata (customer object), userInput, type, [optional]: previous_response_id
     const { prompt, metadata, userInput, type, previous_response_id } = await req.json();
     
     console.log("Received request data:", { 
@@ -53,8 +57,7 @@ serve(async (req) => {
       });
     }
 
-    // Strictly use documented parameters ONLY!
-    const payload: Record<string, any> = {
+    const payload = {
       model: "gpt-4.1",
       instructions: prompt,
       input: userInput,
@@ -67,7 +70,6 @@ serve(async (req) => {
 
     console.log("Sending payload to OpenAI:", JSON.stringify(payload, null, 2));
 
-    // Call OpenAI Responses API (official per docs)
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -82,25 +84,18 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       let errorData;
-      
       try {
         errorData = JSON.parse(errorText);
       } catch (e) {
         errorData = { raw: errorText };
       }
       
-      console.error("OpenAI API error:", {
-        status: response.status,
-        statusText: response.statusText,
-        data: errorData
-      });
-      
       return new Response(JSON.stringify({ 
-        error: `OpenAI API Error: ${response.status} ${response.statusText}`, 
+        error: `OpenAI API Error: ${response.status}`,
         details: errorData,
         status: "api_error" 
       }), {
-        status: 502, // Bad Gateway for API errors
+        status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -123,35 +118,27 @@ serve(async (req) => {
       });
     }
 
-    console.log("OpenAI Response received, status:", response.status);
-    console.log("OpenAI Response structure:", JSON.stringify(Object.keys(data), null, 2));
-    
     if (!data.choices?.[0]?.content) {
       console.error("Unexpected OpenAI response format:", data);
       return new Response(JSON.stringify({
         error: "Unerwartetes Antwortformat von OpenAI",
         raw_response: data,
-        status: "parsing_error"
+        status: "format_error"
       }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // OpenAI Responses API: primary result is in data.choices[0].content
-    let jsonResponse: any = {};
+    let parsedContent: UseCaseResponse;
     try {
-      // Parse JSON directly from the content field
       const contentString = data.choices[0].content;
       console.log("Content to parse:", contentString);
-      jsonResponse = JSON.parse(contentString);
-      console.log("Successfully parsed JSON response");
+      parsedContent = JSON.parse(contentString);
     } catch (err) {
       console.error("JSON parsing error:", err);
-      console.log("Raw content:", data.choices[0].content);
-      
       return new Response(JSON.stringify({ 
-        error: "OpenAI Antwort war kein valides JSON.", 
+        error: "OpenAI Antwort war kein valides JSON",
         raw_content: data.choices[0].content,
         status: "parsing_error" 
       }), {
@@ -159,15 +146,37 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    
-    // Pass OpenAI response + (optionally) response_id to the frontend for follow-ups
-    if (data.id) {
-      jsonResponse.response_id = data.id;
+
+    // Validate the response structure
+    const validationResult = validateResponse(parsedContent);
+    if (!validationResult.isValid) {
+      console.error("Validation errors:", validationResult.errors);
+      return new Response(JSON.stringify({
+        error: "Ungültige Antwortstruktur",
+        details: validationResult.errors,
+        raw_content: parsedContent,
+        status: "validation_error"
+      }), {
+        status: 422,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Erfolgreiche Antwort
-    return new Response(JSON.stringify(jsonResponse), {
-      status: 200, // Explizit 200 setzen
+    // Sanitize tool references in process_map
+    if (parsedContent.process_map) {
+      parsedContent.process_map = parsedContent.process_map.map(step => ({
+        ...step,
+        tool: sanitizeToolReferences(step.tool, metadata)
+      }));
+    }
+
+    // Add response_id if available
+    if (data.id) {
+      parsedContent.response_id = data.id;
+    }
+
+    return new Response(JSON.stringify(parsedContent), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
