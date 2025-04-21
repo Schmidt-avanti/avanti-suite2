@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  signUp: (email: string, password: string, role: UserRole) => Promise<void>; // Added signUp method
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -130,6 +131,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   };
 
+  // Add signUp implementation
+  const signUp = async (email: string, password: string, role: UserRole) => {
+    setIsLoading(true);
+    try {
+      // Register the user with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            role: role, // Store role in user_metadata
+          },
+        }
+      });
+      
+      if (error || !data.user) {
+        toast({
+          variant: "destructive",
+          title: "Registrierung fehlgeschlagen",
+          description: error?.message || "Fehler bei der Erstellung des Accounts.",
+        });
+        throw error;
+      }
+
+      // Create profile entry for the user with the selected role
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert([
+          { 
+            id: data.user.id, 
+            role: role,
+            "Full Name": email.split('@')[0] // Default name from email
+          }
+        ]);
+
+      if (profileError) {
+        toast({
+          variant: "destructive",
+          title: "Profil konnte nicht erstellt werden",
+          description: profileError.message,
+        });
+        throw profileError;
+      }
+
+      toast({
+        title: "Registrierung erfolgreich",
+        description: "Ihr Account wurde erstellt. Sie können sich jetzt anmelden.",
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -140,7 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, signIn, signOut, signUp }}>
       {children}
     </AuthContext.Provider>
   );
