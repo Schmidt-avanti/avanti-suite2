@@ -38,7 +38,7 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
         const mappedCustomers = data.map((customer: any) => ({
           id: customer.id,
           name: customer.name,
-          description: customer.description,
+          branch: customer.industry,
           createdAt: customer.created_at,
           isActive: customer.is_active !== false // default to true
         }));
@@ -113,7 +113,7 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Beschreibung</TableHead>
+            <TableHead>Branche</TableHead>
             <TableHead>Erstellt am</TableHead>
             <TableHead>Status</TableHead>
             <TableHead></TableHead>
@@ -123,7 +123,7 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
           {customers.map((customer) => (
             <TableRow key={customer.id} className={!customer.isActive ? "opacity-60" : ""}>
               <TableCell>{customer.name}</TableCell>
-              <TableCell>{customer.description ?? "–"}</TableCell>
+              <TableCell>{customer.branch ?? "–"}</TableCell>
               <TableCell>{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : "–"}</TableCell>
               <TableCell>{customer.isActive ? "Aktiv" : "Inaktiv"}</TableCell>
               <TableCell>
