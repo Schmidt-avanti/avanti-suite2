@@ -9,27 +9,127 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      customers: {
+      customer_contacts: {
         Row: {
           created_at: string
-          description: string | null
+          customer_id: string | null
+          email: string | null
           id: string
-          is_active: boolean
+          is_main: boolean | null
           name: string
+          phone: string | null
+          position: string | null
         }
         Insert: {
           created_at?: string
-          description?: string | null
+          customer_id?: string | null
+          email?: string | null
           id?: string
-          is_active?: boolean
+          is_main?: boolean | null
           name: string
+          phone?: string | null
+          position?: string | null
         }
         Update: {
           created_at?: string
-          description?: string | null
+          customer_id?: string | null
+          email?: string | null
           id?: string
+          is_main?: boolean | null
+          name?: string
+          phone?: string | null
+          position?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_contacts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_tools: {
+        Row: {
+          created_at: string
+          crm: string | null
+          customer_id: string | null
+          id: string
+          knowledge_base: string | null
+          task_management: string | null
+        }
+        Insert: {
+          created_at?: string
+          crm?: string | null
+          customer_id?: string | null
+          id?: string
+          knowledge_base?: string | null
+          task_management?: string | null
+        }
+        Update: {
+          created_at?: string
+          crm?: string | null
+          customer_id?: string | null
+          id?: string
+          knowledge_base?: string | null
+          task_management?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_tools_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          city: string | null
+          created_at: string
+          description: string | null
+          email: string | null
+          has_invoice_address: boolean | null
+          id: string
+          invoice_city: string | null
+          invoice_street: string | null
+          invoice_zip: string | null
+          is_active: boolean
+          name: string
+          street: string | null
+          zip: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          has_invoice_address?: boolean | null
+          id?: string
+          invoice_city?: string | null
+          invoice_street?: string | null
+          invoice_zip?: string | null
+          is_active?: boolean
+          name: string
+          street?: string | null
+          zip?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          has_invoice_address?: boolean | null
+          id?: string
+          invoice_city?: string | null
+          invoice_street?: string | null
+          invoice_zip?: string | null
           is_active?: boolean
           name?: string
+          street?: string | null
+          zip?: string | null
         }
         Relationships: []
       }

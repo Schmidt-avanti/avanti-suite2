@@ -74,20 +74,49 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
       const loadCustomerData = async () => {
         setIsLoading(true);
         try {
+          // ALLE Daten laden, inklusive Tools & Kontakte:
           const { data, error } = await supabase
             .from("customers")
             .select("*")
             .eq("id", customer.id)
             .single();
+
           if (error) throw error;
-          if (data) {
-            setForm(prev => ({
-              ...prev,
-              name: data.name || "",
-              branch: data.description || "",
-              // Füge weitere Felder hinzu falls benötigt ...
-            }));
-          }
+          const customerData = data;
+
+          // Tools laden:
+          const { data: toolsData } = await supabase.from("customer_tools").select("*").eq("customer_id", customer.id).maybeSingle();
+          // Kontakte laden:
+          const { data: contactRows } = await supabase.from("customer_contacts").select("*").eq("customer_id", customer.id);
+
+          setForm({
+            name: customerData.name || "",
+            branch: customerData.description || "",
+            email: customerData.email || "",
+            address: {
+              street: customerData.street || "",
+              zip: customerData.zip || "",
+              city: customerData.city || ""
+            },
+            hasInvoiceAddress: !!customerData.has_invoice_address,
+            invoiceAddress: {
+              street: customerData.invoice_street || "",
+              zip: customerData.invoice_zip || "",
+              city: customerData.invoice_city || ""
+            },
+            tools: {
+              taskManagement: toolsData?.task_management || "",
+              knowledgeBase: toolsData?.knowledge_base || "",
+              crm: toolsData?.crm || ""
+            },
+            contacts: (contactRows ?? []).map(c => ({
+              name: c.name,
+              email: c.email || "",
+              phone: c.phone || "",
+              position: c.position || "",
+              isMain: !!c.is_main
+            }))
+          });
         } catch (error) {
           console.error("Error loading customer data:", error);
           toast.error("Kundendaten konnten nicht geladen werden");
@@ -106,49 +135,129 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
 
   const validateStep1 = () => !!(form.name && form.branch && form.email && form.address.street && form.address.zip && form.address.city);
 
-  const validateStep2 = () => Boolean(form.tools.taskManagement && form.tools.knowledgeBase && form.tools.crm);
+  const validateStep2 = () =>
+    Boolean(form.tools.taskManagement && form.tools.knowledgeBase && form.tools.crm);
 
   const handleSave = async () => {
     setIsLoading(true);
-    const { name, branch } = form;
+
+    // ----- 1. Customer Stammdaten -----
+    const {
+      name,
+      branch,
+      email,
+      address,
+      hasInvoiceAddress,
+      invoiceAddress,
+      tools,
+      contacts
+    } = form;
+
     try {
+      let customerId: string;
+
       if (isEditing && customer) {
+        // Update customer
         const { data, error } = await supabase
           .from("customers")
-          .update({ name, description: branch })
+          .update({
+            name,
+            description: branch,
+            email,
+            street: address.street,
+            zip: address.zip,
+            city: address.city,
+            has_invoice_address: hasInvoiceAddress,
+            invoice_street: invoiceAddress.street,
+            invoice_zip: invoiceAddress.zip,
+            invoice_city: invoiceAddress.city,
+          })
           .eq("id", customer.id)
           .select();
+
         if (error) throw error;
-        if (data) {
-          setCustomers(prev => prev.map(c =>
-            c.id === customer.id
-              ? {
-                  ...c,
-                  name: data[0].name,
-                  description: data[0].description,
-                }
-              : c
-          ));
-          toast.success("Kunde erfolgreich aktualisiert");
-        }
+        customerId = customer.id;
+
+        setCustomers(prev => prev.map(c =>
+          c.id === customer.id
+            ? {
+                ...c,
+                name: data[0].name,
+                description: data[0].description,
+              }
+            : c
+        ));
       } else {
+        // Insert new customer
         const { data, error } = await supabase
           .from("customers")
-          .insert({ name, description: branch })
+          .insert({
+            name,
+            description: branch,
+            email,
+            street: address.street,
+            zip: address.zip,
+            city: address.city,
+            has_invoice_address: hasInvoiceAddress,
+            invoice_street: invoiceAddress.street,
+            invoice_zip: invoiceAddress.zip,
+            invoice_city: invoiceAddress.city,
+            is_active: true
+          })
           .select();
+
         if (error) throw error;
-        if (data) {
-          const newCustomers = data.map((customer: any) => ({
-            id: customer.id,
-            name: customer.name,
-            description: customer.description,
-            createdAt: customer.created_at,
-            isActive: customer.is_active !== false
-          }));
-          setCustomers((prev) => [...prev, ...newCustomers]);
-          toast.success("Kunde erfolgreich angelegt");
-        }
+        customerId = data[0].id;
+
+        const newCustomers = data.map((customer: any) => ({
+          id: customer.id,
+          name: customer.name,
+          description: customer.description,
+          createdAt: customer.created_at,
+          isActive: customer.is_active !== false
+        }));
+        setCustomers((prev) => [...prev, ...newCustomers]);
       }
+
+      // ----- 2. Tools ("upsert") -----
+      // Es gibt immer genau einen Tools-Datensatz pro Kunde
+      const { error: toolsErr } = await supabase
+        .from("customer_tools")
+        .upsert([
+          {
+            customer_id: customerId,
+            task_management: tools.taskManagement,
+            knowledge_base: tools.knowledgeBase,
+            crm: tools.crm,
+          }
+        ], { onConflict: "customer_id" });
+
+      if (toolsErr) throw toolsErr;
+
+      // ----- 3. Kontakte: Zunächst alte Kontakte löschen, dann alle neu als Insert -----
+      if (isEditing && customer) {
+        await supabase.from("customer_contacts").delete().eq("customer_id", customerId);
+      }
+      // Insert alle Kontakte, nur wenn mind. Name ausgefüllt ist:
+      const validContacts = contacts.filter(c => c.name.trim());
+      if (validContacts.length) {
+        const toInsert = validContacts.map(c => ({
+          customer_id: customerId,
+          is_main: c.isMain,
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+          position: c.position
+        }));
+
+        const { error: contactsErr } = await supabase
+          .from("customer_contacts")
+          .insert(toInsert);
+
+        if (contactsErr) throw contactsErr;
+      }
+
+      toast.success(isEditing ? "Kunde erfolgreich aktualisiert" : "Kunde erfolgreich angelegt");
       onFinish();
     } catch (error) {
       console.error("Error saving customer:", error);
