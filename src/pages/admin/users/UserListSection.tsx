@@ -33,20 +33,22 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      // Profile laden
+      // Get profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, role, "Full Name", created_at, is_active');
       if (profilesError) throw profilesError;
 
-      // E-Mail-Adressen aus auth.users
+      console.log('Fetched profiles:', profiles);
+
+      // Get auth users for email addresses
       const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
-      // E-Mail-Map erstellen
+      // Create email map
       let emailMap: Record<string, string> = {};
       
       if (!authError && authUsers?.users) {
-        // Type für Auth-User definieren
+        // Type for Auth-User
         interface AuthUser {
           id: string;
           email?: string;
@@ -63,14 +65,21 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         }, {} as Record<string, string>);
       }
 
-      // Kundenzuweisungen für alle Benutzer laden
+      console.log('Email map created:', emailMap);
+
+      // Get customer assignments for all users
       const { data: assignments, error: assignmentsError } = await supabase
         .from('user_customer_assignments')
         .select('user_id, customer_id');
 
-      if (assignmentsError) throw assignmentsError;
+      if (assignmentsError) {
+        console.error('Error fetching assignments:', assignmentsError);
+        throw assignmentsError;
+      }
 
-      // Zuweisungen nach Benutzer-ID gruppieren
+      console.log('Fetched assignments:', assignments);
+
+      // Group assignments by user ID
       const userAssignments: Record<string, string[]> = {};
       assignments?.forEach(assignment => {
         if (!userAssignments[assignment.user_id]) {
@@ -79,14 +88,18 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         userAssignments[assignment.user_id].push(assignment.customer_id);
       });
 
-      // Benutzer mit Kundenzuweisungen formatieren
+      console.log('Grouped assignments by user:', userAssignments);
+
+      // Format users with customer assignments
       const formattedUsers = profiles.map(profile => {
-        // Kunden-IDs für den aktuellen Benutzer abrufen
+        // Get customer IDs for current user
         const customerIds = userAssignments[profile.id] || [];
-        // Kundenobjekte für jede ID finden
+        // Find customer objects for each ID
         const userCustomers = customers.filter(customer => 
           customerIds.includes(customer.id)
         );
+
+        console.log(`User ${profile.id} has customers:`, userCustomers);
 
         return {
           id: profile.id,

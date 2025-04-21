@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import UserListSection from "./users/UserListSection";
 import UserEditSection from "./users/UserEditSection";
 
+// Use valid UUIDs for mock customers
 const mockCustomers: Customer[] = [
   { id: "550e8400-e29b-41d4-a716-446655440000", name: "Acme Corp", createdAt: "" },
   { id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8", name: "Globex GmbH", createdAt: "" },
@@ -34,26 +35,44 @@ const UsersAdminPage: React.FC = () => {
 
   const saveCustomerAssignments = async (userId: string, customerIds: string[]) => {
     try {
+      console.log('Saving customer assignments for user:', userId, 'customers:', customerIds);
+      
+      // First delete any existing assignments
       const { error: deleteError } = await supabase
         .from('user_customer_assignments')
         .delete()
         .eq('user_id', userId);
       
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error('Error deleting existing assignments:', deleteError);
+        throw deleteError;
+      }
       
-      if (customerIds.length === 0) return;
+      // If no customer IDs, we're done (user has no assignments)
+      if (customerIds.length === 0) {
+        console.log('No customers to assign, finished.');
+        return;
+      }
       
+      // Create new assignments
       const assignments = customerIds.map(customerId => ({
         user_id: userId,
         customer_id: customerId
       }));
       
-      const { error: insertError } = await supabase
+      console.log('Creating new assignments:', assignments);
+      
+      const { data, error: insertError } = await supabase
         .from('user_customer_assignments')
-        .insert(assignments);
+        .insert(assignments)
+        .select();
       
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Error inserting assignments:', insertError);
+        throw insertError;
+      }
       
+      console.log('Assignments saved successfully:', data);
     } catch (error) {
       console.error("Fehler beim Speichern der Kundenzuweisungen:", error);
       throw error;
@@ -63,6 +82,7 @@ const UsersAdminPage: React.FC = () => {
   const handleSave = async (user: User & { customers: Customer[]; is_active: boolean; name: string }) => {
     try {
       if (user.id) {
+        // Update existing user
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
@@ -74,6 +94,7 @@ const UsersAdminPage: React.FC = () => {
 
         if (profileError) throw profileError;
 
+        // Save customer assignments
         await saveCustomerAssignments(
           user.id, 
           user.customers.map(c => c.id)
@@ -88,7 +109,7 @@ const UsersAdminPage: React.FC = () => {
           description: "Der Benutzer wurde aktualisiert.",
         });
       } else {
-        // Use the admin authorization endpoint for user creation
+        // Create new user with edge function
         const { data, error } = await supabase.functions.invoke('create-user', {
           body: {
             email: user.email,
@@ -104,6 +125,7 @@ const UsersAdminPage: React.FC = () => {
         if (error) throw error;
 
         if (data?.userId) {
+          // Create profile
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
@@ -115,6 +137,7 @@ const UsersAdminPage: React.FC = () => {
             
           if (profileError) throw profileError;
 
+          // Save customer assignments
           await saveCustomerAssignments(
             data.userId, 
             user.customers.map(c => c.id)
