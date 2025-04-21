@@ -41,9 +41,10 @@ const UserListSection: React.FC<UserListSectionProps> = ({
       // Hole optional E-Mail-Adressen aus auth.users (nur für Admins möglich)
       const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
+      // Fix the type issue - properly type the email map
       let emailMap: Record<string, string> = {};
-      if (!authError && authUsers) {
-        emailMap = authUsers.users.reduce((acc: Record<string, string>, user) => {
+      if (!authError && authUsers?.users) {
+        emailMap = authUsers.users.reduce((acc: Record<string, string>, user: any) => {
           acc[user.id] = user.email || '';
           return acc;
         }, {});
