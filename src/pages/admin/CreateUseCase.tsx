@@ -290,14 +290,25 @@ export default function CreateUseCasePage() {
     try {
       console.log("Saving use case to database...");
       
+      // Extrahieren und vorbereiten der Daten
       const { 
-        type, title, information_needed, steps, typical_activities, 
-        expected_result, chat_response, next_question, process_map, decision_logic 
+        type: responseType, 
+        title, 
+        information_needed, 
+        steps, 
+        typical_activities, 
+        expected_result, 
+        chat_response, 
+        next_question, 
+        process_map, 
+        decision_logic 
       } = aiResponseJson;
 
+      // Hier ist die wichtige Änderung: Wir stellen sicher, dass der Typ
+      // exakt dem entspricht, was die Datenbank erwartet
       const { error } = await supabase.from("use_cases").insert([
         {
-          type,
+          type: responseType,  // Verwende direkt den Wert aus der API-Antwort
           customer_id: customerId,
           title,
           information_needed,
@@ -365,7 +376,7 @@ export default function CreateUseCasePage() {
           rawResponse={rawResponse}
           aiResponseJson={aiResponseJson}
           onSave={handleSave}
-          onBack={() => setStep(Step.CHAT)}
+          onBack={() => setStep(Step.FORM)}
         />
       )}
     </div>

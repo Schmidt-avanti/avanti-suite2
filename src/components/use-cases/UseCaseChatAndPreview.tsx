@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import UseCaseChat from "./UseCaseChat";
 import UseCasePreview from "./UseCasePreview";
 import UseCaseErrorDisplay from "./UseCaseErrorDisplay";
-import { Save } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 
 interface UseCaseChatAndPreviewProps {
   messages: Array<{ role: "user" | "assistant"; content: string }>;
@@ -29,10 +29,11 @@ const UseCaseChatAndPreview: React.FC<UseCaseChatAndPreviewProps> = ({
   rawResponse,
   aiResponseJson,
   onSave,
+  onBack
 }) => {
   return (
-    <div className="flex flex-col gap-8 pb-8">
-      {/* Chat Section */}
+    <div className="flex flex-col space-y-8">
+      {/* Chat Section - Full Width */}
       <div className="w-full">
         <UseCaseChat
           messages={messages}
@@ -47,18 +48,23 @@ const UseCaseChatAndPreview: React.FC<UseCaseChatAndPreviewProps> = ({
       </div>
 
       {/* Action Buttons */}
-      {aiResponseJson && (
-        <div className="flex justify-end">
-          <Button onClick={onSave} className="w-auto">
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={onBack} className="flex items-center">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Zurück zur Auswahl
+        </Button>
+        
+        {aiResponseJson && (
+          <Button onClick={onSave} className="flex items-center">
             <Save className="mr-2 h-4 w-4" />
             Use Case speichern
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Preview Section */}
+      {/* Preview Section - Placed at bottom */}
       {aiResponseJson && (
-        <div className="w-full">
+        <div className="w-full mt-4 pb-16">
           <h3 className="text-lg font-medium mb-4">Use Case Vorschau</h3>
           <UseCasePreview aiResponseJson={aiResponseJson} />
         </div>
