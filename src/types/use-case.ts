@@ -5,7 +5,7 @@ export const USE_CASE_TYPES = {
   DIRECT: "direct_use_case",
 } as const;
 
-export type UseCaseType = typeof USE_CASE_TYPES[keyof typeof USE_CASE_TYPES];
+export type UseCaseType = (typeof USE_CASE_TYPES)[keyof typeof USE_CASE_TYPES];
 
 export const useCaseTypeLabels: Record<UseCaseType, string> = {
   knowledge_request: "Informationsanfrage",
