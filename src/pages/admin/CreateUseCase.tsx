@@ -2,13 +2,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
-import UseCaseChat from "@/components/use-cases/UseCaseChat";
-import UseCasePreview from "@/components/use-cases/UseCasePreview";
-import { USE_CASE_TYPES, useCaseTypeLabels, type UseCaseType } from "@/types/use-case";
+import { UseCaseType } from "@/types/use-case";
+import CreateUseCaseForm from "@/components/use-cases/CreateUseCaseForm";
+import UseCaseChatAndPreview from "@/components/use-cases/UseCaseChatAndPreview";
 
 type Message = {
   role: "user" | "assistant";
@@ -44,11 +41,6 @@ const fetchPrompts = async () => {
   if (error) throw error;
   return data;
 };
-
-const useCaseTypes = Object.entries(useCaseTypeLabels).map(([value, label]) => ({
-  value,
-  label,
-}));
 
 export default function CreateUseCasePage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -188,95 +180,34 @@ export default function CreateUseCasePage() {
     }
   }
 
-  const handleTypeChange = (value: string) => {
-    if (value === "" || Object.values(USE_CASE_TYPES).includes(value as UseCaseType)) {
-      setType(value as UseCaseType | "");
-    }
-  };
-
   return (
     <div className="max-w-6xl mx-auto p-6">
       <h2 className="text-xl font-bold mb-6">Neuen Use Case anlegen</h2>
 
       {step === 1 && (
-        <div className="max-w-2xl">
-          <div className="mb-4">
-            <label className="block mb-1 font-medium">Kunde</label>
-            <Select value={customerId} onValueChange={setCustomerId}>
-              <SelectTrigger className="w-full">
-                {customers.find((c: Customer) => c.id === customerId)?.name || "Bitte auswählen"}
-              </SelectTrigger>
-              <SelectContent>
-                {customers?.map((c: Customer) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="mb-4">
-            <label className="block mb-1 font-medium">Typ</label>
-            <Select value={type} onValueChange={handleTypeChange}>
-              <SelectTrigger className="w-full">
-                {useCaseTypes.find(t => t.value === type)?.label || "Bitte auswählen"}
-              </SelectTrigger>
-              <SelectContent>
-                {useCaseTypes.map(type => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <Button
-            disabled={!customerId || !type}
-            onClick={() => setStep(2)}
-          >
-            Weiter
-          </Button>
-        </div>
+        <CreateUseCaseForm
+          customers={customers}
+          customerId={customerId}
+          setCustomerId={setCustomerId}
+          type={type}
+          setType={setType}
+          onNext={() => setStep(2)}
+        />
       )}
 
       {(step === 2 || step === 3) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <UseCaseChat 
-              messages={messages}
-              chatInput={chatInput}
-              setChatInput={setChatInput}
-              onSendMessage={sendChatToAI}
-              loading={loadingAI}
-            />
-            
-            {error && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            
-            {rawResponse && (
-              <div className="mt-4">
-                <h3 className="text-sm font-medium mb-2">Ungeparste Antwort der API:</h3>
-                <pre className="bg-slate-100 p-3 rounded text-xs overflow-auto max-h-60">{rawResponse}</pre>
-              </div>
-            )}
-          </div>
-          
-          <div>
-            <UseCasePreview aiResponseJson={aiResponseJson} />
-            
-            {aiResponseJson && (
-              <div className="mt-4 flex gap-2">
-                <Button onClick={handleSave}>Speichern</Button>
-                <Button variant="outline" onClick={() => setStep(2)}>Zurück</Button>
-              </div>
-            )}
-          </div>
-        </div>
+        <UseCaseChatAndPreview
+          messages={messages}
+          chatInput={chatInput}
+          setChatInput={setChatInput}
+          onSendMessage={sendChatToAI}
+          loadingAI={loadingAI}
+          error={error}
+          rawResponse={rawResponse}
+          aiResponseJson={aiResponseJson}
+          onSave={handleSave}
+          onBack={() => setStep(2)}
+        />
       )}
     </div>
   );
