@@ -98,16 +98,32 @@ serve(async (req) => {
     const data = await response.json();
 
     console.log("OpenAI Response received, status:", response.status);
+    console.log("OpenAI Response structure:", JSON.stringify(Object.keys(data), null, 2));
+    
+    if (!data.choices?.[0]?.content) {
+      console.error("Unexpected OpenAI response format:", data);
+      return new Response(JSON.stringify({
+        error: "Unerwartetes Antwortformat von OpenAI",
+        raw_response: data,
+        status: "parsing_error"
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // OpenAI Responses API: primary result is in data.choices[0].content (usually JSON as string, e.g. { ... })
+    // OpenAI Responses API: primary result is in data.choices[0].content
     let jsonResponse: any = {};
     try {
-      jsonResponse = JSON.parse(data.choices?.[0]?.content ?? "{}");
+      // Parse JSON directly from the content field
+      jsonResponse = JSON.parse(data.choices[0].content);
+      console.log("Successfully parsed JSON response");
     } catch (err) {
       console.error("JSON parsing error:", err);
+      console.log("Raw content:", data.choices[0].content);
       jsonResponse = { 
         error: "OpenAI Antwort war kein valides JSON.", 
-        raw_content: data.choices?.[0]?.content 
+        raw_content: data.choices[0].content 
       };
     }
     

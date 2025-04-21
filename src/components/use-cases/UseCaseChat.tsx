@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,46 +19,98 @@ interface UseCaseChatProps {
   loading: boolean;
 }
 
-const UseCaseChat = ({ messages, chatInput, setChatInput, onSendMessage, loading }: UseCaseChatProps) => {
+const UseCaseChat = ({ 
+  messages, 
+  chatInput, 
+  setChatInput, 
+  onSendMessage, 
+  loading 
+}: UseCaseChatProps) => {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
+  // Automatisches Scrollen zum neuesten Nachricht
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollElement) {
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+      }
+    }
+  }, [messages]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && chatInput.trim()) {
+      e.preventDefault();
+      onSendMessage();
+    }
+  };
+
   return (
-    <div className="flex flex-col h-[600px]">
-      <ScrollArea className="flex-1 p-4 border rounded-lg mb-4">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`mb-4 p-4 rounded-lg ${
-              message.role === "assistant"
-                ? "bg-primary/10 mr-12"
-                : "bg-secondary/10 ml-12"
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="font-semibold">
-                {message.role === "assistant" ? "Ava" : "Du"}
-              </span>
+    <Card className="flex flex-col h-[600px] rounded-2xl shadow-md">
+      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+        <div className="space-y-4">
+          {messages.length === 0 && (
+            <div className="flex items-center justify-center h-32 text-gray-400">
+              Beschreibe den Use Case, um zu beginnen...
             </div>
-            <p className="text-sm">{message.content}</p>
-          </div>
-        ))}
+          )}
+          
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`p-4 rounded-2xl ${
+                message.role === "assistant"
+                  ? "bg-primary/10 mr-12"
+                  : "bg-secondary/10 ml-12"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="h-4 w-4" />
+                <span className="font-semibold">
+                  {message.role === "assistant" ? "Ava" : "Du"}
+                </span>
+              </div>
+              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            </div>
+          ))}
+          
+          {loading && (
+            <div className="bg-primary/10 p-4 rounded-2xl mr-12">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="h-4 w-4" />
+                <span className="font-semibold">Ava</span>
+              </div>
+              <div className="flex space-x-2 mt-2">
+                <div className="w-2 h-2 rounded-full bg-primary/50 animate-bounce"></div>
+                <div className="w-2 h-2 rounded-full bg-primary/50 animate-bounce delay-75"></div>
+                <div className="w-2 h-2 rounded-full bg-primary/50 animate-bounce delay-150"></div>
+              </div>
+            </div>
+          )}
+        </div>
       </ScrollArea>
-      <div className="flex gap-2">
-        <Textarea
-          value={chatInput}
-          onChange={(e) => setChatInput(e.target.value)}
-          placeholder="Beschreibe den Use Case..."
-          className="flex-1"
-        />
-        <Button 
-          onClick={onSendMessage}
-          disabled={loading || !chatInput.trim()}
-          className="self-end"
-        >
-          <Send className="h-4 w-4 mr-2" />
-          Senden
-        </Button>
+      
+      <div className="p-4 border-t">
+        <div className="flex gap-2">
+          <Textarea
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Beschreibe den Use Case..."
+            className="flex-1 resize-none"
+            rows={3}
+          />
+          <Button 
+            onClick={onSendMessage}
+            disabled={loading || !chatInput.trim()}
+            className="self-end"
+          >
+            <Send className="h-4 w-4 mr-2" />
+            Senden
+          </Button>
+        </div>
       </div>
-    </div>
+    </Card>
   );
 };
 
