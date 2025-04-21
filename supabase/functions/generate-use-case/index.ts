@@ -25,7 +25,6 @@ function prepareMetadata(raw: any) {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -100,8 +99,8 @@ serve(async (req) => {
 
     const responseData = await response.json();
     console.log("OpenAI response structure:", Object.keys(responseData));
-    
-    if (!responseData.choices?.[0]?.content) {
+
+    if (!responseData.output?.[0]?.content?.[0]?.text) {
       console.error("Unexpected OpenAI response format:", JSON.stringify(responseData, null, 2));
       return new Response(JSON.stringify({
         error: "Unexpected response format from OpenAI",
@@ -113,16 +112,20 @@ serve(async (req) => {
       });
     }
 
-    const content = responseData.choices[0].content;
-    console.log("OpenAI content received:", typeof content);
+    let content = responseData.output[0].content[0].text;
+    console.log("Raw content received:", content);
+
+    if (content.startsWith('```json\n') && content.endsWith('\n```')) {
+      content = content.slice(8, -4); // Remove ```json\n and \n```
+    }
     
     let parsedContent: UseCaseResponse;
     try {
-      parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
+      parsedContent = JSON.parse(content);
       console.log("Successfully parsed content");
     } catch (err) {
       console.error("JSON parsing error:", err);
-      console.error("Raw content that failed to parse:", content);
+      console.error("Content that failed to parse:", content);
       
       return new Response(JSON.stringify({ 
         error: "Failed to parse OpenAI response as JSON",
