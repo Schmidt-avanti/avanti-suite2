@@ -1,6 +1,8 @@
 
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
+const USE_CASE_TYPES = ['knowledge_request', 'forwarding_use_case', 'direct_use_case'] as const;
+
 const chatResponseSchema = z.object({
   title: z.string().min(1),
   info_block: z.string().min(1),
@@ -24,7 +26,7 @@ const decisionLogicItemSchema = z.object({
 });
 
 export const useCaseResponseSchema = z.object({
-  type: z.string(),
+  type: z.enum(USE_CASE_TYPES),
   title: z.string().min(1),
   information_needed: z.string().min(1),
   steps: z.string().min(1),

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -6,10 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import UseCaseChat from "@/components/use-cases/UseCaseChat";
 import UseCasePreview from "@/components/use-cases/UseCasePreview";
+import { USE_CASE_TYPES, useCaseTypeLabels, type UseCaseType } from "@/types/use-case";
 
 type Message = {
   role: "user" | "assistant";
@@ -46,17 +45,15 @@ const fetchPrompts = async () => {
   return data;
 };
 
-const useCaseTypes = [
-  { value: "information", label: "Information" },
-  { value: "forwarding", label: "Weiterleitung" },
-  { value: "processing", label: "Bearbeitung" },
-  { value: "knowledge_request", label: "Wissensfrage" },
-];
+const useCaseTypes = Object.entries(useCaseTypeLabels).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 export default function CreateUseCasePage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [customerId, setCustomerId] = useState<string>("");
-  const [type, setType] = useState<string>("");
+  const [type, setType] = useState<UseCaseType | "">("");
   const [chatInput, setChatInput] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingAI, setLoadingAI] = useState(false);
@@ -81,6 +78,7 @@ export default function CreateUseCasePage() {
     try {
       const selectedCustomer = customers.find((c: Customer) => c.id === customerId);
       console.log("Selected customer data:", selectedCustomer);
+      console.log("Selected use case type:", type);
       
       const res = await supabase.functions.invoke("generate-use-case", {
         body: {
@@ -97,7 +95,6 @@ export default function CreateUseCasePage() {
         console.error("Edge function error:", res.error);
         setError(`Fehler: ${res.error.message || "Unbekannter Fehler beim Generieren des Use Cases"}`);
         
-        // Wenn es ein Validierungsfehler ist und wir haben Rohdaten, zeigen wir diese an
         if (res.error.message && res.error.message.includes("Validation") && res.data?.raw_content) {
           setRawResponse(JSON.stringify(res.data.raw_content, null, 2));
           console.log("Raw invalid content:", res.data.raw_content);
