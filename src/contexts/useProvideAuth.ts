@@ -11,33 +11,38 @@ export interface AuthState {
   signOut: () => Promise<void>;
 }
 
-// Verbesserte Funktion zum Abrufen des Benutzerprofils mit detaillierter Fehlerbehandlung
 const fetchUserProfile = async (userId: string) => {
   console.log("Fetching profile for user ID:", userId);
   
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("role, \"Full Name\"")
-    .eq("id", userId)
-    .maybeSingle();
-  
-  if (error) {
-    console.error("Profile fetch error:", {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code
-    });
-    throw new Error(`Profilabruf fehlgeschlagen: ${error.message}`);
+  try {
+    // Einfache Abfrage ohne komplexe Joins, die zu Rekursion führen könnten
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("role, \"Full Name\"")
+      .eq("id", userId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error("Profile fetch error:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw new Error(`Profilabruf fehlgeschlagen: ${error.message}`);
+    }
+    
+    if (!profile) {
+      console.error("No profile found for user ID:", userId);
+      throw new Error("Kein Profil gefunden");
+    }
+    
+    console.log("Profile successfully fetched:", profile);
+    return profile;
+  } catch (error) {
+    console.error("Error in fetchUserProfile:", error);
+    throw error;
   }
-  
-  if (!profile) {
-    console.error("No profile found for user ID:", userId);
-    throw new Error("Kein Profil gefunden");
-  }
-  
-  console.log("Profile successfully fetched:", profile);
-  return profile;
 };
 
 export function useProvideAuth(): AuthState {
@@ -45,7 +50,6 @@ export function useProvideAuth(): AuthState {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
-  // Session laden und Benutzer + Rolle verarbeiten
   useEffect(() => {
     let mounted = true;
     
@@ -65,6 +69,9 @@ export function useProvideAuth(): AuthState {
         
         console.log("Session found for user:", session.user.id);
         
+        // Setze direkt isLoading um Deadlocks zu vermeiden
+        if (mounted) setIsLoading(true);
+        
         try {
           const profile = await fetchUserProfile(session.user.id);
           
@@ -77,6 +84,7 @@ export function useProvideAuth(): AuthState {
               firstName: profile["Full Name"] || undefined,
               lastName: undefined,
             });
+            setIsLoading(false);
           }
         } catch (err) {
           console.error("Failed to fetch profile during initialization:", err);
@@ -90,11 +98,11 @@ export function useProvideAuth(): AuthState {
           await supabase.auth.signOut();
           if (mounted) {
             setUser(null);
+            setIsLoading(false);
           }
         }
       } catch (err) {
         console.error("Auth initialization error:", err);
-      } finally {
         if (mounted) {
           setIsLoading(false);
         }
@@ -115,7 +123,6 @@ export function useProvideAuth(): AuthState {
       setTimeout(async () => {
         if (!mounted) return;
         
-        setIsLoading(true);
         try {
           const profile = await fetchUserProfile(session.user.id);
           
@@ -128,6 +135,7 @@ export function useProvideAuth(): AuthState {
               firstName: profile["Full Name"] || undefined,
               lastName: undefined,
             });
+            setIsLoading(false);
           }
         } catch (err) {
           console.error("Failed to fetch profile during auth state change:", err);
@@ -140,14 +148,13 @@ export function useProvideAuth(): AuthState {
           
           try {
             await supabase.auth.signOut();
+          } catch (signOutErr) {
+            console.error("Error signing out:", signOutErr);
           } finally {
             if (mounted) {
               setUser(null);
+              setIsLoading(false);
             }
-          }
-        } finally {
-          if (mounted) {
-            setIsLoading(false);
           }
         }
       }, 0);
@@ -169,6 +176,9 @@ export function useProvideAuth(): AuthState {
       
       if (error || !data.session?.user) {
         console.error("Sign in error:", error);
+        if (error?.message.includes("Invalid login credentials")) {
+          throw new Error("Falsche E-Mail oder falsches Passwort. Bitte versuche es erneut.");
+        }
         throw error;
       }
       
