@@ -15,7 +15,7 @@ const fetchUserProfile = async (userId: string) => {
   console.log("Fetching profile for user ID:", userId);
   
   try {
-    // Einfache Abfrage ohne komplexe Joins, die zu Rekursion führen könnten
+    // Direkte SQL-Abfrage ohne Rekursion zu verhindern
     const { data: profile, error } = await supabase
       .from("profiles")
       .select("role, \"Full Name\"")
@@ -53,7 +53,7 @@ export function useProvideAuth(): AuthState {
   useEffect(() => {
     let mounted = true;
     
-    const loadSession = async () => {
+    const initializeAuth = async () => {
       try {
         console.log("Initializing auth state...");
         const { data: { session } } = await supabase.auth.getSession();
@@ -68,9 +68,6 @@ export function useProvideAuth(): AuthState {
         }
         
         console.log("Session found for user:", session.user.id);
-        
-        // Setze direkt isLoading um Deadlocks zu vermeiden
-        if (mounted) setIsLoading(true);
         
         try {
           const profile = await fetchUserProfile(session.user.id);
@@ -95,57 +92,6 @@ export function useProvideAuth(): AuthState {
             description: "Dein Profil konnte nicht gefunden werden. Bitte kontaktiere deinen Administrator.",
           });
           
-          await supabase.auth.signOut();
-          if (mounted) {
-            setUser(null);
-            setIsLoading(false);
-          }
-        }
-      } catch (err) {
-        console.error("Auth initialization error:", err);
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    // Auth-Statusänderungslistener von Supabase
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state change event:", event);
-      
-      if (!session?.user) {
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Verwenden von setTimeout, um einen Deadlock im Auth-Listener zu vermeiden
-      setTimeout(async () => {
-        if (!mounted) return;
-        
-        try {
-          const profile = await fetchUserProfile(session.user.id);
-          
-          if (mounted) {
-            setUser({
-              id: session.user.id,
-              email: session.user.email ?? "",
-              role: (profile.role || "client") as UserRole,
-              createdAt: session.user.created_at,
-              firstName: profile["Full Name"] || undefined,
-              lastName: undefined,
-            });
-            setIsLoading(false);
-          }
-        } catch (err) {
-          console.error("Failed to fetch profile during auth state change:", err);
-          
-          toast({
-            variant: "destructive",
-            title: "Profil konnte nicht geladen werden",
-            description: "Dein Profil konnte nicht gefunden werden. Bitte kontaktiere deinen Administrator.",
-          });
-          
           try {
             await supabase.auth.signOut();
           } catch (signOutErr) {
@@ -157,10 +103,71 @@ export function useProvideAuth(): AuthState {
             }
           }
         }
-      }, 0);
-    });
+      } catch (err) {
+        console.error("Auth initialization error:", err);
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
 
-    void loadSession();
+    initializeAuth();
+
+    // Auth-Statusänderungslistener von Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state change event:", event);
+      
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!session?.user) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Einen kleinen Verzögerung einbauen, um eventuelle Race-Conditions zu vermeiden
+        setTimeout(() => {
+          if (!mounted) return;
+          
+          fetchUserProfile(session.user.id)
+            .then(profile => {
+              if (mounted) {
+                setUser({
+                  id: session.user.id,
+                  email: session.user.email ?? "",
+                  role: (profile.role || "client") as UserRole,
+                  createdAt: session.user.created_at,
+                  firstName: profile["Full Name"] || undefined,
+                  lastName: undefined,
+                });
+                setIsLoading(false);
+              }
+            })
+            .catch(err => {
+              console.error("Failed to fetch profile after auth event:", err);
+              
+              toast({
+                variant: "destructive",
+                title: "Profil konnte nicht geladen werden",
+                description: "Dein Profil konnte nicht gefunden werden. Bitte kontaktiere deinen Administrator.",
+              });
+              
+              supabase.auth.signOut()
+                .finally(() => {
+                  if (mounted) {
+                    setUser(null);
+                    setIsLoading(false);
+                  }
+                });
+            });
+        }, 100);
+      }
+    });
 
     return () => {
       mounted = false;
@@ -184,36 +191,13 @@ export function useProvideAuth(): AuthState {
       
       console.log("Authentication successful for user:", data.session.user.id);
       
-      try {
-        const profile = await fetchUserProfile(data.session.user.id);
-        
-        console.log("Profile retrieved successfully:", profile);
-        
-        setUser({
-          id: data.session.user.id,
-          email: data.session.user.email ?? "",
-          role: (profile.role || "client") as UserRole,
-          createdAt: data.session.user.created_at,
-          firstName: profile["Full Name"] || undefined,
-          lastName: undefined,
-        });
-        
-        toast({
-          title: "Login erfolgreich",
-          description: "Willkommen zurück!",
-        });
-      } catch (err: any) {
-        console.error("Failed to fetch profile after sign in:", err);
-        
-        toast({
-          variant: "destructive",
-          title: "Profil fehlt",
-          description: "Es existiert kein Profil für diesen Nutzer. Bitte kontaktiere deinen Administrator.",
-        });
-        
-        await supabase.auth.signOut();
-        throw new Error("Profil fehlt");
-      }
+      // Note: Wir laden das Profil nicht explizit, da der auth state change listener
+      // automatisch das Profil lädt und den Benutzer setzt
+      
+      toast({
+        title: "Login erfolgreich",
+        description: "Willkommen zurück!",
+      });
     } catch (error) {
       console.error("Sign in process failed:", error);
       throw error;

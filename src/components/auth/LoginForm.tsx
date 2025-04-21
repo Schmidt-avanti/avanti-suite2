@@ -42,7 +42,7 @@ const LoginForm = () => {
       if (error.message?.includes('Profil fehlt') || error.message === 'Kein Profil gefunden') {
         setError('Es existiert kein Profil für diesen Nutzer. Bitte kontaktiere deinen Administrator.');
         setInfo('Ein Administrator muss zuerst ein Profil für deinen Account anlegen, bevor du dich anmelden kannst.');
-      } else if (error.message?.includes('Invalid login credentials')) {
+      } else if (error.message?.includes('Invalid login credentials') || error.message?.includes('Falsche E-Mail oder Passwort')) {
         setError('Falsche E-Mail oder Passwort. Bitte versuche es erneut.');
       } else if (typeof error.message === 'string') {
         setError(error.message);
@@ -128,10 +128,10 @@ const LoginForm = () => {
           Nur für autorisierte Nutzer. Bitte kontaktiere deinen Administrator für Zugang.
         </p>
         <div className="text-xs text-center text-gray-500 bg-gray-50 p-2 rounded-md border border-gray-100">
-          <p>Um dich anzumelden, benötigst du:</p>
-          <ul className="list-disc list-inside mt-1">
-            <li>Einen gültigen Benutzeraccount in Supabase</li>
-            <li>Ein zugehöriges Profil in der "profiles" Tabelle</li>
+          <p>Debug-Infos:</p>
+          <ul className="list-disc list-inside mt-1 text-left">
+            <li>E-Mail: matthias.gawlich@gmail.com</li>
+            <li>Passwort: Dein gewähltes Passwort</li>
           </ul>
         </div>
       </CardFooter>
