@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// Load OpenAI API key from environment variable
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
@@ -9,26 +10,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper to construct metadata object for OpenAI
+function prepareMetadata(raw: any) {
+  if (!raw) return {};
+  // Map to unified metadata if desired (flexible for your variable substitution)
+  return {
+    ...raw,
+    industry: raw.industry ?? "", // Branche
+    sw_tasks: raw.taskManagement ?? raw.task_management ?? raw.sw_tasks ?? "",
+    sw_knowledge: raw.knowledgeBase ?? raw.knowledge_base ?? raw.sw_knowledge ?? "",
+    sw_CRM: raw.crm ?? raw.CRM ?? raw.sw_CRM ?? "",
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
   try {
-    const { prompt, metadata, userInput, type } = await req.json();
+    // Required: prompt (instructions), metadata (customer object), userInput, type, [optional]: previous_response_id
+    const { prompt, metadata, userInput, type, previous_response_id } = await req.json();
 
-    // Build responses API payload
-    const payload = {
+    // Strictly use documented parameters ONLY!
+    const payload: Record<string, any> = {
       model: "gpt-4.1",
       instructions: prompt,
       input: userInput,
-      // Add relevant metadata/context as needed to the 'additional_instructions'
-      additional_instructions: [
-        `Kundendaten: ${JSON.stringify(metadata)}`,
-        `Use Case Typ: ${type}`,
-      ],
-      response_format: "json_object",
+      metadata: prepareMetadata({ ...(metadata ?? {}), type }),
+      // type kann bei Bedarf als Teil von metadata übergeben werden!
     };
+    if (previous_response_id) {
+      payload.previous_response_id = previous_response_id;
+    }
 
+    // Call OpenAI Responses API (official per docs)
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -40,12 +55,16 @@ serve(async (req) => {
 
     const data = await response.json();
 
-    // The responses API will always output .choices[0].content as JSON string
+    // OpenAI Responses API: primary result is in data.choices[0].content (usually JSON as string, e.g. { ... })
     let jsonResponse: any = {};
     try {
-      jsonResponse = JSON.parse(data.choices?.[0]?.content || "{}");
+      jsonResponse = JSON.parse(data.choices?.[0]?.content ?? "{}");
     } catch (err) {
-      jsonResponse = { error: "OpenAI Response war kein valides JSON." };
+      jsonResponse = { error: "OpenAI Antwort war kein valides JSON.", raw_content: data.choices?.[0]?.content };
+    }
+    // Pass OpenAI response + (optionally) response_id to the frontend for follow-ups
+    if (data.id) {
+      jsonResponse.response_id = data.id;
     }
 
     return new Response(JSON.stringify(jsonResponse), {
