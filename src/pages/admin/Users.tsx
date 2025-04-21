@@ -30,35 +30,38 @@ const UsersAdminPage: React.FC = () => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      console.log("Starte Benutzerabfrage...");
       
-      if (authError) {
-        throw authError;
-      }
-
+      // Direkt aus der profiles-Tabelle alle Benutzer abrufen
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, role, "Full Name"');
+        .select('id, role, "Full Name", created_at');
 
       if (profilesError) {
+        console.error("Fehler beim Laden der Profile:", profilesError);
         throw profilesError;
       }
 
-      // Kombinieren von Auth-Usern und Profilen
-      const combinedUsers = authUsers.users.map(authUser => {
-        const profile = profiles.find(p => p.id === authUser.id);
-        
+      console.log("Profile geladen:", profiles);
+
+      // Nur falls wir später auch Auth-Details brauchen (optional):
+      // Wir könnten auth.users nicht direkt abfragen, daher verwenden wir
+      // nur die Profildaten für jetzt.
+
+      // Konvertieren der Profile in das erwartete Format
+      const formattedUsers = profiles.map(profile => {
         return {
-          id: authUser.id,
-          email: authUser.email || '',
-          role: (profile?.role || 'client') as UserRole,
-          firstName: profile?.["Full Name"] || undefined,
-          createdAt: authUser.created_at,
-          customers: [] as Customer[], // In Zukunft: echte Kundenzuordnungen aus DB
+          id: profile.id,
+          email: "", // E-Mail können wir nicht direkt bekommen ohne Admin-Rechte
+          role: (profile.role || 'client') as UserRole,
+          firstName: profile["Full Name"] || undefined,
+          createdAt: profile.created_at,
+          customers: [] as Customer[], 
         };
       });
 
-      setUsers(combinedUsers);
+      console.log("Formatierte Benutzer:", formattedUsers);
+      setUsers(formattedUsers);
     } catch (error) {
       console.error('Fehler beim Laden der Benutzer:', error);
       toast({
@@ -83,14 +86,19 @@ const UsersAdminPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.auth.admin.deleteUser(id);
+      // Da wir keine direkten Admin-Rechte haben, löschen wir nur das Profil
+      // Die auth.user würde dadurch nicht automatisch gelöscht
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id);
       
       if (error) throw error;
       
       setUsers(users.filter(user => user.id !== id));
       toast({
         title: "Benutzer gelöscht",
-        description: "Der Benutzer wurde erfolgreich gelöscht.",
+        description: "Das Profil wurde erfolgreich gelöscht.",
       });
     } catch (error) {
       console.error('Fehler beim Löschen des Benutzers:', error);
@@ -126,42 +134,13 @@ const UsersAdminPage: React.FC = () => {
           description: "Der Benutzer wurde erfolgreich aktualisiert.",
         });
       } else {
-        // Neuen Nutzer anlegen
-        const { data, error } = await supabase.auth.admin.inviteUserByEmail(user.email, {
-          data: {
-            role: user.role,
-            name: user.firstName || ''
-          }
+        // Ohne Admin-Rechte können wir keine neuen Benutzer erstellen
+        // Wir müssten stattdessen eine Server-Funktion aufrufen oder Supabase Admin API verwenden
+        toast({
+          variant: "destructive",
+          title: "Nicht implementiert",
+          description: "Das Erstellen neuer Benutzer erfordert Admin-Rechte und muss über eine serverseitige Funktion erfolgen.",
         });
-
-        if (error) throw error;
-
-        if (data.user) {
-          // Profil erstellen
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              role: user.role,
-              "Full Name": user.firstName || ''
-            });
-
-          if (profileError) throw profileError;
-
-          // Aktualisiere lokalen State
-          const newUser = {
-            ...user,
-            id: data.user.id,
-            createdAt: data.user.created_at || new Date().toISOString()
-          };
-          
-          setUsers(prev => [...prev, newUser]);
-
-          toast({
-            title: "Einladung gesendet",
-            description: `Eine Einladung wurde an ${user.email} gesendet.`,
-          });
-        }
       }
     } catch (error: any) {
       console.error('Fehler beim Speichern des Benutzers:', error);
@@ -178,19 +157,12 @@ const UsersAdminPage: React.FC = () => {
 
   const handleResetPassword = async (id: string) => {
     try {
-      const user = users.find(u => u.id === id);
-      if (!user?.email) throw new Error("E-Mail nicht gefunden");
-
-      // Passwort-Reset-Link senden
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-      
-      if (error) throw error;
-      
+      // Passwort-Reset ohne E-Mail ist nicht möglich
+      // Wir müssten die E-Mail kennen oder eine Server-Funktion aufrufen
       toast({
-        title: "Passwort-Reset gesendet",
-        description: `Ein Passwort-Reset-Link wurde an ${user.email} gesendet.`,
+        variant: "destructive",
+        title: "Nicht implementiert",
+        description: "Das Zurücksetzen des Passworts erfordert die E-Mail-Adresse oder eine serverseitige Funktion.",
       });
     } catch (error: any) {
       console.error('Fehler beim Zurücksetzen des Passworts:', error);

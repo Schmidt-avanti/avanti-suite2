@@ -18,7 +18,8 @@ const UserListTable: React.FC<Props> = ({ users, onEdit, onDelete, onResetPasswo
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>E-Mail</TableHead>
+          <TableHead>ID</TableHead>
+          <TableHead>Name</TableHead>
           <TableHead>Rolle</TableHead>
           <TableHead>Zugeordnete Kunden</TableHead>
           <TableHead>Aktionen</TableHead>
@@ -27,7 +28,12 @@ const UserListTable: React.FC<Props> = ({ users, onEdit, onDelete, onResetPasswo
       <TableBody>
         {users.map((user) => (
           <TableRow key={user.id}>
-            <TableCell>{user.email}</TableCell>
+            <TableCell>
+              <span className="text-xs text-gray-500 font-mono">
+                {user.id.substring(0, 8)}...
+              </span>
+            </TableCell>
+            <TableCell>{user.firstName || 'Kein Name'}</TableCell>
             <TableCell>
               <span className="rounded px-2 py-1 bg-avanti-100 text-avanti-800 text-xs font-medium">{user.role}</span>
             </TableCell>
