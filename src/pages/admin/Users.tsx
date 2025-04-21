@@ -32,6 +32,38 @@ const UsersAdminPage: React.FC = () => {
     setDialogOpen(true);
   };
 
+  // Hilfsfunktion zur Speicherung der Kundenzuweisungen
+  const saveCustomerAssignments = async (userId: string, customerIds: string[]) => {
+    try {
+      // Zuerst vorhandene Zuweisungen für den Benutzer löschen
+      const { error: deleteError } = await supabase
+        .from('user_customer_assignments')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (deleteError) throw deleteError;
+      
+      // Keine Zuweisungen hinzufügen, wenn keine Kunden ausgewählt wurden
+      if (customerIds.length === 0) return;
+      
+      // Neue Zuweisungen erstellen
+      const assignments = customerIds.map(customerId => ({
+        user_id: userId,
+        customer_id: customerId
+      }));
+      
+      const { error: insertError } = await supabase
+        .from('user_customer_assignments')
+        .insert(assignments);
+      
+      if (insertError) throw insertError;
+      
+    } catch (error) {
+      console.error("Fehler beim Speichern der Kundenzuweisungen:", error);
+      throw error;
+    }
+  };
+
   const handleSave = async (user: User & { customers: Customer[]; is_active: boolean; name: string }) => {
     try {
       if (user.id) {
@@ -46,6 +78,12 @@ const UsersAdminPage: React.FC = () => {
           .eq('id', user.id);
 
         if (profileError) throw profileError;
+
+        // Kundenzuweisungen aktualisieren
+        await saveCustomerAssignments(
+          user.id, 
+          user.customers.map(c => c.id)
+        );
 
         setUsers(prev =>
           prev.map(u => (u.id === user.id ? { ...u, ...user, firstName: user.name } : u))
@@ -84,6 +122,12 @@ const UsersAdminPage: React.FC = () => {
             });
             
           if (profileError) throw profileError;
+
+          // Kundenzuweisungen für den neuen Benutzer speichern
+          await saveCustomerAssignments(
+            data.user.id, 
+            user.customers.map(c => c.id)
+          );
 
           const newUser: User & { customers: Customer[], is_active: boolean } = {
             id: data.user.id,

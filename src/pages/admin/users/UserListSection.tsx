@@ -33,29 +33,28 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
+      // Profile laden
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, role, "Full Name", created_at, is_active');
       if (profilesError) throw profilesError;
 
-      // Hole optional E-Mail-Adressen aus auth.users (nur für Admins möglich)
+      // E-Mail-Adressen aus auth.users
       const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
-      // Create an email map from auth users data
+      // E-Mail-Map erstellen
       let emailMap: Record<string, string> = {};
       
       if (!authError && authUsers?.users) {
-        // Define the expected shape of a user object from auth.users
+        // Type für Auth-User definieren
         interface AuthUser {
           id: string;
           email?: string;
-          [key: string]: any; // For other properties we don't care about now
+          [key: string]: any;
         }
         
-        // Explicitly cast the users array to the correct type
         const usersArray = authUsers.users as AuthUser[];
         
-        // Now use the typed array in the reduce function
         emailMap = usersArray.reduce((acc: Record<string, string>, user: AuthUser) => {
           if (user && typeof user.id === 'string') {
             acc[user.id] = user.email || '';
@@ -64,18 +63,45 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         }, {} as Record<string, string>);
       }
 
-      // TODO: Laden von Kunden-Zuweisung per echte Daten aus user_customer_assignments
-      const formattedUsers = profiles.map(profile => ({
-        id: profile.id,
-        email: emailMap[profile.id] || "",
-        role: (profile.role || 'client') as UserRole,
-        firstName: profile["Full Name"] || undefined,
-        createdAt: profile.created_at,
-        is_active: profile.is_active ?? true,
-        customers: [],
-      }));
+      // Kundenzuweisungen für alle Benutzer laden
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('user_customer_assignments')
+        .select('user_id, customer_id');
+
+      if (assignmentsError) throw assignmentsError;
+
+      // Zuweisungen nach Benutzer-ID gruppieren
+      const userAssignments: Record<string, string[]> = {};
+      assignments?.forEach(assignment => {
+        if (!userAssignments[assignment.user_id]) {
+          userAssignments[assignment.user_id] = [];
+        }
+        userAssignments[assignment.user_id].push(assignment.customer_id);
+      });
+
+      // Benutzer mit Kundenzuweisungen formatieren
+      const formattedUsers = profiles.map(profile => {
+        // Kunden-IDs für den aktuellen Benutzer abrufen
+        const customerIds = userAssignments[profile.id] || [];
+        // Kundenobjekte für jede ID finden
+        const userCustomers = customers.filter(customer => 
+          customerIds.includes(customer.id)
+        );
+
+        return {
+          id: profile.id,
+          email: emailMap[profile.id] || "",
+          role: (profile.role || 'client') as UserRole,
+          firstName: profile["Full Name"] || undefined,
+          createdAt: profile.created_at,
+          is_active: profile.is_active ?? true,
+          customers: userCustomers,
+        };
+      });
+
       setUsers(formattedUsers);
     } catch (error) {
+      console.error("Fehler beim Laden der Benutzer:", error);
       toast({
         variant: "destructive",
         title: "Fehler",
