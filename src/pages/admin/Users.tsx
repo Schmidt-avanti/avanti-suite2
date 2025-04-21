@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,9 @@ import UserListSection from "./users/UserListSection";
 import UserEditSection from "./users/UserEditSection";
 
 const mockCustomers: Customer[] = [
-  { id: "c1", name: "Acme Corp", createdAt: "" },
-  { id: "c2", name: "Globex GmbH", createdAt: "" },
-  { id: "c3", name: "Widget AG", createdAt: "" },
+  { id: "550e8400-e29b-41d4-a716-446655440000", name: "Acme Corp", createdAt: "" },
+  { id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8", name: "Globex GmbH", createdAt: "" },
+  { id: "6ba7b811-9dad-11d1-80b4-00c04fd430c8", name: "Widget AG", createdAt: "" },
 ];
 
 const UsersAdminPage: React.FC = () => {
