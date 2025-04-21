@@ -1,4 +1,5 @@
 
+import React from 'react';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -33,9 +34,11 @@ const AppSidebar = () => {
     <Sidebar>
       <SidebarContent>
         <div className="p-4">
-          <span className="text-xl md:text-2xl font-bold text-avanti-600">
-            avanti<span className="text-gray-800">task</span>
-          </span>
+          <img 
+            src="/lovable-uploads/724ec514-2826-4aa4-873d-1a8e00465f8f.png" 
+            alt="Avanti Logo" 
+            className="h-8 object-contain" 
+          />
         </div>
         
         <SidebarGroup>
