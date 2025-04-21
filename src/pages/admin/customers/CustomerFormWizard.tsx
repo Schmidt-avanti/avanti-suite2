@@ -162,7 +162,7 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
           .from("customers")
           .update({
             name,
-            branch,
+            branch, // BRANCHE jetzt immer verwenden!
             email,
             street: address.street,
             zip: address.zip,
@@ -183,7 +183,9 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
             ? {
                 ...c,
                 name: data[0].name,
-                description: data[0].branch ?? data[0].description, // keep old if branch not set in DB
+                // Sicherstellen, dass der Kunden-State im FE weiterhin eine description/branch für Anzeige hat
+                description: data[0]?.branch ?? data[0]?.description ?? "",
+                branch: data[0]?.branch ?? data[0]?.description ?? ""
               }
             : c
         ));
@@ -212,7 +214,8 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
         const newCustomers = data.map((customer: any) => ({
           id: customer.id,
           name: customer.name,
-          description: customer.branch ?? customer.description, // keep old if branch not set in DB
+          description: customer.branch ?? customer.description ?? "",
+          branch: customer.branch ?? customer.description ?? "",
           createdAt: customer.created_at,
           isActive: customer.is_active !== false
         }));
@@ -328,3 +331,4 @@ const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers 
 };
 
 export default CustomerFormWizard;
+

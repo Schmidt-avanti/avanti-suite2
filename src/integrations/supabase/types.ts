@@ -87,6 +87,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          branch: string | null
           city: string | null
           created_at: string
           description: string | null
@@ -102,6 +103,7 @@ export type Database = {
           zip: string | null
         }
         Insert: {
+          branch?: string | null
           city?: string | null
           created_at?: string
           description?: string | null
@@ -117,6 +119,7 @@ export type Database = {
           zip?: string | null
         }
         Update: {
+          branch?: string | null
           city?: string | null
           created_at?: string
           description?: string | null
