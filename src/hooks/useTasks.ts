@@ -67,7 +67,7 @@ export const useTasks = (statusFilter: string | null) => {
             status,
             created_at,
             customer:customer_id(id, name),
-            creator:created_by(id, "Full Name")
+            created_by(id, "Full Name")
           `)
           .order('created_at', { ascending: false });
 
@@ -115,7 +115,7 @@ export const useTasks = (statusFilter: string | null) => {
             status: validateTaskStatus(rawTask.status),
             created_at: rawTask.created_at,
             customer: transformCustomer(rawTask.customer),
-            creator: transformCreator(rawTask.creator)
+            creator: transformCreator(rawTask.created_by) // Changed from creator to created_by
           };
         });
         

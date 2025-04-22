@@ -13,6 +13,11 @@ const Tasks = () => {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const { tasks, isLoading } = useTasks(statusFilter);
 
+  // Handler function to convert 'all' to null
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value === 'all' ? null : value);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -20,14 +25,14 @@ const Tasks = () => {
         <div className="flex space-x-2">
           <div className="flex items-center">
             <Select
-              value={statusFilter || ''}
-              onValueChange={(value) => setStatusFilter(value || null)}
+              value={statusFilter || 'all'}
+              onValueChange={handleStatusChange}
             >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status filtern" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Alle Status</SelectItem>
+                <SelectItem value="all">Alle Status</SelectItem>
                 <SelectItem value="pending">Offen</SelectItem>
                 <SelectItem value="in_progress">In Bearbeitung</SelectItem>
                 <SelectItem value="completed">Abgeschlossen</SelectItem>
