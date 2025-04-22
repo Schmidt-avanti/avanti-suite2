@@ -48,7 +48,7 @@ serve(async (req) => {
 
     if (searchError) throw searchError;
 
-    // 3. Use GPT to analyze matches
+    // 3. Use GPT to analyze matches using the correct Responses API format
     const analysisResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
@@ -56,38 +56,30 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1',
-        messages: [
-          {
-            role: 'system',
-            content: `Du bist ein Experte für Use Case Matching bei avanti. 
-            Analysiere die Aufgabenbeschreibung und die möglichen passenden Use Cases.
-            Wähle den am besten passenden Use Case aus und gib eine Begründung.
-            Berücksichtige dabei:
-            - Inhaltliche Übereinstimmung
-            - Prozessähnlichkeit
-            - Benötigte Informationen
-            
-            Antworte im folgenden JSON-Format:
-            {
-              "matched_use_case_id": "ID des best passenden Use Cases",
-              "confidence": 0-100,
-              "reasoning": "Deine Begründung für die Auswahl"
-            }`
-          },
-          {
-            role: 'user',
-            content: `Aufgabenbeschreibung: "${description}"
-            
-            Mögliche Use Cases:
-            ${JSON.stringify(similarUseCases, null, 2)}`
-          }
-        ]
+        instructions: `Du bist ein Experte für Use Case Matching bei avanti. 
+        Analysiere die Aufgabenbeschreibung und die möglichen passenden Use Cases.
+        Wähle den am besten passenden Use Case aus und gib eine Begründung.
+        Berücksichtige dabei:
+        - Inhaltliche Übereinstimmung
+        - Prozessähnlichkeit
+        - Benötigte Informationen
+        
+        Antworte im folgenden JSON-Format:
+        {
+          "matched_use_case_id": "ID des best passenden Use Cases",
+          "confidence": 0-100,
+          "reasoning": "Deine Begründung für die Auswahl"
+        }`,
+        input: `Aufgabenbeschreibung: "${description}"
+        
+        Mögliche Use Cases:
+        ${JSON.stringify(similarUseCases, null, 2)}`,
+        previous_response_id: null // For initial call, would be populated in a dialog context
       })
     });
 
     const analysisData = await analysisResponse.json();
-    const analysis = JSON.parse(analysisData.choices[0].message.content);
+    const analysis = JSON.parse(analysisData.response);
 
     return new Response(JSON.stringify(analysis), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

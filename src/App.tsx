@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -31,6 +30,7 @@ import ClientDashboard from "@/pages/customer/Dashboard";
 
 // Task Pages
 import CreateTask from "@/pages/tasks/CreateTask";
+import Tasks from '@/pages/tasks/Tasks';
 
 // Public Pages
 import Landing from "@/pages/Landing";
@@ -162,6 +162,14 @@ const App = () => {
                 />
 
                 {/* Add new task routes */}
+                <Route
+                  path="/tasks"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                      <Tasks />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/tasks/create"
                   element={
