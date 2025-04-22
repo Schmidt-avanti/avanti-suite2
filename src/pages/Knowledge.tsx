@@ -43,12 +43,12 @@ const Knowledge = () => {
   });
 
   return (
-    <div className="content-container section-spacing">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="flex items-center justify-between mb-6">
         <h1>Wissen</h1>
       </div>
 
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Wissensdatenbank</CardTitle>
@@ -94,4 +94,3 @@ const Knowledge = () => {
 };
 
 export default Knowledge;
-
