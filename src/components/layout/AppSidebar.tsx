@@ -1,20 +1,28 @@
 
-import { LogOut } from 'lucide-react';
+import {
+  LayoutDashboard,
+  MessageSquare,
+  Users,
+  BarChart3,
+  Settings,
+  LogOut,
+  Building2
+} from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
   SidebarMenu,
-  SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { SidebarNavGroup } from './sidebar/SidebarNavGroup';
-import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation';
 
 const AppSidebar = () => {
   const { user, signOut } = useAuth();
-  const { navigationItems, adminItems } = useSidebarNavigation();
   
   if (!user) return null;
 
@@ -29,10 +37,114 @@ const AppSidebar = () => {
           />
         </div>
         
-        <SidebarNavGroup items={navigationItems} />
-        
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink 
+                    to="/dashboard" 
+                    className={({ isActive }) => 
+                      `flex items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/10 ${
+                        isActive ? 'bg-white/10' : ''
+                      }`
+                    }
+                  >
+                    <LayoutDashboard className="mr-3 h-4 w-4" />
+                    <span>Dashboard</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink 
+                    to="/tasks" 
+                    className={({ isActive }) => 
+                      `flex items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/10 ${
+                        isActive ? 'bg-white/10' : ''
+                      }`
+                    }
+                  >
+                    <MessageSquare className="mr-3 h-4 w-4" />
+                    <span>Aufgaben</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink 
+                    to="/clients" 
+                    className={({ isActive }) => 
+                      `flex items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/10 ${
+                        isActive ? 'bg-white/10' : ''
+                      }`
+                    }
+                  >
+                    <Building2 className="mr-3 h-4 w-4" />
+                    <span>Kunden</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink 
+                    to="/analytics" 
+                    className={({ isActive }) => 
+                      `flex items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/10 ${
+                        isActive ? 'bg-white/10' : ''
+                      }`
+                    }
+                  >
+                    <BarChart3 className="mr-3 h-4 w-4" />
+                    <span>Analytics</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         {user.role === 'admin' && (
-          <SidebarNavGroup items={adminItems} />
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to="/admin/users" 
+                      className={({ isActive }) => 
+                        `flex items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/10 ${
+                          isActive ? 'bg-white/10' : ''
+                        }`
+                      }
+                    >
+                      <Users className="mr-3 h-4 w-4" />
+                      <span>Users</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to="/settings" 
+                      className={({ isActive }) => 
+                        `flex items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/10 ${
+                          isActive ? 'bg-white/10' : ''
+                        }`
+                      }
+                    >
+                      <Settings className="mr-3 h-4 w-4" />
+                      <span>Settings</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         )}
       </SidebarContent>
 
