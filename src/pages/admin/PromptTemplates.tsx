@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ const useCaseTypesArray = Object.entries(USE_CASE_TYPES).map(([_, value]) => ({
 
 export default function PromptTemplatesPage() {
   const queryClient = useQueryClient();
+  
   const { data = [], isLoading } = useQuery({
     queryKey: ["prompt_templates"],
     queryFn: async () => {
@@ -46,6 +47,16 @@ export default function PromptTemplatesPage() {
     const t = data.find((tpl: any) => tpl.id === templateId);
     if (t) setNewTemplate({ name: t.name, type: t.type, content: t.content });
   }, [templateId, data]);
+
+  const handleTypeChange = useCallback((value: string) => {
+    setNewTemplate(prev => ({ 
+      ...prev, 
+      type: value,
+      content: value === USE_CASE_TYPES.KNOWLEDGE_ARTICLE 
+        ? `Berücksichtige folgenden Kundenkontext:\n{{customer_context}}\n\nErstelle einen Wissensartikel...`
+        : prev.content
+    }));
+  }, []);
 
   const { mutateAsync, status } = useMutation({
     mutationFn: async (template: typeof newTemplate) => {
@@ -113,15 +124,7 @@ export default function PromptTemplatesPage() {
           <div>
             <Select
               value={newTemplate.type}
-              onValueChange={(val: string) => {
-                setNewTemplate(prev => ({ 
-                  ...prev, 
-                  type: val,
-                  content: val === USE_CASE_TYPES.KNOWLEDGE_ARTICLE 
-                    ? `Berücksichtige folgenden Kundenkontext:\n{{customer_context}}\n\nErstelle einen Wissensartikel...`
-                    : prev.content
-                }));
-              }}
+              onValueChange={handleTypeChange}
               disabled={templateId !== null}
             >
               <SelectTrigger className="w-full">
