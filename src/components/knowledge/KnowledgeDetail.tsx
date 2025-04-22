@@ -6,11 +6,22 @@ import { ChevronLeft } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { KnowledgeArticle } from '@/types/use-case';
 
 interface KnowledgeDetailProps {
   id: string;
   type: 'articles' | 'cases';
   onBack: () => void;
+}
+
+// Define types for use cases
+interface UseCase {
+  id: string;
+  title: string;
+  information_needed?: string | null;
+  expected_result?: string | null;
+  steps?: string | null;
+  created_at: string;
 }
 
 const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) => {
@@ -54,27 +65,29 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
         </p>
         
         {type === 'articles' ? (
+          // For knowledge articles
           <div className="prose prose-gray max-w-none">
-            {item.content}
+            {(item as KnowledgeArticle).content}
           </div>
         ) : (
+          // For use cases
           <div className="space-y-6">
-            {item.information_needed && (
+            {(item as UseCase).information_needed && (
               <div>
                 <h3 className="text-lg font-medium mb-2">Benötigte Informationen</h3>
-                <p className="whitespace-pre-wrap">{item.information_needed}</p>
+                <p className="whitespace-pre-wrap">{(item as UseCase).information_needed}</p>
               </div>
             )}
-            {item.expected_result && (
+            {(item as UseCase).expected_result && (
               <div>
                 <h3 className="text-lg font-medium mb-2">Erwartetes Ergebnis</h3>
-                <p className="whitespace-pre-wrap">{item.expected_result}</p>
+                <p className="whitespace-pre-wrap">{(item as UseCase).expected_result}</p>
               </div>
             )}
-            {item.steps && (
+            {(item as UseCase).steps && (
               <div>
                 <h3 className="text-lg font-medium mb-2">Schritte</h3>
-                <p className="whitespace-pre-wrap">{item.steps}</p>
+                <p className="whitespace-pre-wrap">{(item as UseCase).steps}</p>
               </div>
             )}
           </div>
