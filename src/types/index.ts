@@ -27,16 +27,20 @@ export interface UserCustomerAssignment {
   createdAt: string;
 }
 
+export interface TaskCreator {
+  id?: string;
+  "Full Name"?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description?: string;
-  status: 'pending' | 'inProgress' | 'review' | 'completed';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  customerId: string;
-  assignedToId?: string;
-  createdById: string;
-  dueDate?: string;
-  createdAt: string;
-  updatedAt: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  customer?: { name: string; id?: string };
+  creator?: TaskCreator | null;
+  created_at: string;
+  customer_id?: string;
+  created_by?: string;
 }
+

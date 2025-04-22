@@ -19,7 +19,7 @@ export const useTasks = (statusFilter: string | null) => {
             title,
             status,
             created_at,
-            customer:customer_id(name),
+            customer:customer_id(id, name),
             creator:created_by(*)
           `)
           .order('created_at', { ascending: false });
@@ -54,9 +54,11 @@ export const useTasks = (statusFilter: string | null) => {
 
         if (error) throw error;
         
+        // Transform the data to match our Task interface
         const transformedData = data?.map(task => {
-          const creatorData = typeof task.creator === 'object' && task.creator !== null && !('error' in task.creator) 
-            ? task.creator 
+          // Process the creator data safely
+          const creatorData = task.creator && typeof task.creator === 'object' && !('error' in task.creator)
+            ? task.creator
             : null;
             
           return {
@@ -66,10 +68,10 @@ export const useTasks = (statusFilter: string | null) => {
             created_at: task.created_at,
             customer: task.customer,
             creator: creatorData
-          };
+          } as Task;
         }) || [];
         
-        setTasks(transformedData as Task[]);
+        setTasks(transformedData);
       } catch (error) {
         console.error('Error fetching tasks:', error);
       } finally {
