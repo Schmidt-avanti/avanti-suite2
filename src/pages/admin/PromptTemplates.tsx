@@ -49,7 +49,7 @@ export default function PromptTemplatesPage() {
     if (t) setNewTemplate({ name: t.name, type: t.type, content: t.content });
   }, [templateId, data]);
 
-  const handleTypeChange: SelectPrimitive.SelectProps['onValueChange'] = useCallback((value) => {
+  const handleTypeChange = useCallback<SelectPrimitive.SelectProps["onValueChange"]>((value) => {
     setNewTemplate(prev => ({ 
       ...prev, 
       type: value,
