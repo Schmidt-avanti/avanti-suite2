@@ -1,132 +1,124 @@
-
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { 
+import { Input } from "@/components/ui/input";
+import {
   Table,
-  TableHeader,
   TableBody,
+  TableCell,
   TableHead,
+  TableHeader,
   TableRow,
-  TableCell
 } from "@/components/ui/table";
-import { useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { useCaseTypeLabels } from "@/types/use-case";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, FileText } from "lucide-react";
+import { Edit, Plus, Trash } from "lucide-react";
+import { toast } from "sonner";
+import { UseCaseEditDialog } from "@/components/use-cases/UseCaseEditDialog";
+import { UpdateEmbeddingsButton } from "@/components/use-cases/UpdateEmbeddingsButton";
 
-export default function UseCasesPage() {
-  const { data, isLoading, error } = useQuery({
+export default function UseCases() {
+  const [open, setOpen] = React.useState(false);
+  const [selectedUseCase, setSelectedUseCase] = React.useState(null);
+  const queryClient = useQueryClient();
+
+  const { data: useCases = [], isLoading } = useQuery({
     queryKey: ["use_cases"],
     queryFn: async () => {
-      const { data: useCases, error: useCasesError } = await supabase
+      const { data, error } = await supabase
         .from("use_cases")
-        .select(`
-          id, 
-          title, 
-          type, 
-          created_at, 
-          is_active,
-          knowledge_articles (
-            id
-          )
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
-      
-      if (useCasesError) throw useCasesError;
-      return useCases;
+      if (error) throw error;
+      return data;
     },
   });
-  const navigate = useNavigate();
+
+  const { mutateAsync: deleteUseCase } = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("use_cases").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["use_cases"] });
+      toast.success("Use Case erfolgreich gelöscht");
+    },
+    onError: (error) => {
+      toast.error(`Fehler: ${error.message}`);
+    },
+  });
 
   return (
-    <div className="section-spacing">
-      <Card className="shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between pb-4">
-          <CardTitle className="text-2xl">Use Cases</CardTitle>
-          <Button 
-            onClick={() => navigate("/admin/use-cases/create")}
-            size="sm"
-            className="bg-avanti-500 hover:bg-avanti-600"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Neuen Use Case anlegen</span>
+    <div className="container mx-auto py-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Use Cases</h1>
+        <div className="flex gap-4">
+          <UpdateEmbeddingsButton />
+          <Button asChild>
+            <Link to="/admin/use-cases/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Neu erstellen
+            </Link>
           </Button>
-        </CardHeader>
-
-        <CardContent>
-          {isLoading && (
-            <div className="text-center py-6 text-muted-foreground">
-              Lade Daten…
-            </div>
+        </div>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Titel</TableHead>
+            <TableHead>Typ</TableHead>
+            <TableHead className="text-right">Aktionen</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isLoading ? (
+            <TableRow>
+              <TableCell colSpan={3} className="text-center">
+                Loading...
+              </TableCell>
+            </TableRow>
+          ) : useCases.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={3} className="text-center">
+                Keine Use Cases gefunden.
+              </TableCell>
+            </TableRow>
+          ) : (
+            useCases.map((useCase) => (
+              <TableRow key={useCase.id}>
+                <TableCell>{useCase.title}</TableCell>
+                <TableCell>{useCase.type}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedUseCase(useCase);
+                      setOpen(true);
+                    }}
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Bearbeiten
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteUseCase(useCase.id)}
+                  >
+                    <Trash className="mr-2 h-4 w-4" />
+                    Löschen
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))
           )}
-          
-          {error && (
-            <div className="text-center py-6 text-red-500">
-              Fehler: {(error as any).message}
-            </div>
-          )}
-
-          {data && (
-            <div className="rounded-lg border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30">
-                    <TableHead className="font-medium text-foreground">Titel</TableHead>
-                    <TableHead className="font-medium text-foreground">Typ</TableHead>
-                    <TableHead className="font-medium text-foreground">Status</TableHead>
-                    <TableHead className="font-medium text-foreground">Wissensartikel</TableHead>
-                    <TableHead className="font-medium text-foreground">Erstellt am</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.map((uc: any) => (
-                    <TableRow 
-                      key={uc.id}
-                      className="cursor-pointer hover:bg-gray-50 group"
-                      onClick={() => navigate(`/admin/use-cases/${uc.id}`)}
-                    >
-                      <TableCell className="font-medium group-hover:text-primary transition-colors">{uc.title}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="font-normal">
-                          {useCaseTypeLabels[uc.type]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-block w-2 h-2 rounded-full ${uc.is_active ? "bg-green-500" : "bg-gray-300"}`} />
-                          <span>{uc.is_active ? "Aktiv" : "Inaktiv"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {uc.knowledge_articles?.length > 0 ? (
-                          <div className="flex items-center gap-2 text-green-600">
-                            <FileText className="h-4 w-4" />
-                            <span>Vorhanden</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">Nicht vorhanden</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(uc.created_at).toLocaleString("de-DE", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </TableBody>
+      </Table>
+      <UseCaseEditDialog
+        open={open}
+        onOpenChange={setOpen}
+        useCase={selectedUseCase}
+      />
     </div>
   );
 }
