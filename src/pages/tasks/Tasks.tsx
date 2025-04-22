@@ -7,15 +7,17 @@ import { PlusIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TasksTable } from '@/components/tasks/TasksTable';
 import { useTasks } from '@/hooks/useTasks';
+import type { TaskStatus } from '@/types';
 
 const Tasks = () => {
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const { tasks, isLoading } = useTasks(statusFilter);
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | null>(null);
+  // Holen nur die aktiven (nicht abgeschlossenen) Aufgaben
+  const { tasks, isLoading } = useTasks(statusFilter, false);
 
-  // Handler function to convert 'all' to null
+  // Handler function für den Status-Filter
   const handleStatusChange = (value: string) => {
-    setStatusFilter(value === 'all' ? null : value);
+    setStatusFilter(value === 'all' ? null : value as TaskStatus);
   };
 
   return (
@@ -36,7 +38,6 @@ const Tasks = () => {
                 <SelectItem value="new">Neu</SelectItem>
                 <SelectItem value="in_progress">In Bearbeitung</SelectItem>
                 <SelectItem value="followup">Auf Wiedervorlage</SelectItem>
-                <SelectItem value="completed">Abgeschlossen</SelectItem>
               </SelectContent>
             </Select>
           </div>

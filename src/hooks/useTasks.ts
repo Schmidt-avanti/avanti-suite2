@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Task, TaskStatus, SupabaseTaskResponse, TaskCreator } from '@/types';
+import type { Task, TaskStatus, SupabaseTaskResponse } from '@/types';
 
 // Helper function to validate task status
 const validateTaskStatus = (status: string): TaskStatus => {
@@ -51,7 +50,7 @@ const transformCustomer = (customerData: any) => {
 };
 
 // Main hook for fetching and transforming tasks
-export const useTasks = (statusFilter: string | null) => {
+export const useTasks = (statusFilter: string | null, includeCompleted: boolean = true) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,8 +70,15 @@ export const useTasks = (statusFilter: string | null) => {
           `)
           .order('created_at', { ascending: false });
 
+        // Filter basierend auf Status
         if (statusFilter) {
           query = query.eq('status', statusFilter);
+        } else if (!includeCompleted) {
+          // Wenn includeCompleted false ist, alle Status außer 'completed' anzeigen
+          query = query.neq('status', 'completed');
+        } else if (includeCompleted === true) {
+          // Wenn explizit nur completed Tasks angefordert werden
+          query = query.eq('status', 'completed');
         }
 
         if (user?.role === 'agent') {
@@ -115,7 +121,7 @@ export const useTasks = (statusFilter: string | null) => {
             status: validateTaskStatus(rawTask.status),
             created_at: rawTask.created_at,
             customer: transformCustomer(rawTask.customer),
-            creator: transformCreator(rawTask.created_by) // Changed from creator to created_by
+            creator: transformCreator(rawTask.created_by)
           };
         });
         
@@ -128,7 +134,7 @@ export const useTasks = (statusFilter: string | null) => {
     };
 
     fetchTasks();
-  }, [user, statusFilter]);
+  }, [user, statusFilter, includeCompleted]);
 
   return { tasks, isLoading };
 };

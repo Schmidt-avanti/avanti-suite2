@@ -56,13 +56,24 @@ const AppSidebar = () => {
               </SidebarMenuItem>
               
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton>
                   <NavLink 
                     to="/tasks" 
                     className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
                   >
                     <ClipboardList className="mr-3 h-5 w-5" />
                     <span>Aufgaben</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              <SidebarMenuItem className="ml-6">
+                <SidebarMenuButton>
+                  <NavLink 
+                    to="/tasks/completed" 
+                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                  >
+                    <span>Abgeschlossen</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
