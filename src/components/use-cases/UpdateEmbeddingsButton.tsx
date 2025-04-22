@@ -5,21 +5,25 @@ import { toast } from "sonner";
 import { Loader2, Database } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-export function UpdateEmbeddingsButton({ useCaseId }: { useCaseId: string }) {
+export function UpdateEmbeddingsButton({ useCaseId }: { useCaseId?: string }) {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const handleUpdateEmbeddings = async () => {
     setIsUpdating(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-embeddings', {
-        body: JSON.stringify({ useCaseIds: [useCaseId] })
+        body: JSON.stringify({ useCaseIds: useCaseId ? [useCaseId] : undefined })
       });
       
       if (error) throw error;
 
-      toast.success("Embedding erfolgreich aktualisiert", {
+      toast.success(useCaseId 
+        ? "Embedding erfolgreich aktualisiert" 
+        : "Embeddings erfolgreich aktualisiert", {
         description: data.processed?.length 
-          ? `Use Case mit ID ${useCaseId} aktualisiert` 
+          ? useCaseId 
+            ? `Use Case mit ID ${useCaseId} aktualisiert` 
+            : `${data.processed.length} Use Cases aktualisiert`
           : "Keine Aktualisierung erforderlich"
       });
     } catch (error: any) {
@@ -46,7 +50,7 @@ export function UpdateEmbeddingsButton({ useCaseId }: { useCaseId: string }) {
       ) : (
         <>
           <Database className="mr-2 h-4 w-4" />
-          Embedding erneuern
+          {useCaseId ? "Embedding erneuern" : "Embeddings aktualisieren"}
         </>
       )}
     </Button>

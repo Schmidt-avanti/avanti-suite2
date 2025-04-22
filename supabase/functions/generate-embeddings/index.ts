@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
@@ -19,26 +18,43 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    console.log('Starting embedding generation for use cases...');
-
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Fetch all use cases without embeddings, excluding knowledge articles
-    const { data: useCases, error: fetchError } = await supabase
+    // Parse request to get use case IDs if provided
+    let useCaseIds: string[] | undefined;
+    if (req.headers.get('content-type')?.includes('application/json')) {
+      const requestData = await req.json();
+      useCaseIds = requestData.useCaseIds;
+    }
+    
+    console.log(`Starting embedding generation for use cases${useCaseIds ? ' with specific IDs' : ''}`);
+    
+    // Build query for use cases
+    let query = supabase
       .from('use_cases')
       .select('id, title, type, information_needed, steps')
       .neq('type', 'knowledge_article')
-      .is('embedding', null)
       .eq('is_active', true);
+    
+    // If specific IDs are provided, filter by those IDs
+    if (useCaseIds && useCaseIds.length > 0) {
+      query = query.in('id', useCaseIds);
+    } else {
+      // Otherwise, only get cases without embeddings
+      query = query.is('embedding', null);
+    }
+    
+    // Execute the query
+    const { data: useCases, error: fetchError } = await query;
 
     if (fetchError) throw fetchError;
 
-    console.log(`Found ${useCases?.length || 0} use cases without embeddings`);
+    console.log(`Found ${useCases?.length || 0} use cases to process`);
 
     if (!useCases || useCases.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No use cases found needing embeddings' }),
+        JSON.stringify({ message: 'No use cases found needing embeddings', processed: [] }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
