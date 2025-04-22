@@ -3,7 +3,6 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { FileText, Book } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import KnowledgeList from '@/components/knowledge/KnowledgeList';
@@ -44,9 +43,9 @@ const Knowledge = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="content-container section-spacing">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight">Wissen</h1>
+        <h1>Wissen</h1>
       </div>
 
       <Card>
@@ -95,3 +94,4 @@ const Knowledge = () => {
 };
 
 export default Knowledge;
+
