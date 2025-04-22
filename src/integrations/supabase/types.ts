@@ -398,6 +398,7 @@ export type Database = {
           title: string
           type: string | null
           typical_activities: string | null
+          updated_at: string | null
         }
         Insert: {
           chat_response?: Json | null
@@ -416,6 +417,7 @@ export type Database = {
           title: string
           type?: string | null
           typical_activities?: string | null
+          updated_at?: string | null
         }
         Update: {
           chat_response?: Json | null
@@ -434,6 +436,7 @@ export type Database = {
           title?: string
           type?: string | null
           typical_activities?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -549,6 +552,21 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: string
+      }
+      match_similar_use_cases: {
+        Args: {
+          query_embedding: string
+          match_threshold: number
+          match_count: number
+        }
+        Returns: {
+          id: string
+          title: string
+          type: string
+          information_needed: string
+          steps: string
+          similarity: number
+        }[]
       }
       sparsevec_out: {
         Args: { "": unknown }

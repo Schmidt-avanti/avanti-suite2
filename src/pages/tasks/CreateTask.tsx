@@ -1,19 +1,18 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormControl, FormField, FormItem, FormLabel, Form } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Loader2 } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useTaskActivity } from '@/hooks/useTaskActivity';
+import { CreateTaskDescription } from '@/components/tasks/CreateTaskDescription';
 
 const taskFormSchema = z.object({
   description: z.string().min(10, "Beschreibung muss mindestens 10 Zeichen lang sein"),
@@ -43,9 +42,6 @@ const CreateTask = () => {
     
     setIsMatching(true);
     try {
-      // Determine which customer ID to use
-      let customerIdToUse: string = values.customerId;
-
       // Match use case
       const { data: matchResult, error: matchError } = await supabase.functions
         .invoke('match-use-case', {
@@ -61,7 +57,7 @@ const CreateTask = () => {
           description: values.description,
           title: values.description.split('\n')[0].slice(0, 100),
           created_by: user.id,
-          customer_id: customerIdToUse,
+          customer_id: values.customerId,
           matched_use_case_id: matchResult?.matched_use_case_id,
           match_confidence: matchResult?.confidence,
           match_reasoning: matchResult?.reasoning,
@@ -83,14 +79,7 @@ const CreateTask = () => {
         });
 
       // Log task creation activity
-      await supabase
-        .from('task_activities')
-        .insert({
-          task_id: task.id,
-          action: 'create',
-          status_to: 'new',
-          user_id: user.id,
-        });
+      await logTaskOpen(task.id);
 
       toast({
         title: "Aufgabe erstellt",
@@ -158,29 +147,15 @@ const CreateTask = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Beschreibung</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder="Beschreiben Sie die Aufgabe..."
-                        className="min-h-[200px] resize-y"
-                      />
-                    </FormControl>
+                    <CreateTaskDescription
+                      description={field.value}
+                      onDescriptionChange={field.onChange}
+                      onSubmit={form.handleSubmit(onSubmit)}
+                      isMatching={isMatching}
+                    />
                   </FormItem>
                 )}
               />
-              
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isMatching}>
-                  {isMatching ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Analysiere...
-                    </>
-                  ) : (
-                    "Aufgabe erstellen"
-                  )}
-                </Button>
-              </div>
             </form>
           </Form>
         </CardContent>

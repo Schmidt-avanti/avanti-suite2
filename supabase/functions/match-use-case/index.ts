@@ -1,12 +1,7 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
-import { encode } from 'https://deno.land/std@0.218.0/encoding/base64.ts';
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,8 +14,18 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { description } = await req.json();
+
+    if (!description) {
+      throw new Error('Description is required');
+    }
+
+    // Initialize OpenAI API
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    console.log('Generating embedding for description:', description.substring(0, 100) + '...');
 
     // 1. Generate embedding for the task description
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
@@ -38,7 +43,9 @@ serve(async (req) => {
     const embeddingData = await embeddingResponse.json();
     const embedding = embeddingData.data[0].embedding;
 
-    // 2. Find similar use cases using vector similarity
+    // 2. Find similar use cases using our new database function
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
     const { data: similarUseCases, error: searchError } = await supabase
       .rpc('match_similar_use_cases', {
         query_embedding: embedding,
@@ -48,7 +55,9 @@ serve(async (req) => {
 
     if (searchError) throw searchError;
 
-    // 3. Use GPT to analyze matches using the correct Responses API format
+    console.log('Found similar use cases:', similarUseCases?.length || 0);
+
+    // 3. Use GPT to analyze matches
     const analysisResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
@@ -56,9 +65,14 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        instructions: `Du bist ein Experte für Use Case Matching bei avanti. 
-        Analysiere die Aufgabenbeschreibung und die möglichen passenden Use Cases.
+        instructions: `Als Experte für Use Case Matching bei avanti, analysiere bitte diese Aufgabenbeschreibung und die möglichen passenden Use Cases.
         Wähle den am besten passenden Use Case aus und gib eine Begründung.
+        
+        Die Use Case Typen sind:
+        - information_request: Eine reine Informationsanfrage
+        - forwarding_use_case: Ein Anliegen, das weitergeleitet werden muss
+        - direct_use_case: Ein Anliegen, das direkt bearbeitet werden kann
+
         Berücksichtige dabei:
         - Inhaltliche Übereinstimmung
         - Prozessähnlichkeit
@@ -74,12 +88,17 @@ serve(async (req) => {
         
         Mögliche Use Cases:
         ${JSON.stringify(similarUseCases, null, 2)}`,
-        previous_response_id: null // For initial call, would be populated in a dialog context
+        previous_response_id: null
       })
     });
 
     const analysisData = await analysisResponse.json();
     const analysis = JSON.parse(analysisData.response);
+    
+    console.log('Analysis completed:', {
+      matched_id: analysis.matched_use_case_id,
+      confidence: analysis.confidence
+    });
 
     return new Response(JSON.stringify(analysis), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
