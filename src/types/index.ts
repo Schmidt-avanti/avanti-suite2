@@ -32,7 +32,7 @@ export interface TaskCreator {
   "Full Name": string;
 }
 
-export type TaskStatus = 'pending' | 'in_progress' | 'completed';
+export type TaskStatus = 'new' | 'in_progress' | 'followup' | 'completed';
 
 // Interface for the raw data received from Supabase
 export interface SupabaseTaskResponse {
@@ -60,4 +60,14 @@ export interface Task {
     name: string;
   };
   creator?: TaskCreator | null;
+}
+
+export interface TaskActivity {
+  id: string;
+  task_id: string;
+  action: 'create' | 'open' | 'close' | 'status_change';
+  status_from?: TaskStatus;
+  status_to?: TaskStatus;
+  timestamp: string;
+  user_id: string;
 }

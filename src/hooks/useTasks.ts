@@ -6,14 +6,14 @@ import type { Task, TaskStatus, SupabaseTaskResponse, TaskCreator } from '@/type
 
 // Helper function to validate task status
 const validateTaskStatus = (status: string): TaskStatus => {
-  const validStatuses: TaskStatus[] = ['pending', 'in_progress', 'completed'];
+  const validStatuses: TaskStatus[] = ['new', 'in_progress', 'followup', 'completed'];
   
   if (validStatuses.includes(status as TaskStatus)) {
     return status as TaskStatus;
   }
   
-  console.warn(`Invalid task status: "${status}", defaulting to "pending"`);
-  return 'pending';
+  console.warn(`Invalid task status: "${status}", defaulting to "new"`);
+  return 'new';
 };
 
 // Helper function to safely transform creator data

@@ -33,8 +33,9 @@ const Tasks = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alle Status</SelectItem>
-                <SelectItem value="pending">Offen</SelectItem>
+                <SelectItem value="new">Neu</SelectItem>
                 <SelectItem value="in_progress">In Bearbeitung</SelectItem>
+                <SelectItem value="followup">Auf Wiedervorlage</SelectItem>
                 <SelectItem value="completed">Abgeschlossen</SelectItem>
               </SelectContent>
             </Select>
