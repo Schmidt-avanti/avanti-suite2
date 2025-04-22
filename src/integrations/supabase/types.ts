@@ -247,6 +247,101 @@ export type Database = {
         }
         Relationships: []
       }
+      task_messages: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          role: string
+          task_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role: string
+          task_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          description: string
+          id: string
+          match_confidence: number | null
+          match_reasoning: string | null
+          matched_use_case_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by: string
+          customer_id: string
+          description: string
+          id?: string
+          match_confidence?: number | null
+          match_reasoning?: string | null
+          matched_use_case_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          description?: string
+          id?: string
+          match_confidence?: number | null
+          match_reasoning?: string | null
+          matched_use_case_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_matched_use_case_id_fkey"
+            columns: ["matched_use_case_id"]
+            isOneToOne: false
+            referencedRelation: "use_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       use_cases: {
         Row: {
           chat_response: Json | null
@@ -254,6 +349,7 @@ export type Database = {
           created_by: string | null
           customer_id: string | null
           decision_logic: Json[] | null
+          embedding: string | null
           expected_result: string | null
           id: string
           information_needed: string | null
@@ -271,6 +367,7 @@ export type Database = {
           created_by?: string | null
           customer_id?: string | null
           decision_logic?: Json[] | null
+          embedding?: string | null
           expected_result?: string | null
           id?: string
           information_needed?: string | null
@@ -288,6 +385,7 @@ export type Database = {
           created_by?: string | null
           customer_id?: string | null
           decision_logic?: Json[] | null
+          embedding?: string | null
           expected_result?: string | null
           id?: string
           information_needed?: string | null
@@ -350,9 +448,105 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
+      generate_embedding: {
+        Args: { input_text: string }
+        Returns: string
+      }
       get_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: string
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
     }
     Enums: {

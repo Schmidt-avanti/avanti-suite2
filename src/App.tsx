@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -38,7 +37,7 @@ import KnowledgeArticleEdit from '@/components/knowledge/KnowledgeArticleEdit';
 
 const queryClient = new QueryClient();
 
-export default function App() {
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -158,6 +157,16 @@ export default function App() {
                   }
                 />
 
+                {/* Add new task routes */}
+                <Route
+                  path="/tasks/create"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
+                      <CreateTask />
+                    </ProtectedRoute>
+                  }
+                />
+
                 {/* Catch-all for unauthorized */}
                 <Route path="*" element={<NotFound />} />
               </Route>
@@ -167,4 +176,6 @@ export default function App() {
       </TooltipProvider>
     </QueryClientProvider>
   );
-}
+};
+
+export default App;
