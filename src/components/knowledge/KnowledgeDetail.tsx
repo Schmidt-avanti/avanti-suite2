@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,7 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
     return <div className="text-center py-4">Eintrag nicht gefunden</div>;
   }
 
-  const canEdit = user?.role === 'admin' || user?.role === 'customer';
+  const canEdit = user?.role === 'admin' || user?.role === 'client';
 
   const formatKnowledgeArticle = (content: string) => {
     const formattedContent = content
@@ -137,6 +138,6 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
       </div>
     </div>
   );
-};
+}
 
 export default KnowledgeDetail;

@@ -32,13 +32,17 @@ export default function KnowledgeArticleEdit() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+  });
+
+  // Use a separate effect to set form data when article is loaded
+  React.useEffect(() => {
+    if (article) {
       setFormData({
-        title: data.title,
-        content: data.content
+        title: article.title,
+        content: article.content
       });
     }
-  });
+  }, [article]);
 
   const mutation = useMutation({
     mutationFn: async (values: typeof formData) => {
@@ -50,7 +54,7 @@ export default function KnowledgeArticleEdit() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['knowledge-article', id]);
+      queryClient.invalidateQueries({queryKey: ['knowledge-article', id]});
       toast({
         title: "Erfolgreich gespeichert",
         description: "Der Wissensartikel wurde aktualisiert."
