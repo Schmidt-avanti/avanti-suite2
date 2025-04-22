@@ -54,11 +54,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChang
       TableCell,
       TableHeader,
     ],
-    content,
+    content: content || '',
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
   });
+
+  React.useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content || '');
+    }
+  }, [content, editor]);
 
   if (!editor) {
     return null;
