@@ -20,7 +20,7 @@ export const useTasks = (statusFilter: string | null) => {
             status,
             created_at,
             customer:customer_id(id, name),
-            creator:created_by(*)
+            creator:created_by(id, "Full Name")
           `)
           .order('created_at', { ascending: false });
 
@@ -54,21 +54,28 @@ export const useTasks = (statusFilter: string | null) => {
 
         if (error) throw error;
         
-        // Transform the data to match our Task interface
+        // Transform the data to match our Task interface with proper type safety
         const transformedData = data?.map(task => {
-          // Process the creator data safely
-          const creatorData = task.creator && typeof task.creator === 'object' && !('error' in task.creator)
-            ? task.creator
+          // Safely check and transform creator data
+          const creatorData = task.creator && typeof task.creator === 'object' 
+            ? {
+                id: task.creator.id as string,
+                "Full Name": task.creator["Full Name"] as string
+              }
             : null;
-            
+          
+          // Transform task data ensuring all required fields are present
           return {
             id: task.id,
             title: task.title,
             status: task.status,
             created_at: task.created_at,
-            customer: task.customer,
+            customer: task.customer ? {
+              id: task.customer.id,
+              name: task.customer.name
+            } : undefined,
             creator: creatorData
-          } as Task;
+          } satisfies Task;
         }) || [];
         
         setTasks(transformedData);
