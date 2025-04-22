@@ -136,6 +136,63 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_articles: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          customer_id: string
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          response_id: string | null
+          title: string
+          updated_at: string
+          use_case_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by: string
+          customer_id: string
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          response_id?: string | null
+          title: string
+          updated_at?: string
+          use_case_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          response_id?: string | null
+          title?: string
+          updated_at?: string
+          use_case_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_articles_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_articles_use_case_id_fkey"
+            columns: ["use_case_id"]
+            isOneToOne: false
+            referencedRelation: "use_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

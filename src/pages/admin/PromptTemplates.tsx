@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,13 +34,10 @@ export default function PromptTemplatesPage() {
     content: "",
   });
 
-  // Get used types from existing templates
   const usedTypes = data.map((template: any) => template.type);
   
-  // Filter available types by removing already used ones
   const availableTypes = useCaseTypesArray.filter(type => !usedTypes.includes(type.value));
 
-  // Effect to load existing template for editing
   React.useEffect(() => {
     if (!templateId) {
       setNewTemplate({ name: "", type: "", content: "" });
@@ -53,21 +49,34 @@ export default function PromptTemplatesPage() {
 
   const { mutateAsync, status } = useMutation({
     mutationFn: async (template: typeof newTemplate) => {
-      // Validate that type is not already in use for new templates
       if (!templateId && usedTypes.includes(template.type)) {
         throw new Error("Ein Prompt für diesen Typ existiert bereits");
+      }
+
+      if (template.type === USE_CASE_TYPES.KNOWLEDGE_ARTICLE) {
+        if (!template.content.includes("{{customer_context}}")) {
+          throw new Error("Knowledge Article Prompts müssen {{customer_context}} enthalten");
+        }
       }
 
       if (templateId) {
         const { error } = await supabase
           .from("prompt_templates")
-          .update({ name: template.name, type: template.type, content: template.content })
+          .update({ 
+            name: template.name, 
+            type: template.type, 
+            content: template.content,
+            is_active: true 
+          })
           .eq("id", templateId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("prompt_templates")
-          .insert([template]);
+          .insert([{ 
+            ...template, 
+            is_active: true 
+          }]);
         if (error) throw error;
       }
     },
@@ -75,7 +84,11 @@ export default function PromptTemplatesPage() {
       queryClient.invalidateQueries({ queryKey: ["prompt_templates"] });
       setNewTemplate({ name: "", type: "", content: "" });
       setTemplateId(null);
-      toast.success("Prompt-Template erfolgreich gespeichert");
+      toast.success(
+        templateId 
+          ? "Prompt-Template erfolgreich aktualisiert" 
+          : "Prompt-Template erfolgreich erstellt"
+      );
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -100,8 +113,16 @@ export default function PromptTemplatesPage() {
           <div>
             <Select
               value={newTemplate.type}
-              onValueChange={val => setNewTemplate({ ...newTemplate, type: val })}
-              disabled={templateId !== null} // Prevent type change when editing
+              onValueChange={val => {
+                setNewTemplate({ 
+                  ...newTemplate, 
+                  type: val,
+                  content: val === USE_CASE_TYPES.KNOWLEDGE_ARTICLE 
+                    ? `Berücksichtige folgenden Kundenkontext:\n{{customer_context}}\n\nErstelle einen Wissensartikel...`
+                    : newTemplate.content
+                })
+              }}
+              disabled={templateId !== null}
             >
               <SelectTrigger className="w-full">
                 {newTemplate.type ? useCaseTypeLabels[newTemplate.type as keyof typeof useCaseTypeLabels] : "Typ wählen"}
@@ -117,6 +138,11 @@ export default function PromptTemplatesPage() {
             {!templateId && availableTypes.length === 0 && (
               <p className="text-sm text-red-500 mt-1">
                 Für alle Typen existieren bereits Prompts
+              </p>
+            )}
+            {newTemplate.type === USE_CASE_TYPES.KNOWLEDGE_ARTICLE && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Hinweis: Verwende {{"{{"}}customer_context{{"}}"}} im Prompt, um Kundeninformationen einzufügen
               </p>
             )}
           </div>
