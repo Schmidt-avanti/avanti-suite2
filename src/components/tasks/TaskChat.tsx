@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
@@ -7,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Send, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
   id: string;
@@ -27,10 +27,10 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [isLoading, setIsLoading] = useState(false);
   const [buttonOptions, setButtonOptions] = useState<string[]>([]);
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
+  const { user } = useAuth();
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
-  // Scroll to bottom when messages update
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -40,16 +40,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     }
   }, [messages]);
 
-  // Load initial messages if not provided
   useEffect(() => {
     if (initialMessages.length === 0) {
       fetchMessages();
     }
     
-    // If there are no messages at all, start the conversation
     if (initialMessages.length === 0) {
       setTimeout(() => {
-        sendMessage("", null); // Start conversation with an empty message
+        sendMessage("", null);
       }, 500);
     }
   }, []);
@@ -65,13 +63,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       if (error) throw error;
       
       if (data) {
-        // Map the database results to our Message interface, ensuring role is either "assistant" or "user"
         const typedMessages: Message[] = data.map(msg => ({
           id: msg.id,
-          // Ensure role is one of our valid types
           role: msg.role === "assistant" || msg.role === "user" 
             ? msg.role as "assistant" | "user" 
-            : "assistant", // Default to assistant if invalid
+            : "assistant",
           content: msg.content,
           created_at: msg.created_at
         }));
@@ -87,9 +83,24 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   };
 
   const sendMessage = async (text: string, buttonChoice: string | null = null) => {
+    if (!user) return;
+    
     setIsLoading(true);
     
     try {
+      if (text) {
+        const { error: messageError } = await supabase
+          .from('task_messages')
+          .insert({
+            task_id: taskId,
+            content: text,
+            role: 'user',
+            created_by: user.id
+          });
+
+        if (messageError) throw messageError;
+      }
+
       const { data, error } = await supabase.functions.invoke('handle-task-chat', {
         body: {
           taskId,
@@ -102,17 +113,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       
       if (error) throw error;
       
-      // Update the previous response ID for continuity
       setPreviousResponseId(data.response_id);
       
-      // Set button options if they exist
       if (data.button_options && data.button_options.length > 0) {
         setButtonOptions(data.button_options);
       } else {
         setButtonOptions([]);
       }
       
-      // Refresh messages from the database to get all messages with IDs
       fetchMessages();
       
     } catch (error: any) {
@@ -136,7 +144,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const handleButtonClick = (option: string) => {
     if (!isLoading) {
       sendMessage("", option);
-      // Clear button options after selection
       setButtonOptions([]);
     }
   };
@@ -195,7 +202,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             </div>
           )}
           
-          {/* Button options */}
           {buttonOptions.length > 0 && !isLoading && (
             <div className="flex flex-wrap gap-2 justify-center">
               {buttonOptions.map((option, index) => (
@@ -239,4 +245,3 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     </Card>
   );
 }
-
