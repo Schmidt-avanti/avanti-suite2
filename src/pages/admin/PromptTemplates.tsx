@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,7 +54,7 @@ export default function PromptTemplatesPage() {
       ...prev, 
       type: value,
       content: value === USE_CASE_TYPES.KNOWLEDGE_ARTICLE 
-        ? `Berücksichtige folgenden Kundenkontext:\n{{customer_context}}\n\nErstelle einen Wissensartikel...`
+        ? `Berücksichtige folgenden Kundenkontext: {customer_context}\n\nErstelle einen Wissensartikel...`
         : prev.content
     }));
   }, []);
@@ -147,7 +146,7 @@ export default function PromptTemplatesPage() {
             )}
             {newTemplate.type === USE_CASE_TYPES.KNOWLEDGE_ARTICLE && (
               <p className="text-sm text-muted-foreground mt-1">
-                Hinweis: Verwende {{"{{"}}customer_context{{"}}"}} im Prompt, um Kundeninformationen einzufügen
+                Hinweis: Verwende {'{customer_context}'} im Prompt, um Kundeninformationen einzufügen
               </p>
             )}
           </div>
