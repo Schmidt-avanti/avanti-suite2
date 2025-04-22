@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -52,7 +53,7 @@ export default function KnowledgeArticleEdit() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ['knowledge-article', id]});
+      queryClient.invalidateQueries({ queryKey: ['knowledge-article', id] });
       toast({
         title: "Erfolgreich gespeichert",
         description: "Der Wissensartikel wurde aktualisiert."

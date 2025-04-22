@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -6,10 +7,16 @@ import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
+import Bold from '@tiptap/extension-bold';
+import Italic from '@tiptap/extension-italic';
+import Heading from '@tiptap/extension-heading';
+import BulletList from '@tiptap/extension-bullet-list';
+import OrderedList from '@tiptap/extension-ordered-list';
+import ListItem from '@tiptap/extension-list-item';
 import { Button } from "@/components/ui/button";
 import {
-  Bold,
-  Italic,
+  Bold as BoldIcon,
+  Italic as ItalicIcon,
   List,
   ListOrdered,
   Image as ImageIcon,
@@ -26,7 +33,19 @@ interface RichTextEditorProps {
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange }) => {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        heading: false,
+        bold: false,
+        italic: false,
+        bulletList: false,
+        orderedList: false,
+      }),
+      Bold,
+      Italic,
+      Heading,
+      BulletList,
+      OrderedList,
+      ListItem,
       Image,
       Table.configure({
         resizable: true,
@@ -69,7 +88,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChang
           onClick={() => editor.chain().focus().toggleBold().run()}
           className={editor.isActive('bold') ? 'bg-muted' : ''}
         >
-          <Bold className="h-4 w-4" />
+          <BoldIcon className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
@@ -77,7 +96,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChang
           onClick={() => editor.chain().focus().toggleItalic().run()}
           className={editor.isActive('italic') ? 'bg-muted' : ''}
         >
-          <Italic className="h-4 w-4" />
+          <ItalicIcon className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
