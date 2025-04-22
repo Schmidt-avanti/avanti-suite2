@@ -3,3 +3,6 @@ project_id = "knoevkvjyuchhcmzsdpq"
 
 [functions.generate-use-case]
 verify_jwt = true
+
+[functions.generate-knowledge-article]
+verify_jwt = true
