@@ -1,18 +1,11 @@
-
 import React from 'react';
 import LoginForm from '@/components/auth/LoginForm';
-
 const Login: React.FC = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  return <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h1 className="flex justify-center mb-2">
-            <img 
-              src="/lovable-uploads/3c158096-fc25-4baf-9656-166ec5ac6dcb.png" 
-              alt="avanti suite" 
-              className="h-14"
-            />
+            <img alt="avanti suite" className="h-14" src="/lovable-uploads/73e13e0c-4f3b-4dc7-a65b-953f5b5beafb.png" />
           </h1>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
             Anmelden
@@ -26,8 +19,6 @@ const Login: React.FC = () => {
         </div>
         <LoginForm />
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Login;
