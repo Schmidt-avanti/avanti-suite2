@@ -13,7 +13,7 @@ import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [task, setTask] = useState<any>(null);
-  const [useCase, setUseCase] = useState<any>(null);
+  const [knowledgeArticle, setKnowledgeArticle] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -93,16 +93,17 @@ const TaskDetail = () => {
 
       setTask(enrichedTask);
 
-      // If there's a matched use case, fetch it
+      // If there's a matched use case, fetch knowledge article related to it
       if (taskData.matched_use_case_id) {
-        const { data: useCaseData, error: useCaseError } = await supabase
-          .from('use_cases')
+        const { data: knowledgeArticleData, error: knowledgeArticleError } = await supabase
+          .from('knowledge_articles')
           .select('*')
-          .eq('id', taskData.matched_use_case_id)
+          .eq('use_case_id', taskData.matched_use_case_id)
           .maybeSingle();
 
-        if (useCaseError) throw useCaseError;
-        setUseCase(useCaseData);
+        if (!knowledgeArticleError && knowledgeArticleData) {
+          setKnowledgeArticle(knowledgeArticleData);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching task details:', error);
@@ -161,50 +162,26 @@ const TaskDetail = () => {
                 <p className="text-sm font-medium text-gray-500">Zugewiesen an</p>
                 <p className="mt-1">{task.assignee?.["Full Name"] || 'Nicht zugewiesen'}</p>
               </div>
-
-              {task.matched_use_case_id && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Zugeordneter Use Case</p>
-                  <div className="mt-1 flex items-center">
-                    <Badge variant="outline" className="mr-2">
-                      {useCase?.title || 'Lädt...'}
-                    </Badge>
-                    <span className="text-xs text-gray-500">
-                      {task.match_confidence 
-                        ? `${Math.round(task.match_confidence)}% Übereinstimmung` 
-                        : 'Nicht berechnet'}
-                    </span>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
-          {useCase && (
+          {/* Knowledge Article Section */}
+          {task.matched_use_case_id && (
             <Card>
               <CardHeader>
-                <CardTitle>Use Case Details</CardTitle>
+                <CardTitle>Wissensartikel</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {useCase.information_needed && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Benötigte Informationen</p>
-                    <p className="mt-1 whitespace-pre-wrap">{useCase.information_needed}</p>
+              <CardContent>
+                {knowledgeArticle ? (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">{knowledgeArticle.title}</h3>
+                    <div 
+                      className="prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: knowledgeArticle.content }} 
+                    />
                   </div>
-                )}
-                
-                {useCase.steps && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Schritte</p>
-                    <p className="mt-1 whitespace-pre-wrap">{useCase.steps}</p>
-                  </div>
-                )}
-                
-                {useCase.expected_result && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Erwartetes Ergebnis</p>
-                    <p className="mt-1 whitespace-pre-wrap">{useCase.expected_result}</p>
-                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Kein Wissensartikel verfügbar</p>
                 )}
               </CardContent>
             </Card>

@@ -78,6 +78,10 @@ serve(async (req) => {
     let conversationMessages = [];
     
     // Add system message with instructions
+    const processMapInstructions = useCase?.process_map ? 
+      `\nFolge diesen Prozessschritten:\n${JSON.stringify(useCase.process_map, null, 2)}` : 
+      '';
+
     conversationMessages.push({
       role: "system",
       content: `Du bist Ava, ein hilfreicher Assistent bei avanti-suite, der Nutzern bei ihren Aufgaben hilft.
@@ -87,8 +91,8 @@ Deine Aufgabe ist es, den Nutzer durch diesen Prozess zu führen und ihm zu helf
 
 Gehe dabei folgendermaßen vor:
 1. Begrüße den Nutzer und erkläre kurz die Aufgabe, die bearbeitet werden soll
-2. Führe den Nutzer Schritt für Schritt durch den Prozess gemäß den Informationen im Use Case
-3. Wenn der Use Case Entscheidungspunkte enthält, stelle Fragen mit Auswahlmöglichkeiten im JSON-Format:
+2. Führe den Nutzer Schritt für Schritt durch den Prozess gemäß den Informationen im Use Case und der process_map
+3. Wenn die process_map Entscheidungspunkte enthält oder der Use Case Entscheidungspunkte enthält, stelle Fragen mit Auswahlmöglichkeiten im JSON-Format:
    {
      "text": "Deine Frage an den Nutzer",
      "options": ["Option 1", "Option 2"]
@@ -106,6 +110,7 @@ Benötigte Informationen: ${useCase.information_needed || 'Keine spezifischen In
 Schritte: ${useCase.steps || 'Keine spezifischen Schritte definiert'}
 Erwartetes Ergebnis: ${useCase.expected_result || 'Kein spezifisches Ergebnis definiert'}
 Typische Aktivitäten: ${useCase.typical_activities || 'Keine typischen Aktivitäten definiert'}
+${processMapInstructions}
 ` : 'Kein passender Use Case gefunden. Bitte helfe dem Nutzer bestmöglich mit der vorliegenden Aufgabe.'}
 
 Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoice" Parameter. Reagiere entsprechend darauf.`
@@ -149,16 +154,17 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
     }
 
     // Call OpenAI API
-    const openAIResponse = await fetch('https://api.openai.com/v1/responses', {
+    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        instructions: conversationMessages[0].content,
-        input: conversationMessages.slice(1).map(msg => `${msg.role}: ${msg.content}`).join('\n\n'),
-        previous_response_id: previousResponseId,
+        model: "gpt-4o-mini", // Specify the model here
+        messages: conversationMessages,
+        temperature: 0.7,
+        max_tokens: 1500
       })
     });
 
@@ -170,17 +176,18 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
     }
 
     // Save the assistant's response
+    const assistantResponse = responseData.choices[0].message.content;
     await supabase.from('task_messages').insert({
       task_id: taskId,
       role: 'assistant',
-      content: responseData.response
+      content: assistantResponse
     });
 
     // Try to parse any potential button options from the response
     let buttonOptions = [];
     try {
       // Look for JSON in the response that might contain button options
-      const jsonMatch = responseData.response.match(/\{[\s\S]*?"options"[\s\S]*?\}/);
+      const jsonMatch = assistantResponse.match(/\{[\s\S]*?"options"[\s\S]*?\}/);
       if (jsonMatch) {
         const jsonData = JSON.parse(jsonMatch[0]);
         if (jsonData.options && Array.isArray(jsonData.options)) {
@@ -193,8 +200,7 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
 
     return new Response(
       JSON.stringify({
-        response: responseData.response,
-        response_id: responseData.id,
+        response: assistantResponse,
         button_options: buttonOptions
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
