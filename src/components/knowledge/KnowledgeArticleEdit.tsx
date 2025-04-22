@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { RichTextEditor } from '../editor/RichTextEditor';
 
 export default function KnowledgeArticleEdit() {
   const { id } = useParams();
@@ -34,7 +33,6 @@ export default function KnowledgeArticleEdit() {
     },
   });
 
-  // Use a separate effect to set form data when article is loaded
   React.useEffect(() => {
     if (article) {
       setFormData({
@@ -106,11 +104,9 @@ export default function KnowledgeArticleEdit() {
                 placeholder="Titel"
                 className="mb-4"
               />
-              <Textarea
-                value={formData.content}
-                onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                placeholder="Inhalt"
-                className="min-h-[400px]"
+              <RichTextEditor
+                content={formData.content}
+                onChange={(content) => setFormData(prev => ({ ...prev, content }))}
               />
             </div>
             <div className="flex justify-end">
