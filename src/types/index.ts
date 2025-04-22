@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'agent' | 'client';
 
 export interface User {
@@ -31,10 +32,12 @@ export interface TaskCreator {
   "Full Name": string;
 }
 
+export type TaskStatus = 'pending' | 'in_progress' | 'completed';
+
 export interface Task {
   id: string;
   title: string;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: TaskStatus;
   created_at: string;
   customer?: {
     id: string;

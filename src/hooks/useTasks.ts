@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Task } from '@/types';
+import type { Task, TaskStatus } from '@/types';
 
 export const useTasks = (statusFilter: string | null) => {
   const { user } = useAuth();
@@ -55,28 +55,33 @@ export const useTasks = (statusFilter: string | null) => {
         if (error) throw error;
         
         // Transform the data to match our Task interface with proper type safety
-        const transformedData = data?.map(task => {
+        const transformedData: Task[] = (data || []).map(task => {
           // Safely check and transform creator data
-          const creatorData = task.creator && typeof task.creator === 'object' 
-            ? {
-                id: task.creator.id as string,
-                "Full Name": task.creator["Full Name"] as string
-              }
-            : null;
+          let creatorData: TaskCreator | null = null;
+          
+          if (task.creator && typeof task.creator === 'object') {
+            creatorData = {
+              id: task.creator.id,
+              "Full Name": task.creator["Full Name"]
+            };
+          }
+          
+          // Cast status to ensure it's a valid TaskStatus
+          const status = task.status as TaskStatus;
           
           // Transform task data ensuring all required fields are present
           return {
             id: task.id,
             title: task.title,
-            status: task.status,
+            status: status,
             created_at: task.created_at,
             customer: task.customer ? {
               id: task.customer.id,
               name: task.customer.name
             } : undefined,
             creator: creatorData
-          } satisfies Task;
-        }) || [];
+          };
+        });
         
         setTasks(transformedData);
       } catch (error) {

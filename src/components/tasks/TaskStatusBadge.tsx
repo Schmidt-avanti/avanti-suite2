@@ -1,10 +1,12 @@
 
+import { TaskStatus } from '@/types';
+
 interface TaskStatusBadgeProps {
-  status: string;
+  status: TaskStatus;
 }
 
 export const TaskStatusBadge = ({ status }: TaskStatusBadgeProps) => {
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: TaskStatus) => {
     switch (status) {
       case 'pending': return 'Offen';
       case 'in_progress': return 'In Bearbeitung';
@@ -13,7 +15,7 @@ export const TaskStatusBadge = ({ status }: TaskStatusBadgeProps) => {
     }
   };
 
-  const getStatusClass = (status: string) => {
+  const getStatusClass = (status: TaskStatus) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'in_progress': return 'bg-blue-100 text-blue-800';
