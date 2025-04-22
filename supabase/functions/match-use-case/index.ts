@@ -76,7 +76,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4.1", // Hier wird der erforderliche 'model' Parameter hinzugefügt
+        model: "gpt-4.1", // Erforderlicher 'model' Parameter
         instructions: `Als Experte für Use Case Matching bei avanti, analysiere bitte diese Aufgabenbeschreibung und die möglichen passenden Use Cases.
         Wähle den am besten passenden Use Case aus und gib eine Begründung.
         
@@ -99,15 +99,16 @@ serve(async (req) => {
         input: `Aufgabenbeschreibung: "${description}"
         
         Mögliche Use Cases:
-        ${JSON.stringify(similarUseCases, null, 2)}`,
-        previous_response_id: null
+        ${JSON.stringify(similarUseCases, null, 2)}`
       })
     });
 
     const analysisData = await analysisResponse.json();
     
-    // Check if we have a valid response
-    if (!analysisData || !analysisData.response) {
+    // Check if we have a valid response and log the structure for debugging
+    console.log('Response structure:', Object.keys(analysisData));
+    
+    if (!analysisData || analysisData.error) {
       console.error('Invalid analysis response:', analysisData);
       return new Response(JSON.stringify({
         error: 'Invalid AI response',
@@ -118,8 +119,32 @@ serve(async (req) => {
       });
     }
     
+    // Handle the new response format from OpenAI's v1/responses endpoint
     try {
-      const analysis = JSON.parse(analysisData.response);
+      // Extract the actual content from the new response format
+      let responseText = '';
+      
+      if (analysisData.output && 
+          Array.isArray(analysisData.output) && 
+          analysisData.output.length > 0 && 
+          analysisData.output[0].content && 
+          Array.isArray(analysisData.output[0].content)) {
+        
+        // Extract text from the first content item
+        responseText = analysisData.output[0].content
+          .filter(item => item.type === 'output_text')
+          .map(item => item.text)
+          .join('');
+      } else if (analysisData.response) {
+        // Fallback for old API format
+        responseText = analysisData.response;
+      }
+      
+      if (!responseText) {
+        throw new Error('Could not extract response text from AI output');
+      }
+      
+      const analysis = JSON.parse(responseText);
       
       console.log('Analysis completed:', {
         matched_id: analysis.matched_use_case_id,
@@ -131,7 +156,7 @@ serve(async (req) => {
       });
     } catch (parseError) {
       console.error('Error parsing analysis result:', parseError);
-      console.error('Raw response:', analysisData.response);
+      console.error('Raw response:', analysisData);
       
       // Return a fallback response
       return new Response(JSON.stringify({
