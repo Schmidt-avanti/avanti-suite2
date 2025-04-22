@@ -20,6 +20,7 @@ import UseCasesPage from "@/pages/admin/UseCases";
 import CreateUseCasePage from "@/pages/admin/CreateUseCase";
 import PromptTemplatesPage from "@/pages/admin/PromptTemplates";
 import UseCaseDetailPage from "@/pages/admin/UseCaseDetailPage";
+import CreateKnowledgeArticle from "@/pages/admin/CreateKnowledgeArticle";
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
@@ -103,6 +104,14 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={["admin"]}>
                     <PromptTemplatesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/knowledge-articles/create/:useCaseId"
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <CreateKnowledgeArticle />
                   </ProtectedRoute>
                 }
               />

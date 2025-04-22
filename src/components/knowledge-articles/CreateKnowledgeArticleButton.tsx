@@ -2,8 +2,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import KnowledgeArticleChat from "./KnowledgeArticleChat";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,6 +11,8 @@ interface CreateKnowledgeArticleButtonProps {
 }
 
 const CreateKnowledgeArticleButton = ({ useCaseId }: CreateKnowledgeArticleButtonProps) => {
+  const navigate = useNavigate();
+  
   const { data: existingArticle, isLoading } = useQuery({
     queryKey: ['knowledge-article', useCaseId],
     queryFn: async () => {
@@ -30,17 +31,13 @@ const CreateKnowledgeArticleButton = ({ useCaseId }: CreateKnowledgeArticleButto
   if (existingArticle) return null;
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button className="bg-avanti-500 hover:bg-avanti-600">
-          <FileText className="h-4 w-4 mr-2" />
-          Wissensartikel erstellen
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl h-[80vh]">
-        <KnowledgeArticleChat useCaseId={useCaseId} />
-      </DialogContent>
-    </Dialog>
+    <Button 
+      onClick={() => navigate(`/admin/knowledge-articles/create/${useCaseId}`)}
+      className="bg-avanti-500 hover:bg-avanti-600"
+    >
+      <FileText className="h-4 w-4 mr-2" />
+      Wissensartikel erstellen
+    </Button>
   );
 };
 
