@@ -27,21 +27,71 @@ const TaskDetail = () => {
   const fetchTaskDetails = async () => {
     try {
       setIsLoading(true);
+      
+      // Fetch the task without complex joins first
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select(`
-          *,
-          customer:customers(name),
-          creator:profiles!tasks_created_by_fkey(id, "Full Name"),
-          assignee:profiles!tasks_assigned_to_fkey(id, "Full Name")
-        `)
+        .select('*')
         .eq('id', id)
         .maybeSingle();
 
       if (taskError) throw taskError;
       if (!taskData) throw new Error('Aufgabe nicht gefunden');
 
-      setTask(taskData);
+      // Separately fetch the related data
+      const fetchRelatedData = async () => {
+        // Fetch customer
+        let customer = null;
+        if (taskData.customer_id) {
+          const { data: customerData } = await supabase
+            .from('customers')
+            .select('name')
+            .eq('id', taskData.customer_id)
+            .maybeSingle();
+          customer = customerData;
+        }
+
+        // Fetch creator
+        let creator = null;
+        if (taskData.created_by) {
+          const { data: creatorData } = await supabase
+            .from('profiles')
+            .select('id, "Full Name"')
+            .eq('id', taskData.created_by)
+            .maybeSingle();
+          creator = creatorData;
+        }
+
+        // Fetch assignee
+        let assignee = null;
+        if (taskData.assigned_to) {
+          const { data: assigneeData } = await supabase
+            .from('profiles')
+            .select('id, "Full Name"')
+            .eq('id', taskData.assigned_to)
+            .maybeSingle();
+          assignee = assigneeData;
+        }
+
+        return {
+          customer,
+          creator,
+          assignee
+        };
+      };
+
+      // Get related data
+      const relatedData = await fetchRelatedData();
+      
+      // Combine task with related data
+      const enrichedTask = {
+        ...taskData,
+        customer: relatedData.customer,
+        creator: relatedData.creator,
+        assignee: relatedData.assignee
+      };
+
+      setTask(enrichedTask);
 
       // If there's a matched use case, fetch it
       if (taskData.matched_use_case_id) {
