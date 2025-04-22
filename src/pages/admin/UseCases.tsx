@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ import { Edit, Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
 import { UseCaseEditDialog } from "@/components/use-cases/UseCaseEditDialog";
 import { UpdateEmbeddingsButton } from "@/components/use-cases/UpdateEmbeddingsButton";
+import CreateKnowledgeArticleButton from "@/components/knowledge-articles/CreateKnowledgeArticleButton";
 
 export default function UseCases() {
   const [open, setOpen] = React.useState(false);
@@ -27,7 +29,7 @@ export default function UseCases() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("use_cases")
-        .select("*")
+        .select("*, knowledge_articles(id)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -67,19 +69,20 @@ export default function UseCases() {
           <TableRow>
             <TableHead>Titel</TableHead>
             <TableHead>Typ</TableHead>
+            <TableHead>Wissensartikel</TableHead>
             <TableHead className="text-right">Aktionen</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={3} className="text-center">
+              <TableCell colSpan={4} className="text-center">
                 Loading...
               </TableCell>
             </TableRow>
           ) : useCases.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={3} className="text-center">
+              <TableCell colSpan={4} className="text-center">
                 Keine Use Cases gefunden.
               </TableCell>
             </TableRow>
@@ -88,6 +91,13 @@ export default function UseCases() {
               <TableRow key={useCase.id}>
                 <TableCell>{useCase.title}</TableCell>
                 <TableCell>{useCase.type}</TableCell>
+                <TableCell>
+                  {useCase.knowledge_articles && useCase.knowledge_articles.length > 0 ? (
+                    <span className="text-green-600 font-medium">Vorhanden</span>
+                  ) : (
+                    <CreateKnowledgeArticleButton useCaseId={useCase.id} />
+                  )}
+                </TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="ghost"

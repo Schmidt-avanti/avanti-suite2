@@ -33,7 +33,9 @@ const CreateKnowledgeArticleButton = ({ useCaseId }: CreateKnowledgeArticleButto
   return (
     <Button 
       onClick={() => navigate(`/admin/knowledge-articles/create/${useCaseId}`)}
-      className="bg-avanti-500 hover:bg-avanti-600"
+      variant="outline"
+      size="sm"
+      className="text-avanti-600 border-avanti-300 hover:bg-avanti-50"
     >
       <FileText className="h-4 w-4 mr-2" />
       Wissensartikel erstellen
