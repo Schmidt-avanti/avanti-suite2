@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,17 +22,75 @@ type TaskFormValues = z.infer<typeof taskFormSchema>;
 
 const CreateTask = () => {
   const [isMatching, setIsMatching] = useState(false);
+  const [availableCustomers, setAvailableCustomers] = useState<{id: string, name: string}[]>([]);
   const { customers, isLoading: isLoadingCustomers } = useCustomers();
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { logTaskOpen } = useTaskActivity();
 
+  useEffect(() => {
+    // Filter customers based on user role
+    if (user && customers) {
+      const filterCustomers = async () => {
+        if (user.role === 'admin') {
+          // Admins can see all customers
+          setAvailableCustomers(customers);
+        } else if (user.role === 'agent') {
+          // Agents can only see their assigned customers
+          const { data: assignedCustomers, error } = await supabase
+            .from('user_customer_assignments')
+            .select('customer_id(id, name)')
+            .eq('user_id', user.id);
+          
+          if (error) {
+            console.error('Error fetching assigned customers:', error);
+            toast({
+              title: 'Fehler',
+              description: 'Konnte zugewiesene Kunden nicht laden',
+              variant: 'destructive'
+            });
+            return;
+          }
+
+          setAvailableCustomers(
+            assignedCustomers?.map(ac => ac.customer_id) || []
+          );
+        } else if (user.role === 'client') {
+          // Clients can only see their own customer
+          const { data: userAssignment, error } = await supabase
+            .from('user_customer_assignments')
+            .select('customer_id(id, name)')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (error) {
+            console.error('Error fetching client customer:', error);
+            toast({
+              title: 'Fehler',
+              description: 'Konnte Ihren Kunden nicht laden',
+              variant: 'destructive'
+            });
+            return;
+          }
+
+          setAvailableCustomers(
+            userAssignment?.customer_id ? [userAssignment.customer_id] : []
+          );
+        }
+      };
+
+      filterCustomers();
+    }
+  }, [user, customers, toast]);
+
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
       description: '',
-      customerId: undefined,
+      customerId: availableCustomers.length === 1 
+        ? availableCustomers[0].id 
+        : undefined,
     }
   });
 
