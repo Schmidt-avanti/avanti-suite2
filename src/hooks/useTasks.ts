@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Task, TaskStatus, SupabaseTaskResponse } from '@/types';
+import type { Task, TaskStatus } from '@/types';
 
 // Helper function to validate task status
 const validateTaskStatus = (status: string): TaskStatus => {
@@ -16,7 +17,7 @@ const validateTaskStatus = (status: string): TaskStatus => {
 };
 
 // Helper function to safely transform creator data
-const transformCreator = (creatorData: any): TaskCreator | null => {
+const transformCreator = (creatorData: any) => {
   if (!creatorData || typeof creatorData !== 'object') {
     return null;
   }
