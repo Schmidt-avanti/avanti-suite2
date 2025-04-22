@@ -23,7 +23,7 @@ const KnowledgeArticleChat = ({ useCaseId }: KnowledgeArticleChatProps) => {
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { mutate: sendMessage, isLoading } = useMutation({
+  const { mutate: sendMessage, isPending } = useMutation({
     mutationFn: async () => {
       const userInput = messages.length === 0 
         ? "Bitte erstelle einen Wissensartikel" 
@@ -60,7 +60,7 @@ const KnowledgeArticleChat = ({ useCaseId }: KnowledgeArticleChatProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (isPending) return;
     
     if (messages.length === 0 || input.trim()) {
       sendMessage();
@@ -95,7 +95,7 @@ const KnowledgeArticleChat = ({ useCaseId }: KnowledgeArticleChatProps) => {
               </div>
             ))
           )}
-          {isLoading && (
+          {isPending && (
             <div className="flex justify-start">
               <div className="max-w-[80%] p-4 rounded-xl bg-blue-100">
                 <div className="flex space-x-2">
@@ -123,7 +123,7 @@ const KnowledgeArticleChat = ({ useCaseId }: KnowledgeArticleChatProps) => {
           />
           <Button 
             type="submit"
-            disabled={isLoading || (messages.length > 0 && !input.trim())}
+            disabled={isPending || (messages.length > 0 && !input.trim())}
             className="self-end"
           >
             <Send className="h-4 w-4 mr-2" />
