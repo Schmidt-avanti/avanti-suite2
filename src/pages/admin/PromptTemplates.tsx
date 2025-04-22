@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,14 +113,14 @@ export default function PromptTemplatesPage() {
           <div>
             <Select
               value={newTemplate.type}
-              onValueChange={(val) => {
-                setNewTemplate({ 
-                  ...newTemplate, 
+              onValueChange={(val: string) => {
+                setNewTemplate(prev => ({ 
+                  ...prev, 
                   type: val,
                   content: val === USE_CASE_TYPES.KNOWLEDGE_ARTICLE 
                     ? `Berücksichtige folgenden Kundenkontext:\n{{customer_context}}\n\nErstelle einen Wissensartikel...`
-                    : newTemplate.content
-                })
+                    : prev.content
+                }));
               }}
               disabled={templateId !== null}
             >
