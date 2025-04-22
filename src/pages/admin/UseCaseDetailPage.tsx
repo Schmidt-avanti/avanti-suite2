@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -10,6 +11,7 @@ import { ChevronLeft, Edit } from "lucide-react";
 import { UseCaseEditDialog } from "@/components/use-cases/UseCaseEditDialog";
 import { useState } from "react";
 import CreateKnowledgeArticleButton from "@/components/knowledge-articles/CreateKnowledgeArticleButton";
+import { UpdateEmbeddingsButton } from "@/components/use-cases/UpdateEmbeddingsButton";
 
 const fetchUseCase = async (id: string) => {
   const { data, error } = await supabase
@@ -62,6 +64,7 @@ export default function UseCaseDetailPage() {
         </div>
         <div className="flex gap-2">
           <CreateKnowledgeArticleButton useCaseId={useCase.id} />
+          <UpdateEmbeddingsButton useCaseId={useCase.id} />
           <Button 
             onClick={() => setIsEditDialogOpen(true)}
             className="bg-avanti-500 hover:bg-avanti-600"

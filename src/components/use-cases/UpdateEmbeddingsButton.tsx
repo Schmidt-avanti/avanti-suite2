@@ -1,31 +1,31 @@
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Loader2, Database } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-export function UpdateEmbeddingsButton() {
+export function UpdateEmbeddingsButton({ useCaseId }: { useCaseId: string }) {
   const [isUpdating, setIsUpdating] = useState(false);
-  const { toast } = useToast();
 
   const handleUpdateEmbeddings = async () => {
     setIsUpdating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-embeddings');
+      const { data, error } = await supabase.functions.invoke('generate-embeddings', {
+        body: JSON.stringify({ useCaseIds: [useCaseId] })
+      });
       
       if (error) throw error;
 
-      toast({
-        title: "Embeddings aktualisiert",
-        description: data.message,
+      toast.success("Embedding erfolgreich aktualisiert", {
+        description: data.processed?.length 
+          ? `Use Case mit ID ${useCaseId} aktualisiert` 
+          : "Keine Aktualisierung erforderlich"
       });
     } catch (error: any) {
       console.error('Error updating embeddings:', error);
-      toast({
-        variant: "destructive",
-        title: "Fehler beim Aktualisieren der Embeddings",
-        description: error.message,
+      toast.error("Fehler beim Aktualisieren der Embeddings", {
+        description: error.message
       });
     } finally {
       setIsUpdating(false);
@@ -41,10 +41,13 @@ export function UpdateEmbeddingsButton() {
       {isUpdating ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Aktualisiere Embeddings...
+          Aktualisiere…
         </>
       ) : (
-        'Embeddings aktualisieren'
+        <>
+          <Database className="mr-2 h-4 w-4" />
+          Embedding erneuern
+        </>
       )}
     </Button>
   );
