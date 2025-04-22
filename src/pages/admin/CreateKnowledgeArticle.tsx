@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -6,27 +5,45 @@ import { ChevronLeft, Save } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import KnowledgeArticleChat from '@/components/knowledge-articles/KnowledgeArticleChat';
 import KnowledgeArticlePreview from '@/components/knowledge-articles/KnowledgeArticlePreview';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CreateKnowledgeArticle = () => {
   const navigate = useNavigate();
   const { useCaseId } = useParams();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [content, setContent] = React.useState('');
+
+  const { data: useCase } = useQuery({
+    queryKey: ['use-case', useCaseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('use_cases')
+        .select('customer_id, title')
+        .eq('id', useCaseId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { mutate: saveArticle, isPending } = useMutation({
     mutationFn: async () => {
+      if (!useCase?.customer_id) throw new Error('Kunde nicht gefunden');
+      
       const { error } = await supabase
         .from('knowledge_articles')
         .insert([
           {
             use_case_id: useCaseId,
             content: content,
-            title: 'Wissensartikel', // We could extract this from content later
-            customer_id: '00000000-0000-0000-0000-000000000000', // This should come from the use case
-            created_by: '00000000-0000-0000-0000-000000000000', // This should come from auth context
+            title: useCase.title || 'Wissensartikel',
+            customer_id: useCase.customer_id,
+            created_by: user?.id,
           }
         ]);
 
