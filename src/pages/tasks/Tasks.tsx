@@ -86,11 +86,22 @@ const Tasks = () => {
         if (error) throw error;
         
         // Transform the data to match the Task type
-        const transformedData = data?.map(task => ({
-          ...task,
-          customer: task.customer,
-          creator: task.creator
-        })) || [];
+        // Handle the case where creator may have an error
+        const transformedData = data?.map(task => {
+          // Check if creator is an error (doesn't have "Full Name" property)
+          const creatorData = typeof task.creator === 'object' && task.creator !== null && !('error' in task.creator) 
+            ? task.creator 
+            : null;
+            
+          return {
+            id: task.id,
+            title: task.title,
+            status: task.status,
+            created_at: task.created_at,
+            customer: task.customer,
+            creator: creatorData
+          };
+        }) || [];
         
         setTasks(transformedData as Task[]);
       } catch (error) {
