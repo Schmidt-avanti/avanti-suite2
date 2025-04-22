@@ -27,7 +27,7 @@ export default function KnowledgeArticleEdit() {
         .from('knowledge_articles')
         .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;
@@ -37,8 +37,8 @@ export default function KnowledgeArticleEdit() {
   React.useEffect(() => {
     if (article) {
       setFormData({
-        title: article.title,
-        content: article.content
+        title: article.title || '',
+        content: article.content || ''
       });
     }
   }, [article]);
