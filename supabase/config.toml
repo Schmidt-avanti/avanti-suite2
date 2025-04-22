@@ -1,8 +1,6 @@
 
 project_id = "knoevkvjyuchhcmzsdpq"
 
-[functions.generate-use-case]
-verify_jwt = true
-
-[functions.generate-knowledge-article]
+# This is the extra configuration needed for our new edge function
+[functions.handle-task-chat]
 verify_jwt = true

@@ -31,6 +31,7 @@ import ClientDashboard from "@/pages/customer/Dashboard";
 // Task Pages
 import CreateTask from "@/pages/tasks/CreateTask";
 import Tasks from '@/pages/tasks/Tasks';
+import TaskDetail from "./pages/tasks/TaskDetail";
 
 // Public Pages
 import Landing from "@/pages/Landing";
@@ -175,6 +176,14 @@ const App = () => {
                   element={
                     <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
                       <CreateTask />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/tasks/:id"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                      <TaskDetail />
                     </ProtectedRoute>
                   }
                 />
