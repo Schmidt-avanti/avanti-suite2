@@ -65,7 +65,18 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       if (error) throw error;
       
       if (data) {
-        setMessages(data);
+        // Map the database results to our Message interface, ensuring role is either "assistant" or "user"
+        const typedMessages: Message[] = data.map(msg => ({
+          id: msg.id,
+          // Ensure role is one of our valid types
+          role: msg.role === "assistant" || msg.role === "user" 
+            ? msg.role as "assistant" | "user" 
+            : "assistant", // Default to assistant if invalid
+          content: msg.content,
+          created_at: msg.created_at
+        }));
+        
+        setMessages(typedMessages);
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
@@ -228,3 +239,4 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     </Card>
   );
 }
+
