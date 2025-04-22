@@ -34,6 +34,22 @@ export interface TaskCreator {
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed';
 
+// Interface for the raw data received from Supabase
+export interface SupabaseTaskResponse {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
+  customer: {
+    id: string;
+    name: string;
+  } | null;
+  creator: {
+    id: string;
+    "Full Name": string;
+  } | null;
+}
+
 export interface Task {
   id: string;
   title: string;

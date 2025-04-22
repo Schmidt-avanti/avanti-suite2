@@ -2,8 +2,55 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Task, TaskStatus } from '@/types';
+import type { Task, TaskStatus, SupabaseTaskResponse, TaskCreator } from '@/types';
 
+// Helper function to validate task status
+const validateTaskStatus = (status: string): TaskStatus => {
+  const validStatuses: TaskStatus[] = ['pending', 'in_progress', 'completed'];
+  
+  if (validStatuses.includes(status as TaskStatus)) {
+    return status as TaskStatus;
+  }
+  
+  console.warn(`Invalid task status: "${status}", defaulting to "pending"`);
+  return 'pending';
+};
+
+// Helper function to safely transform creator data
+const transformCreator = (creatorData: any): TaskCreator | null => {
+  if (!creatorData || typeof creatorData !== 'object') {
+    return null;
+  }
+  
+  if (!creatorData.id || !creatorData["Full Name"]) {
+    console.warn('Incomplete creator data:', creatorData);
+    return null;
+  }
+  
+  return {
+    id: creatorData.id,
+    "Full Name": creatorData["Full Name"]
+  };
+};
+
+// Helper function to safely transform customer data
+const transformCustomer = (customerData: any) => {
+  if (!customerData || typeof customerData !== 'object') {
+    return undefined;
+  }
+  
+  if (!customerData.id || !customerData.name) {
+    console.warn('Incomplete customer data:', customerData);
+    return undefined;
+  }
+  
+  return {
+    id: customerData.id,
+    name: customerData.name
+  };
+};
+
+// Main hook for fetching and transforming tasks
 export const useTasks = (statusFilter: string | null) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -54,36 +101,25 @@ export const useTasks = (statusFilter: string | null) => {
 
         if (error) throw error;
         
-        // Transform the data to match our Task interface with proper type safety
-        const transformedData: Task[] = (data || []).map(task => {
-          // Safely check and transform creator data
-          let creatorData: TaskCreator | null = null;
-          
-          if (task.creator && typeof task.creator === 'object') {
-            creatorData = {
-              id: task.creator.id,
-              "Full Name": task.creator["Full Name"]
-            };
-          }
-          
-          // Cast status to ensure it's a valid TaskStatus
-          const status = task.status as TaskStatus;
-          
-          // Transform task data ensuring all required fields are present
+        if (!data || data.length === 0) {
+          setTasks([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Transform the data with proper type safety
+        const transformedTasks: Task[] = data.map((rawTask: any): Task => {
           return {
-            id: task.id,
-            title: task.title,
-            status: status,
-            created_at: task.created_at,
-            customer: task.customer ? {
-              id: task.customer.id,
-              name: task.customer.name
-            } : undefined,
-            creator: creatorData
+            id: rawTask.id,
+            title: rawTask.title,
+            status: validateTaskStatus(rawTask.status),
+            created_at: rawTask.created_at,
+            customer: transformCustomer(rawTask.customer),
+            creator: transformCreator(rawTask.creator)
           };
         });
         
-        setTasks(transformedData);
+        setTasks(transformedTasks);
       } catch (error) {
         console.error('Error fetching tasks:', error);
       } finally {
