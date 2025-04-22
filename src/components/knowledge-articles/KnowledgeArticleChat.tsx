@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface KnowledgeArticleChatProps {
   useCaseId: string;
+  onContentChange?: (content: string) => void;
 }
 
 interface Message {
@@ -17,7 +18,7 @@ interface Message {
   content: string;
 }
 
-const KnowledgeArticleChat = ({ useCaseId }: KnowledgeArticleChatProps) => {
+const KnowledgeArticleChat = ({ useCaseId, onContentChange }: KnowledgeArticleChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
@@ -45,9 +46,13 @@ const KnowledgeArticleChat = ({ useCaseId }: KnowledgeArticleChatProps) => {
       if (messages.length > 0) {
         setMessages(prev => [...prev, { role: 'user', content: input }]);
       }
-      setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+      const newMessage = { role: 'assistant' as const, content: data.content };
+      setMessages(prev => [...prev, newMessage]);
       setPreviousResponseId(data.response_id);
       setInput('');
+      if (onContentChange) {
+        onContentChange(data.content);
+      }
     },
     onError: (error) => {
       toast({
