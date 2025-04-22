@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,15 +6,16 @@ import { Send } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-
-interface KnowledgeArticleChatProps {
-  useCaseId: string;
-  onContentChange?: (content: string) => void;
-}
+import { markdownToHtml } from '@/utils/markdownToHtml';
 
 interface Message {
   role: 'assistant' | 'user';
   content: string;
+}
+
+interface KnowledgeArticleChatProps {
+  useCaseId: string;
+  onContentChange?: (content: string) => void;
 }
 
 const KnowledgeArticleChat = ({ useCaseId, onContentChange }: KnowledgeArticleChatProps) => {
@@ -50,8 +50,10 @@ const KnowledgeArticleChat = ({ useCaseId, onContentChange }: KnowledgeArticleCh
       setMessages(prev => [...prev, newMessage]);
       setPreviousResponseId(data.response_id);
       setInput('');
+      
       if (onContentChange) {
-        onContentChange(data.content);
+        const htmlContent = markdownToHtml(data.content);
+        onContentChange(htmlContent);
       }
     },
     onError: (error) => {

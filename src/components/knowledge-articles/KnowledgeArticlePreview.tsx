@@ -32,15 +32,10 @@ const KnowledgeArticlePreview = ({ content, loading }: KnowledgeArticlePreviewPr
         <CardTitle>Vorschau</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="prose prose-sm max-w-none">
-          {content.split('\n').map((paragraph, index) => (
-            paragraph.trim() && (
-              <p key={index} className="mb-4 text-gray-700">
-                {paragraph}
-              </p>
-            )
-          ))}
-        </div>
+        <div 
+          className="prose prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
       </CardContent>
     </Card>
   );

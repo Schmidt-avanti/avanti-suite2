@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
@@ -53,29 +52,6 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
 
   const canEdit = user?.role === 'admin' || user?.role === 'client';
 
-  const formatKnowledgeArticle = (content: string) => {
-    const formattedContent = content
-      .split('\n')
-      .map(line => {
-        if (line.startsWith('###')) {
-          return `<h2 class="text-xl font-semibold mt-6 mb-3">${line.replace('###', '').trim()}</h2>`;
-        }
-        if (line.match(/^\*\*[^*]+:\*\*/)) {
-          return `<h3 class="text-lg font-medium mt-4 mb-2">${line.replace(/\*\*/g, '').trim()}</h3>`;
-        }
-        if (line.trim().startsWith('-')) {
-          return `<li class="ml-4">${line.substring(1).trim()}</li>`;
-        }
-        if (line.trim()) {
-          return `<p class="mb-3">${line}</p>`;
-        }
-        return line;
-      })
-      .join('\n');
-
-    return formattedContent;
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -110,7 +86,7 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
           <div 
             className="prose prose-gray max-w-none"
             dangerouslySetInnerHTML={{ 
-              __html: formatKnowledgeArticle((item as KnowledgeArticle).content) 
+              __html: (item as KnowledgeArticle).content
             }} 
           />
         ) : (
