@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,7 +114,7 @@ export default function PromptTemplatesPage() {
           <div>
             <Select
               value={newTemplate.type}
-              onValueChange={val => {
+              onValueChange={(val) => {
                 setNewTemplate({ 
                   ...newTemplate, 
                   type: val,
