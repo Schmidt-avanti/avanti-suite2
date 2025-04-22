@@ -76,6 +76,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        model: "gpt-4.1", // Hier wird der erforderliche 'model' Parameter hinzugefügt
         instructions: `Als Experte für Use Case Matching bei avanti, analysiere bitte diese Aufgabenbeschreibung und die möglichen passenden Use Cases.
         Wähle den am besten passenden Use Case aus und gib eine Begründung.
         
