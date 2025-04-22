@@ -32,6 +32,7 @@ import ClientDashboard from "@/pages/customer/Dashboard";
 import Landing from "@/pages/Landing";
 import NotFound from "@/pages/NotFound";
 import Index from "@/pages/Index";
+import Knowledge from '@/pages/Knowledge';
 
 const queryClient = new QueryClient();
 
@@ -112,6 +113,15 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={["admin"]}>
                     <CreateKnowledgeArticle />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/knowledge"
+                element={
+                  <ProtectedRoute allowedRoles={["admin", "agent"]}>
+                    <Knowledge />
                   </ProtectedRoute>
                 }
               />
