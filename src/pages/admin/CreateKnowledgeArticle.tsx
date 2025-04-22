@@ -69,11 +69,11 @@ const CreateKnowledgeArticle = () => {
           className="bg-avanti-500 hover:bg-avanti-600"
         >
           <Save className="h-4 w-4 mr-2" />
-          Speichern
+          Wissensartikel speichern
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="space-y-6">
         <Card className="p-6">
           <KnowledgeArticleChat 
             useCaseId={useCaseId!} 
@@ -81,10 +81,12 @@ const CreateKnowledgeArticle = () => {
           />
         </Card>
         
-        <KnowledgeArticlePreview 
-          content={content} 
-          loading={isPending}
-        />
+        <div className="w-full">
+          <KnowledgeArticlePreview 
+            content={content} 
+            loading={isPending}
+          />
+        </div>
       </div>
     </div>
   );
