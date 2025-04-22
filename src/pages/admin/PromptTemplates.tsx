@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select";
+import * as SelectPrimitive from "@radix-ui/react-select";
 import { USE_CASE_TYPES, useCaseTypeLabels } from "@/types/use-case";
 import { toast } from "sonner";
 
@@ -48,7 +49,7 @@ export default function PromptTemplatesPage() {
     if (t) setNewTemplate({ name: t.name, type: t.type, content: t.content });
   }, [templateId, data]);
 
-  const handleTypeChange = useCallback((value: string) => {
+  const handleTypeChange: SelectPrimitive.SelectProps['onValueChange'] = useCallback((value) => {
     setNewTemplate(prev => ({ 
       ...prev, 
       type: value,
