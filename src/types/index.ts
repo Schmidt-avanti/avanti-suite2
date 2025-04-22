@@ -1,4 +1,3 @@
-
 export type UserRole = 'admin' | 'agent' | 'client';
 
 export interface User {
@@ -62,10 +61,12 @@ export interface Task {
   creator?: TaskCreator | null;
 }
 
+export type TaskActivityAction = 'create' | 'open' | 'close' | 'status_change';
+
 export interface TaskActivity {
   id: string;
   task_id: string;
-  action: 'create' | 'open' | 'close' | 'status_change';
+  action: TaskActivityAction;
   status_from?: TaskStatus;
   status_to?: TaskStatus;
   timestamp: string;

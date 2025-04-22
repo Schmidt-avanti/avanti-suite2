@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { TaskStatus } from '@/types';
+import type { TaskStatus, TaskActivityAction } from '@/types';
 
 export const useTaskActivity = () => {
   const { user } = useAuth();
@@ -14,7 +14,7 @@ export const useTaskActivity = () => {
         .from('task_activities')
         .insert({
           task_id: taskId,
-          action: 'open',
+          action: 'open' as TaskActivityAction,
           user_id: user.id,
         });
     } catch (error) {
@@ -30,7 +30,7 @@ export const useTaskActivity = () => {
         .from('task_activities')
         .insert({
           task_id: taskId,
-          action: 'close',
+          action: 'close' as TaskActivityAction,
           user_id: user.id,
         });
     } catch (error) {
@@ -50,7 +50,7 @@ export const useTaskActivity = () => {
         .from('task_activities')
         .insert({
           task_id: taskId,
-          action: 'status_change',
+          action: 'status_change' as TaskActivityAction,
           status_from: fromStatus,
           status_to: toStatus,
           user_id: user.id,

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +13,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useTaskActivity } from '@/hooks/useTaskActivity';
 
 const taskFormSchema = z.object({
   description: z.string().min(10, "Beschreibung muss mindestens 10 Zeichen lang sein"),
@@ -28,6 +28,7 @@ const CreateTask = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { logTaskOpen } = useTaskActivity();
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
