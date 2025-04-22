@@ -59,6 +59,7 @@ export const useTasks = (statusFilter: string | null, includeCompleted: boolean 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
+        // Initialize the query with basic selection
         let query = supabase
           .from('tasks')
           .select(`
@@ -66,22 +67,22 @@ export const useTasks = (statusFilter: string | null, includeCompleted: boolean 
             title,
             status,
             created_at,
-            customer:customer_id(id, name),
-            created_by(id, "Full Name")
+            customer:customer_id(id, name)
           `)
           .order('created_at', { ascending: false });
 
-        // Filter basierend auf Status
+        // Filter based on status
         if (statusFilter) {
           query = query.eq('status', statusFilter);
         } else if (!includeCompleted) {
-          // Wenn includeCompleted false ist, alle Status außer 'completed' anzeigen
+          // If includeCompleted is false, show all status except 'completed'
           query = query.neq('status', 'completed');
         } else if (includeCompleted === true) {
-          // Wenn explizit nur completed Tasks angefordert werden
+          // If explicitly only completed tasks are requested
           query = query.eq('status', 'completed');
         }
 
+        // Apply user role-based filtering
         if (user?.role === 'agent') {
           const { data: assignedCustomers } = await supabase
             .from('user_customer_assignments')
@@ -104,6 +105,7 @@ export const useTasks = (statusFilter: string | null, includeCompleted: boolean 
           }
         }
 
+        // Execute the query
         const { data, error } = await query;
 
         if (error) throw error;
@@ -114,15 +116,30 @@ export const useTasks = (statusFilter: string | null, includeCompleted: boolean 
           return;
         }
         
+        // Now separately fetch creator information for each task
+        const tasksWithCreator = await Promise.all(data.map(async (task: any) => {
+          // Fetch the creator profile
+          const { data: creatorData } = await supabase
+            .from('profiles')
+            .select('id, "Full Name"')
+            .eq('id', task.created_by)
+            .single();
+          
+          return {
+            ...task,
+            creator: creatorData ? transformCreator(creatorData) : null
+          };
+        }));
+        
         // Transform the data with proper type safety
-        const transformedTasks: Task[] = data.map((rawTask: any): Task => {
+        const transformedTasks: Task[] = tasksWithCreator.map((rawTask: any): Task => {
           return {
             id: rawTask.id,
             title: rawTask.title,
             status: validateTaskStatus(rawTask.status),
             created_at: rawTask.created_at,
             customer: transformCustomer(rawTask.customer),
-            creator: transformCreator(rawTask.created_by)
+            creator: rawTask.creator
           };
         });
         

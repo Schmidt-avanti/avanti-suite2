@@ -57,6 +57,17 @@ serve(async (req) => {
 
     console.log('Found similar use cases:', similarUseCases?.length || 0);
 
+    // If no use cases found, return a default response
+    if (!similarUseCases || similarUseCases.length === 0) {
+      return new Response(JSON.stringify({
+        matched_use_case_id: null,
+        confidence: 0,
+        reasoning: "Keine passenden Use Cases gefunden"
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // 3. Use GPT to analyze matches
     const analysisResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -93,16 +104,43 @@ serve(async (req) => {
     });
 
     const analysisData = await analysisResponse.json();
-    const analysis = JSON.parse(analysisData.response);
     
-    console.log('Analysis completed:', {
-      matched_id: analysis.matched_use_case_id,
-      confidence: analysis.confidence
-    });
+    // Check if we have a valid response
+    if (!analysisData || !analysisData.response) {
+      console.error('Invalid analysis response:', analysisData);
+      return new Response(JSON.stringify({
+        error: 'Invalid AI response',
+        details: analysisData
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    try {
+      const analysis = JSON.parse(analysisData.response);
+      
+      console.log('Analysis completed:', {
+        matched_id: analysis.matched_use_case_id,
+        confidence: analysis.confidence
+      });
 
-    return new Response(JSON.stringify(analysis), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+      return new Response(JSON.stringify(analysis), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch (parseError) {
+      console.error('Error parsing analysis result:', parseError);
+      console.error('Raw response:', analysisData.response);
+      
+      // Return a fallback response
+      return new Response(JSON.stringify({
+        matched_use_case_id: similarUseCases[0].id,
+        confidence: 50,
+        reasoning: "Automatisch zugewiesen aufgrund eines Parsing-Fehlers"
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
   } catch (error) {
     console.error('Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {

@@ -50,12 +50,14 @@ const CreateTask = () => {
 
       if (matchError) throw matchError;
 
+      console.log("Match result:", matchResult);
+
       // Create task with initial status "new"
       const { data: task, error: taskError } = await supabase
         .from('tasks')
         .insert({
           description: values.description,
-          title: values.description.split('\n')[0].slice(0, 100),
+          title: values.description.split('\n')[0].slice(0, 100) || 'Neue Aufgabe',
           created_by: user.id,
           customer_id: values.customerId,
           matched_use_case_id: matchResult?.matched_use_case_id,
@@ -66,10 +68,15 @@ const CreateTask = () => {
         .select()
         .single();
 
-      if (taskError) throw taskError;
+      if (taskError) {
+        console.error("Task creation error:", taskError);
+        throw taskError;
+      }
+
+      console.log("Task created:", task);
 
       // Add initial message
-      await supabase
+      const { error: messageError } = await supabase
         .from('task_messages')
         .insert({
           task_id: task.id,
@@ -77,6 +84,11 @@ const CreateTask = () => {
           role: 'user',
           created_by: user.id,
         });
+
+      if (messageError) {
+        console.error("Message creation error:", messageError);
+        throw messageError;
+      }
 
       // Log task creation activity
       await logTaskOpen(task.id);
@@ -89,6 +101,7 @@ const CreateTask = () => {
       // Navigate to the task detail page
       navigate(`/tasks/${task.id}`);
     } catch (error: any) {
+      console.error("Submit error:", error);
       toast({
         variant: "destructive",
         title: "Fehler",
