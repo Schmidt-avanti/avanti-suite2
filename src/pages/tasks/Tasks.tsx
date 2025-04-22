@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
-import { PlusIcon, FilterIcon } from 'lucide-react';
+import { PlusIcon } from 'lucide-react';
 import { 
   Select,
   SelectContent,
@@ -69,7 +69,16 @@ const Tasks = () => {
           }
         } else if (user?.role === 'client') {
           // Clients see only their own tasks
-          query = query.eq('customer_id', user.customerId);
+          // First, get the customer ID for this client
+          const { data: userAssignment } = await supabase
+            .from('user_customer_assignments')
+            .select('customer_id')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (userAssignment) {
+            query = query.eq('customer_id', userAssignment.customer_id);
+          }
         }
 
         const { data, error } = await query;
