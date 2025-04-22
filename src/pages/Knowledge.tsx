@@ -109,14 +109,14 @@ const Knowledge = () => {
           </div>
           {!selectedItemId && (
             <div className="flex gap-4 mt-4">
-              <div className="flex-1">
+              <div className="flex-1 relative">
                 <Input
                   placeholder="Suchen..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full"
-                  icon={<Search className="h-4 w-4" />}
+                  className="w-full pl-9"
                 />
+                <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
               </div>
               <Select
                 value={selectedCustomer}
