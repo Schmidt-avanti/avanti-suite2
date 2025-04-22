@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,7 +50,7 @@ export default function PromptTemplatesPage() {
     if (t) setNewTemplate({ name: t.name, type: t.type, content: t.content });
   }, [templateId, data]);
 
-  const handleTypeChange = useCallback<SelectPrimitive.SelectProps["onValueChange"]>((value) => {
+  const handleTypeChange = useCallback((value: string) => {
     setNewTemplate(prev => ({ 
       ...prev, 
       type: value,
