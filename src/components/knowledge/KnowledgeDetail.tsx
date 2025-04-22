@@ -1,10 +1,12 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Edit } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { KnowledgeArticle } from '@/types/use-case';
 
 interface KnowledgeDetailProps {
@@ -23,6 +25,9 @@ interface UseCase {
 }
 
 const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
   const { data: item, isLoading } = useQuery({
     queryKey: [type === 'articles' ? 'knowledge-article' : 'use-case', id],
     queryFn: async () => {
@@ -44,6 +49,8 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
   if (!item) {
     return <div className="text-center py-4">Eintrag nicht gefunden</div>;
   }
+
+  const canEdit = user?.role === 'admin' || user?.role === 'customer';
 
   const formatKnowledgeArticle = (content: string) => {
     const formattedContent = content
@@ -70,14 +77,27 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
 
   return (
     <div className="space-y-6">
-      <Button
-        variant="ghost"
-        onClick={onBack}
-        className="mb-4"
-      >
-        <ChevronLeft className="h-4 w-4 mr-2" />
-        Zurück
-      </Button>
+      <div className="flex justify-between items-center">
+        <Button
+          variant="ghost"
+          onClick={onBack}
+          className="mb-4"
+        >
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Zurück
+        </Button>
+        
+        {type === 'articles' && canEdit && (
+          <Button
+            onClick={() => navigate(`/knowledge/edit/${id}`)}
+            variant="outline"
+            className="mb-4"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Bearbeiten
+          </Button>
+        )}
+      </div>
 
       <div>
         <h2 className="text-2xl font-semibold mb-2">{item.title}</h2>

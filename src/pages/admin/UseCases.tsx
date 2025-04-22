@@ -15,21 +15,29 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useCaseTypeLabels } from "@/types/use-case";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus } from "lucide-react";
-
-const fetchUseCases = async () => {
-  const { data, error } = await supabase
-    .from("use_cases")
-    .select("id, title, type, created_at, is_active")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data;
-};
+import { Plus, FileText } from "lucide-react";
 
 export default function UseCasesPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["use_cases"],
-    queryFn: fetchUseCases,
+    queryFn: async () => {
+      const { data: useCases, error: useCasesError } = await supabase
+        .from("use_cases")
+        .select(`
+          id, 
+          title, 
+          type, 
+          created_at, 
+          is_active,
+          knowledge_articles (
+            id
+          )
+        `)
+        .order("created_at", { ascending: false });
+      
+      if (useCasesError) throw useCasesError;
+      return useCases;
+    },
   });
   const navigate = useNavigate();
 
@@ -69,6 +77,7 @@ export default function UseCasesPage() {
                     <TableHead className="font-medium text-foreground">Titel</TableHead>
                     <TableHead className="font-medium text-foreground">Typ</TableHead>
                     <TableHead className="font-medium text-foreground">Status</TableHead>
+                    <TableHead className="font-medium text-foreground">Wissensartikel</TableHead>
                     <TableHead className="font-medium text-foreground">Erstellt am</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -90,6 +99,16 @@ export default function UseCasesPage() {
                           <span className={`inline-block w-2 h-2 rounded-full ${uc.is_active ? "bg-green-500" : "bg-gray-300"}`} />
                           <span>{uc.is_active ? "Aktiv" : "Inaktiv"}</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {uc.knowledge_articles?.length > 0 ? (
+                          <div className="flex items-center gap-2 text-green-600">
+                            <FileText className="h-4 w-4" />
+                            <span>Vorhanden</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Nicht vorhanden</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(uc.created_at).toLocaleString("de-DE", {
