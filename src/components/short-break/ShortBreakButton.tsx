@@ -18,11 +18,7 @@ export const ShortBreakButton = () => {
   const { user } = useAuth();
   const { activeBreaks, startBreak } = useShortBreaks();
   const [currentBreakId, setCurrentBreakId] = useState<string | null>(null);
-  const [isBreakSheetOpen, setIsBreakSheetOpen] = useState(false);
-  
-  // Instead of trying to control the sidebar directly, we'll just use a 
-  // local state and handle the sheet visibility with controlled state
-  
+
   const canStartBreak = activeBreaks && 
     activeBreaks.activeSlots < activeBreaks.maxSlots && 
     activeBreaks.availableMinutes >= 5;
@@ -32,15 +28,11 @@ export const ShortBreakButton = () => {
     setCurrentBreakId(result.id);
   };
 
-  const handleBreakComplete = () => {
-    setCurrentBreakId(null);
-    setIsBreakSheetOpen(false);
-  };
-
+  // Only show Button for authenticated users
   if (!user) return null;
 
   return (
-    <Sheet open={isBreakSheetOpen} onOpenChange={setIsBreakSheetOpen}>
+    <Sheet>
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon">
           <Timer className="h-5 w-5" />
@@ -61,7 +53,7 @@ export const ShortBreakButton = () => {
           {currentBreakId ? (
             <ShortBreakTimer 
               breakId={currentBreakId} 
-              onComplete={handleBreakComplete} 
+              onComplete={() => setCurrentBreakId(null)} 
             />
           ) : (
             <>

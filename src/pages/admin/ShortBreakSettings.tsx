@@ -7,23 +7,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { useState } from 'react';
 
-// Define the type for profile data
-type ProfileData = {
-  "Full Name": string;
-  role?: string;
-}
-
-// Define the type for break history items, making profiles optional
-type BreakItem = {
-  id: string;
-  start_time: string;
-  end_time?: string;
-  duration?: number;
-  status: string;
-  user_id: string;
-  profiles?: ProfileData | null;
-}
-
 export default function ShortBreakSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -47,19 +30,13 @@ export default function ShortBreakSettings() {
     }
   });
 
-  const { data: breaks } = useQuery<BreakItem[]>({
+  const { data: breaks } = useQuery({
     queryKey: ['break-history'],
     queryFn: async () => {
-      // Adjusted query to ensure proper join between short_breaks and profiles
       const { data, error } = await supabase
         .from('short_breaks')
         .select(`
-          id,
-          start_time,
-          end_time,
-          duration,
-          status,
-          user_id,
+          *,
           profiles:user_id (
             "Full Name",
             role
@@ -68,14 +45,7 @@ export default function ShortBreakSettings() {
         .order('start_time', { ascending: false });
       
       if (error) throw error;
-      
-      // Safely process the data to ensure it matches our expected types
-      return (data || []).map(item => ({
-        ...item,
-        profiles: item.profiles && typeof item.profiles === 'object' && !('error' in item.profiles) 
-          ? item.profiles 
-          : null
-      }));
+      return data;
     }
   });
 
@@ -151,12 +121,7 @@ export default function ShortBreakSettings() {
               {breaks?.map((breakItem) => (
                 <TableRow key={breakItem.id}>
                   <TableCell>
-                    {breakItem.profiles?.["Full Name"] || "-"}
-                    {breakItem.profiles?.role && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        ({breakItem.profiles.role})
-                      </span>
-                    )}
+                    {breakItem.profiles?.["Full Name"]}
                   </TableCell>
                   <TableCell>
                     {new Date(breakItem.start_time).toLocaleString()}
