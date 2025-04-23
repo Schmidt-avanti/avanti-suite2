@@ -39,7 +39,7 @@ export const ShortBreakHistory = () => {
       try {
         console.log(`Fetching breaks for user ${user.id} with status ${status} and limit ${limit}`);
         
-        // Build query
+        // Build query - directly get all break data without any joins
         let query = supabase
           .from('short_breaks')
           .select('*')
@@ -63,7 +63,7 @@ export const ShortBreakHistory = () => {
         }
         
         console.log('Fetched user breaks successfully:', data?.length);
-        return data || [];
+        return data as ShortBreak[] || [];
       } catch (err) {
         console.error('Exception in user breaks query:', err);
         throw err;

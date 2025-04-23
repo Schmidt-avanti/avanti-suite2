@@ -45,7 +45,7 @@ interface ShortBreak {
   status: 'active' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
-  profiles?: ShortBreakUser | null;
+  // No direct profile join, we'll handle user display separately
 }
 
 interface BreakHistoryFilters {
@@ -129,6 +129,14 @@ export default function ShortBreakSettings() {
     }
   });
 
+  // Create a mapping of user IDs to names
+  const userMap = new Map<string, string>();
+  if (users) {
+    users.forEach(user => {
+      userMap.set(user.id, user["Full Name"]);
+    });
+  }
+
   // Fetch break history with pagination and filters
   const { data: breaksData, isLoading: breaksLoading } = useQuery({
     queryKey: ['break-history', page, filters],
@@ -136,20 +144,10 @@ export default function ShortBreakSettings() {
       try {
         console.log('Fetching admin breaks with filters:', filters);
         
-        // Start building the query
+        // Start building the query - without the join to profiles
         let query = supabase
           .from('short_breaks')
-          .select(`
-            id,
-            user_id,
-            start_time,
-            end_time,
-            duration,
-            status,
-            created_at,
-            updated_at,
-            profiles(id, "Full Name")
-          `, { count: 'exact' });
+          .select('*', { count: 'exact' });
         
         // Apply filters
         if (filters.userId) {
@@ -187,23 +185,10 @@ export default function ShortBreakSettings() {
           throw error;
         }
         
-        console.log('Successfully fetched breaks data:', data);
-        
-        // Safely transform the data to match our expected types
-        const typedBreaks = data.map((item: any): ShortBreak => {
-          // Extract profile data from the nested structure
-          const profile = item.profiles || null;
-          
-          return {
-            ...item,
-            profiles: Array.isArray(profile) && profile.length > 0 
-              ? profile[0] 
-              : (profile || null)
-          };
-        });
+        console.log('Successfully fetched breaks data:', data?.length || 0, 'records');
         
         return { 
-          breaks: typedBreaks,
+          breaks: data as ShortBreak[],
           totalCount: count || 0
         };
       } catch (err) {
@@ -310,12 +295,9 @@ export default function ShortBreakSettings() {
     }
   };
 
-  // Get user name from break
-  const getUserName = (breakItem: ShortBreak): string => {
-    if (breakItem.profiles && typeof breakItem.profiles === 'object' && breakItem.profiles["Full Name"]) {
-      return breakItem.profiles["Full Name"];
-    }
-    return "Unbekannter Nutzer";
+  // Get user name from user_id
+  const getUserName = (user_id: string): string => {
+    return userMap.get(user_id) || "Unbekannter Nutzer";
   };
 
   return (
@@ -484,7 +466,7 @@ export default function ShortBreakSettings() {
                   {breaksData.breaks.map((breakItem) => (
                     <TableRow key={breakItem.id}>
                       <TableCell>
-                        {getUserName(breakItem)}
+                        {getUserName(breakItem.user_id)}
                       </TableCell>
                       <TableCell>
                         {new Date(breakItem.start_time).toLocaleString('de-DE')}
