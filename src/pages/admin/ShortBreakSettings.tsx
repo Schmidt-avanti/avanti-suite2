@@ -7,6 +7,23 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { useState } from 'react';
 
+// Define the type for profile data
+type ProfileData = {
+  "Full Name": string;
+  role?: string;
+}
+
+// Define the type for break history items
+type BreakItem = {
+  id: string;
+  start_time: string;
+  end_time?: string;
+  duration?: number;
+  status: string;
+  user_id: string;
+  profiles?: ProfileData;
+}
+
 export default function ShortBreakSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -30,7 +47,7 @@ export default function ShortBreakSettings() {
     }
   });
 
-  const { data: breaks } = useQuery({
+  const { data: breaks } = useQuery<BreakItem[]>({
     queryKey: ['break-history'],
     queryFn: async () => {
       // Adjusted query to ensure proper join between short_breaks and profiles
@@ -52,7 +69,7 @@ export default function ShortBreakSettings() {
       
       if (error) throw error;
       
-      return data;
+      return data as BreakItem[];
     }
   });
 
@@ -129,9 +146,9 @@ export default function ShortBreakSettings() {
                 <TableRow key={breakItem.id}>
                   <TableCell>
                     {breakItem.profiles?.["Full Name"]}
-                    {breakItem.profiles && (
+                    {breakItem.profiles && breakItem.profiles.role && (
                       <span className="ml-2 text-xs text-muted-foreground">
-                        {breakItem.profiles.role && `(${breakItem.profiles.role})`}
+                        ({breakItem.profiles.role})
                       </span>
                     )}
                   </TableCell>
