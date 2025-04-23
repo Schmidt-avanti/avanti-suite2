@@ -679,9 +679,19 @@ export type Database = {
         Args: { "": string } | { "": unknown }
         Returns: unknown
       }
+      create_chat_session: {
+        Args: { chat_id_param: string; user_id_param: string }
+        Returns: undefined
+      }
       generate_embedding: {
         Args: { input_text: string }
         Returns: string
+      }
+      get_chat_session: {
+        Args: { chat_id_param: string }
+        Returns: {
+          user_id: string
+        }[]
       }
       get_user_role: {
         Args: Record<PropertyKey, never>
@@ -758,6 +768,10 @@ export type Database = {
           similarity: number
         }[]
       }
+      release_chat_session: {
+        Args: { chat_id_param: string; user_id_param: string }
+        Returns: undefined
+      }
       sparsevec_out: {
         Args: { "": unknown }
         Returns: unknown
@@ -769,6 +783,10 @@ export type Database = {
       sparsevec_typmod_in: {
         Args: { "": unknown[] }
         Returns: number
+      }
+      update_chat_session: {
+        Args: { chat_id_param: string; user_id_param: string }
+        Returns: undefined
       }
       vector_avg: {
         Args: { "": number[] }
