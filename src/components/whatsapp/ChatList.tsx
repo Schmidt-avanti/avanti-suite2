@@ -2,7 +2,7 @@
 import React from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, AlertCircle } from "lucide-react";
+import { MessageSquare, AlertCircle, RefreshCw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WhatsappChat } from "@/hooks/useWhatsappChats";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,16 @@ type ChatListProps = {
   loading: boolean;
   onSelectChat: (chat: WhatsappChat) => void;
   selectedChatId?: string|null;
+  onRefresh: () => void;
 };
 
-const ChatList: React.FC<ChatListProps> = ({ chats, loading, onSelectChat, selectedChatId }) => {
+const ChatList: React.FC<ChatListProps> = ({ 
+  chats, 
+  loading, 
+  onSelectChat, 
+  selectedChatId,
+  onRefresh
+}) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-32 text-muted-foreground">
@@ -42,6 +49,15 @@ const ChatList: React.FC<ChatListProps> = ({ chats, loading, onSelectChat, selec
             </div>
           </div>
         </div>
+        
+        <Button 
+          className="mt-4 flex items-center gap-2"
+          onClick={onRefresh}
+          variant="outline"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Aktualisieren
+        </Button>
       </div>
     );
   }

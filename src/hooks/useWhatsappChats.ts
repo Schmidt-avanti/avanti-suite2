@@ -73,9 +73,12 @@ export const useWhatsappChats = (accountIds: string[]) => {
     }
   }, [accountIds, toast]);
 
+  // Nur einmal beim Laden und bei Änderungen der accountIds laden
   useEffect(() => { 
-    fetchChats(); 
-  }, [fetchChats]);
+    if (accountIds.length > 0) {
+      fetchChats(); 
+    }
+  }, [accountIds, fetchChats]);
   
   return { chats, loading, error, refetch: fetchChats };
 };
@@ -125,6 +128,7 @@ export const useWhatsappMessages = (chatId: string | null) => {
     }
   }, [chatId, toast]);
 
+  // Nur beim Wechsel des Chats laden
   useEffect(() => { 
     if (chatId) fetchMessages(); 
   }, [chatId, fetchMessages]);

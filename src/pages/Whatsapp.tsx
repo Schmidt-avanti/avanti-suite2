@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useWhatsappAccounts } from "@/hooks/useWhatsappAccounts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,17 +14,51 @@ import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const WhatsappPage: React.FC = () => {
-  const { accounts, loading: loadingAccounts, error: accountsError } = useWhatsappAccounts();
+  const { accounts, loading: loadingAccounts, error: accountsError, refetch: refetchAccounts } = useWhatsappAccounts();
   const [debugMode, setDebugMode] = useState(false);
   const { toast } = useToast();
   
-  const accountIds = accounts.map(acc => acc.id);
-  const { chats, loading: loadingChats, error: chatsError, refetch } = useWhatsappChats(accountIds);
+  // Reduziere unnötige Rerenders, indem wir die accountIds memoizen
+  const accountIds = React.useMemo(() => accounts.map(acc => acc.id), [accounts]);
+  
+  const { 
+    chats, 
+    loading: loadingChats, 
+    error: chatsError, 
+    refetch: refetchChats 
+  } = useWhatsappChats(accountIds);
+  
   const [selectedChat, setSelectedChat] = useState<null | typeof chats[0]>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Debugging Informationen
   const hasErrors = !!accountsError || !!chatsError;
   const errorDetails = accountsError || chatsError;
+
+  // Kombinierte Aktualisierungsfunktion mit Verzögerungslogik
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      toast({
+        title: "Aktualisiere Daten...",
+        description: "Die WhatsApp-Daten werden aktualisiert.",
+      });
+      
+      await refetchAccounts();
+      await refetchChats();
+      
+      toast({
+        title: "Aktualisiert",
+        description: "Die WhatsApp-Daten wurden erfolgreich aktualisiert.",
+      });
+    } catch (error) {
+      console.error("Fehler beim Aktualisieren:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, refetchAccounts, refetchChats, toast]);
 
   // Teste Chat-Erstellung
   const createTestChat = async () => {
@@ -70,7 +104,7 @@ const WhatsappPage: React.FC = () => {
           description: "Ein Test-Chat mit einer Nachricht wurde erfolgreich erstellt.",
         });
         
-        refetch();
+        refetchChats();
       }
     } catch (error) {
       console.error("Fehler beim Erstellen eines Test-Chats:", error);
@@ -136,10 +170,10 @@ const WhatsappPage: React.FC = () => {
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-2"
-                onClick={refetch}
-                disabled={loadingChats}
+                onClick={handleRefresh}
+                disabled={isRefreshing}
               >
-                <RefreshCw className={`h-4 w-4 ${loadingChats ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 Aktualisieren
               </Button>
               <Button 
@@ -173,6 +207,7 @@ const WhatsappPage: React.FC = () => {
                 loading={loadingChats}
                 selectedChatId={selectedChat?.id || null}
                 onSelectChat={chat => setSelectedChat(chat)}
+                onRefresh={handleRefresh}
               />
             </div>
             <div className="col-span-2 bg-white rounded-2xl border h-[32rem] flex flex-col overflow-hidden">
