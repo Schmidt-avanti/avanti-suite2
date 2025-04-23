@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -15,7 +14,8 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Radio
+  Radio,
+  HeadphonesIcon
 } from 'lucide-react';
 
 import {
@@ -35,6 +35,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const AppSidebar = () => {
   const { user } = useAuth();
   const [adminOpen, setAdminOpen] = useState(true);
+  const [supervisorOpen, setSupervisorOpen] = useState(true);
 
   if (!user) return null;
 
@@ -147,137 +148,181 @@ const AppSidebar = () => {
           </SidebarGroup>
 
           {user.role === 'admin' && (
-            <SidebarGroup>
-              <SidebarGroupLabel
-                className="flex items-center select-none cursor-pointer px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider"
-                onClick={() => setAdminOpen((open) => !open)}
-                tabIndex={0}
-                role="button"
-                aria-expanded={adminOpen}
-              >
-                <span className="flex-1">Admin</span>
-                {adminOpen ? (
-                  <ChevronDown className="ml-2 h-4 w-4 transition-all duration-200" />
-                ) : (
-                  <ChevronRight className="ml-2 h-4 w-4 transition-all duration-200" />
-                )}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <div
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                    adminOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
-                  }`}
+            <>
+              <SidebarGroup>
+                <SidebarGroupLabel
+                  className="flex items-center select-none cursor-pointer px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider"
+                  onClick={() => setSupervisorOpen((open) => !open)}
+                  tabIndex={0}
+                  role="button"
+                  aria-expanded={supervisorOpen}
                 >
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to="/admin/users"
-                          className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                            }`
-                          }
-                        >
-                          <Users className="h-5 w-5 text-sidebar-primary" />
-                          <span className="truncate">Users</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to="/admin/customers"
-                          className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                            }`
-                          }
-                        >
-                          <Building2 className="h-5 w-5 text-sidebar-primary" />
-                          <span className="truncate">Kunden</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to="/admin/use-cases"
-                          className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                            }`
-                          }
-                        >
-                          <FileText className="h-5 w-5 text-sidebar-primary" />
-                          <span className="truncate">Use Cases</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to="/admin/prompts"
-                          className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                            }`
-                          }
-                        >
-                          <MessageSquare className="h-5 w-5 text-sidebar-primary" />
-                          <span className="truncate">Prompts</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to="/admin/whatsapp-accounts"
-                          className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                            }`
-                          }
-                        >
-                          <MessageSquare className="h-5 w-5 text-sidebar-primary" />
-                          <span className="truncate">WhatsApp Konten</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to="/admin/short-breaks"
-                          className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                            }`
-                          }
-                        >
-                          <Timer className="h-5 w-5 text-sidebar-primary" />
-                          <span className="truncate">Short-Break Tool</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to="/admin/live-agents"
-                          className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                            }`
-                          }
-                        >
-                          <Radio className="h-5 w-5 text-sidebar-primary" />
-                          <span className="truncate">Live-Agentenübersicht</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </SidebarMenu>
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                  <span className="flex-1">Supervisor</span>
+                  {supervisorOpen ? (
+                    <ChevronDown className="ml-2 h-4 w-4 transition-all duration-200" />
+                  ) : (
+                    <ChevronRight className="ml-2 h-4 w-4 transition-all duration-200" />
+                  )}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      supervisorOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+                    }`}
+                  >
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/supervisor/live-agents"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Radio className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Live-Agentenübersicht</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </div>
+                </SidebarGroupContent>
+              </SidebarGroup>
+
+              <SidebarGroup>
+                <SidebarGroupLabel
+                  className="flex items-center select-none cursor-pointer px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider"
+                  onClick={() => setAdminOpen((open) => !open)}
+                  tabIndex={0}
+                  role="button"
+                  aria-expanded={adminOpen}
+                >
+                  <span className="flex-1">Admin</span>
+                  {adminOpen ? (
+                    <ChevronDown className="ml-2 h-4 w-4 transition-all duration-200" />
+                  ) : (
+                    <ChevronRight className="ml-2 h-4 w-4 transition-all duration-200" />
+                  )}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      adminOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+                    }`}
+                  >
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/admin/users"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Users className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Users</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/admin/customers"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Building2 className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Kunden</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/admin/use-cases"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <FileText className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Use Cases</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/admin/prompts"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <MessageSquare className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Prompts</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/admin/whatsapp-accounts"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <MessageSquare className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">WhatsApp Konten</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/admin/short-breaks"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Timer className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Short-Break Tool</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/admin/live-agents"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Radio className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Live-Agentenübersicht</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </div>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </>
           )}
         </SidebarContent>
 
