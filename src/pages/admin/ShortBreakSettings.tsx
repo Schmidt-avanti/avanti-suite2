@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { useState } from 'react';
+import { ActiveBreaksList } from '@/components/short-break/ActiveBreaksList';
 
 export default function ShortBreakSettings() {
   const { toast } = useToast();
@@ -104,6 +104,8 @@ export default function ShortBreakSettings() {
         </div>
       </div>
 
+      <ActiveBreaksList />
+
       <div>
         <h3 className="text-lg font-semibold mb-4">Pausenhistorie</h3>
         <div className="border rounded-md">
@@ -134,12 +136,16 @@ export default function ShortBreakSettings() {
                   </TableCell>
                   <TableCell>
                     {breakItem.duration ? 
-                      `${Math.round(breakItem.duration / 60)} Min.` : 
+                      breakItem.duration < 60 ?
+                        `${breakItem.duration} Sek.` :
+                        `${Math.round(breakItem.duration / 60)} Min.` : 
                       '-'
                     }
                   </TableCell>
                   <TableCell>
-                    {breakItem.status}
+                    {breakItem.status === 'completed' ? 'Beendet' : 
+                     breakItem.status === 'active' ? 'Aktiv' : 
+                     'Abgebrochen'}
                   </TableCell>
                 </TableRow>
               ))}
