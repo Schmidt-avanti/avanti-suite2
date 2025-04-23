@@ -39,18 +39,23 @@ const CreateWhatsappAccountDialog: React.FC<CreateWhatsappAccountDialogProps> = 
       return;
     }
     setLoading(true);
+    
+    // Explizit customer_id auf null setzen
     const { error } = await supabase.from("whatsapp_accounts").insert({
       name: name || null,
       pphone_number: pphoneNumber || null,
-      // customer_id bleibt zunächst leer, wird mit Zuweisung gesetzt
+      customer_id: null, // Wichtig: Explizit null setzen statt auf Standardwert zu vertrauen
+      status: 'active'
     });
+    
     setLoading(false);
 
     if (error) {
+      console.error("Fehler beim Anlegen des WhatsApp-Kontos:", error);
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: "WhatsApp Konto konnte nicht angelegt werden.",
+        description: `WhatsApp Konto konnte nicht angelegt werden: ${error.message}`,
       });
     } else {
       toast({
