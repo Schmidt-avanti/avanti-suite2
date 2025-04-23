@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,10 +23,10 @@ import PromptTemplatesPage from "@/pages/admin/PromptTemplates";
 import UseCaseDetailPage from "@/pages/admin/UseCaseDetailPage";
 import CreateKnowledgeArticle from "@/pages/admin/CreateKnowledgeArticle";
 import WhatsappAccountsAdminPage from "@/pages/admin/WhatsappAccounts";
-import ShortBreakSettings from "@/pages/admin/ShortBreakSettings";
 
 // Supervisor Pages
 import LiveAgentOverview from "@/pages/supervisor/LiveAgentOverview";
+import ShortBreakSettings from "@/pages/supervisor/ShortBreakSettings";
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
@@ -145,6 +144,14 @@ const App = () => {
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/supervisor/short-breaks"
+                    element={
+                      <ProtectedRoute allowedRoles={["admin"]}>
+                        <ShortBreakSettings />
+                      </ProtectedRoute>
+                    }
+                  />
 
                   <Route
                     path="/knowledge"
@@ -169,15 +176,6 @@ const App = () => {
                     element={
                       <ProtectedRoute allowedRoles={["admin"]}>
                         <WhatsappAccountsAdminPage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="/admin/short-breaks"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <ShortBreakSettings />
                       </ProtectedRoute>
                     }
                   />
