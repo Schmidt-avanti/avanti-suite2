@@ -35,7 +35,11 @@ export const ShortBreakButton = () => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="border border-gray-200 rounded-full bg-white hover:bg-gray-50"
+        >
           <Timer className="h-5 w-5" />
         </Button>
       </SheetTrigger>
