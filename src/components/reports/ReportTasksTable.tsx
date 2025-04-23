@@ -20,6 +20,7 @@ interface ReportTasksTableProps {
 
 const ReportTasksTable: React.FC<ReportTasksTableProps> = ({ tasks }) => {
   const navigate = useNavigate();
+  console.log('ReportTasksTable - tasks received:', tasks);
 
   const handleRowClick = (taskId: string) => {
     navigate(`/tasks/${taskId}`);
@@ -43,7 +44,7 @@ const ReportTasksTable: React.FC<ReportTasksTableProps> = ({ tasks }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tasks.length > 0 ? (
+              {tasks && tasks.length > 0 ? (
                 tasks.map((task) => (
                   <TableRow 
                     key={task.id}

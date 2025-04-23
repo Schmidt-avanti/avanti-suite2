@@ -5,6 +5,7 @@ import ReportFilters from '@/components/reports/ReportFilters';
 import ReportKpiCard from '@/components/reports/ReportKpiCard';
 import ReportCharts from '@/components/reports/ReportCharts';
 import ReportTasksTable from '@/components/reports/ReportTasksTable';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Reports: React.FC = () => {
   const { 
@@ -19,11 +20,37 @@ const Reports: React.FC = () => {
     kpiData 
   } = useReportData();
 
+  console.log('Reports page - tasks:', tasks);
+  console.log('Reports page - isLoading:', isLoading);
+  console.log('Reports page - kpiData:', kpiData);
+
   if (isLoading) {
     return (
       <div className="py-8">
         <h1 className="text-2xl font-bold mb-6">Reports</h1>
-        <div className="text-center py-8">Lade Daten...</div>
+        <div className="py-4 px-6 rounded-lg bg-white shadow-sm mb-6">
+          <Skeleton className="h-10 w-full mb-4" />
+          <div className="grid grid-cols-2 gap-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
+              <Skeleton className="h-5 w-24 mb-4" />
+              <Skeleton className="h-8 w-16" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {[1, 2].map(i => (
+            <div key={i} className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
+              <Skeleton className="h-6 w-40 mb-4" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

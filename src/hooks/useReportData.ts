@@ -101,9 +101,21 @@ export const useReportData = () => {
     fetchUsers();
   }, []);
 
+  // Add debug logging
+  console.log('Report data - tasks:', tasks);
+  console.log('Report data - filters:', filters);
+  console.log('Report data - customers:', customers);
+  console.log('Report data - users:', users);
+  console.log('Report data - isLoading:', isLoading);
+  console.log('Report data - isTasksLoading:', isTasksLoading);
+
   // Filter tasks based on current filters
   const filteredTasks = useMemo(() => {
     if (isTasksLoading) return [];
+    if (!tasks || !Array.isArray(tasks)) {
+      console.log('Tasks is not an array or undefined:', tasks);
+      return [];
+    }
     
     return tasks.filter((task: Task) => {
       // Filter by customer
@@ -137,6 +149,8 @@ export const useReportData = () => {
       return true;
     });
   }, [tasks, filters, isTasksLoading]);
+
+  console.log('Report data - filteredTasks:', filteredTasks);
 
   // Calculate weekly task distribution (for bar chart)
   const weekdayDistribution = useMemo(() => {
