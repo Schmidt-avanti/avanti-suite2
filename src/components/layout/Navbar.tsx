@@ -35,9 +35,9 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Add ShortBreakButton before the user avatar */}
+        {/* Add ShortBreakButton for all users */}
         <div className="flex items-center gap-4 shrink-0">
-          {user?.role === 'agent' && <ShortBreakButton />}
+          <ShortBreakButton />
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

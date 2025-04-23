@@ -12,8 +12,10 @@ import {
 } from "@/components/ui/sheet";
 import { useShortBreaks } from '@/hooks/useShortBreaks';
 import { ShortBreakTimer } from './ShortBreakTimer';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const ShortBreakButton = () => {
+  const { user } = useAuth();
   const { activeBreaks, startBreak } = useShortBreaks();
   const [currentBreakId, setCurrentBreakId] = useState<string | null>(null);
 
@@ -25,6 +27,9 @@ export const ShortBreakButton = () => {
     const result = await startBreak.mutateAsync();
     setCurrentBreakId(result.id);
   };
+
+  // Only show Button for authenticated users
+  if (!user) return null;
 
   return (
     <Sheet>
