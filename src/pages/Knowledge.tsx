@@ -26,7 +26,6 @@ const Knowledge = () => {
         .select('id, name')
         .eq('is_active', true)
         .order('name');
-      
       if (error) throw error;
       return data;
     },
@@ -39,11 +38,11 @@ const Knowledge = () => {
         .from('knowledge_articles')
         .select('id, title, content, created_at')
         .eq('is_active', true);
-      
+
       if (selectedCustomer !== 'all') {
         query = query.eq('customer_id', selectedCustomer);
       }
-      
+
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -55,13 +54,13 @@ const Knowledge = () => {
     queryFn: async () => {
       let query = supabase
         .from('use_cases')
-        .select('id, title, type, created_at')
+        .select('id, title, information_needed, created_at')
         .eq('is_active', true);
-      
+
       if (selectedCustomer !== 'all') {
         query = query.eq('customer_id', selectedCustomer);
       }
-      
+
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -71,7 +70,6 @@ const Knowledge = () => {
   const filteredItems = React.useMemo(() => {
     const items = viewType === 'articles' ? articles : cases;
     if (!items) return [];
-    
     return items.filter(item =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -79,65 +77,70 @@ const Knowledge = () => {
 
   return (
     <div className="page-container">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-7">
         <h1>Wissen</h1>
       </div>
-
-      <Card className="w-full">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Wissensdatenbank</CardTitle>
-            <ToggleGroup
-              type="single"
-              value={viewType}
-              onValueChange={(value) => {
-                if (value) {
-                  setViewType(value as ViewType);
-                  setSelectedItemId(null);
-                }
-              }}
-            >
-              <ToggleGroupItem value="articles" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                <span>Wissensartikel</span>
-              </ToggleGroupItem>
-              <ToggleGroupItem value="cases" className="flex items-center gap-2">
-                <Book className="h-4 w-4" />
-                <span>Use Cases</span>
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+      <Card className="w-full shadow-none border-0 bg-transparent">
+        <CardHeader className="bg-white/95 rounded-t-2xl px-7 pt-8 pb-3 border-b border-gray-100 sticky top-0 z-10">
           {!selectedItemId && (
-            <div className="flex gap-4 mt-4">
-              <div className="flex-1 relative">
-                <Input
-                  placeholder="Suchen..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9"
-                />
-                <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+              <div className="flex-1 flex gap-3 items-center">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="Suchen…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="
+                      w-full py-3 pl-11 pr-4 text-base rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-primary/30
+                      focus:bg-white shadow-none transition
+                    "
+                  />
+                  <Search className="h-5 w-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+                <Select
+                  value={selectedCustomer}
+                  onValueChange={setSelectedCustomer}
+                >
+                  <SelectTrigger className="min-w-[142px] sm:min-w-[200px] max-w-[250px] rounded-lg border-gray-200 bg-gray-50">
+                    <SelectValue placeholder="Kunde auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Kunden</SelectItem>
+                    {customers?.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Select
-                value={selectedCustomer}
-                onValueChange={setSelectedCustomer}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Kunde auswählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle Kunden</SelectItem>
-                  {customers?.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="mt-2 sm:mt-0 flex gap-3 justify-end">
+                <ToggleGroup
+                  type="single"
+                  value={viewType}
+                  onValueChange={(value) => {
+                    if (value) {
+                      setViewType(value as ViewType);
+                      setSelectedItemId(null);
+                    }
+                  }}
+                  className="gap-2"
+                >
+                  <ToggleGroupItem value="articles" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-50 data-[state=on]:bg-avanti-100/60 data-[state=on]:text-blue-900 data-[state=on]:shadow border border-gray-200">
+                    <FileText className="h-5 w-5" />
+                    <span>Wissensartikel</span>
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="cases" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-50 data-[state=on]:bg-purple-100/50 data-[state=on]:text-purple-900 data-[state=on]:shadow border border-gray-200">
+                    <Book className="h-5 w-5" />
+                    <span>Use Cases</span>
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
             </div>
           )}
+          {selectedItemId && null}
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 rounded-b-2xl bg-transparent">
           {!selectedItemId ? (
             <KnowledgeList
               items={filteredItems}
@@ -145,11 +148,13 @@ const Knowledge = () => {
               onItemClick={setSelectedItemId}
             />
           ) : (
-            <KnowledgeDetail
-              id={selectedItemId}
-              type={viewType}
-              onBack={() => setSelectedItemId(null)}
-            />
+            <div className="pt-6 px-2 md:px-8">
+              <KnowledgeDetail
+                id={selectedItemId}
+                type={viewType}
+                onBack={() => setSelectedItemId(null)}
+              />
+            </div>
           )}
         </CardContent>
       </Card>
