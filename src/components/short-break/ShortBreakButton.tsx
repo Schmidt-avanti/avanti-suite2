@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { useShortBreaks } from '@/hooks/useShortBreaks';
 import { ShortBreakTimer } from './ShortBreakTimer';
+import { ShortBreakHistory } from './ShortBreakHistory';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const ShortBreakButton = () => {
@@ -81,6 +82,8 @@ export const ShortBreakButton = () => {
               )}
             </>
           )}
+
+          <ShortBreakHistory />
         </div>
       </SheetContent>
     </Sheet>
