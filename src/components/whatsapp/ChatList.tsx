@@ -2,9 +2,10 @@
 import React from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, AlertCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WhatsappChat } from "@/hooks/useWhatsappChats";
+import { Button } from "@/components/ui/button";
 
 type ChatListProps = {
   chats: WhatsappChat[];
@@ -25,9 +26,22 @@ const ChatList: React.FC<ChatListProps> = ({ chats, loading, onSelectChat, selec
 
   if (chats.length === 0) {
     return (
-      <div className="text-center text-muted-foreground p-8">
+      <div className="text-center text-muted-foreground p-8 flex flex-col items-center">
         <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-        <p>Keine WhatsApp-Chats vorhanden.</p>
+        <p className="mb-2">Keine WhatsApp-Chats vorhanden.</p>
+        
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4 max-w-xs text-sm text-left">
+          <div className="flex gap-2">
+            <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-yellow-800 mb-1">Hinweis zur Testumgebung</p>
+              <p className="text-yellow-700">
+                Sende zuerst eine Nachricht an die Twilio-Nummer mit dem Code "join company-conversation"
+                und klicke dann auf "Aktualisieren".
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 export type WhatsappChat = {
   id: string;
@@ -24,43 +25,109 @@ export type WhatsappMessage = {
 export const useWhatsappChats = (accountIds: string[]) => {
   const [chats, setChats] = useState<WhatsappChat[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const fetchChats = useCallback(async () => {
-    if (!accountIds.length) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("whatsapp_chats")
-      .select("*")
-      .in("account_id", accountIds)
-      .order("last_message_time", { ascending: false });
-    if (!error && data) {
-      setChats(data as WhatsappChat[]);
+    setError(null);
+    if (!accountIds.length) {
+      console.log("Keine Account-IDs zum Laden von Chats vorhanden");
+      return;
     }
-    setLoading(false);
-  }, [accountIds]);
+    
+    setLoading(true);
+    console.log(`Lade Chats für ${accountIds.length} Accounts:`, accountIds);
+    
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("whatsapp_chats")
+        .select("*")
+        .in("account_id", accountIds)
+        .order("last_message_time", { ascending: false });
+      
+      if (fetchError) {
+        console.error("Fehler beim Laden der Chats:", fetchError);
+        setError(fetchError.message);
+        toast({
+          variant: "destructive",
+          title: "Fehler beim Laden der Chats",
+          description: fetchError.message,
+        });
+      } else if (data) {
+        console.log(`${data.length} Chats erfolgreich geladen:`, data);
+        setChats(data as WhatsappChat[]);
+      } else {
+        console.log("Keine Chats gefunden");
+        setChats([]);
+      }
+    } catch (err) {
+      console.error("Unerwarteter Fehler:", err);
+      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      toast({
+        variant: "destructive",
+        title: "Unerwarteter Fehler",
+        description: err instanceof Error ? err.message : "Bitte versuche es später erneut",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [accountIds, toast]);
 
-  useEffect(() => { fetchChats(); }, [fetchChats]);
-  return { chats, loading, refetch: fetchChats };
+  useEffect(() => { 
+    fetchChats(); 
+  }, [fetchChats]);
+  
+  return { chats, loading, error, refetch: fetchChats };
 };
 
 export const useWhatsappMessages = (chatId: string | null) => {
   const [messages, setMessages] = useState<WhatsappMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const fetchMessages = useCallback(async () => {
+    setError(null);
     if (!chatId) return;
+    
     setLoading(true);
-    const { data, error } = await supabase
-      .from("whatsapp_messages")
-      .select("*")
-      .eq("chat_id", chatId)
-      .order("sent_at", { ascending: true });
-    if (!error && data) {
-      setMessages(data as WhatsappMessage[]);
+    console.log(`Lade Nachrichten für Chat ${chatId}`);
+    
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("whatsapp_messages")
+        .select("*")
+        .eq("chat_id", chatId)
+        .order("sent_at", { ascending: true });
+      
+      if (fetchError) {
+        console.error("Fehler beim Laden der Nachrichten:", fetchError);
+        setError(fetchError.message);
+        toast({
+          variant: "destructive",
+          title: "Fehler beim Laden der Nachrichten",
+          description: fetchError.message,
+        });
+      } else if (data) {
+        console.log(`${data.length} Nachrichten erfolgreich geladen`);
+        setMessages(data as WhatsappMessage[]);
+      }
+    } catch (err) {
+      console.error("Unerwarteter Fehler:", err);
+      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      toast({
+        variant: "destructive", 
+        title: "Unerwarteter Fehler",
+        description: err instanceof Error ? err.message : "Bitte versuche es später erneut",
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [chatId]);
+  }, [chatId, toast]);
 
-  useEffect(() => { if (chatId) fetchMessages(); }, [chatId, fetchMessages]);
-  return { messages, loading, refetch: fetchMessages };
+  useEffect(() => { 
+    if (chatId) fetchMessages(); 
+  }, [chatId, fetchMessages]);
+  
+  return { messages, loading, error, refetch: fetchMessages };
 };
