@@ -13,7 +13,7 @@ type ProfileData = {
   role?: string;
 }
 
-// Define the type for break history items
+// Define the type for break history items, making profiles optional
 type BreakItem = {
   id: string;
   start_time: string;
@@ -21,7 +21,7 @@ type BreakItem = {
   duration?: number;
   status: string;
   user_id: string;
-  profiles?: ProfileData;
+  profiles?: ProfileData | null;
 }
 
 export default function ShortBreakSettings() {
@@ -69,7 +69,13 @@ export default function ShortBreakSettings() {
       
       if (error) throw error;
       
-      return data as BreakItem[];
+      // Safely process the data to ensure it matches our expected types
+      return (data || []).map(item => ({
+        ...item,
+        profiles: typeof item.profiles === 'object' && item.profiles !== null && !('error' in item.profiles) 
+          ? item.profiles 
+          : null
+      }));
     }
   });
 
@@ -145,8 +151,8 @@ export default function ShortBreakSettings() {
               {breaks?.map((breakItem) => (
                 <TableRow key={breakItem.id}>
                   <TableCell>
-                    {breakItem.profiles?.["Full Name"]}
-                    {breakItem.profiles && breakItem.profiles.role && (
+                    {breakItem.profiles?.["Full Name"] || "-"}
+                    {breakItem.profiles?.role && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         ({breakItem.profiles.role})
                       </span>
