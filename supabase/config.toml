@@ -1,6 +1,5 @@
 
 project_id = "knoevkvjyuchhcmzsdpq"
 
-# This is the extra configuration needed for our new edge function
-[functions.handle-task-chat]
-verify_jwt = true
+[functions.whatsapp-webhook]
+verify_jwt = false

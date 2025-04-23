@@ -165,6 +165,51 @@ export type Database = {
         }
         Relationships: []
       }
+      inbound_emails: {
+        Row: {
+          attachments: Json | null
+          body_html: string | null
+          body_text: string | null
+          from_email: string
+          from_name: string | null
+          id: string
+          message_id: string | null
+          processed: boolean
+          raw_headers: string | null
+          received_at: string
+          subject: string | null
+          to_emails: string[]
+        }
+        Insert: {
+          attachments?: Json | null
+          body_html?: string | null
+          body_text?: string | null
+          from_email: string
+          from_name?: string | null
+          id?: string
+          message_id?: string | null
+          processed?: boolean
+          raw_headers?: string | null
+          received_at?: string
+          subject?: string | null
+          to_emails: string[]
+        }
+        Update: {
+          attachments?: Json | null
+          body_html?: string | null
+          body_text?: string | null
+          from_email?: string
+          from_name?: string | null
+          id?: string
+          message_id?: string | null
+          processed?: boolean
+          raw_headers?: string | null
+          received_at?: string
+          subject?: string | null
+          to_emails?: string[]
+        }
+        Relationships: []
+      }
       knowledge_articles: {
         Row: {
           content: string
@@ -597,6 +642,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_inbound_webhooks: {
+        Row: {
+          body: string
+          from_number: string
+          id: string
+          timestamp: string
+        }
+        Insert: {
+          body: string
+          from_number: string
+          id?: string
+          timestamp?: string
+        }
+        Update: {
+          body?: string
+          from_number?: string
+          id?: string
+          timestamp?: string
+        }
+        Relationships: []
       }
       whatsapp_messages: {
         Row: {
