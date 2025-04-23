@@ -39,14 +39,14 @@ const AppSidebar = () => {
   return (
     <Sidebar collapsible="none">
       <div className="flex flex-col h-full w-full">
-        <div className="flex items-center px-4 pt-4 pb-8 mb-8 border-b border-sidebar-border">
+        <div className="flex items-center px-4 pt-4 pb-4 border-b border-sidebar-border">
           <img
             alt="Avanti Logo"
             className="h-8 object-contain"
             src="/lovable-uploads/d7a21b7b-df81-4164-a2a2-cb4a06d4664f.png"
           />
         </div>
-        <SidebarContent>
+        <SidebarContent className="mt-2">
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
