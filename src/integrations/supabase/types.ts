@@ -484,6 +484,47 @@ export type Database = {
           },
         ]
       }
+      whatsapp_accounts: {
+        Row: {
+          api_key: string | null
+          created_at: string | null
+          customer_id: string
+          id: string
+          name: string | null
+          pphone_number: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          name?: string | null
+          pphone_number?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          name?: string | null
+          pphone_number?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_accounts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

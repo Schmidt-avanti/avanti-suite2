@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,6 +21,7 @@ import CreateUseCasePage from "@/pages/admin/CreateUseCase";
 import PromptTemplatesPage from "@/pages/admin/PromptTemplates";
 import UseCaseDetailPage from "@/pages/admin/UseCaseDetailPage";
 import CreateKnowledgeArticle from "@/pages/admin/CreateKnowledgeArticle";
+import WhatsappAccountsAdminPage from "@/pages/admin/WhatsappAccounts";
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
@@ -143,6 +143,15 @@ const App = () => {
                   element={
                     <ProtectedRoute allowedRoles={["admin", "client"]}>
                       <KnowledgeArticleEdit />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/admin/whatsapp-accounts"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <WhatsappAccountsAdminPage />
                     </ProtectedRoute>
                   }
                 />
