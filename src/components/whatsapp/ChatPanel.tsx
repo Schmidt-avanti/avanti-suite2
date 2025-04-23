@@ -8,6 +8,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { SuggestedResponses } from "./SuggestedResponses";
+import { useChatLock } from '@/hooks/useChatLock';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useCustomers } from '@/hooks/useCustomers';
+import { AlertCircle, Lock } from "lucide-react";
 
 interface ChatPanelProps {
   chat: WhatsappChat;
@@ -22,6 +26,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
+  const { isLocked, lockedByUser } = useChatLock(chat?.id || null);
+  const { customers } = useCustomers();
+
+  const customer = customers.find(c => {
+    const account = chat.account_id ? accounts.find(a => a.id === chat.account_id) : null;
+    return account ? c.id === account.customer_id : false;
+  });
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -93,9 +104,16 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex items-center justify-between px-4 py-3 border-b bg-avanti-50 text-avanti-900 rounded-t-2xl">
-        <div>
-          <span className="font-semibold">{chat.contact_name}</span>
-          <span className="ml-2 text-sm text-avanti-600">{chat.contact_number}</span>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">{chat.contact_name}</span>
+            <span className="text-sm text-avanti-600">{chat.contact_number}</span>
+          </div>
+          {customer && (
+            <span className="text-sm text-avanti-700 mt-1">
+              Kunde: {customer.name}
+            </span>
+          )}
         </div>
         <Button 
           size="sm" 
@@ -106,6 +124,16 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
           Schließen
         </Button>
       </div>
+
+      {isLocked && (
+        <Alert variant="destructive" className="m-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            Dieser Chat wird gerade von einem anderen Nutzer bearbeitet
+          </AlertDescription>
+        </Alert>
+      )}
       
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-2 space-y-4 bg-[#F0F2F5]">
         {loading ? (
@@ -154,6 +182,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
                 variant="ghost"
                 size="icon"
                 className="h-10 w-10 rounded-full hover:bg-avanti-50"
+                disabled={isLocked}
               >
                 <Smile className="h-5 w-5 text-avanti-600" />
               </Button>
@@ -178,14 +207,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Antwort eingeben…"
-            disabled={sending}
+            placeholder={isLocked ? "Chat ist gesperrt..." : "Antwort eingeben…"}
+            disabled={isLocked || sending}
             className="flex-1 min-h-[36px] max-h-32 border-none focus-visible:ring-0"
           />
           
           <Button
             type="submit"
-            disabled={sending || !input.trim()}
+            disabled={isLocked || sending || !input.trim()}
             className="rounded-full bg-avanti-600 text-white w-10 h-10 flex items-center justify-center shadow hover:bg-avanti-700"
           >
             {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
