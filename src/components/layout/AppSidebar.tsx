@@ -10,6 +10,7 @@ import {
   FileText,
   MessageSquare,
   Settings,
+  Timer,
   Check,
   ChevronDown,
   ChevronRight
@@ -238,6 +239,21 @@ const AppSidebar = () => {
                         >
                           <MessageSquare className="h-5 w-5 text-sidebar-primary" />
                           <span className="truncate">WhatsApp Konten</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to="/admin/short-breaks"
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                            }`
+                          }
+                        >
+                          <Timer className="h-5 w-5 text-sidebar-primary" />
+                          <span className="truncate">Short-Break Tool</span>
                         </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
