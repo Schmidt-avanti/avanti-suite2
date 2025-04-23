@@ -12,6 +12,17 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 
+interface ShortBreak {
+  id: string;
+  user_id: string;
+  start_time: string;
+  end_time: string | null;
+  duration: number | null;
+  status: 'active' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+}
+
 export const ShortBreakHistory = () => {
   const { user } = useAuth();
   const [status, setStatus] = useState('all');

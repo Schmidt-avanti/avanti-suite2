@@ -45,7 +45,7 @@ interface ShortBreak {
   status: 'active' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
-  profiles: ShortBreakUser;
+  profiles?: ShortBreakUser | null;
 }
 
 interface BreakHistoryFilters {
@@ -81,23 +81,28 @@ export default function ShortBreakSettings() {
   const { data: settings } = useQuery({
     queryKey: ['short-break-settings'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('short_break_settings')
-        .select('*')
-        .single();
-      
-      if (error) {
-        console.error('Error fetching settings:', error);
-        throw error;
+      try {
+        const { data, error } = await supabase
+          .from('short_break_settings')
+          .select('*')
+          .single();
+        
+        if (error) {
+          console.error('Error fetching settings:', error);
+          throw error;
+        }
+        
+        // Update local state with fetched settings
+        if (data) {
+          setMaxSlots(data.max_slots.toString());
+          setDailyMinutes(data.daily_minutes_per_agent.toString());
+        }
+        
+        return data as ShortBreakSettings;
+      } catch (err) {
+        console.error('Exception in settings query:', err);
+        throw err;
       }
-      
-      // Update local state with fetched settings
-      if (data) {
-        setMaxSlots(data.max_slots.toString());
-        setDailyMinutes(data.daily_minutes_per_agent.toString());
-      }
-      
-      return data as ShortBreakSettings;
     }
   });
 
@@ -105,17 +110,22 @@ export default function ShortBreakSettings() {
   const { data: users } = useQuery({
     queryKey: ['users-for-breaks'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, "Full Name"')
-        .order('"Full Name"', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching users:', error);
-        throw error;
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, "Full Name"')
+          .order('"Full Name"', { ascending: true });
+        
+        if (error) {
+          console.error('Error fetching users:', error);
+          throw error;
+        }
+        
+        return data || [];
+      } catch (err) {
+        console.error('Exception in users query:', err);
+        throw err;
       }
-      
-      return data || [];
     }
   });
 
@@ -138,7 +148,7 @@ export default function ShortBreakSettings() {
             status,
             created_at,
             updated_at,
-            profiles:user_id(id, "Full Name")
+            profiles(id, "Full Name")
           `, { count: 'exact' });
         
         // Apply filters
@@ -179,8 +189,21 @@ export default function ShortBreakSettings() {
         
         console.log('Successfully fetched breaks data:', data);
         
+        // Safely transform the data to match our expected types
+        const typedBreaks = data.map((item: any): ShortBreak => {
+          // Extract profile data from the nested structure
+          const profile = item.profiles || null;
+          
+          return {
+            ...item,
+            profiles: Array.isArray(profile) && profile.length > 0 
+              ? profile[0] 
+              : (profile || null)
+          };
+        });
+        
         return { 
-          breaks: data as ShortBreak[],
+          breaks: typedBreaks,
           totalCount: count || 0
         };
       } catch (err) {
@@ -285,6 +308,14 @@ export default function ShortBreakSettings() {
       case 'cancelled': return 'Abgebrochen';
       default: return status;
     }
+  };
+
+  // Get user name from break
+  const getUserName = (breakItem: ShortBreak): string => {
+    if (breakItem.profiles && typeof breakItem.profiles === 'object' && breakItem.profiles["Full Name"]) {
+      return breakItem.profiles["Full Name"];
+    }
+    return "Unbekannter Nutzer";
   };
 
   return (
@@ -453,9 +484,7 @@ export default function ShortBreakSettings() {
                   {breaksData.breaks.map((breakItem) => (
                     <TableRow key={breakItem.id}>
                       <TableCell>
-                        {breakItem.profiles && breakItem.profiles["Full Name"] 
-                          ? breakItem.profiles["Full Name"] 
-                          : "Unbekannter Nutzer"}
+                        {getUserName(breakItem)}
                       </TableCell>
                       <TableCell>
                         {new Date(breakItem.start_time).toLocaleString('de-DE')}
