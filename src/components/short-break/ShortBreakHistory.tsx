@@ -43,12 +43,15 @@ export const ShortBreakHistory = () => {
                 <TableCell>
                   {new Date(breakItem.start_time).toLocaleTimeString([], { 
                     hour: '2-digit', 
-                    minute: '2-digit' 
+                    minute: '2-digit',
+                    second: '2-digit'
                   })}
                 </TableCell>
                 <TableCell>
                   {breakItem.duration ? 
-                    `${Math.round(breakItem.duration / 60)} Min.` : 
+                    breakItem.duration < 60 ?
+                      `${breakItem.duration} Sek.` :
+                      `${Math.round(breakItem.duration / 60)} Min.` : 
                     '-'
                   }
                 </TableCell>

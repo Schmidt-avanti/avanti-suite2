@@ -42,11 +42,19 @@ export const ShortBreakButton = () => {
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Short-Break</SheetTitle>
-          <SheetDescription>
-            Verfügbare Slots: {activeBreaks ? 
-              `${activeBreaks.activeSlots} von ${activeBreaks.maxSlots}` : 
-              'Lädt...'
-            }
+          <SheetDescription className="space-y-1">
+            <div>
+              Verfügbare Slots: {activeBreaks ? 
+                `${activeBreaks.activeSlots} von ${activeBreaks.maxSlots}` : 
+                'Lädt...'
+              }
+            </div>
+            <div>
+              Verbleibende Pausenzeit heute: {activeBreaks ? 
+                `${activeBreaks.availableMinutes} Minuten` : 
+                'Lädt...'
+              }
+            </div>
           </SheetDescription>
         </SheetHeader>
 
