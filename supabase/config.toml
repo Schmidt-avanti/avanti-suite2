@@ -3,3 +3,9 @@ project_id = "knoevkvjyuchhcmzsdpq"
 
 [functions.whatsapp-webhook]
 verify_jwt = false
+
+[functions.process-whatsapp-messages]
+verify_jwt = false
+
+[functions.trigger-webhook-processing]
+verify_jwt = false

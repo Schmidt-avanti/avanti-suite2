@@ -4,7 +4,7 @@ import { useWhatsappAccounts } from "@/hooks/useWhatsappAccounts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Phone, MessageSquare, AlertTriangle } from "lucide-react";
+import { Loader2, RefreshCw, Phone, MessageSquare, AlertTriangle, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useWhatsappChats } from "@/hooks/useWhatsappChats";
@@ -30,6 +30,8 @@ const WhatsappPage: React.FC = () => {
   
   const [selectedChat, setSelectedChat] = useState<null | typeof chats[0]>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingResult, setProcessingResult] = useState<any>(null);
 
   // Debugging Informationen
   const hasErrors = !!accountsError || !!chatsError;
@@ -59,6 +61,44 @@ const WhatsappPage: React.FC = () => {
       setIsRefreshing(false);
     }
   }, [isRefreshing, refetchAccounts, refetchChats, toast]);
+  
+  // Fetch neue WhatsApp-Nachrichten vom Webhook und verarbeite sie
+  const processWebhookMessages = async () => {
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    setProcessingResult(null);
+    
+    try {
+      toast({
+        title: "Verarbeite Nachrichten...",
+        description: "Neue WhatsApp-Nachrichten werden abgerufen und verarbeitet.",
+      });
+      
+      const { data, error } = await supabase.functions.invoke('process-whatsapp-messages');
+      
+      if (error) throw error;
+      
+      setProcessingResult(data);
+      
+      // Aktualisiere die Chat-Liste nach der Verarbeitung
+      refetchChats();
+      
+      toast({
+        title: "Nachrichten verarbeitet",
+        description: `${data.successful} Nachrichten erfolgreich verarbeitet.`,
+      });
+    } catch (error) {
+      console.error("Fehler beim Verarbeiten der Nachrichten:", error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: error instanceof Error ? error.message : "Unbekannter Fehler",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // Teste Chat-Erstellung
   const createTestChat = async () => {
@@ -136,6 +176,14 @@ const WhatsappPage: React.FC = () => {
               <p><strong>Gefundene Konten:</strong> {accounts.length}</p>
               <p><strong>Konto-IDs:</strong> {accountIds.join(', ') || 'keine'}</p>
               <p><strong>Gefundene Chats:</strong> {chats.length}</p>
+              {processingResult && (
+                <div className="border-l-2 border-green-200 pl-2 py-1 mt-2">
+                  <p className="font-medium text-green-700">Nachrichtenverarbeitung:</p>
+                  <p>Verarbeitet: {processingResult.processed}</p>
+                  <p>Erfolgreich: {processingResult.successful}</p>
+                  <p>Fehlgeschlagen: {processingResult.failed}</p>
+                </div>
+              )}
               {accounts.map(account => (
                 <div key={account.id} className="border-l-2 border-yellow-200 pl-2 py-1">
                   <p><strong>Konto:</strong> {account.name || account.id}</p>
@@ -175,6 +223,16 @@ const WhatsappPage: React.FC = () => {
               >
                 <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 Aktualisieren
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                onClick={processWebhookMessages}
+                disabled={isProcessing}
+              >
+                <Inbox className={`h-4 w-4 ${isProcessing ? 'animate-spin' : ''}`} />
+                Nachrichten abholen
               </Button>
               <Button 
                 variant="secondary" 
@@ -233,7 +291,7 @@ const WhatsappPage: React.FC = () => {
           </span>
         </p>
         <p className="italic text-xs text-gray-400">
-          Die WhatsApp-Integration befindet sich im Aufbau. Echte Konversationen erscheinen live.
+          Die WhatsApp-Integration wurde erfolgreich mit Twilio verbunden. Neue Nachrichten werden über den Webhook empfangen.
         </p>
       </div>
     </div>
