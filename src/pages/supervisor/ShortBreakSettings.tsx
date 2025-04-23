@@ -21,6 +21,15 @@ import { Badge } from '@/components/ui/badge';
 import { Save, Calendar as CalendarIcon, Download, Check, Circle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ActiveBreaksList } from '@/components/short-break/ActiveBreaksList';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface ShortBreakUser {
   id: string;
