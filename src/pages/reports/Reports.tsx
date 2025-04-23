@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Download } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -22,7 +22,6 @@ import {
 import { TasksTable } from '@/components/tasks/TasksTable';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useTasks } from '@/hooks/useTasks';
-import { TaskStatusBadge } from '@/components/tasks/TaskStatusBadge';
 import { useReportData } from '@/hooks/useReportData';
 import { 
   TasksByWeekdayChart, 
@@ -197,6 +196,7 @@ const Reports = () => {
                     }
                     numberOfMonths={2}
                     locale={de}
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
