@@ -80,15 +80,30 @@ export default function ShortBreakSettings() {
   const { data: breaksData, isLoading: breaksLoading } = useQuery({
     queryKey: ['break-history', page, filters],
     queryFn: async () => {
+      // Construct base query
       let query = supabase
         .from('short_breaks')
         .select(`
           *,
           profiles:user_id (
-            "Full Name",
-            role
+            "Full Name"
           )
-        `, { count: 'exact' });
+        `, { count: 'exact' })
+        .order('start_time', { ascending: false });
+      
+      // Handle the joined table more carefully
+      query = query
+        .select(`
+          id,
+          user_id, 
+          start_time,
+          end_time,
+          duration,
+          status,
+          created_at,
+          updated_at,
+          user:profiles!short_breaks_user_id_fkey ("Full Name")
+        `);
       
       // Apply filters
       if (filters.userId) {
@@ -115,9 +130,7 @@ export default function ShortBreakSettings() {
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
       
-      const { data, error, count } = await query
-        .order('start_time', { ascending: false })
-        .range(from, to);
+      const { data, error, count } = await query.range(from, to);
       
       if (error) {
         console.error('Error fetching breaks:', error);
@@ -351,7 +364,7 @@ export default function ShortBreakSettings() {
                   {breaksData.breaks.map((breakItem) => (
                     <TableRow key={breakItem.id}>
                       <TableCell>
-                        {breakItem.profiles?.["Full Name"] || "Unbekannter Nutzer"}
+                        {breakItem.user?.["Full Name"] || "Unbekannter Nutzer"}
                       </TableCell>
                       <TableCell>
                         {new Date(breakItem.start_time).toLocaleString()}

@@ -36,9 +36,13 @@ export const ShortBreakHistory = () => {
       
       if (error) {
         console.error('Error fetching user breaks:', error);
+        console.error('User ID:', user.id);
+        console.error('Status filter:', status);
+        console.error('Limit:', limit);
         throw error;
       }
       
+      console.log('Fetched breaks:', data);
       return data || [];
     },
     enabled: !!user
