@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useTaskActivity } from '@/hooks/useTaskActivity';
 import { CreateTaskDescription } from '@/components/tasks/CreateTaskDescription';
+import { Button } from "@/components/ui/button";
 
 const taskFormSchema = z.object({
   description: z.string().min(10, "Beschreibung muss mindestens 10 Zeichen lang sein"),
