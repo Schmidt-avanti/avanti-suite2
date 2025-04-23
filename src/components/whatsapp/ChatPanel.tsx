@@ -27,26 +27,37 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose }) => {
   const sendMessage = async () => {
     if (!input.trim()) return;
     setSending(true);
-    const { error } = await supabase.from('whatsapp_messages').insert({
-      chat_id: chat.id,
-      content: input.trim(),
-      is_from_me: true
-    });
     
-    if (error) {
-      toast({ title: "Fehler beim Senden", description: error.message, variant: "destructive" });
-    } else {
-      setInput("");
-      // Nach dem Senden wird der trigger-webhook-processing aufgerufen
-      try {
-        await supabase.functions.invoke('trigger-webhook-processing');
-        // Warte kurz und lade dann die Nachrichten neu
+    try {
+      // Direktes Senden über die neue twilio-send-message Edge-Funktion
+      const { data, error } = await supabase.functions.invoke('twilio-send-message', {
+        body: {
+          to_number: chat.contact_number,
+          message_body: input.trim(),
+          chat_id: chat.id
+        }
+      });
+      
+      if (error) {
+        console.error("Fehler beim Senden über die Edge-Funktion:", error);
+        toast({ title: "Fehler beim Senden", description: error.message, variant: "destructive" });
+      } else {
+        setInput("");
+        toast({ title: "Nachricht gesendet", description: "Deine Nachricht wurde erfolgreich versandt." });
+        
+        // Nachrichten neu laden
         setTimeout(() => refetch(), 500);
-      } catch (processingError) {
-        console.error("Fehler beim Verarbeiten der Nachricht:", processingError);
       }
+    } catch (err) {
+      console.error("Unerwarteter Fehler beim Senden:", err);
+      toast({ 
+        title: "Fehler beim Senden", 
+        description: err instanceof Error ? err.message : "Ein unbekannter Fehler ist aufgetreten", 
+        variant: "destructive" 
+      });
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

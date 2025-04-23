@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.trigger-webhook-processing]
 verify_jwt = false
+
+[functions.twilio-send-message]
+verify_jwt = false
