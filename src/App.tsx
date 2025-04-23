@@ -39,7 +39,6 @@ import NotFound from "@/pages/NotFound";
 import Index from "@/pages/Index";
 import Knowledge from '@/pages/Knowledge';
 import KnowledgeArticleEdit from '@/components/knowledge/KnowledgeArticleEdit';
-import Reports from '@/pages/reports/Reports';
 
 const queryClient = new QueryClient();
 
@@ -185,16 +184,6 @@ const App = () => {
                   element={
                     <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
                       <TaskDetail />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Add Reports route */}
-                <Route
-                  path="/reports"
-                  element={
-                    <ProtectedRoute allowedRoles={["admin", "agent"]}>
-                      <Reports />
                     </ProtectedRoute>
                   }
                 />
