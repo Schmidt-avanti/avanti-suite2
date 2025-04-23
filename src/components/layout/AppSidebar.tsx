@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -26,7 +25,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  // SidebarTrigger, // nicht mehr benötigt
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,12 +35,10 @@ const AppSidebar = () => {
 
   if (!user) return null;
 
-  // Sidebar ist immer ausgeklappt (nicht mehr collapsible)
   return (
     <Sidebar collapsible="none">
       <div className="flex flex-col h-full w-full">
-        {/* Top: Logo */}
-        <div className="flex items-center px-4 pt-4 pb-2 border-b border-sidebar-border">
+        <div className="flex items-center px-4 pt-4 pb-2">
           <img
             alt="Avanti Logo"
             className="h-8 object-contain"
@@ -122,7 +118,6 @@ const AppSidebar = () => {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {/* Admin Sektion collapsible (nur Admins sehen das), bleibt klappbar */}
           {user.role === 'admin' && (
             <SidebarGroup>
               <SidebarGroupLabel
@@ -133,7 +128,6 @@ const AppSidebar = () => {
                 aria-expanded={adminOpen}
               >
                 <span className="flex-1">Admin</span>
-                {/* Chevron Icon */}
                 {adminOpen ? (
                   <ChevronDown className="ml-2 h-4 w-4 transition-all duration-200" />
                 ) : (
@@ -206,7 +200,6 @@ const AppSidebar = () => {
           )}
         </SidebarContent>
 
-        {/* Einstellungen als Footer */}
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
