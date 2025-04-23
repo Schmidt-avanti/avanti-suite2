@@ -25,7 +25,9 @@ import UseCaseDetailPage from "@/pages/admin/UseCaseDetailPage";
 import CreateKnowledgeArticle from "@/pages/admin/CreateKnowledgeArticle";
 import WhatsappAccountsAdminPage from "@/pages/admin/WhatsappAccounts";
 import ShortBreakSettings from "@/pages/admin/ShortBreakSettings";
-import LiveAgentOverview from "@/pages/admin/LiveAgentOverview";
+
+// Supervisor Pages
+import LiveAgentOverview from "@/pages/supervisor/LiveAgentOverview";
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
@@ -134,9 +136,9 @@ const App = () => {
                     }
                   />
 
-                  {/* New Live Agent Overview page */}
+                  {/* Supervisor Pages */}
                   <Route
-                    path="/admin/live-agents"
+                    path="/supervisor/live-agents"
                     element={
                       <ProtectedRoute allowedRoles={["admin"]}>
                         <LiveAgentOverview />
