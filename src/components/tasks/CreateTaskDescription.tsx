@@ -50,7 +50,6 @@ export function CreateTaskDescription({
       <div className="absolute bottom-2 right-2 z-10">
         <Button
           type="button"
-          rounded="full"
           variant="default"
           size="icon"
           onClick={handleSubmit}
