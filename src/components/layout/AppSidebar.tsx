@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -98,6 +99,19 @@ const AppSidebar = () => {
                     >
                       <BookOpen className="h-5 w-5 text-sidebar-primary" />
                       <span className="truncate">Wissen</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/whatsapp"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                      }
+                    >
+                      <MessageSquare className="h-5 w-5 text-sidebar-primary" />
+                      <span className="truncate">WhatsApp</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
