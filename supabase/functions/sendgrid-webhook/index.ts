@@ -59,7 +59,8 @@ serve(async (req) => {
     
     for (const event of eventsToProcess) {
       if (event && (event.from || event.email || event.from_email)) {
-        const { error } = await supabase
+        // Store the email in inbound_emails table
+        const { data: emailData, error } = await supabase
           .from('inbound_emails')
           .insert({
             from_email: event.from || event.email || event.from_email,
@@ -71,11 +72,71 @@ serve(async (req) => {
             message_id: event.sg_message_id || `manual-${Date.now()}`,
             processed: false,
             raw_headers: typeof event.headers === 'string' ? event.headers : JSON.stringify(event.headers || {})
-          });
+          })
+          .select('id');
 
         if (error) {
           console.error('Error storing email:', error);
           throw error;
+        }
+        
+        // Get the email ID for debugging
+        const emailId = emailData?.[0]?.id;
+        
+        // Now manually find matching customer and create task
+        const fromEmail = event.from || event.email || event.from_email;
+        
+        // Try to match the email to a customer directly
+        const { data: customerByEmail } = await supabase
+          .from('customers')
+          .select('id, name')
+          .eq('email', fromEmail)
+          .maybeSingle();
+          
+        // If no direct match, try contact persons
+        const { data: customerByContact } = !customerByEmail ? await supabase
+          .from('customer_contacts')
+          .select('customer_id')
+          .eq('email', fromEmail)
+          .maybeSingle() : { data: null };
+        
+        let customerId = customerByEmail?.id || customerByContact?.customer_id;
+        
+        // Get system user ID (first admin user)
+        const { data: adminUser } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .single();
+          
+        // Only create task if we found a matching customer and admin user
+        if (customerId && adminUser?.id) {
+          // Create a task for this email
+          const { error: taskError } = await supabase
+            .from('tasks')
+            .insert({
+              title: event.subject || 'Email ohne Betreff',
+              description: event.text || event.plain || event.body || event.html || '',
+              status: 'new',
+              customer_id: customerId,
+              created_by: adminUser.id
+            });
+            
+          if (taskError) {
+            console.error('Error creating task from email:', taskError);
+          } else {
+            console.log(`Successfully created task from email for customer ${customerId}`);
+            
+            // Mark email as processed
+            await supabase
+              .from('inbound_emails')
+              .update({ processed: true })
+              .eq('id', emailId);
+          }
+        } else {
+          console.warn(`Could not create task: ${!customerId ? 'No matching customer found' : 'No admin user found'}`);
         }
       } else {
         console.warn('Skipping event with missing email data:', JSON.stringify(event).slice(0, 200));
