@@ -2,7 +2,9 @@ import React, { useRef, useEffect, useState } from "react";
 import { useWhatsappMessages, WhatsappMessage, WhatsappChat } from "@/hooks/useWhatsappChats";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, Smile } from "lucide-react";
+import EmojiPicker, { Theme, EmojiClickData } from 'emoji-picker-react';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { SuggestedResponses } from "./SuggestedResponses";
@@ -76,6 +78,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
     }
   };
 
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    setInput(prev => prev + emojiData.emoji);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
   const formatMessageTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -98,46 +107,72 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
         </Button>
       </div>
       
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-2 bg-gray-50">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-2 space-y-4 bg-[#F0F2F5]">
         {loading ? (
           <div className="flex items-center justify-center h-32 text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin mr-2" />
             Nachrichten werden geladen…
           </div>
         ) : (
-          <div className="flex flex-col gap-2 py-2">
+          <div className="flex flex-col gap-3 py-2">
             {messages.map((msg, idx) => (
-              <React.Fragment key={msg.id}>
-                <div className={`flex ${msg.is_from_me ? "justify-end" : "justify-start"}`}>
-                  <div className={`
-                    px-4 py-2 max-w-[75%] whitespace-pre-wrap rounded-2xl
-                    ${msg.is_from_me
-                      ? "bg-avanti-100 text-right text-avanti-900 border border-avanti-200"
-                      : "bg-white border border-gray-200 text-gray-900"}
-                  `}>
-                    <div className="flex justify-between items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-gray-700">
-                        {msg.is_from_me ? "Du" : chat.contact_name}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        {formatMessageTime(msg.sent_at)}
-                      </span>
-                    </div>
-                    <span className="block text-sm">{msg.content}</span>
+              <div
+                key={msg.id}
+                className={`flex ${msg.is_from_me ? "justify-end" : "justify-start"}`}
+              >
+                <div className={`
+                  px-4 py-2 max-w-[75%] whitespace-pre-wrap rounded-2xl shadow-sm
+                  ${msg.is_from_me
+                    ? "bg-avanti-100 text-right text-avanti-900"
+                    : "bg-white text-gray-900"}
+                `}>
+                  <div className="flex justify-between items-center gap-2 mb-1">
+                    <span className="text-xs font-medium text-gray-700">
+                      {msg.is_from_me ? "Du" : chat.contact_name}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {formatMessageTime(msg.sent_at)}
+                    </span>
                   </div>
+                  <span className="block text-sm">{msg.content}</span>
                 </div>
-                {idx < messages.length - 1 && <div className="h-1"></div>}
-              </React.Fragment>
+              </div>
             ))}
           </div>
         )}
       </div>
       
-      <div className="flex flex-col gap-2 p-4 border-t bg-white rounded-b-2xl">
+      <div className="flex flex-col gap-2 p-4 border-t bg-[#F0F2F5]">
         <form
           onSubmit={e => { e.preventDefault(); sendMessage(); }}
-          className="flex gap-2 items-end"
+          className="flex gap-2 items-end bg-white rounded-2xl p-2"
         >
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-full hover:bg-avanti-50"
+              >
+                <Smile className="h-5 w-5 text-avanti-600" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent 
+              className="p-0 border-none" 
+              side="top" 
+              align="start"
+              style={{ width: 'auto' }}
+            >
+              <EmojiPicker
+                theme={Theme.LIGHT}
+                onEmojiClick={onEmojiClick}
+                width={320}
+                height={400}
+              />
+            </PopoverContent>
+          </Popover>
+          
           <Textarea
             ref={textareaRef}
             value={input}
@@ -145,12 +180,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
             onKeyDown={handleKeyDown}
             placeholder="Antwort eingeben…"
             disabled={sending}
-            className="flex-1 min-h-[36px] max-h-32 border-avanti-200 focus-visible:ring-avanti-300"
+            className="flex-1 min-h-[36px] max-h-32 border-none focus-visible:ring-0"
           />
+          
           <Button
             type="submit"
             disabled={sending || !input.trim()}
-            className="rounded-full bg-avanti-600 text-white w-12 h-12 flex items-center justify-center shadow hover:bg-avanti-700"
+            className="rounded-full bg-avanti-600 text-white w-10 h-10 flex items-center justify-center shadow hover:bg-avanti-700"
           >
             {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           </Button>

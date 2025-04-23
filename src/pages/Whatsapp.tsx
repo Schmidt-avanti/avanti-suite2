@@ -125,7 +125,7 @@ const WhatsappPage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <Card className="border shadow-sm rounded-2xl max-w-6xl mx-auto">
+      <Card className="border shadow-sm rounded-2xl w-full max-w-[1600px] mx-auto">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl font-semibold flex items-center gap-2">
@@ -161,7 +161,7 @@ const WhatsappPage: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-gray-50 rounded-2xl border h-[32rem] overflow-hidden col-span-1">
+            <div className="bg-gray-50 rounded-2xl border h-[calc(100vh-16rem)] overflow-hidden col-span-1">
               <ChatList
                 chats={chats}
                 loading={loadingChats}
@@ -170,7 +170,7 @@ const WhatsappPage: React.FC = () => {
                 onRefresh={handleRefresh}
               />
             </div>
-            <div className="col-span-2 bg-white rounded-2xl border h-[32rem] flex flex-col overflow-hidden">
+            <div className="col-span-2 bg-white rounded-2xl border h-[calc(100vh-16rem)] flex flex-col overflow-hidden">
               {selectedChat ? (
                 <ChatPanel 
                   chat={selectedChat} 
