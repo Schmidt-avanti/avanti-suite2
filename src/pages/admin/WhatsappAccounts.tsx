@@ -3,14 +3,16 @@ import React, { useEffect, useState } from "react";
 import WhatsappAccountsTable, { CustomerMap } from "./whatsapp/WhatsappAccountsTable";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { MessageSquare, Link2 } from "lucide-react";
+import { MessageSquare, Link2, Plus } from "lucide-react";
 import AssignWhatsappAccountDialog from "./whatsapp/AssignWhatsappAccountDialog";
+import CreateWhatsappAccountDialog from "./whatsapp/CreateWhatsappAccountDialog";
 import { Button } from "@/components/ui/button";
 
 const WhatsappAccountsAdminPage: React.FC = () => {
   const [customerMap, setCustomerMap] = useState<CustomerMap>({});
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [refreshFlag, setRefreshFlag] = useState(0);
 
   // Kunden-Mapping laden für Tabelle
@@ -28,7 +30,7 @@ const WhatsappAccountsAdminPage: React.FC = () => {
       });
   }, []);
 
-  // Refreshe Tabelle nach Zuweisung
+  // Refreshe Tabelle nach Zuweisung oder Neuanlage
   const handleRefresh = () => {
     setRefreshFlag((prev) => prev + 1);
   };
@@ -41,15 +43,26 @@ const WhatsappAccountsAdminPage: React.FC = () => {
             <MessageSquare className="text-green-600" />
             <CardTitle className="text-2xl font-semibold">WhatsApp Konten verwalten</CardTitle>
           </div>
-          <Button 
-            size="sm"
-            variant="outline"
-            className="gap-2"
-            onClick={() => setAssignDialogOpen(true)}
-          >
-            <Link2 className="h-4 w-4" />
-            Konto zuweisen
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setAssignDialogOpen(true)}
+            >
+              <Link2 className="h-4 w-4" />
+              Konto zuweisen
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              className="gap-2 bg-avanti-600 text-white"
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Konto anlegen
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <WhatsappAccountsTable customerMap={customerMap} refreshFlag={refreshFlag} />
@@ -60,6 +73,11 @@ const WhatsappAccountsAdminPage: React.FC = () => {
         onOpenChange={setAssignDialogOpen}
         customers={customers}
         refreshAccounts={handleRefresh}
+      />
+      <CreateWhatsappAccountDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={handleRefresh}
       />
     </div>
   );

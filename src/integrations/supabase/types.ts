@@ -517,7 +517,7 @@ export type Database = {
         Row: {
           api_key: string | null
           created_at: string | null
-          customer_id: string
+          customer_id: string | null
           id: string
           name: string | null
           pphone_number: string | null
@@ -527,7 +527,7 @@ export type Database = {
         Insert: {
           api_key?: string | null
           created_at?: string | null
-          customer_id?: string
+          customer_id?: string | null
           id?: string
           name?: string | null
           pphone_number?: string | null
@@ -537,7 +537,7 @@ export type Database = {
         Update: {
           api_key?: string | null
           created_at?: string | null
-          customer_id?: string
+          customer_id?: string | null
           id?: string
           name?: string | null
           pphone_number?: string | null
