@@ -1,13 +1,13 @@
 
 import React from "react";
-import { Whatsapp } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 
 const WhatsappPage: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center h-full w-full text-center py-8">
       <div className="flex flex-col items-center gap-4">
         <div className="bg-green-100 rounded-full p-4 mb-2">
-          <Whatsapp className="w-10 h-10 text-green-600" />
+          <MessageSquare className="w-10 h-10 text-green-600" />
         </div>
         <h1 className="text-2xl font-semibold text-gray-800">WhatsApp Integration</h1>
         <p className="text-base text-gray-600 max-w-lg">
