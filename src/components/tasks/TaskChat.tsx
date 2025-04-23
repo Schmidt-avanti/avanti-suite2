@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
@@ -156,8 +157,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   };
 
   return (
-    <Card className="flex flex-col h-[600px] rounded-2xl shadow-md">
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+    <Card className="flex flex-col h-full max-h-[600px] rounded-2xl shadow-md overflow-hidden">
+      <ScrollArea className="flex-1 p-4 overflow-y-auto" ref={scrollAreaRef}>
         <div className="space-y-4">
           {messages.length === 0 && !isLoading && (
             <div className="flex items-center justify-center h-32 text-gray-400">
@@ -219,14 +220,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         </div>
       </ScrollArea>
       
-      <div className="p-4 border-t bg-gray-50">
+      <div className="p-4 border-t bg-gray-50 shrink-0">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ihre Nachricht..."
-            className="flex-1 resize-none bg-white min-h-[80px]"
+            className="flex-1 resize-none bg-white min-h-[80px] max-h-[120px]"
             disabled={isLoading || buttonOptions.length > 0}
           />
           <Button 
