@@ -15,9 +15,10 @@ const AppLayout: React.FC = () => {
         </div>
         
         {/* Main content area */}
-        <div className="flex-1 ml-64">
+        <div className="flex-1 ml-64 flex flex-col">
+          {/* Topbar (Navbar) now always full width */}
           <Navbar />
-          <main className="min-h-[calc(100vh-4rem)]">
+          <main className="flex-1">
             <div className="mx-auto min-w-[960px] max-w-[1200px] px-8 py-6">
               <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-6">
                 <Outlet />
@@ -31,3 +32,4 @@ const AppLayout: React.FC = () => {
 };
 
 export default AppLayout;
+
