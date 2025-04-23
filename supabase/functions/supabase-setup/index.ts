@@ -4,54 +4,32 @@
 // und nun werden die RPC-Funktionen hinzugefügt
 
 /*
--- RPC-Funktion zum Abrufen einer Chat-Session
-CREATE OR REPLACE FUNCTION public.get_chat_session(chat_id_param UUID)
-RETURNS TABLE(user_id UUID) 
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT cs.user_id
-  FROM public.whatsapp_chat_sessions cs
-  WHERE cs.chat_id = chat_id_param;
-END;
-$$;
+-- Neue Tabelle für Chat-Sessions erstellen
+CREATE TABLE IF NOT EXISTS public.whatsapp_chat_sessions (
+  chat_id UUID NOT NULL REFERENCES public.whatsapp_chats(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  last_activity TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (chat_id),
+  CONSTRAINT whatsapp_chat_sessions_unique_chat UNIQUE (chat_id)
+);
 
--- RPC-Funktion zum Erstellen einer Chat-Session
-CREATE OR REPLACE FUNCTION public.create_chat_session(chat_id_param UUID, user_id_param UUID)
-RETURNS void 
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  INSERT INTO public.whatsapp_chat_sessions (chat_id, user_id)
-  VALUES (chat_id_param, user_id_param);
-END;
-$$;
+-- RLS aktivieren
+ALTER TABLE public.whatsapp_chat_sessions ENABLE ROW LEVEL SECURITY;
 
--- RPC-Funktion zum Aktualisieren der last_activity einer Chat-Session
-CREATE OR REPLACE FUNCTION public.update_chat_session(chat_id_param UUID, user_id_param UUID)
-RETURNS void 
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  UPDATE public.whatsapp_chat_sessions
-  SET last_activity = now()
-  WHERE chat_id = chat_id_param AND user_id = user_id_param;
-END;
-$$;
+-- Policy für Lesezugriff
+CREATE POLICY "Chat sessions are visible to authenticated users" 
+ON public.whatsapp_chat_sessions
+FOR SELECT 
+TO authenticated
+USING (true);
 
--- RPC-Funktion zum Freigeben einer Chat-Session
-CREATE OR REPLACE FUNCTION public.release_chat_session(chat_id_param UUID, user_id_param UUID)
-RETURNS void 
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  DELETE FROM public.whatsapp_chat_sessions
-  WHERE chat_id = chat_id_param AND user_id = user_id_param;
-END;
-$$;
+-- Policy für Schreibzugriff
+CREATE POLICY "Users can manage their own chat sessions" 
+ON public.whatsapp_chat_sessions
+FOR ALL 
+TO authenticated
+USING (auth.uid() = user_id);
+
+-- Die RPC-Funktionen wurden durch direkten Zugriff auf die Tabelle ersetzt
+-- Es werden keine RPC-Funktionen mehr benötigt
 */

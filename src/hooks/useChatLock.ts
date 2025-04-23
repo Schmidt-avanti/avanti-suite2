@@ -12,61 +12,73 @@ export const useChatLock = (chatId: string | null) => {
 
     const acquireLock = async () => {
       try {
-        // Prüfen, ob eine bestehende Session existiert
-        const { data: existingSession, error: sessionError } = await supabase
-          .rpc('get_chat_session', { chat_id_param: chatId })
-          .single();
+        // Check if a session exists for this chat
+        const { data: sessions, error: sessionsError } = await supabase
+          .from('whatsapp_chat_sessions')
+          .select('user_id, last_activity')
+          .eq('chat_id', chatId)
+          .maybeSingle();
 
-        if (sessionError && sessionError.code !== 'PGRST116') {
-          console.error('Fehler beim Prüfen der Session:', sessionError);
+        if (sessionsError) {
+          console.error('Error checking session:', sessionsError);
           return;
         }
 
-        if (existingSession) {
-          // Session existiert, prüfen ob sie vom aktuellen Nutzer ist
-          const sessionUserId = existingSession.user_id;
-          setIsLocked(sessionUserId !== user.id);
-          setLockedByUser(sessionUserId);
+        const now = new Date();
+        const SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+        // If there's a session and it's not expired and not owned by the current user
+        if (sessions && 
+            sessions.user_id !== user.id && 
+            new Date(sessions.last_activity).getTime() > now.getTime() - SESSION_TIMEOUT_MS) {
+          // Chat is locked by another user
+          setIsLocked(true);
+          setLockedByUser(sessions.user_id);
           return;
         }
 
-        // Keine bestehende Session, versuchen eine neue zu erstellen
-        const { error: insertError } = await supabase
-          .rpc('create_chat_session', { 
-            chat_id_param: chatId, 
-            user_id_param: user.id 
-          });
+        // If no valid session exists or the session is ours, try to create/update one
+        if (!sessions || sessions.user_id === user.id) {
+          const { error: upsertError } = await supabase
+            .from('whatsapp_chat_sessions')
+            .upsert({ 
+              chat_id: chatId,
+              user_id: user.id, 
+              last_activity: new Date().toISOString()
+            })
+            .select();
 
-        if (insertError) {
-          if (insertError.code === '23505') { // Unique violation
-            setIsLocked(true);
+          if (upsertError) {
+            console.error('Error acquiring lock:', upsertError);
+            if (upsertError.code === '23505') { // Unique constraint violation
+              setIsLocked(true);
+            }
+            return;
           }
-          console.error('Fehler beim Erstellen der Session:', insertError);
-          return;
-        }
 
-        setIsLocked(false);
-        setLockedByUser(null);
+          setIsLocked(false);
+          setLockedByUser(null);
+        }
       } catch (error) {
-        console.error('Unerwarteter Fehler:', error);
+        console.error('Unexpected error:', error);
       }
     };
 
-    // Initial lock
+    // Initial lock acquisition
     acquireLock();
 
-    // Keep session alive
+    // Keep session alive with periodic updates
     const interval = setInterval(async () => {
       if (!isLocked && user) {
         const { error } = await supabase
-          .rpc('update_chat_session', { 
-            chat_id_param: chatId, 
-            user_id_param: user.id 
-          });
+          .from('whatsapp_chat_sessions')
+          .update({ last_activity: new Date().toISOString() })
+          .eq('chat_id', chatId)
+          .eq('user_id', user.id);
 
-        if (error) console.error('Fehler beim Aktualisieren der Session:', error);
+        if (error) console.error('Error updating session:', error);
       }
-    }, 30000);
+    }, 30000); // Every 30 seconds
 
     // Subscribe to changes
     const channel = supabase
@@ -87,11 +99,12 @@ export const useChatLock = (chatId: string | null) => {
     return () => {
       clearInterval(interval);
       if (!isLocked && chatId && user) {
+        // Release our lock
         supabase
-          .rpc('release_chat_session', { 
-            chat_id_param: chatId, 
-            user_id_param: user.id 
-          });
+          .from('whatsapp_chat_sessions')
+          .delete()
+          .eq('chat_id', chatId)
+          .eq('user_id', user.id);
       }
       supabase.removeChannel(channel);
     };
