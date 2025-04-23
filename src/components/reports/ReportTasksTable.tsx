@@ -10,7 +10,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import TaskStatusBadge from '@/components/tasks/TaskStatusBadge';
+import { TaskStatusBadge } from '@/components/tasks/TaskStatusBadge';
 import type { Task } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 

@@ -14,6 +14,11 @@ export interface ReportFilters {
   createdBy: string | null;
 }
 
+interface ChartData {
+  name: string;
+  value: number;
+}
+
 export const useReportData = () => {
   const { user } = useAuth();
   const [filters, setFilters] = useState<ReportFilters>({
@@ -76,12 +81,16 @@ export const useReportData = () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, "Full Name" as full_name')
-          .order('"Full Name"');
+          .select('id, "Full Name"');
 
         if (error) throw error;
         
-        setUsers(data || []);
+        const formattedUsers = data ? data.map(user => ({
+          id: user.id,
+          full_name: user["Full Name"]
+        })) : [];
+        
+        setUsers(formattedUsers);
       } catch (error) {
         console.error('Error fetching users:', error);
       } finally {
@@ -148,7 +157,8 @@ export const useReportData = () => {
   // Calculate tasks by week (for line chart)
   const tasksByWeek = useMemo(() => {
     const weeks: Record<string, number> = {};
-    const sortedWeeks: Array<{ name: string, value: number }> = [];
+    const sortedWeeks: ChartData[] = [];
+    const weekKeys: string[] = [];
     
     filteredTasks.forEach((task: Task) => {
       const date = parseISO(task.created_at);
@@ -158,19 +168,24 @@ export const useReportData = () => {
       
       if (!weeks[weekKey]) {
         weeks[weekKey] = 0;
-        sortedWeeks.push({ name: weekLabel, value: 0, key: weekKey });
+        sortedWeeks.push({ name: weekLabel, value: 0 });
+        weekKeys.push(weekKey);
       }
       
       weeks[weekKey] += 1;
     });
     
     // Update values in sorted weeks array
-    sortedWeeks.forEach(week => {
-      week.value = weeks[week.key as string];
+    sortedWeeks.forEach((week, index) => {
+      week.value = weeks[weekKeys[index]];
     });
     
     // Sort by week key
-    return sortedWeeks.sort((a, b) => (a.key as string).localeCompare(b.key as string));
+    return sortedWeeks.sort((a, b) => {
+      const indexA = weekKeys.findIndex(key => weeks[key] === a.value);
+      const indexB = weekKeys.findIndex(key => weeks[key] === b.value);
+      return weekKeys[indexA].localeCompare(weekKeys[indexB]);
+    });
   }, [filteredTasks]);
 
   // Calculate KPI data
