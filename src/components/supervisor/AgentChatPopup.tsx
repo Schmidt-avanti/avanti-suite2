@@ -2,18 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Minimize2, Send, X } from 'lucide-react';
+import { Send, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
-
-interface User {
-  id: string;
-  fullName: string;
-}
 
 interface ChatMessage {
   id: string;
@@ -33,7 +28,7 @@ const AgentChatPopup = ({ onClose }: AgentChatPopupProps) => {
   const [sending, setSending] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
-  const [supervisor, setSupervisor] = useState<User | null>(null);
+  const [supervisor, setSupervisor] = useState<{ id: string; fullName: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -58,58 +53,52 @@ const AgentChatPopup = ({ onClose }: AgentChatPopupProps) => {
     
     const fetchMessages = async () => {
       try {
-        // Find the most recent supervisor message first to get supervisor info
-        const { data: latestMessage, error } = await supabase
+        const { data: messages, error } = await supabase
           .from('supervisor_messages')
-          .select('*, profiles:sender_id("Full Name")')
-          .eq('recipient_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+          .select(`
+            id,
+            content,
+            sender_id,
+            recipient_id,
+            created_at,
+            profiles:sender_id("Full Name")
+          `)
+          .or(`recipient_id.eq.${user.id},sender_id.eq.${user.id}`)
+          .order('created_at', { ascending: true });
 
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching supervisor:', error);
-          return;
-        }
+        if (error) throw error;
 
-        if (latestMessage) {
-          setSupervisor({
-            id: latestMessage.sender_id,
-            fullName: latestMessage.profiles["Full Name"]
-          });
+        if (messages && messages.length > 0) {
+          // Find supervisor from messages
+          const supervisorMessage = messages.find(msg => msg.sender_id !== user.id);
+          if (supervisorMessage) {
+            setSupervisor({
+              id: supervisorMessage.sender_id,
+              fullName: supervisorMessage.profiles["Full Name"]
+            });
+          }
           
-          // Now fetch all messages with this supervisor
-          const { data: allMessages, error: messagesError } = await supabase
-            .from('supervisor_messages')
-            .select('*')
-            .or(`sender_id.eq.${latestMessage.sender_id},recipient_id.eq.${latestMessage.sender_id}`)
-            .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-            .order('created_at', { ascending: true });
-            
-          if (messagesError) throw messagesError;
+          // Format messages
+          const formattedMessages = messages.map(msg => ({
+            id: msg.id,
+            senderId: msg.sender_id,
+            senderName: msg.sender_id === user.id ? 'You' : `${msg.profiles["Full Name"]} (Supervisor)`,
+            content: msg.content,
+            timestamp: new Date(msg.created_at)
+          }));
           
-          if (allMessages) {
-            const formattedMessages = allMessages.map(msg => ({
-              id: msg.id,
-              senderId: msg.sender_id,
-              senderName: msg.sender_id === user.id ? 'You' : `${latestMessage.profiles["Full Name"]} (Supervisor)`,
-              content: msg.content,
-              timestamp: new Date(msg.created_at)
-            }));
+          setMessages(formattedMessages);
+          
+          // Mark messages as read
+          const unreadIds = messages
+            .filter(msg => msg.recipient_id === user.id && !msg.is_read)
+            .map(msg => msg.id);
             
-            setMessages(formattedMessages);
-            
-            // Mark messages as read
-            const unreadIds = allMessages
-              .filter(msg => msg.recipient_id === user.id && !msg.is_read)
-              .map(msg => msg.id);
-              
-            if (unreadIds.length > 0) {
-              await supabase
-                .from('supervisor_messages')
-                .update({ is_read: true })
-                .in('id', unreadIds);
-            }
+          if (unreadIds.length > 0) {
+            await supabase
+              .from('supervisor_messages')
+              .update({ is_read: true })
+              .in('id', unreadIds);
           }
         }
       } catch (error) {
@@ -128,44 +117,44 @@ const AgentChatPopup = ({ onClose }: AgentChatPopupProps) => {
         table: 'supervisor_messages',
         filter: `recipient_id=eq.${user.id}` 
       }, async payload => {
-        const newMsg = payload.new;
+        const newMsg = payload.new as any;
         
-        // Fetch sender name
+        // Get sender name
         const { data: sender } = await supabase
           .from('profiles')
           .select('"Full Name"')
           .eq('id', newMsg.sender_id)
           .single();
           
-        const senderName = sender ? `${sender["Full Name"]} (Supervisor)` : "Supervisor";
-        
-        // Add new message
-        setMessages(prev => [...prev, {
-          id: newMsg.id,
-          senderId: newMsg.sender_id,
-          senderName,
-          content: newMsg.content,
-          timestamp: new Date(newMsg.created_at)
-        }]);
-        
-        // Show notification if minimized
-        if (minimized) {
-          setHasUnread(true);
-          audio.play().catch(console.error);
-        } else {
-          // Mark as read immediately if chat is open
-          await supabase
-            .from('supervisor_messages')
-            .update({ is_read: true })
-            .eq('id', newMsg.id);
-        }
-        
-        // Update supervisor info if needed
-        if (!supervisor) {
-          setSupervisor({
-            id: newMsg.sender_id,
-            fullName: senderName.replace(' (Supervisor)', '')
-          });
+        if (sender) {
+          // Add new message
+          setMessages(prev => [...prev, {
+            id: newMsg.id,
+            senderId: newMsg.sender_id,
+            senderName: `${sender["Full Name"]} (Supervisor)`,
+            content: newMsg.content,
+            timestamp: new Date(newMsg.created_at)
+          }]);
+          
+          // Show notification if minimized
+          if (minimized) {
+            setHasUnread(true);
+            audio.play().catch(console.error);
+          } else {
+            // Mark as read immediately if chat is open
+            await supabase
+              .from('supervisor_messages')
+              .update({ is_read: true })
+              .eq('id', newMsg.id);
+          }
+          
+          // Update supervisor info if not set
+          if (!supervisor) {
+            setSupervisor({
+              id: newMsg.sender_id,
+              fullName: sender["Full Name"]
+            });
+          }
         }
       })
       .subscribe();

@@ -84,7 +84,7 @@ const SupervisorChat = ({ open, onClose, agent, supervisor }: SupervisorChatProp
           table: 'supervisor_messages',
           filter: `recipient_id=eq.${supervisor.id}` 
         }, payload => {
-          const newMsg = payload.new;
+          const newMsg = payload.new as any;
           if (newMsg.sender_id === agent.id) {
             setMessages(prev => [...prev, {
               id: newMsg.id,
