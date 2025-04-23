@@ -554,6 +554,85 @@ export type Database = {
           },
         ]
       }
+      whatsapp_chats: {
+        Row: {
+          account_id: string
+          contact_name: string
+          contact_number: string
+          created_at: string
+          id: string
+          last_message: string | null
+          last_message_time: string | null
+          unread_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          contact_name: string
+          contact_number: string
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_time?: string | null
+          unread_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          contact_name?: string
+          contact_number?: string
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_time?: string | null
+          unread_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_chats_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          chat_id: string
+          content: string
+          id: string
+          is_from_me: boolean
+          read_at: string | null
+          sent_at: string
+        }
+        Insert: {
+          chat_id: string
+          content: string
+          id?: string
+          is_from_me?: boolean
+          read_at?: string | null
+          sent_at?: string
+        }
+        Update: {
+          chat_id?: string
+          content?: string
+          id?: string
+          is_from_me?: boolean
+          read_at?: string | null
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
