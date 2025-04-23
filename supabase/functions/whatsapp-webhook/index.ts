@@ -31,8 +31,11 @@ serve(async (req) => {
     const fromNumber = formData.get('From') as string;
     const body = formData.get('Body') as string;
 
+    console.log(`Webhook received from: ${fromNumber}, body: ${body}`);
+
     // Validierung
     if (!fromNumber || !body) {
+      console.error('Missing required parameters in webhook data');
       return new Response('Missing required parameters', { 
         status: 400, 
         headers: corsHeaders 
@@ -40,14 +43,31 @@ serve(async (req) => {
     }
 
     // In Datenbank speichern
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('whatsapp_inbound_webhooks')
       .insert({ 
         from_number: fromNumber, 
         body: body 
       });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error inserting webhook data:', error);
+      throw error;
+    }
+
+    console.log('Message successfully saved to whatsapp_inbound_webhooks');
+
+    // Optional: Direkt den process-whatsapp-messages Endpunkt aufrufen
+    try {
+      const { error: processingError } = await supabase.functions.invoke('process-whatsapp-messages');
+      if (processingError) {
+        console.warn('Warning: Auto-processing failed:', processingError);
+      } else {
+        console.log('Auto-processing of message triggered successfully');
+      }
+    } catch (processErr) {
+      console.warn('Warning: Could not auto-process message:', processErr);
+    }
 
     // Erfolgreiche Antwort an Twilio
     return new Response('Message received', { 

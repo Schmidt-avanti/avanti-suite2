@@ -29,7 +29,10 @@ serve(async (req) => {
       .select('*')
       .order('timestamp', { ascending: true });
       
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error("Fehler beim Abrufen der eingehenden Nachrichten:", fetchError);
+      throw fetchError;
+    }
     
     if (!inboundMessages || inboundMessages.length === 0) {
       console.log("Keine neuen Nachrichten zu verarbeiten");
@@ -39,7 +42,7 @@ serve(async (req) => {
       });
     }
     
-    console.log(`${inboundMessages.length} neue WhatsApp Nachrichten gefunden`);
+    console.log(`${inboundMessages.length} neue WhatsApp Nachricht(en) gefunden`);
     
     const results = [];
     let accounts = null;
@@ -47,15 +50,55 @@ serve(async (req) => {
     // Alle WhatsApp-Konten abrufen - wir holen das einmal für alle Nachrichten
     const { data: accountsData, error: accountsError } = await supabase
       .from('whatsapp_accounts')
-      .select('id, status, customer_id');
+      .select('id, status, customer_id')
+      .eq('status', 'active');
       
     if (accountsError) {
       console.error('Fehler beim Abrufen der WhatsApp-Konten:', accountsError);
-    } else if (accountsData) {
+    } else if (accountsData && accountsData.length > 0) {
       accounts = accountsData;
-      console.log(`${accountsData.length} WhatsApp-Konten gefunden`);
+      console.log(`${accountsData.length} aktive WhatsApp-Konten gefunden`);
     } else {
-      console.warn('Keine WhatsApp-Konten gefunden!');
+      console.warn('Keine aktiven WhatsApp-Konten gefunden!');
+      
+      // Noch einmal versuchen, aber ohne den Status-Filter
+      const { data: fallbackAccountData, error: fallbackAccountError } = await supabase
+        .from('whatsapp_accounts')
+        .select('id, status, customer_id');
+        
+      if (fallbackAccountError) {
+        console.error('Fehler beim Abrufen aller WhatsApp-Konten:', fallbackAccountError);
+      } else if (fallbackAccountData && fallbackAccountData.length > 0) {
+        accounts = fallbackAccountData;
+        console.log(`${fallbackAccountData.length} WhatsApp-Konten (inklusive inaktive) gefunden`);
+      } else {
+        console.error('Überhaupt keine WhatsApp-Konten in der Datenbank gefunden!');
+      }
+    }
+    
+    // Wenn wir immer noch keine Konten haben, erstellen wir ein Standardkonto
+    if (!accounts || accounts.length === 0) {
+      console.log('Kein WhatsApp-Konto gefunden. Erstelle ein Standard-Konto für eingehende Nachrichten.');
+      
+      try {
+        const { data: newAccount, error: createError } = await supabase
+          .from('whatsapp_accounts')
+          .insert({
+            name: 'Default WhatsApp Account',
+            status: 'active'
+          })
+          .select('id, status, customer_id')
+          .single();
+          
+        if (createError) {
+          console.error('Fehler beim Erstellen des Standard-Kontos:', createError);
+        } else if (newAccount) {
+          accounts = [newAccount];
+          console.log(`Standard-Konto mit ID ${newAccount.id} erstellt`);
+        }
+      } catch (err) {
+        console.error('Unerwarteter Fehler beim Erstellen des Standard-Kontos:', err);
+      }
     }
     
     // Jede Nachricht verarbeiten
@@ -83,47 +126,15 @@ serve(async (req) => {
         if (!existingChats || existingChats.length === 0) {
           console.log(`Kein bestehender Chat für Nummer ${formattedNumber} gefunden, erstelle einen neuen`);
           
-          // Nach aktivem Konto suchen
+          // Default account fallback
           let selectedAccount = null;
           
           if (accounts && accounts.length > 0) {
-            // Zuerst aktive Konten bevorzugen
-            const activeAccounts = accounts.filter(acc => acc.status === 'active');
-            
-            if (activeAccounts.length > 0) {
-              selectedAccount = activeAccounts[0]; // Nimm erstes aktives Konto
-              console.log(`Verwende aktives WhatsApp-Konto ${selectedAccount.id}`);
-            } else {
-              // Wenn kein aktives Konto vorhanden ist, nimm einfach das erste
-              selectedAccount = accounts[0];
-              console.log(`Kein aktives Konto gefunden, verwende Konto ${selectedAccount.id}`);
-            }
+            selectedAccount = accounts[0]; // Nimm das erste verfügbare Konto
+            console.log(`Verwende WhatsApp-Konto ${selectedAccount.id}`);
           } else {
-            console.warn('Konnte kein WhatsApp-Konto zum Zuweisen finden');
-            
-            // Notfallplan: Suche direkt in der Datenbank nach irgendeinem Konto
-            const { data: fallbackAccounts, error: fallbackError } = await supabase
-              .from('whatsapp_accounts')
-              .select('id')
-              .limit(1);
-              
-            if (fallbackError) {
-              console.error("Fehler beim Abrufen von Fallback-Konten:", fallbackError);
-              throw fallbackError;
-            }
-              
-            if (!fallbackAccounts || fallbackAccounts.length === 0) {
-              console.error("Keine WhatsApp-Konten verfügbar!");
-              results.push({ 
-                from: formattedNumber, 
-                status: 'error', 
-                message: 'Kein WhatsApp-Konto verfügbar' 
-              });
-              continue; // Überspringe diese Nachricht
-            }
-            
-            selectedAccount = fallbackAccounts[0];
-            console.log(`Fallback: Verwende Konto ${selectedAccount.id}`);
+            console.error('KRITISCH: Konnte kein WhatsApp-Konto zum Zuweisen finden, obwohl wir eins erstellt haben sollten');
+            throw new Error('Kein WhatsApp-Konto verfügbar');
           }
           
           // Formatiere den Kontaktnamen basierend auf der Nummer

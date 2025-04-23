@@ -18,12 +18,29 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Trigger-Webhook: Starte manuellen Aufruf der Nachrichtenverarbeitung");
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    
+    // Prüfen ob unverarbeitete Nachrichten vorliegen
+    const { count, error: countError } = await supabase
+      .from("whatsapp_inbound_webhooks")
+      .select("*", { count: 'exact', head: true });
+    
+    if (countError) {
+      console.error("Fehler beim Zählen der Nachrichten:", countError);
+    } else {
+      console.log(`${count || 0} unverarbeitete Nachrichten gefunden`);
+    }
     
     // Rufe den process-whatsapp-messages Endpunkt auf
     const { data, error } = await supabase.functions.invoke('process-whatsapp-messages');
     
-    if (error) throw error;
+    if (error) {
+      console.error("Fehler beim Aufrufen des process-whatsapp-messages Endpunkts:", error);
+      throw error;
+    }
+    
+    console.log("Nachrichtenverarbeitung erfolgreich ausgelöst");
     
     return new Response(JSON.stringify(data), { 
       status: 200, 
@@ -31,7 +48,7 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error('Fehler beim Triggern der Nachrichtenverarbeitung:', err);
-    return new Response(JSON.stringify({ error: err.message }), { 
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), { 
       status: 500, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });
