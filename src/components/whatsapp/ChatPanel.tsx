@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from "react";
 import { useWhatsappMessages, WhatsappMessage, WhatsappChat } from "@/hooks/useWhatsappChats";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { useChatLock } from '@/hooks/useChatLock';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCustomers } from '@/hooks/useCustomers';
 import { AlertCircle, Lock } from "lucide-react";
+import { useWhatsappAccounts } from "@/hooks/useWhatsappAccounts";
 
 interface ChatPanelProps {
   chat: WhatsappChat;
@@ -28,6 +30,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
   const { toast } = useToast();
   const { isLocked, lockedByUser } = useChatLock(chat?.id || null);
   const { customers } = useCustomers();
+  const { accounts } = useWhatsappAccounts();
 
   const customer = customers.find(c => {
     const account = chat.account_id ? accounts.find(a => a.id === chat.account_id) : null;

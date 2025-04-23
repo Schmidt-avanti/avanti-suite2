@@ -7,3 +7,5 @@ verify_jwt = false
 [functions.sendgrid-webhook]
 verify_jwt = false
 
+[functions.supabase-setup]
+verify_jwt = false
