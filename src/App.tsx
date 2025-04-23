@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -43,6 +42,7 @@ import NotFound from "@/pages/NotFound";
 import Index from "@/pages/Index";
 import Knowledge from '@/pages/Knowledge';
 import KnowledgeArticleEdit from '@/components/knowledge/KnowledgeArticleEdit';
+import WhatsappPage from "@/pages/Whatsapp";
 
 const queryClient = new QueryClient();
 
@@ -198,6 +198,16 @@ const App = () => {
                   element={
                     <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
                       <TaskDetail />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* WhatsApp Integration */}
+                <Route
+                  path="/whatsapp"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "agent"]}>
+                      <WhatsappPage />
                     </ProtectedRoute>
                   }
                 />
