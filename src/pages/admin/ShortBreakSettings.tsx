@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -80,48 +81,56 @@ export default function ShortBreakSettings() {
     queryKey: ['break-history', page, filters],
     queryFn: async () => {
       try {
-        // Construct base query - keep the query clean and in one step
-        let query = supabase
+        console.log('Fetching admin breaks with filters:', filters);
+        
+        // Build the query string for the join
+        const query = `
+          id,
+          user_id,
+          start_time,
+          end_time,
+          duration,
+          status,
+          created_at,
+          updated_at,
+          profiles:user_id (id, "Full Name")
+        `;
+        
+        // Start building the query
+        let queryBuilder = supabase
           .from('short_breaks')
-          .select(`
-            id,
-            user_id,
-            start_time,
-            end_time,
-            duration,
-            status,
-            created_at,
-            updated_at,
-            profiles:user_id (id, "Full Name")
-          `, { count: 'exact' })
-          .order('start_time', { ascending: false });
+          .select(query, { count: 'exact' });
         
         // Apply filters
         if (filters.userId) {
-          query = query.eq('user_id', filters.userId);
+          queryBuilder = queryBuilder.eq('user_id', filters.userId);
         }
         
         if (filters.status) {
-          query = query.eq('status', filters.status);
+          queryBuilder = queryBuilder.eq('status', filters.status);
         }
         
         if (filters.fromDate) {
           const fromDate = new Date(filters.fromDate);
           fromDate.setHours(0, 0, 0, 0);
-          query = query.gte('start_time', fromDate.toISOString());
+          queryBuilder = queryBuilder.gte('start_time', fromDate.toISOString());
         }
         
         if (filters.toDate) {
           const toDate = new Date(filters.toDate);
           toDate.setHours(23, 59, 59, 999);
-          query = query.lte('start_time', toDate.toISOString());
+          queryBuilder = queryBuilder.lte('start_time', toDate.toISOString());
         }
         
         // Add pagination
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
         
-        const { data, error, count } = await query.range(from, to);
+        // Add ordering
+        queryBuilder = queryBuilder.order('start_time', { ascending: false });
+        
+        // Execute the query with pagination
+        const { data, error, count } = await queryBuilder.range(from, to);
         
         if (error) {
           console.error('Error fetching breaks:', error);
@@ -361,7 +370,9 @@ export default function ShortBreakSettings() {
                   {breaksData.breaks.map((breakItem) => (
                     <TableRow key={breakItem.id}>
                       <TableCell>
-                        {breakItem.profiles?.["Full Name"] || "Unbekannter Nutzer"}
+                        {breakItem.profiles && breakItem.profiles["Full Name"] 
+                          ? breakItem.profiles["Full Name"] 
+                          : "Unbekannter Nutzer"}
                       </TableCell>
                       <TableCell>
                         {new Date(breakItem.start_time).toLocaleString()}

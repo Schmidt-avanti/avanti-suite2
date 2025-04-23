@@ -28,27 +28,30 @@ export const ShortBreakHistory = () => {
       try {
         console.log(`Fetching breaks for user ${user.id} with status ${status} and limit ${limit}`);
         
-        let query = supabase
+        // Start the query
+        let queryBuilder = supabase
           .from('short_breaks')
           .select('*')
           .eq('user_id', user.id)
           .order('start_time', { ascending: false });
         
+        // Apply status filter if needed
         if (status !== 'all') {
-          query = query.eq('status', status);
+          queryBuilder = queryBuilder.eq('status', status);
         }
         
-        const { data, error } = await query.limit(limit);
+        // Apply limit
+        queryBuilder = queryBuilder.limit(limit);
+        
+        // Execute the query
+        const { data, error } = await queryBuilder;
         
         if (error) {
           console.error('Error fetching user breaks:', error);
-          console.error('User ID:', user.id);
-          console.error('Status filter:', status);
-          console.error('Limit:', limit);
           throw error;
         }
         
-        console.log('Fetched breaks:', data);
+        console.log('Fetched user breaks data:', data);
         return data || [];
       } catch (err) {
         console.error('Exception in user breaks query:', err);
