@@ -50,6 +50,35 @@ export type Database = {
           },
         ]
       }
+      customer_email: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          email_body: string | null
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          email_body?: string | null
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          email_body?: string | null
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_email_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_tools: {
         Row: {
           created_at: string

@@ -9,10 +9,15 @@ export interface CustomerMap {
   [id: string]: string;
 }
 
-export const WhatsappAccountsTable: React.FC<{ customerMap: CustomerMap }> = ({
+const WhatsappAccountsTable: React.FC<{ customerMap: CustomerMap; refreshFlag?: number }> = ({
   customerMap,
+  refreshFlag = 0,
 }) => {
-  const { accounts, loading } = useWhatsappAccounts();
+  const { accounts, loading, refetch } = useWhatsappAccounts();
+
+  React.useEffect(() => {
+    refetch && refetch();
+  }, [refreshFlag, refetch]);
 
   if (loading) {
     return (
@@ -42,7 +47,7 @@ export const WhatsappAccountsTable: React.FC<{ customerMap: CustomerMap }> = ({
         <TableBody>
           {accounts.map((acc) => (
             <TableRow key={acc.id}>
-              <TableCell>{customerMap[acc.customer_id] ?? acc.customer_id}</TableCell>
+              <TableCell>{customerMap[acc.customer_id] ?? <span className="text-gray-400">–</span>}</TableCell>
               <TableCell>{acc.name ?? <span className="text-gray-400">–</span>}</TableCell>
               <TableCell>{acc.pphone_number ?? <span className="text-gray-400">–</span>}</TableCell>
               <TableCell>
