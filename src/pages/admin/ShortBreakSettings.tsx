@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -122,6 +121,9 @@ export default function ShortBreakSettings() {
                 <TableRow key={breakItem.id}>
                   <TableCell>
                     {breakItem.profiles?.["Full Name"]}
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      ({breakItem.profiles?.role})
+                    </span>
                   </TableCell>
                   <TableCell>
                     {new Date(breakItem.start_time).toLocaleString()}
