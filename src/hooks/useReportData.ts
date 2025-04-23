@@ -32,6 +32,7 @@ export const useReportData = () => {
   const [customers, setCustomers] = useState<Array<{ id: string; name: string }>>([]);
   const [users, setUsers] = useState<Array<{ id: string; full_name: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [allCustomers, setAllCustomers] = useState<Array<{ id: string; name: string }>>([]);
 
   const { tasks, isLoading: isTasksLoading } = useTasks(null, true);
   
@@ -67,6 +68,7 @@ export const useReportData = () => {
         if (error) throw error;
         
         setCustomers(data || []);
+        setAllCustomers(data || []);
       } catch (error) {
         console.error('Error fetching customers:', error);
       }
@@ -105,6 +107,7 @@ export const useReportData = () => {
   console.log('Report data - tasks:', tasks);
   console.log('Report data - filters:', filters);
   console.log('Report data - customers:', customers);
+  console.log('Report data - all customers:', allCustomers);
   console.log('Report data - users:', users);
   console.log('Report data - isLoading:', isLoading);
   console.log('Report data - isTasksLoading:', isTasksLoading);
@@ -210,21 +213,17 @@ export const useReportData = () => {
     
     const completedTasks = filteredTasks.filter(task => task.status === 'completed').length;
     
-    // Get unique customers from filtered tasks
-    const uniqueCustomers = new Set();
-    filteredTasks.forEach(task => {
-      if (task.customer) {
-        uniqueCustomers.add(task.customer.id);
-      }
-    });
+    // Fix: Use all available customers instead of just those found in filtered tasks
+    // This is the correct number of active customers in the system
+    const activeCustomers = allCustomers.length;
 
     return {
       totalTasks,
       newTasks,
       completedTasks,
-      activeCustomers: uniqueCustomers.size
+      activeCustomers
     };
-  }, [filteredTasks]);
+  }, [filteredTasks, allCustomers]);
 
   return {
     filters,
