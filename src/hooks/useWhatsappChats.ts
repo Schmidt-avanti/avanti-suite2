@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -24,7 +25,7 @@ export type WhatsappMessage = {
   read_at?: string | null;
 };
 
-export const useWhatsappChats = (accountIds: string[]) => {
+export const useWhatsappChats = (accountIds?: string[]) => {
   const [chats, setChats] = useState<WhatsappChat[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +36,8 @@ export const useWhatsappChats = (accountIds: string[]) => {
     setLoading(true);
     
     try {
+      console.log("Lade alle WhatsApp-Chats ohne Filterung nach Account-IDs");
+      
       const { data, error: fetchError } = await supabase
         .from("whatsapp_chats")
         .select("*")
@@ -68,10 +71,8 @@ export const useWhatsappChats = (accountIds: string[]) => {
             customer_id: accountCustomerMap[chat.account_id]
           }));
           
-          if (accountIds && accountIds.length > 0) {
-            enhancedChats = enhancedChats.filter(chat => accountIds.includes(chat.account_id));
-          }
-          
+          // Wir filtern nicht mehr nach Account-IDs
+          // Stattdessen zeigen wir alle Chats an
           setChats(enhancedChats as WhatsappChat[]);
         }
       } else {
@@ -89,7 +90,7 @@ export const useWhatsappChats = (accountIds: string[]) => {
     } finally {
       setLoading(false);
     }
-  }, [accountIds, toast]);
+  }, [toast]);
 
   useEffect(() => { 
     fetchChats();

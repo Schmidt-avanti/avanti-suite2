@@ -18,6 +18,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Starte Verarbeitung von WhatsApp-Nachrichten");
+    
     // Supabase Client erstellen
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
     
@@ -30,6 +32,7 @@ serve(async (req) => {
     if (fetchError) throw fetchError;
     
     if (!inboundMessages || inboundMessages.length === 0) {
+      console.log("Keine neuen Nachrichten zu verarbeiten");
       return new Response(JSON.stringify({ message: 'Keine neuen Nachrichten zu verarbeiten' }), { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -50,6 +53,7 @@ serve(async (req) => {
       console.error('Fehler beim Abrufen der WhatsApp-Konten:', accountsError);
     } else if (accountsData) {
       accounts = accountsData;
+      console.log(`${accountsData.length} WhatsApp-Konten gefunden`);
     } else {
       console.warn('Keine WhatsApp-Konten gefunden!');
     }
@@ -57,6 +61,8 @@ serve(async (req) => {
     // Jede Nachricht verarbeiten
     for (const msg of inboundMessages) {
       try {
+        console.log(`Verarbeite Nachricht von ${msg.from_number}`);
+        
         // Telefonnummer im WhatsApp-Format sicherstellen
         const formattedNumber = ensureWhatsappFormat(msg.from_number);
         
@@ -66,13 +72,16 @@ serve(async (req) => {
           .select('*')
           .eq('contact_number', formattedNumber);
           
-        if (chatError) throw chatError;
+        if (chatError) {
+          console.error(`Fehler beim Suchen existierender Chats für ${formattedNumber}:`, chatError);
+          throw chatError;
+        }
         
         let chatId;
         
         // 2. Wenn Chat existiert, diesen verwenden, sonst neuen Chat erstellen
         if (!existingChats || existingChats.length === 0) {
-          console.log(`Erstelle neuen Chat für Nummer ${formattedNumber}`);
+          console.log(`Kein bestehender Chat für Nummer ${formattedNumber} gefunden, erstelle einen neuen`);
           
           // Nach aktivem Konto suchen
           let selectedAccount = null;
@@ -90,7 +99,7 @@ serve(async (req) => {
               console.log(`Kein aktives Konto gefunden, verwende Konto ${selectedAccount.id}`);
             }
           } else {
-            console.error('Konnte kein WhatsApp-Konto zum Zuweisen finden');
+            console.warn('Konnte kein WhatsApp-Konto zum Zuweisen finden');
             
             // Notfallplan: Suche direkt in der Datenbank nach irgendeinem Konto
             const { data: fallbackAccounts, error: fallbackError } = await supabase
@@ -98,7 +107,13 @@ serve(async (req) => {
               .select('id')
               .limit(1);
               
-            if (fallbackError || !fallbackAccounts || fallbackAccounts.length === 0) {
+            if (fallbackError) {
+              console.error("Fehler beim Abrufen von Fallback-Konten:", fallbackError);
+              throw fallbackError;
+            }
+              
+            if (!fallbackAccounts || fallbackAccounts.length === 0) {
+              console.error("Keine WhatsApp-Konten verfügbar!");
               results.push({ 
                 from: formattedNumber, 
                 status: 'error', 
@@ -128,16 +143,19 @@ serve(async (req) => {
             .select('id')
             .single();
             
-          if (createChatError) throw createChatError;
-          chatId = newChat.id;
+          if (createChatError) {
+            console.error(`Fehler beim Erstellen eines neuen Chats für ${formattedNumber}:`, createChatError);
+            throw createChatError;
+          }
           
+          chatId = newChat.id;
           console.log(`Neuer Chat mit ID ${chatId} erstellt für Nummer ${formattedNumber}`);
         } else {
           chatId = existingChats[0].id;
           console.log(`Bestehender Chat ${chatId} gefunden für Nummer ${formattedNumber}`);
           
           // Unread count und letzten Nachrichten aktualisieren
-          await supabase
+          const { error: updateError } = await supabase
             .from('whatsapp_chats')
             .update({
               last_message: msg.body,
@@ -145,6 +163,11 @@ serve(async (req) => {
               unread_count: existingChats[0].unread_count + 1
             })
             .eq('id', chatId);
+            
+          if (updateError) {
+            console.error(`Fehler beim Aktualisieren des Chats ${chatId}:`, updateError);
+            throw updateError;
+          }
         }
         
         // 3. Die Nachricht in der whatsapp_messages Tabelle speichern
@@ -157,14 +180,28 @@ serve(async (req) => {
             sent_at: msg.timestamp
           });
           
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error(`Fehler beim Einfügen der Nachricht in Chat ${chatId}:`, insertError);
+          throw insertError;
+        }
         
         console.log(`Nachricht von ${formattedNumber} erfolgreich in Chat ${chatId} gespeichert`);
         
         // Optionale Bereinigung: Verarbeitete Nachricht aus der Inbound-Tabelle löschen
-        await supabase.from('whatsapp_inbound_webhooks').delete().eq('id', msg.id);
+        const { error: deleteError } = await supabase
+          .from('whatsapp_inbound_webhooks')
+          .delete()
+          .eq('id', msg.id);
+          
+        if (deleteError) {
+          console.warn(`Konnte verarbeitete Nachricht ${msg.id} nicht löschen:`, deleteError);
+        }
         
-        results.push({ from: formattedNumber, status: 'success', chat_id: chatId });
+        results.push({ 
+          from: formattedNumber, 
+          status: 'success', 
+          chat_id: chatId 
+        });
         
       } catch (err) {
         console.error(`Fehler bei der Verarbeitung von Nachricht von ${msg.from_number}:`, err);
@@ -175,6 +212,8 @@ serve(async (req) => {
         });
       }
     }
+    
+    console.log(`Verarbeitung abgeschlossen: ${results.length} Nachrichten verarbeitet`);
     
     return new Response(JSON.stringify({
       processed: results.length,

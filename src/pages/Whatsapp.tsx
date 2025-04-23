@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { useWhatsappAccounts } from "@/hooks/useWhatsappAccounts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -15,21 +14,18 @@ const WhatsappPage: React.FC = () => {
   const { accounts, loading: loadingAccounts, error: accountsError, refetch: refetchAccounts } = useWhatsappAccounts();
   const { toast } = useToast();
   
-  const accountIds = React.useMemo(() => accounts.map(acc => acc.id), [accounts]);
-  
   const { 
     chats, 
     loading: loadingChats, 
     error: chatsError, 
     refetch: refetchChats 
-  } = useWhatsappChats(accountIds);
+  } = useWhatsappChats();
   
   const [selectedChat, setSelectedChat] = useState<null | typeof chats[0]>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
 
-  // Automatisches Polling für neue Nachrichten alle 30 Sekunden
   useEffect(() => {
     const autoRefreshInterval = setInterval(() => {
       processWebhookMessages(false);
@@ -38,14 +34,12 @@ const WhatsappPage: React.FC = () => {
     return () => clearInterval(autoRefreshInterval);
   }, []);
 
-  // Wenn sich der selectedChat ändert und dieser null ist, Chats neu laden
   useEffect(() => {
     if (!selectedChat) {
       refetchChats();
     }
   }, [selectedChat, refetchChats]);
 
-  // Wenn ein neuer Chat ausgewählt wird, die Unread-Count zurücksetzen
   useEffect(() => {
     if (selectedChat) {
       // Hier könnte man später einen API-Call zum Markieren als gelesen implementieren
@@ -94,7 +88,6 @@ const WhatsappPage: React.FC = () => {
       
       if (error) throw error;
       
-      // Nur benachrichtigen, wenn tatsächlich neue Nachrichten verarbeitet wurden
       if (data && data.processed > 0) {
         refetchChats();
         setLastRefresh(Date.now());
@@ -183,7 +176,6 @@ const WhatsappPage: React.FC = () => {
                   chat={selectedChat} 
                   onClose={() => setSelectedChat(null)} 
                   onMessageSent={() => {
-                    // Nach dem Senden einer Nachricht kurz warten und dann Chats neu laden
                     setTimeout(() => refetchChats(), 1000);
                   }}
                 />
