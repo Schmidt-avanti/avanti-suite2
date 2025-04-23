@@ -8,9 +8,9 @@ import AppSidebar from './AppSidebar';
 const AppLayout: React.FC = () => {
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen bg-gray-50">
-        {/* Sidebar with fixed width */}
-        <div className="fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100">
+      <div className="flex min-h-screen">
+        {/* Sidebar with fixed width and new background color */}
+        <div className="fixed inset-y-0 left-0 z-30 w-64 bg-sidebar border-r border-sidebar-border">
           <AppSidebar />
         </div>
         

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   LayoutDashboard,
@@ -32,7 +33,7 @@ const AppSidebar = () => {
   return (
     <Sidebar>
       <SidebarContent>
-        <div className="px-4 py-6 border-b border-gray-100">
+        <div className="px-4 py-6 border-b border-sidebar-border">
           <img 
             src="/lovable-uploads/724ec514-2826-4aa4-873d-1a8e00465f8f.png" 
             alt="Avanti Logo" 
@@ -47,9 +48,9 @@ const AppSidebar = () => {
                 <SidebarMenuButton asChild>
                   <NavLink 
                     to="/dashboard" 
-                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
                   >
-                    <LayoutDashboard className="mr-3 h-5 w-5" />
+                    <LayoutDashboard className="mr-3 h-5 w-5 text-sidebar-primary" />
                     <span>Dashboard</span>
                   </NavLink>
                 </SidebarMenuButton>
@@ -59,9 +60,9 @@ const AppSidebar = () => {
                 <SidebarMenuButton>
                   <NavLink 
                     to="/tasks" 
-                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
                   >
-                    <ClipboardList className="mr-3 h-5 w-5" />
+                    <ClipboardList className="mr-3 h-5 w-5 text-sidebar-primary" />
                     <span>Aufgaben</span>
                   </NavLink>
                 </SidebarMenuButton>
@@ -71,7 +72,7 @@ const AppSidebar = () => {
                 <SidebarMenuButton>
                   <NavLink 
                     to="/tasks/completed" 
-                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
                   >
                     <span>Abgeschlossen</span>
                   </NavLink>
@@ -82,9 +83,9 @@ const AppSidebar = () => {
                 <SidebarMenuButton asChild>
                   <NavLink 
                     to="/knowledge"
-                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
                   >
-                    <BookOpen className="mr-3 h-5 w-5" />
+                    <BookOpen className="mr-3 h-5 w-5 text-sidebar-primary" />
                     <span>Wissen</span>
                   </NavLink>
                 </SidebarMenuButton>
@@ -94,9 +95,9 @@ const AppSidebar = () => {
                 <SidebarMenuButton asChild>
                   <NavLink 
                     to="/reports" 
-                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                    className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
                   >
-                    <BarChart3 className="mr-3 h-5 w-5" />
+                    <BarChart3 className="mr-3 h-5 w-5 text-sidebar-primary" />
                     <span>Reports</span>
                   </NavLink>
                 </SidebarMenuButton>
@@ -107,7 +108,7 @@ const AppSidebar = () => {
 
         {user.role === 'admin' && (
           <SidebarGroup>
-            <SidebarGroupLabel className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <SidebarGroupLabel className="px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
               Admin
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -116,9 +117,9 @@ const AppSidebar = () => {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to="/admin/users" 
-                      className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                      className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
                     >
-                      <Users className="mr-2 h-4 w-4" />
+                      <Users className="mr-2 h-4 w-4 text-sidebar-primary" />
                       <span>Users</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -128,9 +129,9 @@ const AppSidebar = () => {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to="/admin/customers" 
-                      className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                      className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
                     >
-                      <Building2 className="mr-2 h-4 w-4" />
+                      <Building2 className="mr-2 h-4 w-4 text-sidebar-primary" />
                       <span>Kunden</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -140,9 +141,9 @@ const AppSidebar = () => {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to="/admin/use-cases" 
-                      className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                      className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
                     >
-                      <FileText className="mr-2 h-4 w-4" />
+                      <FileText className="mr-2 h-4 w-4 text-sidebar-primary" />
                       <span>Use Cases</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -152,9 +153,9 @@ const AppSidebar = () => {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to="/admin/prompts" 
-                      className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                      className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
                     >
-                      <MessageSquare className="mr-2 h-4 w-4" />
+                      <MessageSquare className="mr-2 h-4 w-4 text-sidebar-primary" />
                       <span>Prompts</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -171,9 +172,9 @@ const AppSidebar = () => {
             <SidebarMenuButton asChild>
               <NavLink 
                 to="/settings" 
-                className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-100 ${isActive ? 'bg-avanti-50 text-avanti-900' : ''}`}
+                className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
               >
-                <Settings className="mr-3 h-5 w-5" />
+                <Settings className="mr-3 h-5 w-5 text-sidebar-primary" />
                 <span>Einstellungen</span>
               </NavLink>
             </SidebarMenuButton>

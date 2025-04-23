@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -20,8 +19,7 @@ export default {
     },
     extend: {
       spacing: {
-        // Define the sidebar width as a fixed value for consistent spacing
-        'sidebar': '16rem', // 256px or 16rem
+        'sidebar': '16rem'
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -71,14 +69,14 @@ export default {
           950: '#06254a',
         },
         sidebar: {
-          DEFAULT: '#FFFFFF',
-          foreground: '#1A1F2C',
-          primary: '#0E85EA',
-          'primary-foreground': '#FFFFFF',
-          accent: '#F1F0FB',
-          'accent-foreground': '#1A1F2C',
-          border: '#E0EEFE',
-          ring: '#0E85EA'
+          DEFAULT: '#100a29',
+          foreground: '#FFFFFF',
+          primary: '#FFFFFF',
+          'primary-foreground': '#100a29',
+          accent: '#1A1F2C',
+          'accent-foreground': '#FFFFFF',
+          border: '#2A2F3C',
+          ring: '#FFFFFF'
         }
       },
       borderRadius: {
