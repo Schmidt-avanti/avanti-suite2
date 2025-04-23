@@ -24,7 +24,6 @@ serve(async (req) => {
     let data;
     
     if (contentType.includes('application/json')) {
-      // Parse JSON data
       try {
         data = await req.json();
       } catch (error) {
@@ -33,7 +32,6 @@ serve(async (req) => {
       }
     } else if (contentType.includes('application/x-www-form-urlencoded') || 
                contentType.includes('multipart/form-data')) {
-      // Handle form data from SendGrid's Inbound Parse
       const formData = await req.formData();
       data = {
         from: formData.get('from'),
@@ -46,7 +44,6 @@ serve(async (req) => {
         sg_message_id: formData.get('sg_message_id') || `manual-${Date.now()}`
       };
     } else {
-      // Text content or unknown format - try to get raw text
       const textContent = await req.text();
       console.log('Received non-JSON/non-form content:', textContent.slice(0, 200) + '...');
       throw new Error(`Unsupported content type: ${contentType}`);
@@ -83,21 +80,22 @@ serve(async (req) => {
         // Get the email ID for debugging
         const emailId = emailData?.[0]?.id;
         
-        // Now manually find matching customer and create task
-        const fromEmail = event.from || event.email || event.from_email;
+        // Map avanti@inbox.avanti.cx to test@test.de
+        const toEmail = event.to;
+        let mappedEmail = 'test@test.de';
         
-        // Try to match the email to a customer directly
+        // Try to match the mapped email to a customer
         const { data: customerByEmail } = await supabase
           .from('customers')
           .select('id, name')
-          .eq('email', fromEmail)
+          .eq('email', mappedEmail)
           .maybeSingle();
           
         // If no direct match, try contact persons
         const { data: customerByContact } = !customerByEmail ? await supabase
           .from('customer_contacts')
           .select('customer_id')
-          .eq('email', fromEmail)
+          .eq('email', mappedEmail)
           .maybeSingle() : { data: null };
         
         let customerId = customerByEmail?.id || customerByContact?.customer_id;
