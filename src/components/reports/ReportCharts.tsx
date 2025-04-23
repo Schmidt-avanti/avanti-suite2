@@ -27,15 +27,18 @@ const ReportCharts: React.FC<ReportChartsProps> = ({ weekdayDistribution, tasksB
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-      <Card className="shadow-sm">
+      <Card className="shadow-sm w-full">
         <CardHeader>
           <CardTitle className="text-lg">Aufgabenverteilung nach Wochentagen</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="h-64">
+        <CardContent className="px-2 sm:px-6">
+          <div className="h-64 w-full">
             <ChartContainer config={chartConfig}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weekdayDistribution}>
+                <BarChart 
+                  data={weekdayDistribution}
+                  margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                >
                   <XAxis dataKey="name" />
                   <YAxis />
                   <ChartTooltip
@@ -50,15 +53,18 @@ const ReportCharts: React.FC<ReportChartsProps> = ({ weekdayDistribution, tasksB
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card className="shadow-sm w-full">
         <CardHeader>
           <CardTitle className="text-lg">Aufgabenentwicklung nach Woche</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="h-64">
+        <CardContent className="px-2 sm:px-6">
+          <div className="h-64 w-full">
             <ChartContainer config={chartConfig}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={tasksByWeek}>
+                <LineChart 
+                  data={tasksByWeek}
+                  margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                >
                   <XAxis dataKey="name" />
                   <YAxis />
                   <ChartTooltip
