@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -81,7 +80,7 @@ const Knowledge = () => {
         <h1>Wissen</h1>
       </div>
       <Card className="w-full shadow-none border-0 bg-transparent">
-        <CardHeader className="bg-white/95 rounded-t-2xl px-6 sm:px-8 pt-8 pb-3 border-b border-gray-100 sticky top-0 z-10">
+        <CardHeader className="bg-white/95 rounded-t-2xl px-6 sm:px-8 pt-8 pb-3 sticky top-0 z-10">
           {!selectedItemId && (
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
               <div className="flex-1 flex gap-3 items-center">
@@ -163,4 +162,3 @@ const Knowledge = () => {
 };
 
 export default Knowledge;
-
