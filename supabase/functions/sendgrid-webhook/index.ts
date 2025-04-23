@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.0";
 
@@ -11,7 +10,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -19,7 +17,6 @@ serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
     
-    // Check content type to determine how to parse the request
     const contentType = req.headers.get('content-type') || '';
     let data;
     
@@ -51,12 +48,10 @@ serve(async (req) => {
     
     console.log('Processed webhook data:', JSON.stringify(data).slice(0, 500) + '...');
     
-    // Handle the data based on format
     let eventsToProcess = Array.isArray(data) ? data : [data];
     
     for (const event of eventsToProcess) {
       if (event && (event.from || event.email || event.from_email)) {
-        // Store the email in inbound_emails table
         const { data: emailData, error } = await supabase
           .from('inbound_emails')
           .insert({
@@ -77,21 +72,17 @@ serve(async (req) => {
           throw error;
         }
         
-        // Get the email ID for debugging
         const emailId = emailData?.[0]?.id;
         
-        // Map avanti@inbox.avanti.cx to test@test.de
         const toEmail = event.to;
         let mappedEmail = 'test@test.de';
         
-        // Try to match the mapped email to a customer
         const { data: customerByEmail } = await supabase
           .from('customers')
           .select('id, name')
           .eq('email', mappedEmail)
           .maybeSingle();
           
-        // If no direct match, try contact persons
         const { data: customerByContact } = !customerByEmail ? await supabase
           .from('customer_contacts')
           .select('customer_id')
@@ -100,25 +91,7 @@ serve(async (req) => {
         
         let customerId = customerByEmail?.id || customerByContact?.customer_id;
         
-        // Find the user associated with the sender's email (from field)
-        const { data: userByEmail } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', event.from)
-          .maybeSingle();
-        
-        // Fallback to first admin user if no matching user found
-        const { data: adminUser } = !userByEmail ? await supabase
-          .from('profiles')
-          .select('id')
-          .eq('role', 'admin')
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .single() : { data: null };
-          
-        // Only create task if we found a matching customer and user
-        if (customerId && (userByEmail?.id || adminUser?.id)) {
-          // Create a task for this email
+        if (customerId) {
           const { error: taskError } = await supabase
             .from('tasks')
             .insert({
@@ -126,7 +99,7 @@ serve(async (req) => {
               description: event.text || event.plain || event.body || event.html || '',
               status: 'new',
               customer_id: customerId,
-              created_by: userByEmail?.id || adminUser?.id
+              created_by: event.from || event.email || event.from_email
             });
             
           if (taskError) {
@@ -134,14 +107,13 @@ serve(async (req) => {
           } else {
             console.log(`Successfully created task from email for customer ${customerId}`);
             
-            // Mark email as processed
             await supabase
               .from('inbound_emails')
               .update({ processed: true })
               .eq('id', emailId);
           }
         } else {
-          console.warn(`Could not create task: ${!customerId ? 'No matching customer found' : 'No user found'}`);
+          console.warn('Could not create task: No matching customer found');
         }
       } else {
         console.warn('Skipping event with missing email data:', JSON.stringify(event).slice(0, 200));
@@ -160,4 +132,3 @@ serve(async (req) => {
     });
   }
 });
-
