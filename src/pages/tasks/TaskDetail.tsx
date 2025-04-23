@@ -7,8 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskChat } from "@/components/tasks/TaskChat";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, User2, Users, Inbox, UserCheck } from "lucide-react";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
+
+// For mobile layout utility
+function classnames(...classes: string[]) {
+  return classes.filter(Boolean).join(' ');
+}
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -126,81 +131,98 @@ const TaskDetail = () => {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate('/tasks')}>
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Zurück zur Übersicht
-        </Button>
-        <TaskStatusBadge status={task.status} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Task Info Section */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{task.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Beschreibung</p>
-                <p className="mt-1 whitespace-pre-wrap">{task.description}</p>
-              </div>
-              
-              <div>
-                <p className="text-sm font-medium text-gray-500">Kunde</p>
-                <p className="mt-1">{task.customer?.name || 'Nicht zugewiesen'}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500">Erstellt von</p>
-                <p className="mt-1">{task.creator?.["Full Name"] || 'Unbekannt'}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500">Zugewiesen an</p>
-                <p className="mt-1">{task.assignee?.["Full Name"] || 'Nicht zugewiesen'}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Knowledge Article Section */}
-          {task.matched_use_case_id && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Wissensartikel</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {knowledgeArticle ? (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">{knowledgeArticle.title}</h3>
-                    <div 
-                      className="prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: knowledgeArticle.content }} 
-                    />
+    <div className="max-w-screen-xl mx-auto p-4 md:p-8 w-full">
+      <div className="bg-white/95 dark:bg-card/90 rounded-2xl shadow-lg p-0 border border-gray-100 overflow-hidden animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center px-6 pt-6 pb-3 border-b border-muted bg-gradient-to-r from-avanti-100 to-avanti-200 rounded-t-2xl">
+          <Button variant="ghost" onClick={() => navigate('/tasks')}>
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Zurück zur Übersicht
+          </Button>
+          <div className="flex-1" />
+          <TaskStatusBadge status={task.status} />
+        </div>
+        <div className={classnames(
+          "flex flex-col lg:flex-row gap-8 px-4 py-8",
+          "transition-all"
+        )}>
+          {/* LEFT: Task Meta + Knowledge */}
+          <div className="lg:w-1/3 w-full flex flex-col gap-6">
+            {/* Task Info Card */}
+            <Card className="rounded-xl shadow-md border-none p-0 bg-white/85">
+              <CardContent className="p-5 space-y-3">
+                <h2 className="text-lg font-semibold mb-1">{task.title}</h2>
+                <div className="space-y-2 mt-0">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Inbox className="h-4 w-4" />
+                    <span className="font-medium">Beschreibung</span>
                   </div>
-                ) : (
-                  <p className="text-muted-foreground">Kein Wissensartikel verfügbar</p>
-                )}
+                  <div className="ml-6 text-gray-700 whitespace-pre-wrap">{task.description}</div>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4">
+                  <Users className="h-4 w-4" />
+                  <span className="font-medium">Kunde</span>
+                </div>
+                <div className="ml-6">{task.customer?.name || <span className="text-gray-400">Nicht zugewiesen</span>}</div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4">
+                  <User2 className="h-4 w-4" />
+                  <span className="font-medium">Erstellt von</span>
+                </div>
+                <div className="ml-6">{task.creator?.["Full Name"] || <span className="text-gray-400">Unbekannt</span>}</div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4">
+                  <UserCheck className="h-4 w-4" />
+                  <span className="font-medium">Zugewiesen an</span>
+                </div>
+                <div className="ml-6">{task.assignee?.["Full Name"] || <span className="text-gray-400">Nicht zugewiesen</span>}</div>
               </CardContent>
             </Card>
-          )}
-        </div>
-
-        {/* Chat Section */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Bearbeitung der Aufgabe</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TaskChat 
-                taskId={task.id} 
-                useCaseId={task.matched_use_case_id} 
-              />
-            </CardContent>
-          </Card>
+            {/* Knowledge Article Card */}
+            {task.matched_use_case_id && (
+              <Card className="rounded-xl shadow-md border-none p-0 bg-white/85">
+                <CardHeader className="p-5 pb-3 flex flex-col gap-1">
+                  <span className="text-base font-semibold text-muted-foreground">Wissensartikel</span>
+                  <span className="text-lg font-medium">
+                    {knowledgeArticle ? knowledgeArticle.title : "Kein Wissensartikel verfügbar"}
+                  </span>
+                </CardHeader>
+                <div className="px-5 pb-5">
+                  <div
+                    className="
+                      max-h-[420px] overflow-y-auto custom-scrollbar
+                      bg-white/70 rounded-xl border border-muted/50 p-4
+                      prose prose-sm prose-h2:text-base prose-h2:mt-5 prose-h2:mb-1 font-serif
+                    "
+                    style={{ fontFamily: 'Georgia, Times, "Times New Roman", serif', fontSize: '15px' }}
+                  >
+                    {knowledgeArticle ? (
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: knowledgeArticle.content
+                        }}
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">Kein Wissensartikel verfügbar</span>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            )}
+          </div>
+          
+          {/* RIGHT: Messenger Chat */}
+          <div className="lg:w-2/3 w-full">
+            <Card className="rounded-2xl shadow-lg border-[1.5px] border-gray-100 bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 px-0 py-0 flex flex-col h-[min(600px,80vh)]">
+              <CardHeader className="p-6 pb-0 flex flex-row items-center border-b border-b-[#f2f6fb] bg-white/75 rounded-t-2xl">
+                <CardTitle className="text-xl font-semibold text-blue-900">Bearbeitung der Aufgabe</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col pt-2 pb-0 px-4">
+                <TaskChat 
+                  taskId={task.id} 
+                  useCaseId={task.matched_use_case_id} 
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
@@ -208,3 +230,4 @@ const TaskDetail = () => {
 };
 
 export default TaskDetail;
+
