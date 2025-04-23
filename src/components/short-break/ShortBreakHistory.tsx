@@ -7,23 +7,35 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 export const ShortBreakHistory = () => {
   const { user } = useAuth();
 
-  const { data: breaks } = useQuery({
+  const { data: breaks, isLoading } = useQuery({
     queryKey: ['user-break-history', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
+      
       const { data, error } = await supabase
         .from('short_breaks')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('start_time', { ascending: false })
         .limit(10);
       
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Error fetching user breaks:', error);
+        throw error;
+      }
+      
+      return data || [];
     },
     enabled: !!user
   });
 
-  if (!breaks?.length) return null;
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground mt-3">Daten werden geladen...</div>;
+  }
+
+  if (!breaks?.length) {
+    return <div className="text-sm text-muted-foreground mt-3">Keine Pausendaten verfügbar.</div>;
+  }
 
   return (
     <div className="mt-8">
@@ -67,4 +79,4 @@ export const ShortBreakHistory = () => {
       </div>
     </div>
   );
-};
+}

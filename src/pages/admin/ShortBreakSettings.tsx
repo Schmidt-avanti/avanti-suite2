@@ -31,7 +31,7 @@ export default function ShortBreakSettings() {
     }
   });
 
-  const { data: breaks } = useQuery({
+  const { data: breaks, isLoading: breaksLoading } = useQuery({
     queryKey: ['break-history'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -45,8 +45,12 @@ export default function ShortBreakSettings() {
         `)
         .order('start_time', { ascending: false });
       
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Error fetching breaks:', error);
+        throw error;
+      }
+      
+      return data || [];
     }
   });
 
@@ -109,50 +113,56 @@ export default function ShortBreakSettings() {
 
       <div>
         <h3 className="text-lg font-semibold mb-4">Pausenhistorie</h3>
-        <div className="border rounded-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>Ende</TableHead>
-                <TableHead>Dauer</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {breaks?.map((breakItem) => (
-                <TableRow key={breakItem.id}>
-                  <TableCell>
-                    {breakItem.profiles?.["Full Name"]}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(breakItem.start_time).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    {breakItem.end_time ? 
-                      new Date(breakItem.end_time).toLocaleString() : 
-                      '-'
-                    }
-                  </TableCell>
-                  <TableCell>
-                    {breakItem.duration ? 
-                      breakItem.duration < 60 ?
-                        `${breakItem.duration} Sek.` :
-                        `${Math.round(breakItem.duration / 60)} Min.` : 
-                      '-'
-                    }
-                  </TableCell>
-                  <TableCell>
-                    {breakItem.status === 'completed' ? 'Beendet' : 
-                     breakItem.status === 'active' ? 'Aktiv' : 
-                     'Abgebrochen'}
-                  </TableCell>
+        {breaksLoading ? (
+          <div className="text-sm text-muted-foreground">Daten werden geladen...</div>
+        ) : breaks && breaks.length > 0 ? (
+          <div className="border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Start</TableHead>
+                  <TableHead>Ende</TableHead>
+                  <TableHead>Dauer</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {breaks.map((breakItem) => (
+                  <TableRow key={breakItem.id}>
+                    <TableCell>
+                      {breakItem.profiles?.["Full Name"] || "Unbekannter Nutzer"}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(breakItem.start_time).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      {breakItem.end_time ? 
+                        new Date(breakItem.end_time).toLocaleString() : 
+                        '-'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      {breakItem.duration ? 
+                        breakItem.duration < 60 ?
+                          `${breakItem.duration} Sek.` :
+                          `${Math.round(breakItem.duration / 60)} Min.` : 
+                        '-'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      {breakItem.status === 'completed' ? 'Beendet' : 
+                       breakItem.status === 'active' ? 'Aktiv' : 
+                       'Abgebrochen'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">Keine Pausendaten verfügbar.</div>
+        )}
       </div>
     </div>
   );
