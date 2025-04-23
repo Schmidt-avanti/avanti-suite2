@@ -116,10 +116,15 @@ const TaskDetail = () => {
   function renderArticlePreview(article: any) {
     if (!article) return (
       <Card className="rounded-xl shadow-md border-none bg-white/85">
-        <CardHeader className="p-5 pb-4 flex items-center gap-2">
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#e6e4f2] text-[#100a29]">Wissensartikel</span>
-          <span className="font-semibold text-base text-[#100a29]">Nicht verfügbar</span>
+        <CardHeader className="p-5 pb-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <BookOpen className="w-5 h-5" />
+            <span className="font-semibold text-base">Wissensartikel</span>
+          </div>
         </CardHeader>
+        <CardContent className="px-5 pb-5 text-muted-foreground">
+          Kein Wissensartikel verfügbar
+        </CardContent>
       </Card>
     );
 
@@ -146,12 +151,12 @@ const TaskDetail = () => {
 
     return (
       <Card className="rounded-xl shadow-md border-none bg-white/85">
-        <CardHeader className="p-5 pb-3 flex flex-row items-center gap-3">
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#e6e4f2] text-[#100a29]">Wissensartikel</span>
-          <span className="font-semibold text-base text-[#100a29]">{article.title}</span>
+        <CardHeader className="p-5 pb-3 flex flex-row items-center gap-2">
+          <BookOpen className="w-5 h-5 text-blue-900" />
+          <span className="font-semibold text-base text-blue-900">{article.title}</span>
         </CardHeader>
         <CardContent className="p-5 pt-2">
-          <div className="prose prose-sm font-serif text-gray-700 max-w-none line-clamp-3"
+          <div className="prose prose-sm font-serif text-gray-700 max-w-none line-clamp-3" 
             style={{
               fontFamily: 'Georgia, Times, "Times New Roman", serif',
               fontSize: '15px',
@@ -164,7 +169,7 @@ const TaskDetail = () => {
           />
           <Button
             variant="ghost"
-            className="mt-3 text-[#100a29] underline px-0 hover:bg-[#e6e4f2] transition rounded-lg"
+            className="mt-3 text-primary underline px-0 hover:bg-muted"
             onClick={() => setIsArticleModalOpen(true)}
           >
             <Maximize2 className="w-4 h-4 mr-1" />
@@ -185,26 +190,20 @@ const TaskDetail = () => {
 
   return (
     <div className="max-w-screen-xl mx-auto w-full px-3 md:px-8 py-5">
-      <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden animate-fade-in p-0">
-        <div
-          className="flex items-center px-6 pt-6 pb-3 border-b"
-          style={{
-            background: "#e6e4f2",
-            color: "#100a29"
-          }}
-        >
-          <Button variant="ghost" onClick={() => navigate('/tasks')} className="text-[#100a29] hover:bg-[#e6e4f2]/80">
+      <div className="bg-white/95 dark:bg-card/90 rounded-2xl shadow-lg border border-gray-100 overflow-hidden animate-fade-in p-0">
+        <div className="flex items-center px-6 pt-6 pb-3 border-b border-muted bg-gradient-to-r from-avanti-100 to-avanti-200 rounded-t-2xl">
+          <Button variant="ghost" onClick={() => navigate('/tasks')}>
             <ChevronLeft className="h-4 w-4 mr-2" />
             Zurück zur Übersicht
           </Button>
           <div className="flex-1" />
           <TaskStatusBadge status={task.status} />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8 transition-all">
+        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8 transition-all`}>
           <div className="flex flex-col gap-5 h-full">
             <Card className="rounded-xl shadow-md border-none bg-white/85">
               <CardContent className="p-6 pb-3 space-y-2">
-                <h2 className="text-lg font-semibold mb-1 text-[#100a29]">Aufgabendetails</h2>
+                <h2 className="text-lg font-semibold mb-1">Aufgabendetails</h2>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                   <Inbox className="h-4 w-4" />
                   <span className="font-medium">Beschreibung</span>
@@ -242,28 +241,27 @@ const TaskDetail = () => {
           </div>
           <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
             <div
-              className="w-full max-w-full h-full bg-gradient-to-br from-white via-[#f3f2f8] to-[#e6e4f2] rounded-2xl shadow-md border-[1.5px] border-gray-100 flex flex-col justify-between overflow-hidden mb-8 mr-6"
+              className="w-full max-w-full h-full min-h-[520px] max-h-[660px] bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border-[1.5px] border-gray-100 flex flex-col justify-between overflow-hidden mb-8 mr-6"
               style={{
+                boxSizing: "border-box",
                 marginRight: "1.5rem",
                 marginBottom: "2rem",
-                padding: 0,
-                maxHeight: 660,
-                minHeight: 520,
-                boxSizing: "border-box"
+                padding: 0
               }}
             >
-              <div className="flex flex-col h-full w-full" style={{ padding: "1.5rem" }}>
-                <CardHeader className="p-0 pb-2 flex flex-row items-center border-none bg-transparent rounded-t-2xl">
-                  <CardTitle className="text-xl font-semibold text-[#100a29]">Bearbeitung der Aufgabe</CardTitle>
-                </CardHeader>
+              <div className="flex flex-col justify-between h-full w-full" style={{ padding: "1.5rem" }}>
+                <div className="pb-0">
+                  <CardHeader className="p-0 pb-2 flex flex-row items-center border-none bg-transparent rounded-t-2xl">
+                    <CardTitle className="text-xl font-semibold text-blue-900">Bearbeitung der Aufgabe</CardTitle>
+                  </CardHeader>
+                </div>
                 <div className="flex-1 min-h-0 flex flex-col">
-                  <div className="flex-1 min-h-0 max-h-[420px] overflow-auto pb-6">
+                  <div className="flex-1 min-h-0">
                     <TaskChat
                       taskId={task.id}
                       useCaseId={task.matched_use_case_id}
                     />
                   </div>
-                  <div className="pt-4 pb-2" />
                 </div>
               </div>
             </div>
