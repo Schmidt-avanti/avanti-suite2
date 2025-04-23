@@ -27,24 +27,24 @@ const ReportCharts: React.FC<ReportChartsProps> = ({ weekdayDistribution, tasksB
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-      <Card className="shadow-sm w-full">
-        <CardHeader>
+      <Card className="shadow-sm w-full overflow-hidden">
+        <CardHeader className="pb-2">
           <CardTitle className="text-lg">Aufgabenverteilung nach Wochentagen</CardTitle>
         </CardHeader>
-        <CardContent className="px-2 sm:px-6">
-          <div className="h-64 w-full">
+        <CardContent className="px-0 sm:px-2 lg:px-4">
+          <div className="h-60 max-h-60 w-full">
             <ChartContainer config={chartConfig}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="99%" height="99%">
                 <BarChart 
                   data={weekdayDistribution}
-                  margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                  margin={{ top: 5, right: 15, left: 0, bottom: 5 }}
                 >
-                  <XAxis dataKey="name" />
-                  <YAxis />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} width={30} />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: '12px', marginTop: '10px' }} />
                   <Bar dataKey="value" name="Aufgaben" fill="var(--color-tasks)" />
                 </BarChart>
               </ResponsiveContainer>
@@ -53,24 +53,24 @@ const ReportCharts: React.FC<ReportChartsProps> = ({ weekdayDistribution, tasksB
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm w-full">
-        <CardHeader>
+      <Card className="shadow-sm w-full overflow-hidden">
+        <CardHeader className="pb-2">
           <CardTitle className="text-lg">Aufgabenentwicklung nach Woche</CardTitle>
         </CardHeader>
-        <CardContent className="px-2 sm:px-6">
-          <div className="h-64 w-full">
+        <CardContent className="px-0 sm:px-2 lg:px-4">
+          <div className="h-60 max-h-60 w-full">
             <ChartContainer config={chartConfig}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="99%" height="99%">
                 <LineChart 
                   data={tasksByWeek}
-                  margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                  margin={{ top: 5, right: 15, left: 0, bottom: 5 }}
                 >
-                  <XAxis dataKey="name" />
-                  <YAxis />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} width={30} />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: '12px', marginTop: '10px' }} />
                   <Line 
                     type="monotone" 
                     dataKey="value" 
