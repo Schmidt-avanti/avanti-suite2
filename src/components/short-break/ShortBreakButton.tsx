@@ -13,27 +13,19 @@ import {
 import { useShortBreaks } from '@/hooks/useShortBreaks';
 import { ShortBreakTimer } from './ShortBreakTimer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSidebar } from '@/components/ui/sidebar';
 
 export const ShortBreakButton = () => {
   const { user } = useAuth();
   const { activeBreaks, startBreak } = useShortBreaks();
   const [currentBreakId, setCurrentBreakId] = useState<string | null>(null);
   const [isBreakSheetOpen, setIsBreakSheetOpen] = useState(false);
-  const { setCollapsible } = useSidebar();
-
+  
+  // Instead of trying to control the sidebar directly, we'll just use a 
+  // local state and handle the sheet visibility with controlled state
+  
   const canStartBreak = activeBreaks && 
     activeBreaks.activeSlots < activeBreaks.maxSlots && 
     activeBreaks.availableMinutes >= 5;
-
-  useEffect(() => {
-    // Prevent sidebar from being collapsed during break
-    if (currentBreakId) {
-      setCollapsible("none");
-    } else {
-      setCollapsible("all");
-    }
-  }, [currentBreakId, setCollapsible]);
 
   const handleStartBreak = async () => {
     const result = await startBreak.mutateAsync();
