@@ -1,12 +1,11 @@
-
 import React, { useRef, useEffect, useState } from "react";
 import { useWhatsappMessages, WhatsappMessage, WhatsappChat } from "@/hooks/useWhatsappChats";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
+import { SuggestedResponses } from "./SuggestedResponses";
 
 interface ChatPanelProps {
   chat: WhatsappChat;
@@ -19,6 +18,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -30,7 +30,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
     setSending(true);
     
     try {
-      // Direktes Senden über die neue twilio-send-message Edge-Funktion
       const { data, error } = await supabase.functions.invoke('twilio-send-message', {
         body: {
           to_number: chat.contact_number,
@@ -46,7 +45,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
         setInput("");
         toast({ title: "Nachricht gesendet", description: "Deine Nachricht wurde erfolgreich versandt." });
         
-        // Nachrichten neu laden
         setTimeout(() => {
           refetch();
           if (onMessageSent) onMessageSent();
@@ -68,6 +66,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  const handleSuggestedResponse = (response: string) => {
+    setInput(response);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
     }
   };
 
@@ -128,26 +133,34 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose, onMessageSent }) =
         )}
       </div>
       
-      <form
-        onSubmit={e => { e.preventDefault(); sendMessage(); }}
-        className="flex gap-2 items-end border-t p-3 bg-white rounded-b-2xl"
-      >
-        <Textarea
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Antwort eingeben…"
-          disabled={sending}
-          className="flex-1 min-h-[36px] max-h-32 border-avanti-200 focus-visible:ring-avanti-300"
-        />
-        <Button
-          type="submit"
-          disabled={sending || !input.trim()}
-          className="rounded-full bg-avanti-600 text-white w-12 h-12 flex items-center justify-center shadow hover:bg-avanti-700"
+      <div className="flex flex-col gap-2 p-4 border-t bg-white rounded-b-2xl">
+        <form
+          onSubmit={e => { e.preventDefault(); sendMessage(); }}
+          className="flex gap-2 items-end"
         >
-          {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-        </Button>
-      </form>
+          <Textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Antwort eingeben…"
+            disabled={sending}
+            className="flex-1 min-h-[36px] max-h-32 border-avanti-200 focus-visible:ring-avanti-300"
+          />
+          <Button
+            type="submit"
+            disabled={sending || !input.trim()}
+            className="rounded-full bg-avanti-600 text-white w-12 h-12 flex items-center justify-center shadow hover:bg-avanti-700"
+          >
+            {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+          </Button>
+        </form>
+        
+        <SuggestedResponses 
+          customerId={chat.customer_id} 
+          onSelectResponse={handleSuggestedResponse} 
+        />
+      </div>
     </div>
   );
 };

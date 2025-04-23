@@ -50,35 +50,6 @@ export type Database = {
           },
         ]
       }
-      customer_email: {
-        Row: {
-          created_at: string
-          customer_id: string | null
-          email_body: string | null
-          id: number
-        }
-        Insert: {
-          created_at?: string
-          customer_id?: string | null
-          email_body?: string | null
-          id?: number
-        }
-        Update: {
-          created_at?: string
-          customer_id?: string | null
-          email_body?: string | null
-          id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "customer_email_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       customer_tools: {
         Row: {
           created_at: string
@@ -162,51 +133,6 @@ export type Database = {
           name?: string
           street?: string | null
           zip?: string | null
-        }
-        Relationships: []
-      }
-      inbound_emails: {
-        Row: {
-          attachments: Json | null
-          body_html: string | null
-          body_text: string | null
-          from_email: string
-          from_name: string | null
-          id: string
-          message_id: string | null
-          processed: boolean
-          raw_headers: string | null
-          received_at: string
-          subject: string | null
-          to_emails: string[]
-        }
-        Insert: {
-          attachments?: Json | null
-          body_html?: string | null
-          body_text?: string | null
-          from_email: string
-          from_name?: string | null
-          id?: string
-          message_id?: string | null
-          processed?: boolean
-          raw_headers?: string | null
-          received_at?: string
-          subject?: string | null
-          to_emails: string[]
-        }
-        Update: {
-          attachments?: Json | null
-          body_html?: string | null
-          body_text?: string | null
-          from_email?: string
-          from_name?: string | null
-          id?: string
-          message_id?: string | null
-          processed?: boolean
-          raw_headers?: string | null
-          received_at?: string
-          subject?: string | null
-          to_emails?: string[]
         }
         Relationships: []
       }

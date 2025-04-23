@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -6,6 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 export type WhatsappChat = {
   id: string;
   account_id: string;
+  customer_id: string;
   contact_name: string;
   contact_number: string;
   last_message: string | null;
@@ -73,7 +73,6 @@ export const useWhatsappChats = (accountIds: string[]) => {
     }
   }, [accountIds, toast]);
 
-  // Nur einmal beim Laden und bei Änderungen der accountIds laden
   useEffect(() => { 
     if (accountIds.length > 0) {
       fetchChats(); 
@@ -128,7 +127,6 @@ export const useWhatsappMessages = (chatId: string | null) => {
     }
   }, [chatId, toast]);
 
-  // Nur beim Wechsel des Chats laden
   useEffect(() => { 
     if (chatId) fetchMessages(); 
   }, [chatId, fetchMessages]);
