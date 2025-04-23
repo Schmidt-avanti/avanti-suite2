@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
@@ -157,92 +156,155 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   };
 
   return (
-    <Card className="flex flex-col h-full max-h-[600px] rounded-2xl shadow-md overflow-hidden">
-      <ScrollArea className="flex-1 p-4 overflow-y-auto" ref={scrollAreaRef}>
-        <div className="space-y-4">
-          {messages.length === 0 && !isLoading && (
-            <div className="flex items-center justify-center h-32 text-gray-400">
-              Starten Sie die Konversation...
-            </div>
-          )}
-          
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex flex-col ${
-                message.role === "assistant" ? "items-start" : "items-end"
-              }`}
-            >
-              <div className={`max-w-[80%] p-4 rounded-2xl ${
-                message.role === "assistant"
-                  ? "bg-blue-100"
-                  : "bg-green-100"
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="font-semibold text-sm">
-                    {message.role === "assistant" ? "Ava" : "Du"}
-                  </span>
-                </div>
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+    <div
+      className="
+        w-full h-full
+        flex flex-col
+        justify-between
+        rounded-2xl
+        bg-transparent
+        p-6
+      "
+      style={{
+        boxSizing: 'border-box',
+        minHeight: '400px',
+        maxHeight: '600px'
+      }}
+      data-chat-panel
+    >
+      <div className="flex-1 flex flex-col min-h-0">
+        <ScrollArea
+          className="
+            flex-1
+            pr-2
+            min-h-0
+            overflow-y-auto
+            custom-scrollbar
+            "
+          ref={scrollAreaRef}
+        >
+          <div className="space-y-4 pb-2">
+            {messages.length === 0 && !isLoading && (
+              <div className="flex items-center justify-center h-32 text-gray-400">
+                Starten Sie die Konversation...
               </div>
-            </div>
-          ))}
-          
-          {isLoading && (
-            <div className="flex items-start">
-              <div className="max-w-[80%] p-4 rounded-2xl bg-blue-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="font-semibold text-sm">Ava</span>
-                </div>
-                <div className="flex space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
+            )}
+            
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex flex-col ${
+                  message.role === "assistant" ? "items-start" : "items-end"
+                }`}
+              >
+                <div className={`
+                  max-w-[80%] p-4 rounded-2xl
+                  ${message.role === "assistant"
+                    ? "bg-blue-100 text-gray-900"
+                    : "bg-gray-100 text-gray-900"
+                  }
+                  shadow-sm
+                  border border-blue-50/40
+                `}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-sm">
+                      {message.role === "assistant" ? "Ava" : "Du"}
+                    </span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 </div>
               </div>
-            </div>
-          )}
-          
-          {buttonOptions.length > 0 && !isLoading && (
-            <div className="flex flex-wrap gap-2 justify-center">
-              {buttonOptions.map((option, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  onClick={() => handleButtonClick(option)}
-                  className="mt-2"
-                >
-                  {option}
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            ))}
+            
+            {isLoading && (
+              <div className="flex items-start">
+                <div className="max-w-[80%] p-4 rounded-2xl bg-blue-100 shadow-sm border border-blue-50/40">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-sm">Ava</span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {buttonOptions.length > 0 && !isLoading && (
+              <div className="flex flex-wrap gap-2 justify-center">
+                {buttonOptions.map((option, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    onClick={() => handleButtonClick(option)}
+                    className="mt-2 rounded-2xl border-gray-300 hover:bg-blue-50 transition-all"
+                  >
+                    {option}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
       
-      <div className="p-4 border-t bg-gray-50 shrink-0">
-        <form onSubmit={handleSubmit} className="flex gap-2">
+      <div
+        className="
+          w-full
+          mt-4
+          flex
+          items-center
+          bg-transparent
+          rounded-2xl
+        "
+      >
+        <form
+          onSubmit={handleSubmit}
+          className="
+            w-full
+            flex gap-2 items-end
+            border border-gray-200
+            p-3
+            bg-white
+            rounded-2xl
+            shadow-sm
+            "
+        >
           <Textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ihre Nachricht..."
-            className="flex-1 resize-none bg-white min-h-[80px] max-h-[120px]"
+            className="
+              flex-1 resize-none min-h-[48px] max-h-[96px]
+              border-none
+              bg-transparent
+              focus:ring-0
+              text-base
+            "
+            style={{ fontSize: '1rem', padding: 0 }}
             disabled={isLoading || buttonOptions.length > 0}
           />
-          <Button 
+          <Button
             type="submit"
             disabled={isLoading || !inputValue.trim() || buttonOptions.length > 0}
-            className="self-end"
+            className="
+              self-end ml-1 bg-blue-500 hover:bg-blue-600
+              text-white rounded-full
+              h-11 w-11 flex items-center justify-center
+              shadow transition-all
+            "
+            tabIndex={0}
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <Send className="h-5 w-5" />
             )}
           </Button>
         </form>
       </div>
-    </Card>
+    </div>
   );
 }
