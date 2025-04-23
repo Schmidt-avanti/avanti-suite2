@@ -24,7 +24,7 @@ export const SuggestedResponses = ({ customerId, onSelectResponse }: SuggestedRe
         
       if (error) throw error;
       
-      // Aus den Use-Cases mögliche Antworten generieren
+      // Generate possible responses from the use cases
       return useCases.map(useCase => ({
         title: useCase.title,
         responses: [

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -13,7 +12,7 @@ export type WhatsappChat = {
   unread_count: number;
   created_at: string;
   updated_at: string;
-  customer_id?: string; // Making customer_id optional with '?'
+  customer_id?: string;
 };
 
 export type WhatsappMessage = {
@@ -42,7 +41,6 @@ export const useWhatsappChats = (accountIds: string[]) => {
     console.log(`Lade Chats für ${accountIds.length} Accounts:`, accountIds);
     
     try {
-      // First, fetch the chats
       const { data, error: fetchError } = await supabase
         .from("whatsapp_chats")
         .select("*")
@@ -60,7 +58,6 @@ export const useWhatsappChats = (accountIds: string[]) => {
       } else if (data) {
         console.log(`${data.length} Chats erfolgreich geladen:`, data);
         
-        // Now fetch the accounts to get the customer_id for each chat
         const { data: accountsData, error: accountsError } = await supabase
           .from("whatsapp_accounts")
           .select("id, customer_id")
@@ -69,13 +66,11 @@ export const useWhatsappChats = (accountIds: string[]) => {
         if (accountsError) {
           console.error("Fehler beim Laden der Account-Daten:", accountsError);
         } else if (accountsData) {
-          // Create a mapping of account_id -> customer_id
           const accountCustomerMap = accountsData.reduce((map, acc) => {
             map[acc.id] = acc.customer_id;
             return map;
           }, {} as Record<string, string>);
           
-          // Enhance chats with customer_id
           const enhancedChats = data.map(chat => ({
             ...chat,
             customer_id: accountCustomerMap[chat.account_id]
