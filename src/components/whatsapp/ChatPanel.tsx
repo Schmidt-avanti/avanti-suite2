@@ -32,11 +32,19 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ chat, onClose }) => {
       content: input.trim(),
       is_from_me: true
     });
+    
     if (error) {
       toast({ title: "Fehler beim Senden", description: error.message, variant: "destructive" });
     } else {
       setInput("");
-      refetch();
+      // Nach dem Senden wird der trigger-webhook-processing aufgerufen
+      try {
+        await supabase.functions.invoke('trigger-webhook-processing');
+        // Warte kurz und lade dann die Nachrichten neu
+        setTimeout(() => refetch(), 500);
+      } catch (processingError) {
+        console.error("Fehler beim Verarbeiten der Nachricht:", processingError);
+      }
     }
     setSending(false);
   };
