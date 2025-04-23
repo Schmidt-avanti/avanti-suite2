@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { User, Clock, MessageSquare } from 'lucide-react';
+import { MessageSquare, CircleCheck, CirclePause, CircleX, Clock } from 'lucide-react';
 import { format, formatDistance } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import SupervisorChat from '@/components/supervisor/SupervisorChat';
 import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card } from "@/components/ui/card";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type AgentStatus = 'active' | 'short_break' | 'offline';
 
@@ -28,6 +37,7 @@ const LiveAgentOverview = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchAgents = async () => {
@@ -124,17 +134,46 @@ const LiveAgentOverview = () => {
     };
   }, [toast]);
 
+  const getStatusIcon = (status: AgentStatus) => {
+    switch (status) {
+      case 'active':
+        return <CircleCheck className="w-4 h-4 text-green-600" />;
+      case 'short_break':
+        return <CirclePause className="w-4 h-4 text-yellow-600" />;
+      case 'offline':
+        return <CircleX className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
   const getStatusBadge = (status: AgentStatus) => {
     switch (status) {
       case 'active':
-        return <Badge variant="success">Aktiv</Badge>;
+        return (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1.5">
+            {getStatusIcon(status)} Aktiv
+          </Badge>
+        );
       case 'short_break':
-        return <Badge variant="warning">Pause</Badge>;
+        return (
+          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 flex items-center gap-1.5">
+            {getStatusIcon(status)} Pause
+          </Badge>
+        );
       case 'offline':
-        return <Badge variant="destructive">Offline</Badge>;
-      default:
-        return <Badge>Unbekannt</Badge>;
+        return (
+          <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200 flex items-center gap-1.5">
+            {getStatusIcon(status)} Offline
+          </Badge>
+        );
     }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
   };
 
   const formatTime = (date: Date) => {
@@ -142,10 +181,10 @@ const LiveAgentOverview = () => {
   };
 
   const formatDuration = (date: Date) => {
-    return `seit ${formatDistance(date, new Date(), { 
+    return formatDistance(date, new Date(), { 
       locale: de, 
       addSuffix: false 
-    })}`;
+    });
   };
 
   const handleOpenChat = (agent: Agent) => {
@@ -153,66 +192,146 @@ const LiveAgentOverview = () => {
     setChatOpen(true);
   };
 
+  const renderMobileView = () => (
+    <div className="grid gap-4">
+      {agents.map((agent) => (
+        <Card key={agent.id} className="p-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar>
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {getInitials(agent.fullName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-medium">{agent.fullName}</div>
+                  <div className="text-sm text-muted-foreground">{agent.customerName || "—"}</div>
+                </div>
+              </div>
+              {getStatusBadge(agent.status)}
+            </div>
+            
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span>seit {formatDuration(agent.statusSince)}</span>
+              </div>
+              {agent.lastActivity && (
+                <Badge variant="outline" className="bg-gray-50">
+                  {formatTime(agent.lastActivity)}
+                </Badge>
+              )}
+            </div>
+            
+            <Button 
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => handleOpenChat(agent)}
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Chat starten
+            </Button>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const renderDesktopView = () => (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-gray-50/50">
+            <TableHead>Name</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Zeit aktiv</TableHead>
+            <TableHead>Kunde</TableHead>
+            <TableHead>Letzte Aktivität</TableHead>
+            <TableHead className="text-right">Aktion</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {agents.map((agent) => (
+            <TableRow 
+              key={agent.id}
+              className="hover:bg-gray-50/50 transition-colors"
+            >
+              <TableCell className="font-medium">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                      {getInitials(agent.fullName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {agent.fullName}
+                </div>
+              </TableCell>
+              <TableCell>
+                {getStatusBadge(agent.status)}
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <span>{formatDuration(agent.statusSince)}</span>
+                </div>
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {agent.customerName || "—"}
+              </TableCell>
+              <TableCell>
+                {agent.lastActivity && (
+                  <Badge variant="outline" className="bg-gray-50">
+                    {formatTime(agent.lastActivity)}
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell className="text-right">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleOpenChat(agent)}
+                        className="text-muted-foreground hover:text-primary"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Nachricht an Agent senden</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
   return (
-    <div className="container max-w-7xl px-4 py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Live-Agentenübersicht</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight mb-1">Live-Agentenübersicht</h1>
+        <p className="text-muted-foreground">Verwalten Sie aktive Agenten und deren Status in Echtzeit</p>
       </div>
 
       {agents.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow p-8 text-center">
-          <User className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium">Keine aktiven Agenten</h3>
-          <p className="text-muted-foreground mt-2">
+        <Card className="p-8 text-center">
+          <Avatar className="h-12 w-12 mx-auto mb-4">
+            <AvatarFallback className="bg-muted text-muted-foreground">?</AvatarFallback>
+          </Avatar>
+          <h3 className="text-lg font-medium mb-2">Keine aktiven Agenten</h3>
+          <p className="text-muted-foreground">
             Aktuell sind keine Agenten online oder mit Aufgaben beschäftigt.
           </p>
-        </div>
+        </Card>
       ) : (
-        <div className="bg-white rounded-2xl shadow overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Zeit aktiv</TableHead>
-                <TableHead>Kunde</TableHead>
-                <TableHead>Letzte Aktivität</TableHead>
-                <TableHead className="text-right">Aktion</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {agents.map((agent) => (
-                <TableRow key={agent.id}>
-                  <TableCell className="font-medium">{agent.fullName}</TableCell>
-                  <TableCell>
-                    {getStatusBadge(agent.status)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span>{formatDuration(agent.statusSince)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{agent.customerName || "—"}</TableCell>
-                  <TableCell>
-                    {agent.lastActivity && formatTime(agent.lastActivity)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleOpenChat(agent)}
-                      className="flex items-center gap-1 text-avanti-600 hover:text-avanti-800"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      <span>Chat starten</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        isMobile ? renderMobileView() : renderDesktopView()
       )}
 
       {selectedAgent && (
