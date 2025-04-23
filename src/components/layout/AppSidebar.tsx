@@ -12,10 +12,8 @@ import {
   MessageSquare,
   Settings,
   Check,
-  Menu,
   ChevronDown,
-  ChevronRight,
-  ChevronLeft
+  ChevronRight
 } from 'lucide-react';
 
 import {
@@ -28,43 +26,28 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
+  // SidebarTrigger, // nicht mehr benötigt
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 
 const AppSidebar = () => {
   const { user } = useAuth();
-  const { state, toggleSidebar } = useSidebar();
   const [adminOpen, setAdminOpen] = useState(true);
 
   if (!user) return null;
 
-  // Styles: alle Einträge linksbündig, einheitliche Icons
-  // Sidebar Collapsing über shadcn/ui Mechanismus + manueller Icon-Button oben
-  // Admin Bereich collapsible, animiert
-
+  // Sidebar ist immer ausgeklappt (nicht mehr collapsible)
   return (
-    <Sidebar>
+    <Sidebar collapsible="none">
       <div className="flex flex-col h-full w-full">
-        {/* Top: Logo + Collapse-Button */}
-        <div className="flex items-center px-4 pt-4 pb-2 border-b border-sidebar-border justify-between">
+        {/* Top: Logo */}
+        <div className="flex items-center px-4 pt-4 pb-2 border-b border-sidebar-border">
           <img
             alt="Avanti Logo"
             className="h-8 object-contain"
             src="/lovable-uploads/d7a21b7b-df81-4164-a2a2-cb4a06d4664f.png"
           />
-          {/* Sidebar Collapse/Expand Button */}
-          <button
-            type="button"
-            aria-label={state === 'collapsed' ? 'Sidebar aufklappen' : 'Sidebar einklappen'}
-            className="ml-2 rounded-lg p-1 hover:bg-sidebar-accent transition-colors"
-            onClick={toggleSidebar}
-          >
-            {state === 'collapsed'
-              ? <Menu className="h-5 w-5 text-sidebar-primary" />
-              : <ChevronLeft className="h-5 w-5 text-sidebar-primary" />}
-          </button>
         </div>
         <SidebarContent>
           <SidebarGroup>
@@ -139,10 +122,11 @@ const AppSidebar = () => {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {/* Admin Sektion collapsible */}
+          {/* Admin Sektion collapsible (nur Admins sehen das), bleibt klappbar */}
           {user.role === 'admin' && (
             <SidebarGroup>
-              <SidebarGroupLabel className="flex items-center select-none cursor-pointer px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider"
+              <SidebarGroupLabel
+                className="flex items-center select-none cursor-pointer px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider"
                 onClick={() => setAdminOpen((open) => !open)}
                 tabIndex={0}
                 role="button"
@@ -222,7 +206,7 @@ const AppSidebar = () => {
           )}
         </SidebarContent>
 
-        {/* Einstellungen immer als Footer */}
+        {/* Einstellungen als Footer */}
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
