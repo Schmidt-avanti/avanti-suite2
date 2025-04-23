@@ -8,19 +8,19 @@ import AppSidebar from './AppSidebar';
 const AppLayout: React.FC = () => {
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen">
-        {/* Sidebar with fixed width and new background color */}
+      <div className="flex min-h-screen w-full">
+        {/* Sidebar */}
         <div className="fixed inset-y-0 left-0 z-30 w-64 bg-sidebar border-r border-sidebar-border">
           <AppSidebar />
         </div>
-        
-        {/* Main content area */}
+        {/* Hauptinhalt + Navbar */}
         <div className="flex-1 ml-64 flex flex-col">
-          {/* Topbar (Navbar) now always full width */}
+          {/* Topbar: Full-Width, Padding nur intern */}
           <Navbar />
+          {/* Content Bereich: Padding, KEIN max-width */}
           <main className="flex-1">
-            <div className="mx-auto min-w-[960px] max-w-[1200px] px-8 py-6">
-              <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-6">
+            <div className="px-8 py-6 w-full max-w-screen-2xl mx-auto">
+              <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 min-h-[300px]">
                 <Outlet />
               </div>
             </div>
@@ -32,4 +32,3 @@ const AppLayout: React.FC = () => {
 };
 
 export default AppLayout;
-

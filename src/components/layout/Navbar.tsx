@@ -21,10 +21,10 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-20 w-full bg-white border-b border-gray-100 h-16">
-      <div className="h-full w-full px-4 md:px-8 flex items-center justify-between">
+      <div className="h-full flex items-center justify-between px-8 sm:px-6">
         {/* Suchfeld und linker Bereich */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className="relative max-w-md w-full">
+          <div className="relative w-full max-w-lg">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input 
               type="search"
@@ -71,4 +71,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
