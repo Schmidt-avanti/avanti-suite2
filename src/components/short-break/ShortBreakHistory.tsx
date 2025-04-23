@@ -28,30 +28,30 @@ export const ShortBreakHistory = () => {
       try {
         console.log(`Fetching breaks for user ${user.id} with status ${status} and limit ${limit}`);
         
-        // Start the query
-        let queryBuilder = supabase
+        // Build query
+        let query = supabase
           .from('short_breaks')
           .select('*')
           .eq('user_id', user.id)
           .order('start_time', { ascending: false });
         
-        // Apply status filter if needed
+        // Apply filters
         if (status !== 'all') {
-          queryBuilder = queryBuilder.eq('status', status);
+          query = query.eq('status', status);
         }
         
         // Apply limit
-        queryBuilder = queryBuilder.limit(limit);
+        query = query.limit(limit);
         
-        // Execute the query
-        const { data, error } = await queryBuilder;
+        // Execute query
+        const { data, error } = await query;
         
         if (error) {
           console.error('Error fetching user breaks:', error);
           throw error;
         }
         
-        console.log('Fetched user breaks data:', data);
+        console.log('Fetched user breaks successfully:', data?.length);
         return data || [];
       } catch (err) {
         console.error('Exception in user breaks query:', err);
@@ -60,6 +60,25 @@ export const ShortBreakHistory = () => {
     },
     enabled: !!user
   });
+
+  // Format break duration
+  const formatDuration = (duration) => {
+    if (!duration) return '-';
+    
+    return duration < 60
+      ? `${duration} Sek.`
+      : `${Math.round(duration / 60)} Min.`;
+  };
+
+  // Format break status
+  const formatStatus = (status) => {
+    switch (status) {
+      case 'completed': return 'Beendet';
+      case 'active': return 'Aktiv';
+      case 'cancelled': return 'Abgebrochen';
+      default: return status;
+    }
+  };
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground mt-3">Daten werden geladen...</div>;
@@ -120,24 +139,17 @@ export const ShortBreakHistory = () => {
             {breaks.map((breakItem) => (
               <TableRow key={breakItem.id}>
                 <TableCell>
-                  {new Date(breakItem.start_time).toLocaleTimeString([], { 
+                  {new Date(breakItem.start_time).toLocaleTimeString('de-DE', { 
                     hour: '2-digit', 
                     minute: '2-digit',
                     second: '2-digit'
                   })}
                 </TableCell>
                 <TableCell>
-                  {breakItem.duration ? 
-                    breakItem.duration < 60 ?
-                      `${breakItem.duration} Sek.` :
-                      `${Math.round(breakItem.duration / 60)} Min.` : 
-                    '-'
-                  }
+                  {formatDuration(breakItem.duration)}
                 </TableCell>
                 <TableCell>
-                  {breakItem.status === 'completed' ? 'Beendet' : 
-                   breakItem.status === 'active' ? 'Aktiv' : 
-                   'Abgebrochen'}
+                  {formatStatus(breakItem.status)}
                 </TableCell>
               </TableRow>
             ))}

@@ -30,6 +30,37 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
+// Type definitions for break data
+interface ShortBreakUser {
+  id: string;
+  "Full Name": string;
+}
+
+interface ShortBreak {
+  id: string;
+  user_id: string;
+  start_time: string;
+  end_time: string | null;
+  duration: number | null;
+  status: 'active' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+  profiles: ShortBreakUser;
+}
+
+interface BreakHistoryFilters {
+  userId: string | null;
+  status: string | null;
+  fromDate: Date | null;
+  toDate: Date | null;
+}
+
+interface ShortBreakSettings {
+  id: string;
+  max_slots: number;
+  daily_minutes_per_agent: number;
+}
+
 export default function ShortBreakSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -39,13 +70,14 @@ export default function ShortBreakSettings() {
   const [pageSize] = useState(10);
 
   // Filters state
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<BreakHistoryFilters>({
     userId: null,
     status: null,
     fromDate: null,
     toDate: null
   });
 
+  // Fetch settings
   const { data: settings } = useQuery({
     queryKey: ['short-break-settings'],
     queryFn: async () => {
@@ -54,15 +86,22 @@ export default function ShortBreakSettings() {
         .select('*')
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching settings:', error);
+        throw error;
+      }
       
-      setMaxSlots(data.max_slots.toString());
-      setDailyMinutes(data.daily_minutes_per_agent.toString());
+      // Update local state with fetched settings
+      if (data) {
+        setMaxSlots(data.max_slots.toString());
+        setDailyMinutes(data.daily_minutes_per_agent.toString());
+      }
       
-      return data;
+      return data as ShortBreakSettings;
     }
   });
 
+  // Fetch users for the filter dropdown
   const { data: users } = useQuery({
     queryKey: ['users-for-breaks'],
     queryFn: async () => {
@@ -71,76 +110,77 @@ export default function ShortBreakSettings() {
         .select('id, "Full Name"')
         .order('"Full Name"', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching users:', error);
+        throw error;
+      }
       
       return data || [];
     }
   });
 
+  // Fetch break history with pagination and filters
   const { data: breaksData, isLoading: breaksLoading } = useQuery({
     queryKey: ['break-history', page, filters],
     queryFn: async () => {
       try {
         console.log('Fetching admin breaks with filters:', filters);
         
-        // Build the query string for the join
-        const query = `
-          id,
-          user_id,
-          start_time,
-          end_time,
-          duration,
-          status,
-          created_at,
-          updated_at,
-          profiles:user_id (id, "Full Name")
-        `;
-        
         // Start building the query
-        let queryBuilder = supabase
+        let query = supabase
           .from('short_breaks')
-          .select(query, { count: 'exact' });
+          .select(`
+            id,
+            user_id,
+            start_time,
+            end_time,
+            duration,
+            status,
+            created_at,
+            updated_at,
+            profiles:user_id(id, "Full Name")
+          `, { count: 'exact' });
         
         // Apply filters
         if (filters.userId) {
-          queryBuilder = queryBuilder.eq('user_id', filters.userId);
+          query = query.eq('user_id', filters.userId);
         }
         
         if (filters.status) {
-          queryBuilder = queryBuilder.eq('status', filters.status);
+          query = query.eq('status', filters.status);
         }
         
         if (filters.fromDate) {
           const fromDate = new Date(filters.fromDate);
           fromDate.setHours(0, 0, 0, 0);
-          queryBuilder = queryBuilder.gte('start_time', fromDate.toISOString());
+          query = query.gte('start_time', fromDate.toISOString());
         }
         
         if (filters.toDate) {
           const toDate = new Date(filters.toDate);
           toDate.setHours(23, 59, 59, 999);
-          queryBuilder = queryBuilder.lte('start_time', toDate.toISOString());
+          query = query.lte('start_time', toDate.toISOString());
         }
+        
+        // Add ordering
+        query = query.order('start_time', { ascending: false });
         
         // Add pagination
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
         
-        // Add ordering
-        queryBuilder = queryBuilder.order('start_time', { ascending: false });
-        
         // Execute the query with pagination
-        const { data, error, count } = await queryBuilder.range(from, to);
+        const { data, error, count } = await query.range(from, to);
         
         if (error) {
           console.error('Error fetching breaks:', error);
           throw error;
         }
         
-        console.log('Fetched admin breaks data:', data);
+        console.log('Successfully fetched breaks data:', data);
         
         return { 
-          breaks: data || [],
+          breaks: data as ShortBreak[],
           totalCount: count || 0
         };
       } catch (err) {
@@ -150,17 +190,25 @@ export default function ShortBreakSettings() {
     }
   });
 
+  // Mutation to update settings
   const updateSettings = useMutation({
     mutationFn: async () => {
+      if (!settings?.id) {
+        throw new Error("No settings ID available");
+      }
+
       const { error } = await supabase
         .from('short_break_settings')
         .update({
           max_slots: parseInt(maxSlots),
           daily_minutes_per_agent: parseInt(dailyMinutes)
         })
-        .eq('id', settings?.id);
+        .eq('id', settings.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating settings:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['short-break-settings'] });
@@ -168,11 +216,18 @@ export default function ShortBreakSettings() {
         title: "Einstellungen aktualisiert",
         description: "Die Short-Break Einstellungen wurden gespeichert."
       });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fehler",
+        description: `Fehler beim Speichern der Einstellungen: ${error.message}`,
+        variant: "destructive"
+      });
     }
   });
 
-  // Handle filter changes
-  const handleUserChange = (value) => {
+  // Filter handlers
+  const handleUserChange = (value: string) => {
     setFilters(prev => ({
       ...prev,
       userId: value === 'all' ? null : value
@@ -180,7 +235,7 @@ export default function ShortBreakSettings() {
     setPage(1); // Reset to first page when filter changes
   };
 
-  const handleStatusChange = (value) => {
+  const handleStatusChange = (value: string) => {
     setFilters(prev => ({
       ...prev,
       status: value === 'all' ? null : value
@@ -188,7 +243,7 @@ export default function ShortBreakSettings() {
     setPage(1);
   };
 
-  const handleFromDateChange = (date) => {
+  const handleFromDateChange = (date: Date | null) => {
     setFilters(prev => ({
       ...prev,
       fromDate: date
@@ -196,7 +251,7 @@ export default function ShortBreakSettings() {
     setPage(1);
   };
 
-  const handleToDateChange = (date) => {
+  const handleToDateChange = (date: Date | null) => {
     setFilters(prev => ({
       ...prev,
       toDate: date
@@ -204,13 +259,32 @@ export default function ShortBreakSettings() {
     setPage(1);
   };
 
-  // Calculate pagination
+  // Pagination
   const totalPages = breaksData?.totalCount
     ? Math.ceil(breaksData.totalCount / pageSize)
     : 0;
 
-  const goToPage = (pageNumber) => {
+  const goToPage = (pageNumber: number) => {
     setPage(pageNumber);
+  };
+
+  // Format break duration
+  const formatDuration = (duration: number | null): string => {
+    if (!duration) return '-';
+    
+    return duration < 60
+      ? `${duration} Sek.`
+      : `${Math.round(duration / 60)} Min.`;
+  };
+
+  // Format break status
+  const formatStatus = (status: string): string => {
+    switch (status) {
+      case 'completed': return 'Beendet';
+      case 'active': return 'Aktiv';
+      case 'cancelled': return 'Abgebrochen';
+      default: return status;
+    }
   };
 
   return (
@@ -241,8 +315,11 @@ export default function ShortBreakSettings() {
             />
           </div>
           
-          <Button onClick={() => updateSettings.mutate()}>
-            Einstellungen speichern
+          <Button 
+            onClick={() => updateSettings.mutate()}
+            disabled={updateSettings.isPending}
+          >
+            {updateSettings.isPending ? 'Wird gespeichert...' : 'Einstellungen speichern'}
           </Button>
         </div>
       </div>
@@ -262,13 +339,15 @@ export default function ShortBreakSettings() {
                 value={filters.userId || 'all'} 
                 onValueChange={handleUserChange}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Alle Benutzer" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Alle Benutzer</SelectItem>
                   {users?.map(user => (
-                    <SelectItem key={user.id} value={user.id}>{user["Full Name"]}</SelectItem>
+                    <SelectItem key={user.id} value={user.id}>
+                      {user["Full Name"]}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -281,7 +360,7 @@ export default function ShortBreakSettings() {
                 value={filters.status || 'all'} 
                 onValueChange={handleStatusChange}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Alle Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -316,6 +395,7 @@ export default function ShortBreakSettings() {
                     selected={filters.fromDate}
                     onSelect={handleFromDateChange}
                     initialFocus
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -344,6 +424,7 @@ export default function ShortBreakSettings() {
                     selected={filters.toDate}
                     onSelect={handleToDateChange}
                     initialFocus
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -352,10 +433,12 @@ export default function ShortBreakSettings() {
         </Card>
         
         {breaksLoading ? (
-          <div className="text-sm text-muted-foreground">Daten werden geladen...</div>
-        ) : breaksData?.breaks && breaksData.breaks.length > 0 ? (
+          <div className="text-sm text-muted-foreground p-4 border rounded-md">Daten werden geladen...</div>
+        ) : !breaksData || breaksData.breaks.length === 0 ? (
+          <div className="text-sm text-muted-foreground p-4 border rounded-md">Keine Pausendaten verfügbar.</div>
+        ) : (
           <>
-            <div className="border rounded-md">
+            <div className="border rounded-md overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -375,27 +458,16 @@ export default function ShortBreakSettings() {
                           : "Unbekannter Nutzer"}
                       </TableCell>
                       <TableCell>
-                        {new Date(breakItem.start_time).toLocaleString()}
+                        {new Date(breakItem.start_time).toLocaleString('de-DE')}
                       </TableCell>
                       <TableCell>
                         {breakItem.end_time ? 
-                          new Date(breakItem.end_time).toLocaleString() : 
+                          new Date(breakItem.end_time).toLocaleString('de-DE') : 
                           '-'
                         }
                       </TableCell>
-                      <TableCell>
-                        {breakItem.duration ? 
-                          breakItem.duration < 60 ?
-                            `${breakItem.duration} Sek.` :
-                            `${Math.round(breakItem.duration / 60)} Min.` : 
-                          '-'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        {breakItem.status === 'completed' ? 'Beendet' : 
-                         breakItem.status === 'active' ? 'Aktiv' : 
-                         'Abgebrochen'}
-                      </TableCell>
+                      <TableCell>{formatDuration(breakItem.duration)}</TableCell>
+                      <TableCell>{formatStatus(breakItem.status)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -470,8 +542,6 @@ export default function ShortBreakSettings() {
               </Pagination>
             )}
           </>
-        ) : (
-          <div className="text-sm text-muted-foreground">Keine Pausendaten verfügbar.</div>
         )}
       </div>
     </div>
