@@ -39,7 +39,7 @@ const AppSidebar = () => {
   return (
     <Sidebar collapsible="none">
       <div className="flex flex-col h-full w-full">
-        <div className="flex items-center px-4 pt-4 pb-8">
+        <div className="flex items-center px-4 pt-4 pb-8 mb-8 border-b border-sidebar-border">
           <img
             alt="Avanti Logo"
             className="h-8 object-contain"
@@ -55,7 +55,9 @@ const AppSidebar = () => {
                     <NavLink
                       to="/dashboard"
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                        }`
                       }
                     >
                       <LayoutDashboard className="h-5 w-5 text-sidebar-primary" />
@@ -68,7 +70,9 @@ const AppSidebar = () => {
                     <NavLink
                       to="/tasks"
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                        }`
                       }
                     >
                       <ClipboardList className="h-5 w-5 text-sidebar-primary" />
@@ -81,7 +85,9 @@ const AppSidebar = () => {
                     <NavLink
                       to="/tasks/completed"
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                        }`
                       }
                     >
                       <Check className="h-5 w-5 text-sidebar-primary" />
@@ -94,7 +100,9 @@ const AppSidebar = () => {
                     <NavLink
                       to="/knowledge"
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                        }`
                       }
                     >
                       <BookOpen className="h-5 w-5 text-sidebar-primary" />
@@ -107,7 +115,9 @@ const AppSidebar = () => {
                     <NavLink
                       to="/whatsapp"
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                        }`
                       }
                     >
                       <MessageSquare className="h-5 w-5 text-sidebar-primary" />
@@ -120,7 +130,9 @@ const AppSidebar = () => {
                     <NavLink
                       to="/reports"
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                        }`
                       }
                     >
                       <BarChart3 className="h-5 w-5 text-sidebar-primary" />
@@ -160,7 +172,9 @@ const AppSidebar = () => {
                         <NavLink
                           to="/admin/users"
                           className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                            }`
                           }
                         >
                           <Users className="h-5 w-5 text-sidebar-primary" />
@@ -173,7 +187,9 @@ const AppSidebar = () => {
                         <NavLink
                           to="/admin/customers"
                           className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                            }`
                           }
                         >
                           <Building2 className="h-5 w-5 text-sidebar-primary" />
@@ -186,7 +202,9 @@ const AppSidebar = () => {
                         <NavLink
                           to="/admin/use-cases"
                           className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                            }`
                           }
                         >
                           <FileText className="h-5 w-5 text-sidebar-primary" />
@@ -199,7 +217,9 @@ const AppSidebar = () => {
                         <NavLink
                           to="/admin/prompts"
                           className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                            }`
                           }
                         >
                           <MessageSquare className="h-5 w-5 text-sidebar-primary" />
@@ -221,7 +241,9 @@ const AppSidebar = () => {
                 <NavLink
                   to="/settings"
                   className={({ isActive }) =>
-                    `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+                    `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                      isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                    }`
                   }
                 >
                   <Settings className="h-5 w-5 text-sidebar-primary" />
