@@ -2,7 +2,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { FileText, Book, Search } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import KnowledgeList from '@/components/knowledge/KnowledgeList';
@@ -76,12 +76,12 @@ const Knowledge = () => {
   }, [articles, cases, viewType, searchQuery]);
 
   return (
-    <div className="page-container">
+    <div className="page-container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between mb-7">
         <h1>Wissen</h1>
       </div>
       <Card className="w-full shadow-none border-0 bg-transparent">
-        <CardHeader className="bg-white/95 rounded-t-2xl px-7 pt-8 pb-3 border-b border-gray-100 sticky top-0 z-10">
+        <CardHeader className="bg-white/95 rounded-t-2xl px-6 sm:px-8 pt-8 pb-3 border-b border-gray-100 sticky top-0 z-10">
           {!selectedItemId && (
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
               <div className="flex-1 flex gap-3 items-center">
@@ -140,7 +140,7 @@ const Knowledge = () => {
           )}
           {selectedItemId && null}
         </CardHeader>
-        <CardContent className="p-0 rounded-b-2xl bg-transparent">
+        <CardContent className="p-0 rounded-b-2xl bg-transparent px-6 sm:px-8">
           {!selectedItemId ? (
             <KnowledgeList
               items={filteredItems}
@@ -148,7 +148,7 @@ const Knowledge = () => {
               onItemClick={setSelectedItemId}
             />
           ) : (
-            <div className="pt-6 px-2 md:px-8">
+            <div className="pt-6">
               <KnowledgeDetail
                 id={selectedItemId}
                 type={viewType}
@@ -163,3 +163,4 @@ const Knowledge = () => {
 };
 
 export default Knowledge;
+
