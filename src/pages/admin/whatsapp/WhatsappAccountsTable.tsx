@@ -3,7 +3,7 @@ import React from "react";
 import { useWhatsappAccounts } from "@/hooks/useWhatsappAccounts";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, XCircle } from "lucide-react";
 
 export interface CustomerMap {
   [id: string]: string;
@@ -48,6 +48,13 @@ const WhatsappAccountsTable: React.FC<{ customerMap: CustomerMap; refreshFlag?: 
           <Badge variant="outline" className="border-amber-300 text-amber-600 flex items-center gap-1">
             <AlertCircle className="h-3 w-3" />
             <span>Inaktiv</span>
+          </Badge>
+        );
+      case 'error':
+        return (
+          <Badge variant="destructive" className="flex items-center gap-1">
+            <XCircle className="h-3 w-3" />
+            <span>Fehler</span>
           </Badge>
         );
       default:

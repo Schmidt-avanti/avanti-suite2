@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -33,21 +32,13 @@ export const useWhatsappChats = (accountIds: string[]) => {
 
   const fetchChats = useCallback(async () => {
     setError(null);
-    
-    // Auch wenn keine Account-IDs vorhanden sind, trotzdem nach Chats suchen
-    // Es könnten neue Chats entstanden sein, die noch keinem Account zugeordnet sind
     setLoading(true);
     
     try {
-      let query = supabase.from("whatsapp_chats").select("*");
-      
-      // Filter nur anwenden, wenn Account-IDs vorhanden sind
-      if (accountIds.length > 0) {
-        query = query.in("account_id", accountIds);
-      }
-      
-      // Nach letzter Nachrichtenzeit sortieren
-      const { data, error: fetchError } = await query.order("last_message_time", { ascending: false });
+      const { data, error: fetchError } = await supabase
+        .from("whatsapp_chats")
+        .select("*")
+        .order("last_message_time", { ascending: false });
       
       if (fetchError) {
         console.error("Fehler beim Laden der Chats:", fetchError);
@@ -58,9 +49,8 @@ export const useWhatsappChats = (accountIds: string[]) => {
           description: fetchError.message,
         });
       } else if (data) {
-        console.log(`${data.length} Chats erfolgreich geladen:`, data);
+        console.log(`${data.length} WhatsApp-Chats erfolgreich geladen`);
         
-        // Wir laden alle zugehörigen Accounts, um die customer_id zuzuordnen
         const { data: accountsData, error: accountsError } = await supabase
           .from("whatsapp_accounts")
           .select("id, customer_id");
@@ -73,10 +63,14 @@ export const useWhatsappChats = (accountIds: string[]) => {
             return map;
           }, {} as Record<string, string>);
           
-          const enhancedChats = data.map(chat => ({
+          let enhancedChats = data.map(chat => ({
             ...chat,
             customer_id: accountCustomerMap[chat.account_id]
           }));
+          
+          if (accountIds && accountIds.length > 0) {
+            enhancedChats = enhancedChats.filter(chat => accountIds.includes(chat.account_id));
+          }
           
           setChats(enhancedChats as WhatsappChat[]);
         }
@@ -98,7 +92,6 @@ export const useWhatsappChats = (accountIds: string[]) => {
   }, [accountIds, toast]);
 
   useEffect(() => { 
-    // Wir rufen immer fetchChats auf, unabhängig von den accountIds
     fetchChats();
   }, [fetchChats]);
   
