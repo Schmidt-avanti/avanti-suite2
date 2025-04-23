@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -33,9 +32,6 @@ import ClientDashboard from "@/pages/customer/Dashboard";
 import CreateTask from "@/pages/tasks/CreateTask";
 import Tasks from '@/pages/tasks/Tasks';
 import TaskDetail from "./pages/tasks/TaskDetail";
-
-// Report Pages
-import Reports from "./pages/Reports";
 
 // Public Pages
 import Landing from "@/pages/Landing";
@@ -142,16 +138,6 @@ const App = () => {
                   element={
                     <ProtectedRoute allowedRoles={["admin", "client"]}>
                       <KnowledgeArticleEdit />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Reports route für alle Nutzer */}
-                <Route
-                  path="/reports"
-                  element={
-                    <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
-                      <Reports />
                     </ProtectedRoute>
                   }
                 />
