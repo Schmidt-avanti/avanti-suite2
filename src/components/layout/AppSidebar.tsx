@@ -14,7 +14,8 @@ import {
   Check,
   Menu,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 
 import {
@@ -245,4 +246,3 @@ const AppSidebar = () => {
 };
 
 export default AppSidebar;
-
