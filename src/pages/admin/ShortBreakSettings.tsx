@@ -33,10 +33,16 @@ export default function ShortBreakSettings() {
   const { data: breaks } = useQuery({
     queryKey: ['break-history'],
     queryFn: async () => {
+      // Adjusted query to ensure proper join between short_breaks and profiles
       const { data, error } = await supabase
         .from('short_breaks')
         .select(`
-          *,
+          id,
+          start_time,
+          end_time,
+          duration,
+          status,
+          user_id,
           profiles:user_id (
             "Full Name",
             role
@@ -45,6 +51,7 @@ export default function ShortBreakSettings() {
         .order('start_time', { ascending: false });
       
       if (error) throw error;
+      
       return data;
     }
   });
@@ -124,7 +131,7 @@ export default function ShortBreakSettings() {
                     {breakItem.profiles?.["Full Name"]}
                     {breakItem.profiles && (
                       <span className="ml-2 text-xs text-muted-foreground">
-                        ({breakItem.profiles.role})
+                        {breakItem.profiles.role && `(${breakItem.profiles.role})`}
                       </span>
                     )}
                   </TableCell>
