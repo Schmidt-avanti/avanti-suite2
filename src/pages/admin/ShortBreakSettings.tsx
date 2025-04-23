@@ -72,7 +72,7 @@ export default function ShortBreakSettings() {
       // Safely process the data to ensure it matches our expected types
       return (data || []).map(item => ({
         ...item,
-        profiles: typeof item.profiles === 'object' && item.profiles !== null && !('error' in item.profiles) 
+        profiles: item.profiles && typeof item.profiles === 'object' && !('error' in item.profiles) 
           ? item.profiles 
           : null
       }));
