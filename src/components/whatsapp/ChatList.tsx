@@ -6,6 +6,8 @@ import { MessageSquare, AlertCircle, RefreshCw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { WhatsappChat } from "@/hooks/useWhatsappChats";
 import { Button } from "@/components/ui/button";
+import { formatDistanceToNow } from "date-fns";
+import { de } from "date-fns/locale";
 
 type ChatListProps = {
   chats: WhatsappChat[];
@@ -22,6 +24,42 @@ const ChatList: React.FC<ChatListProps> = ({
   selectedChatId,
   onRefresh
 }) => {
+  // Format in menschenlesbares Datum
+  const formatLastMessageTime = (timestamp: string | null) => {
+    if (!timestamp) return "";
+    
+    try {
+      const date = new Date(timestamp);
+      return formatDistanceToNow(date, { 
+        addSuffix: true,
+        locale: de 
+      });
+    } catch (err) {
+      return "";
+    }
+  };
+  
+  // Funktion um Initialen zu erzeugen
+  const getInitials = (name: string) => {
+    if (!name) return "?";
+    
+    // Behandle WhatsApp-Nummern
+    if (name.startsWith("whatsapp:")) {
+      return "W";
+    }
+
+    // Ansonsten ersten Buchstaben nehmen oder Ersatz
+    return name.charAt(0).toUpperCase() || "?";
+  };
+
+  // Funktion um einen lesbaren Namen zu erzeugen
+  const getDisplayName = (chat: WhatsappChat) => {
+    if (chat.contact_name.startsWith("whatsapp:")) {
+      return chat.contact_number.replace("whatsapp:", "");
+    }
+    return chat.contact_name;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-32 text-muted-foreground">
@@ -67,26 +105,30 @@ const ChatList: React.FC<ChatListProps> = ({
       {chats.map(chat => (
         <button
           key={chat.id}
-          className={`flex items-center gap-3 text-left p-4 hover:bg-gray-100 transition rounded-xl
-            ${chat.id === selectedChatId ? "bg-green-50 border border-green-200" : ""}
+          className={`flex items-center gap-3 text-left p-4 hover:bg-gray-100 transition
+            ${chat.id === selectedChatId ? "bg-avanti-50 border border-avanti-200" : ""}
           `}
           onClick={() => onSelectChat(chat)}
-          style={{ borderRadius: "1rem" }}
+          style={{ borderRadius: "0.75rem", margin: "2px" }}
         >
-          <Avatar className="h-10 w-10 bg-green-100 text-green-800">
-            <AvatarFallback>{chat.contact_name.charAt(0)}</AvatarFallback>
+          <Avatar className={`h-10 w-10 ${chat.unread_count > 0 ? "bg-avanti-100 text-avanti-800" : "bg-gray-100 text-gray-700"}`}>
+            <AvatarFallback>{getInitials(chat.contact_name)}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-center">
-              <span className="font-semibold truncate">{chat.contact_name}</span>
+              <span className={`font-semibold truncate ${chat.unread_count > 0 ? "text-avanti-900" : ""}`}>
+                {getDisplayName(chat)}
+              </span>
               <span className="text-xs text-gray-400">
-                {chat.last_message_time ? new Date(chat.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                {chat.last_message_time ? formatLastMessageTime(chat.last_message_time) : ""}
               </span>
             </div>
-            <p className="text-sm text-gray-600 truncate">{chat.last_message || "–"}</p>
+            <p className={`text-sm truncate ${chat.unread_count > 0 ? "text-avanti-800" : "text-gray-600"}`}>
+              {chat.last_message || "–"}
+            </p>
           </div>
           {chat.unread_count > 0 && (
-            <Badge className="bg-green-500 text-white">{chat.unread_count}</Badge>
+            <Badge className="bg-avanti-600 text-white">{chat.unread_count}</Badge>
           )}
         </button>
       ))}

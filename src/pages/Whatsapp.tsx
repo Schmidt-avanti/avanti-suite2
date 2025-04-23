@@ -27,7 +27,30 @@ const WhatsappPage: React.FC = () => {
   const [selectedChat, setSelectedChat] = useState<null | typeof chats[0]>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processingResult, setProcessingResult] = useState<any>(null);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
+
+  // Automatisches Polling für neue Nachrichten alle 30 Sekunden
+  useEffect(() => {
+    const autoRefreshInterval = setInterval(() => {
+      processWebhookMessages(false);
+    }, 30000); // Alle 30 Sekunden
+    
+    return () => clearInterval(autoRefreshInterval);
+  }, []);
+
+  // Wenn sich der selectedChat ändert und dieser null ist, Chats neu laden
+  useEffect(() => {
+    if (!selectedChat && accountIds.length > 0) {
+      refetchChats();
+    }
+  }, [selectedChat, refetchChats, accountIds]);
+
+  // Wenn ein neuer Chat ausgewählt wird, die Unread-Count zurücksetzen
+  useEffect(() => {
+    if (selectedChat) {
+      // Hier könnte man später einen API-Call zum Markieren als gelesen implementieren
+    }
+  }, [selectedChat]);
 
   const handleRefresh = useCallback(async () => {
     if (isRefreshing) return;
@@ -41,6 +64,7 @@ const WhatsappPage: React.FC = () => {
       
       await refetchAccounts();
       await refetchChats();
+      setLastRefresh(Date.now());
       
       toast({
         title: "Aktualisiert",
@@ -53,37 +77,45 @@ const WhatsappPage: React.FC = () => {
     }
   }, [isRefreshing, refetchAccounts, refetchChats, toast]);
   
-  const processWebhookMessages = async () => {
+  const processWebhookMessages = async (showNotifications = true) => {
     if (isProcessing) return;
     
     setIsProcessing(true);
-    setProcessingResult(null);
     
     try {
-      toast({
-        title: "Verarbeite Nachrichten...",
-        description: "Neue WhatsApp-Nachrichten werden abgerufen und verarbeitet.",
-      });
+      if (showNotifications) {
+        toast({
+          title: "Verarbeite Nachrichten...",
+          description: "Neue WhatsApp-Nachrichten werden abgerufen und verarbeitet.",
+        });
+      }
       
       const { data, error } = await supabase.functions.invoke('process-whatsapp-messages');
       
       if (error) throw error;
       
-      setProcessingResult(data);
-      
-      refetchChats();
-      
-      toast({
-        title: "Nachrichten verarbeitet",
-        description: `${data.successful} Nachrichten erfolgreich verarbeitet.`,
-      });
+      // Nur benachrichtigen, wenn tatsächlich neue Nachrichten verarbeitet wurden
+      if (data.processed > 0) {
+        refetchChats();
+        setLastRefresh(Date.now());
+        
+        if (showNotifications || data.successful > 0) {
+          toast({
+            title: "Nachrichten verarbeitet",
+            description: `${data.successful} neue WhatsApp-Nachricht(en) empfangen.`,
+            variant: data.successful > 0 ? "default" : "destructive",
+          });
+        }
+      }
     } catch (error) {
       console.error("Fehler beim Verarbeiten der Nachrichten:", error);
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: error instanceof Error ? error.message : "Unbekannter Fehler",
-      });
+      if (showNotifications) {
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: error instanceof Error ? error.message : "Unbekannter Fehler",
+        });
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -104,7 +136,7 @@ const WhatsappPage: React.FC = () => {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl font-semibold flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-avanti-500" />
+              <MessageSquare className="h-5 w-5 text-avanti-600" />
               WhatsApp Chat-Übersicht
             </CardTitle>
             <div className="flex items-center gap-3">
@@ -122,7 +154,7 @@ const WhatsappPage: React.FC = () => {
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-2"
-                onClick={processWebhookMessages}
+                onClick={() => processWebhookMessages(true)}
                 disabled={isProcessing}
               >
                 <Inbox className={`h-4 w-4 ${isProcessing ? 'animate-spin' : ''}`} />
@@ -147,7 +179,14 @@ const WhatsappPage: React.FC = () => {
             </div>
             <div className="col-span-2 bg-white rounded-2xl border h-[32rem] flex flex-col overflow-hidden">
               {selectedChat ? (
-                <ChatPanel chat={selectedChat} onClose={() => setSelectedChat(null)} />
+                <ChatPanel 
+                  chat={selectedChat} 
+                  onClose={() => setSelectedChat(null)} 
+                  onMessageSent={() => {
+                    // Nach dem Senden einer Nachricht kurz warten und dann Chats neu laden
+                    setTimeout(() => refetchChats(), 1000);
+                  }}
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-4">
                   <Phone className="h-16 w-16 text-avanti-200 mb-3" />
@@ -176,4 +215,3 @@ const WhatsappPage: React.FC = () => {
 };
 
 export default WhatsappPage;
-
