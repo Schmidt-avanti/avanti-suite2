@@ -1,17 +1,81 @@
 
 import React, { useEffect, useState } from "react";
-import { MessageSquare, User, Phone, Calendar } from "lucide-react";
+import { MessageSquare, User, Phone, Calendar, Loader2, RefreshCw } from "lucide-react";
 import { useWhatsappAccounts } from "@/hooks/useWhatsappAccounts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface WhatsAppChat {
+  id: string;
+  name: string;
+  lastMessage: string;
+  time: string;
+  unread: number;
+  accountId: string;
+}
 
 const WhatsappPage: React.FC = () => {
-  const { accounts, loading } = useWhatsappAccounts();
+  const { accounts, loading, refetch } = useWhatsappAccounts();
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [chats, setChats] = useState<WhatsAppChat[]>([]);
+  const [loadingChats, setLoadingChats] = useState(false);
+  const { toast } = useToast();
+
+  // Function to fetch real chats from Supabase (this is a placeholder)
+  // In a real implementation, you would set up a proper database structure
+  // and webhook handler for WhatsApp messages
+  const fetchChats = async () => {
+    setLoadingChats(true);
+    try {
+      // This is where you would make an actual API call to fetch WhatsApp messages
+      // For now, we're checking if we have any accounts and creating some placeholders
+      if (accounts.length > 0) {
+        // Simulate chat data - in a real implementation, fetch from Supabase table
+        const mockChats: WhatsAppChat[] = accounts.flatMap((account, index) => {
+          // Create between 0-3 chats per account to simulate varying chat counts
+          const chatCount = Math.floor(Math.random() * 3);
+          if (chatCount === 0) return [];
+          
+          return Array(chatCount).fill(0).map((_, idx) => ({
+            id: `chat-${account.id}-${idx}`,
+            name: `Kontakt ${idx + 1}`,
+            lastMessage: `Dies ist eine Test-Nachricht für Konto ${account.name || account.pphone_number}.`,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            unread: Math.floor(Math.random() * 3),
+            accountId: account.id
+          }));
+        });
+        
+        setChats(mockChats);
+      }
+      setLoadingChats(false);
+    } catch (error) {
+      console.error("Error fetching chats:", error);
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Laden der Chats",
+        description: "Die WhatsApp-Chats konnten nicht geladen werden."
+      });
+      setLoadingChats(false);
+    }
+  };
+
+  // Fetch chats when accounts change
+  useEffect(() => {
+    if (accounts.length > 0) {
+      fetchChats();
+    }
+  }, [accounts]);
+
+  const handleRefreshChats = () => {
+    fetchChats();
+  };
 
   if (loading) {
     return (
@@ -34,40 +98,12 @@ const WhatsappPage: React.FC = () => {
             Hier kannst du in Zukunft alle angebundenen WhatsApp-Chats verschiedener Firmen zentral einsehen und beantworten.
           </p>
           <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-soft p-8 min-h-[120px] flex items-center justify-center w-full max-w-md">
-            <span className="text-gray-400">Noch keine Chats verbunden.<br/>Integration & Chat-Übersicht folgen.</span>
+            <span className="text-gray-400">Noch keine Chats verbunden.<br/>Bitte zuerst ein WhatsApp-Konto im Admin-Bereich verbinden.</span>
           </div>
         </div>
       </div>
     );
   }
-
-  // Dummy Chats für die Vorschau (in der realen Implementierung würden diese von der API kommen)
-  const dummyChats = [
-    {
-      id: "1",
-      name: "Max Mustermann",
-      lastMessage: "Vielen Dank für die Hilfe!",
-      time: "10:45",
-      unread: 0,
-      accountId: accounts[0]?.id
-    },
-    {
-      id: "2",
-      name: "Laura Schmidt",
-      lastMessage: "Ich habe eine Frage zu meiner Bestellung...",
-      time: "Gestern",
-      unread: 2,
-      accountId: accounts[0]?.id
-    },
-    {
-      id: "3",
-      name: "Thomas Weber",
-      lastMessage: "Können Sie mir mit einem Problem helfen?",
-      time: "Gestern",
-      unread: 1,
-      accountId: accounts[0]?.id
-    }
-  ];
 
   return (
     <div className="container mx-auto p-6">
@@ -78,9 +114,21 @@ const WhatsappPage: React.FC = () => {
               <MessageSquare className="h-5 w-5 text-green-600" />
               WhatsApp Chat-Übersicht
             </CardTitle>
-            <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-100">
-              {accounts.length} {accounts.length === 1 ? 'Konto' : 'Konten'} verbunden
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-2"
+                onClick={handleRefreshChats}
+                disabled={loadingChats}
+              >
+                <RefreshCw className={`h-4 w-4 ${loadingChats ? 'animate-spin' : ''}`} />
+                Aktualisieren
+              </Button>
+              <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-100">
+                {accounts.length} {accounts.length === 1 ? 'Konto' : 'Konten'} verbunden
+              </Badge>
+            </div>
           </div>
         </CardHeader>
 
@@ -96,9 +144,14 @@ const WhatsappPage: React.FC = () => {
             </TabsList>
             
             <TabsContent value="all" className="space-y-4">
-              {dummyChats.length > 0 ? (
+              {loadingChats ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mr-2" />
+                  <span>Lade Chats...</span>
+                </div>
+              ) : chats.length > 0 ? (
                 <div className="bg-white rounded-xl border">
-                  {dummyChats.map((chat, idx) => (
+                  {chats.map((chat, idx) => (
                     <React.Fragment key={chat.id}>
                       <div className="p-4 hover:bg-gray-50 cursor-pointer">
                         <div className="flex items-center gap-3">
@@ -117,7 +170,7 @@ const WhatsappPage: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      {idx < dummyChats.length - 1 && <Separator />}
+                      {idx < chats.length - 1 && <Separator />}
                     </React.Fragment>
                   ))}
                 </div>
@@ -149,11 +202,14 @@ const WhatsappPage: React.FC = () => {
                   </div>
                 </div>
                 
-                {dummyChats
-                  .filter(chat => chat.accountId === account.id)
-                  .length > 0 ? (
+                {loadingChats ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mr-2" />
+                    <span>Lade Chats...</span>
+                  </div>
+                ) : chats.filter(chat => chat.accountId === account.id).length > 0 ? (
                   <div className="bg-white rounded-xl border">
-                    {dummyChats
+                    {chats
                       .filter(chat => chat.accountId === account.id)
                       .map((chat, idx, filteredChats) => (
                         <React.Fragment key={chat.id}>
@@ -193,10 +249,16 @@ const WhatsappPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      <div className="mt-4 text-center text-sm text-gray-500">
+      <div className="mt-4 text-center text-sm text-gray-500 flex flex-col gap-2">
         <p className="flex items-center justify-center gap-1">
-          <Calendar className="h-3 w-3" />
-          <span>Diese Ansicht zeigt Beispiel-Chats zu Demonstrationszwecken.</span>
+          <Phone className="h-3 w-3" />
+          <span>
+            Um mit der Twilio Sandbox zu testen, senden Sie eine Nachricht an: 
+            <span className="font-medium">+1 415 523 8886</span> mit dem Code "join company-conversation"
+          </span>
+        </p>
+        <p className="italic text-xs text-gray-400">
+          Die WhatsApp-Integration befindet sich im Aufbau. In Zukunft werden hier echte Nachrichten angezeigt.
         </p>
       </div>
     </div>
