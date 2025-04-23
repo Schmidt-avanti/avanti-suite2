@@ -20,30 +20,40 @@ export const ShortBreakHistory = () => {
   const { data: breaks, isLoading } = useQuery({
     queryKey: ['user-break-history', user?.id, status, limit],
     queryFn: async () => {
-      if (!user?.id) return [];
-      
-      let query = supabase
-        .from('short_breaks')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('start_time', { ascending: false });
-      
-      if (status !== 'all') {
-        query = query.eq('status', status);
+      if (!user?.id) {
+        console.log('No user ID available for fetching breaks');
+        return [];
       }
       
-      const { data, error } = await query.limit(limit);
-      
-      if (error) {
-        console.error('Error fetching user breaks:', error);
-        console.error('User ID:', user.id);
-        console.error('Status filter:', status);
-        console.error('Limit:', limit);
-        throw error;
+      try {
+        console.log(`Fetching breaks for user ${user.id} with status ${status} and limit ${limit}`);
+        
+        let query = supabase
+          .from('short_breaks')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('start_time', { ascending: false });
+        
+        if (status !== 'all') {
+          query = query.eq('status', status);
+        }
+        
+        const { data, error } = await query.limit(limit);
+        
+        if (error) {
+          console.error('Error fetching user breaks:', error);
+          console.error('User ID:', user.id);
+          console.error('Status filter:', status);
+          console.error('Limit:', limit);
+          throw error;
+        }
+        
+        console.log('Fetched breaks:', data);
+        return data || [];
+      } catch (err) {
+        console.error('Exception in user breaks query:', err);
+        throw err;
       }
-      
-      console.log('Fetched breaks:', data);
-      return data || [];
     },
     enabled: !!user
   });

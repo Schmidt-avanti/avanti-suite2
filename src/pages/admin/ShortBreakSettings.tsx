@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -80,67 +79,65 @@ export default function ShortBreakSettings() {
   const { data: breaksData, isLoading: breaksLoading } = useQuery({
     queryKey: ['break-history', page, filters],
     queryFn: async () => {
-      // Construct base query
-      let query = supabase
-        .from('short_breaks')
-        .select(`
-          *,
-          profiles:user_id (
-            "Full Name"
-          )
-        `, { count: 'exact' })
-        .order('start_time', { ascending: false });
-      
-      // Handle the joined table more carefully
-      query = query
-        .select(`
-          id,
-          user_id, 
-          start_time,
-          end_time,
-          duration,
-          status,
-          created_at,
-          updated_at,
-          user:profiles!short_breaks_user_id_fkey ("Full Name")
-        `);
-      
-      // Apply filters
-      if (filters.userId) {
-        query = query.eq('user_id', filters.userId);
+      try {
+        // Construct base query - keep the query clean and in one step
+        let query = supabase
+          .from('short_breaks')
+          .select(`
+            id,
+            user_id,
+            start_time,
+            end_time,
+            duration,
+            status,
+            created_at,
+            updated_at,
+            profiles:user_id (id, "Full Name")
+          `, { count: 'exact' })
+          .order('start_time', { ascending: false });
+        
+        // Apply filters
+        if (filters.userId) {
+          query = query.eq('user_id', filters.userId);
+        }
+        
+        if (filters.status) {
+          query = query.eq('status', filters.status);
+        }
+        
+        if (filters.fromDate) {
+          const fromDate = new Date(filters.fromDate);
+          fromDate.setHours(0, 0, 0, 0);
+          query = query.gte('start_time', fromDate.toISOString());
+        }
+        
+        if (filters.toDate) {
+          const toDate = new Date(filters.toDate);
+          toDate.setHours(23, 59, 59, 999);
+          query = query.lte('start_time', toDate.toISOString());
+        }
+        
+        // Add pagination
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        
+        const { data, error, count } = await query.range(from, to);
+        
+        if (error) {
+          console.error('Error fetching breaks:', error);
+          throw error;
+        }
+        
+        console.log('Fetched admin breaks data:', data);
+        
+        return { 
+          breaks: data || [],
+          totalCount: count || 0
+        };
+      } catch (err) {
+        console.error('Exception in breaks query:', err);
+        throw err;
       }
-      
-      if (filters.status) {
-        query = query.eq('status', filters.status);
-      }
-      
-      if (filters.fromDate) {
-        const fromDate = new Date(filters.fromDate);
-        fromDate.setHours(0, 0, 0, 0);
-        query = query.gte('start_time', fromDate.toISOString());
-      }
-      
-      if (filters.toDate) {
-        const toDate = new Date(filters.toDate);
-        toDate.setHours(23, 59, 59, 999);
-        query = query.lte('start_time', toDate.toISOString());
-      }
-      
-      // Add pagination
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      
-      const { data, error, count } = await query.range(from, to);
-      
-      if (error) {
-        console.error('Error fetching breaks:', error);
-        throw error;
-      }
-      
-      return { 
-        breaks: data || [],
-        totalCount: count || 0
-      };
     }
   });
 
@@ -364,7 +361,7 @@ export default function ShortBreakSettings() {
                   {breaksData.breaks.map((breakItem) => (
                     <TableRow key={breakItem.id}>
                       <TableCell>
-                        {breakItem.user?.["Full Name"] || "Unbekannter Nutzer"}
+                        {breakItem.profiles?.["Full Name"] || "Unbekannter Nutzer"}
                       </TableCell>
                       <TableCell>
                         {new Date(breakItem.start_time).toLocaleString()}
