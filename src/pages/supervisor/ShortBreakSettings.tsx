@@ -1,12 +1,11 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { useState } from 'react';
-import { ActiveBreaksList } from '@/components/short-break/ActiveBreaksList';
 import { 
   Select, 
   SelectContent, 
@@ -16,21 +15,13 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Card } from '@/components/ui/card';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Badge } from '@/components/ui/badge';
+import { Save, Calendar as CalendarIcon, Download, Check, Circle, RefreshCw } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ActiveBreaksList } from '@/components/short-break/ActiveBreaksList';
 
-// Type definitions for break data
 interface ShortBreakUser {
   id: string;
   "Full Name": string;
@@ -45,7 +36,6 @@ interface ShortBreak {
   status: 'active' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
-  // No direct profile join, we'll handle user display separately
 }
 
 interface BreakHistoryFilters {
@@ -69,7 +59,6 @@ export default function ShortBreakSettings() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
 
-  // Filters state
   const [filters, setFilters] = useState<BreakHistoryFilters>({
     userId: null,
     status: null,
@@ -77,7 +66,6 @@ export default function ShortBreakSettings() {
     toDate: null
   });
 
-  // Fetch settings
   const { data: settings } = useQuery({
     queryKey: ['short-break-settings'],
     queryFn: async () => {
@@ -92,7 +80,6 @@ export default function ShortBreakSettings() {
           throw error;
         }
         
-        // Update local state with fetched settings
         if (data) {
           setMaxSlots(data.max_slots.toString());
           setDailyMinutes(data.daily_minutes_per_agent.toString());
@@ -106,7 +93,6 @@ export default function ShortBreakSettings() {
     }
   });
 
-  // Fetch users for the filter dropdown
   const { data: users } = useQuery({
     queryKey: ['users-for-breaks'],
     queryFn: async () => {
@@ -129,7 +115,6 @@ export default function ShortBreakSettings() {
     }
   });
 
-  // Create a mapping of user IDs to names
   const userMap = new Map<string, string>();
   if (users) {
     users.forEach(user => {
@@ -137,19 +122,16 @@ export default function ShortBreakSettings() {
     });
   }
 
-  // Fetch break history with pagination and filters
   const { data: breaksData, isLoading: breaksLoading } = useQuery({
     queryKey: ['break-history', page, filters],
     queryFn: async () => {
       try {
         console.log('Fetching admin breaks with filters:', filters);
         
-        // Start building the query - without the join to profiles
         let query = supabase
           .from('short_breaks')
           .select('*', { count: 'exact' });
         
-        // Apply filters
         if (filters.userId) {
           query = query.eq('user_id', filters.userId);
         }
@@ -170,14 +152,11 @@ export default function ShortBreakSettings() {
           query = query.lte('start_time', toDate.toISOString());
         }
         
-        // Add ordering
         query = query.order('start_time', { ascending: false });
         
-        // Add pagination
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
         
-        // Execute the query with pagination
         const { data, error, count } = await query.range(from, to);
         
         if (error) {
@@ -198,7 +177,6 @@ export default function ShortBreakSettings() {
     }
   });
 
-  // Mutation to update settings
   const updateSettings = useMutation({
     mutationFn: async () => {
       if (!settings?.id) {
@@ -234,13 +212,12 @@ export default function ShortBreakSettings() {
     }
   });
 
-  // Filter handlers
   const handleUserChange = (value: string) => {
     setFilters(prev => ({
       ...prev,
       userId: value === 'all' ? null : value
     }));
-    setPage(1); // Reset to first page when filter changes
+    setPage(1);
   };
 
   const handleStatusChange = (value: string) => {
@@ -267,7 +244,6 @@ export default function ShortBreakSettings() {
     setPage(1);
   };
 
-  // Pagination
   const totalPages = breaksData?.totalCount
     ? Math.ceil(breaksData.totalCount / pageSize)
     : 0;
@@ -276,7 +252,6 @@ export default function ShortBreakSettings() {
     setPage(pageNumber);
   };
 
-  // Format break duration
   const formatDuration = (duration: number | null): string => {
     if (!duration) return '-';
     
@@ -285,7 +260,6 @@ export default function ShortBreakSettings() {
       : `${Math.round(duration / 60)} Min.`;
   };
 
-  // Format break status
   const formatStatus = (status: string): string => {
     switch (status) {
       case 'completed': return 'Beendet';
@@ -295,266 +269,303 @@ export default function ShortBreakSettings() {
     }
   };
 
-  // Get user name from user_id
   const getUserName = (user_id: string): string => {
     return userMap.get(user_id) || "Unbekannter Nutzer";
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Short-Break Einstellungen</h2>
-        
-        <div className="grid gap-4 max-w-sm">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Maximale gleichzeitige Pausenslots
-            </label>
-            <Input 
-              type="number" 
-              value={maxSlots}
-              onChange={e => setMaxSlots(e.target.value)}
-            />
+    <div className="space-y-8">
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Short-Break Einstellungen</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 max-w-sm">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Maximale gleichzeitige Pausenslots
+              </label>
+              <Input 
+                type="number" 
+                value={maxSlots}
+                onChange={e => setMaxSlots(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Tägliche Pausenminuten pro Agent
+              </label>
+              <Input 
+                type="number"
+                value={dailyMinutes}
+                onChange={e => setDailyMinutes(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <Button 
+                onClick={() => updateSettings.mutate()}
+                disabled={updateSettings.isPending}
+                className="w-full sm:w-auto"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {updateSettings.isPending ? 'Wird gespeichert...' : 'Einstellungen speichern'}
+              </Button>
+            </div>
           </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Tägliche Pausenminuten pro Agent
-            </label>
-            <Input 
-              type="number"
-              value={dailyMinutes}
-              onChange={e => setDailyMinutes(e.target.value)}
-            />
-          </div>
-          
-          <Button 
-            onClick={() => updateSettings.mutate()}
-            disabled={updateSettings.isPending}
-          >
-            {updateSettings.isPending ? 'Wird gespeichert...' : 'Einstellungen speichern'}
-          </Button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       <ActiveBreaksList />
 
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Pausenhistorie</h3>
-        
-        {/* Filter Card */}
-        <Card className="p-4 mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {/* User filter */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Benutzer</label>
-              <Select 
-                value={filters.userId || 'all'} 
-                onValueChange={handleUserChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Alle Benutzer" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle Benutzer</SelectItem>
-                  {users?.map(user => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user["Full Name"]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status filter */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select 
-                value={filters.status || 'all'} 
-                onValueChange={handleStatusChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Alle Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle Status</SelectItem>
-                  <SelectItem value="completed">Beendet</SelectItem>
-                  <SelectItem value="active">Aktiv</SelectItem>
-                  <SelectItem value="cancelled">Abgebrochen</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* From date filter */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Von Datum</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filters.fromDate ? (
-                      format(filters.fromDate, 'dd.MM.yyyy', { locale: de })
-                    ) : (
-                      <span>Startdatum wählen</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={filters.fromDate}
-                    onSelect={handleFromDateChange}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* To date filter */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Bis Datum</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filters.toDate ? (
-                      format(filters.toDate, 'dd.MM.yyyy', { locale: de })
-                    ) : (
-                      <span>Enddatum wählen</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={filters.toDate}
-                    onSelect={handleToDateChange}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Pausenhistorie</CardTitle>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['break-history'] })}
+              title="Aktualisieren"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              title="Als CSV exportieren"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
           </div>
-        </Card>
-        
-        {breaksLoading ? (
-          <div className="text-sm text-muted-foreground p-4 border rounded-md">Daten werden geladen...</div>
-        ) : !breaksData || breaksData.breaks.length === 0 ? (
-          <div className="text-sm text-muted-foreground p-4 border rounded-md">Keine Pausendaten verfügbar.</div>
-        ) : (
-          <>
-            <div className="border rounded-md overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Start</TableHead>
-                    <TableHead>Ende</TableHead>
-                    <TableHead>Dauer</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {breaksData.breaks.map((breakItem) => (
-                    <TableRow key={breakItem.id}>
-                      <TableCell>
-                        {getUserName(breakItem.user_id)}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(breakItem.start_time).toLocaleString('de-DE')}
-                      </TableCell>
-                      <TableCell>
-                        {breakItem.end_time ? 
-                          new Date(breakItem.end_time).toLocaleString('de-DE') : 
-                          '-'
-                        }
-                      </TableCell>
-                      <TableCell>{formatDuration(breakItem.duration)}</TableCell>
-                      <TableCell>{formatStatus(breakItem.status)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+        </CardHeader>
+        <CardContent>
+          <Card className="p-4 mb-6 bg-muted/50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Benutzer</label>
+                <Select 
+                  value={filters.userId || 'all'} 
+                  onValueChange={handleUserChange}
+                >
+                  <SelectTrigger className="w-full bg-background">
+                    <SelectValue placeholder="Alle Benutzer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Benutzer</SelectItem>
+                    {users?.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user["Full Name"]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <Pagination className="mt-4">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious 
-                      onClick={() => page > 1 && goToPage(page - 1)} 
-                      className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select 
+                  value={filters.status || 'all'} 
+                  onValueChange={handleStatusChange}
+                >
+                  <SelectTrigger className="w-full bg-background">
+                    <SelectValue placeholder="Alle Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Status</SelectItem>
+                    <SelectItem value="completed">Beendet</SelectItem>
+                    <SelectItem value="active">Aktiv</SelectItem>
+                    <SelectItem value="cancelled">Abgebrochen</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Von Datum</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal bg-background"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {filters.fromDate ? (
+                        format(filters.fromDate, 'dd.MM.yyyy', { locale: de })
+                      ) : (
+                        <span>Startdatum wählen</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={filters.fromDate}
+                      onSelect={handleFromDateChange}
+                      initialFocus
+                      className="pointer-events-auto"
                     />
-                  </PaginationItem>
-                  
-                  {/* First page */}
-                  {page > 2 && (
-                    <PaginationItem>
-                      <PaginationLink onClick={() => goToPage(1)}>1</PaginationLink>
-                    </PaginationItem>
-                  )}
-                  
-                  {/* Ellipsis */}
-                  {page > 3 && (
-                    <PaginationItem>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  )}
-                  
-                  {/* Previous page */}
-                  {page > 1 && (
-                    <PaginationItem>
-                      <PaginationLink onClick={() => goToPage(page - 1)}>{page - 1}</PaginationLink>
-                    </PaginationItem>
-                  )}
-                  
-                  {/* Current page */}
-                  <PaginationItem>
-                    <PaginationLink isActive>{page}</PaginationLink>
-                  </PaginationItem>
-                  
-                  {/* Next page */}
-                  {page < totalPages && (
-                    <PaginationItem>
-                      <PaginationLink onClick={() => goToPage(page + 1)}>{page + 1}</PaginationLink>
-                    </PaginationItem>
-                  )}
-                  
-                  {/* Ellipsis */}
-                  {page < totalPages - 2 && (
-                    <PaginationItem>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  )}
-                  
-                  {/* Last page */}
-                  {page < totalPages - 1 && (
-                    <PaginationItem>
-                      <PaginationLink onClick={() => goToPage(totalPages)}>{totalPages}</PaginationLink>
-                    </PaginationItem>
-                  )}
-                  
-                  <PaginationItem>
-                    <PaginationNext 
-                      onClick={() => page < totalPages && goToPage(page + 1)}
-                      className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Bis Datum</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal bg-background"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {filters.toDate ? (
+                        format(filters.toDate, 'dd.MM.yyyy', { locale: de })
+                      ) : (
+                        <span>Enddatum wählen</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={filters.toDate}
+                      onSelect={handleToDateChange}
+                      initialFocus
+                      className="pointer-events-auto"
                     />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            )}
-          </>
-        )}
-      </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </Card>
+
+          {breaksLoading ? (
+            <div className="text-sm text-muted-foreground p-4">Daten werden geladen...</div>
+          ) : !breaksData || breaksData.breaks.length === 0 ? (
+            <div className="text-sm text-muted-foreground p-4">Keine Pausendaten verfügbar.</div>
+          ) : (
+            <>
+              <div className="text-sm text-muted-foreground mb-4">
+                {breaksData.totalCount} {breaksData.totalCount === 1 ? 'Pause' : 'Pausen'} gefunden
+              </div>
+
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background">
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Start</TableHead>
+                      <TableHead>Ende</TableHead>
+                      <TableHead>Dauer</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {breaksData.breaks.map((breakItem) => (
+                      <TableRow key={breakItem.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          {getUserName(breakItem.user_id)}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(breakItem.start_time).toLocaleString('de-DE')}
+                        </TableCell>
+                        <TableCell>
+                          {breakItem.end_time ? 
+                            new Date(breakItem.end_time).toLocaleString('de-DE') : 
+                            '-'
+                          }
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="font-normal">
+                            {formatDuration(breakItem.duration)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {breakItem.status === 'completed' ? (
+                            <Badge variant="success" className="gap-1">
+                              <Check className="h-3 w-3" /> Beendet
+                            </Badge>
+                          ) : breakItem.status === 'active' ? (
+                            <Badge variant="warning" className="gap-1">
+                              <Circle className="h-3 w-3 fill-yellow-500 text-yellow-500" /> Aktiv
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="gap-1">
+                              Abgebrochen
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {totalPages > 1 && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => page > 1 && goToPage(page - 1)} 
+                        className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    
+                    {page > 2 && (
+                      <PaginationItem>
+                        <PaginationLink onClick={() => goToPage(1)}>1</PaginationLink>
+                      </PaginationItem>
+                    )}
+                    
+                    {page > 3 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    
+                    {page > 1 && (
+                      <PaginationItem>
+                        <PaginationLink onClick={() => goToPage(page - 1)}>{page - 1}</PaginationLink>
+                      </PaginationItem>
+                    )}
+                    
+                    <PaginationItem>
+                      <PaginationLink isActive>{page}</PaginationLink>
+                    </PaginationItem>
+                    
+                    {page < totalPages && (
+                      <PaginationItem>
+                        <PaginationLink onClick={() => goToPage(page + 1)}>{page + 1}</PaginationLink>
+                      </PaginationItem>
+                    )}
+                    
+                    {page < totalPages - 2 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    
+                    {page < totalPages - 1 && (
+                      <PaginationItem>
+                        <PaginationLink onClick={() => goToPage(totalPages)}>{totalPages}</PaginationLink>
+                      </PaginationItem>
+                    )}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => page < totalPages && goToPage(page + 1)}
+                        className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
