@@ -24,7 +24,7 @@ import { Calendar as CalendarIcon, ChevronDown, ChevronUp, Filter, X } from 'luc
 import type { ReportFilters, DateRangePreset } from '@/hooks/useReportData';
 import type { TaskStatus } from '@/types';
 
-interface ReportFiltersProps {
+interface ReportFiltersComponentProps {
   customers: { id: string; name: string }[];
   users: { id: string; "Full Name": string }[];
   filters: ReportFilters;
@@ -49,7 +49,7 @@ export const ReportFilters = ({
   resetFilters,
   isExpanded = true,
   onToggleExpand
-}: ReportFiltersProps) => {
+}: ReportFiltersComponentProps) => {
   const [fromCalendarOpen, setFromCalendarOpen] = useState(false);
   const [toCalendarOpen, setToCalendarOpen] = useState(false);
 
