@@ -21,8 +21,9 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-20 w-full bg-white border-b border-gray-100 h-16">
-      <div className="h-full min-w-[960px] max-w-[1200px] mx-auto px-8 flex items-center justify-between">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="h-full flex items-center justify-between px-8">
+        {/* Suchfeld und linker Bereich */}
+        <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="relative max-w-md w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input 
@@ -33,7 +34,8 @@ const Navbar = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Benutzer-Avatar / Profilmenü */}
+        <div className="flex items-center gap-4 shrink-0">
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -69,3 +71,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
