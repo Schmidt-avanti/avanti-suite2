@@ -570,6 +570,32 @@ export type Database = {
           },
         ]
       }
+      whatsapp_chat_sessions: {
+        Row: {
+          chat_id: string
+          last_activity: string
+          user_id: string
+        }
+        Insert: {
+          chat_id: string
+          last_activity?: string
+          user_id: string
+        }
+        Update: {
+          chat_id?: string
+          last_activity?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_chat_sessions_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: true
+            referencedRelation: "whatsapp_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_chats: {
         Row: {
           account_id: string
