@@ -100,17 +100,24 @@ serve(async (req) => {
         
         let customerId = customerByEmail?.id || customerByContact?.customer_id;
         
-        // Get system user ID (first admin user)
-        const { data: adminUser } = await supabase
+        // Find the user associated with the sender's email (from field)
+        const { data: userByEmail } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', event.from)
+          .maybeSingle();
+        
+        // Fallback to first admin user if no matching user found
+        const { data: adminUser } = !userByEmail ? await supabase
           .from('profiles')
           .select('id')
           .eq('role', 'admin')
           .order('created_at', { ascending: true })
           .limit(1)
-          .single();
+          .single() : { data: null };
           
-        // Only create task if we found a matching customer and admin user
-        if (customerId && adminUser?.id) {
+        // Only create task if we found a matching customer and user
+        if (customerId && (userByEmail?.id || adminUser?.id)) {
           // Create a task for this email
           const { error: taskError } = await supabase
             .from('tasks')
@@ -119,7 +126,7 @@ serve(async (req) => {
               description: event.text || event.plain || event.body || event.html || '',
               status: 'new',
               customer_id: customerId,
-              created_by: adminUser.id
+              created_by: userByEmail?.id || adminUser?.id
             });
             
           if (taskError) {
@@ -134,7 +141,7 @@ serve(async (req) => {
               .eq('id', emailId);
           }
         } else {
-          console.warn(`Could not create task: ${!customerId ? 'No matching customer found' : 'No admin user found'}`);
+          console.warn(`Could not create task: ${!customerId ? 'No matching customer found' : 'No user found'}`);
         }
       } else {
         console.warn('Skipping event with missing email data:', JSON.stringify(event).slice(0, 200));
@@ -153,3 +160,4 @@ serve(async (req) => {
     });
   }
 });
+
