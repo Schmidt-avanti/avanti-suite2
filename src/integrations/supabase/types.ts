@@ -292,6 +292,63 @@ export type Database = {
         }
         Relationships: []
       }
+      short_break_settings: {
+        Row: {
+          created_at: string
+          daily_minutes_per_agent: number
+          id: string
+          max_slots: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          daily_minutes_per_agent?: number
+          id?: string
+          max_slots?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          daily_minutes_per_agent?: number
+          id?: string
+          max_slots?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      short_breaks: {
+        Row: {
+          created_at: string
+          duration: number | null
+          end_time: string | null
+          id: string
+          start_time: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration?: number | null
+          end_time?: string | null
+          id?: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration?: number | null
+          end_time?: string | null
+          id?: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       task_activities: {
         Row: {
           action: string
@@ -712,6 +769,14 @@ export type Database = {
       generate_embedding: {
         Args: { input_text: string }
         Returns: string
+      }
+      get_active_break_slots: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      get_available_break_minutes: {
+        Args: { user_id_param: string }
+        Returns: number
       }
       get_chat_session: {
         Args: { chat_id_param: string }

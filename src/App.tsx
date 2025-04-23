@@ -22,6 +22,7 @@ import PromptTemplatesPage from "@/pages/admin/PromptTemplates";
 import UseCaseDetailPage from "@/pages/admin/UseCaseDetailPage";
 import CreateKnowledgeArticle from "@/pages/admin/CreateKnowledgeArticle";
 import WhatsappAccountsAdminPage from "@/pages/admin/WhatsappAccounts";
+import ShortBreakSettings from "@/pages/admin/ShortBreakSettings";
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
@@ -152,6 +153,15 @@ const App = () => {
                   element={
                     <ProtectedRoute allowedRoles={["admin"]}>
                       <WhatsappAccountsAdminPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/admin/short-breaks"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <ShortBreakSettings />
                     </ProtectedRoute>
                   }
                 />

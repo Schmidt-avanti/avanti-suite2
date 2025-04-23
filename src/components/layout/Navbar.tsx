@@ -1,4 +1,3 @@
-
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,8 +33,9 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Benutzer-Avatar / Profilmenü */}
+        {/* Add ShortBreakButton before the user avatar */}
         <div className="flex items-center gap-4 shrink-0">
+          {user?.role === 'agent' && <ShortBreakButton />}
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

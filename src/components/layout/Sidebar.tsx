@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   HomeIcon,
@@ -7,7 +6,8 @@ import {
   Building2Icon,
   FileTextIcon, 
   ListCheckIcon, 
-  FolderOpenIcon
+  FolderOpenIcon,
+  Timer
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useState } from "react";
@@ -84,6 +84,19 @@ const Sidebar: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
                 <span>Kunden</span>
               </NavLink>
             </div>
+
+            {/* Add Short-Break settings to admin menu */}
+            <NavLink
+              to="/admin/short-breaks"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
+                  isActive ? 'bg-gray-100 font-medium text-avanti-700' : 'text-gray-700'
+                }`
+              }
+            >
+              <Timer className="h-5 w-5" />
+              <span>Short-Break Verwaltung</span>
+            </NavLink>
           </nav>
         </div>
         
