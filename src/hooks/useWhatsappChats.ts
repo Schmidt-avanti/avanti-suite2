@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -32,20 +33,21 @@ export const useWhatsappChats = (accountIds: string[]) => {
 
   const fetchChats = useCallback(async () => {
     setError(null);
-    if (!accountIds.length) {
-      console.log("Keine Account-IDs zum Laden von Chats vorhanden");
-      return;
-    }
     
+    // Auch wenn keine Account-IDs vorhanden sind, trotzdem nach Chats suchen
+    // Es könnten neue Chats entstanden sein, die noch keinem Account zugeordnet sind
     setLoading(true);
-    console.log(`Lade Chats für ${accountIds.length} Accounts:`, accountIds);
     
     try {
-      const { data, error: fetchError } = await supabase
-        .from("whatsapp_chats")
-        .select("*")
-        .in("account_id", accountIds)
-        .order("last_message_time", { ascending: false });
+      let query = supabase.from("whatsapp_chats").select("*");
+      
+      // Filter nur anwenden, wenn Account-IDs vorhanden sind
+      if (accountIds.length > 0) {
+        query = query.in("account_id", accountIds);
+      }
+      
+      // Nach letzter Nachrichtenzeit sortieren
+      const { data, error: fetchError } = await query.order("last_message_time", { ascending: false });
       
       if (fetchError) {
         console.error("Fehler beim Laden der Chats:", fetchError);
@@ -58,10 +60,10 @@ export const useWhatsappChats = (accountIds: string[]) => {
       } else if (data) {
         console.log(`${data.length} Chats erfolgreich geladen:`, data);
         
+        // Wir laden alle zugehörigen Accounts, um die customer_id zuzuordnen
         const { data: accountsData, error: accountsError } = await supabase
           .from("whatsapp_accounts")
-          .select("id, customer_id")
-          .in("id", data.map(chat => chat.account_id));
+          .select("id, customer_id");
           
         if (accountsError) {
           console.error("Fehler beim Laden der Account-Daten:", accountsError);
@@ -96,10 +98,9 @@ export const useWhatsappChats = (accountIds: string[]) => {
   }, [accountIds, toast]);
 
   useEffect(() => { 
-    if (accountIds.length > 0) {
-      fetchChats(); 
-    }
-  }, [accountIds, fetchChats]);
+    // Wir rufen immer fetchChats auf, unabhängig von den accountIds
+    fetchChats();
+  }, [fetchChats]);
   
   return { chats, loading, error, refetch: fetchChats };
 };

@@ -3,7 +3,7 @@ import React from "react";
 import { useWhatsappAccounts } from "@/hooks/useWhatsappAccounts";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
 export interface CustomerMap {
   [id: string]: string;
@@ -32,6 +32,29 @@ const WhatsappAccountsTable: React.FC<{ customerMap: CustomerMap; refreshFlag?: 
     return <div className="text-muted-foreground px-2 py-8">Keine WhatsApp Konten vorhanden.</div>;
   }
 
+  const getStatusBadge = (status: string | null) => {
+    if (!status) return <Badge variant="outline">unbekannt</Badge>;
+
+    switch (status.toLowerCase()) {
+      case 'active':
+        return (
+          <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200 flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
+            <span>Aktiv</span>
+          </Badge>
+        );
+      case 'inactive':
+        return (
+          <Badge variant="outline" className="border-amber-300 text-amber-600 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            <span>Inaktiv</span>
+          </Badge>
+        );
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
   return (
     <div className="rounded-2xl bg-white shadow-soft border p-2 overflow-x-auto">
       <Table>
@@ -51,9 +74,7 @@ const WhatsappAccountsTable: React.FC<{ customerMap: CustomerMap; refreshFlag?: 
               <TableCell>{acc.name ?? <span className="text-gray-400">–</span>}</TableCell>
               <TableCell>{acc.pphone_number ?? <span className="text-gray-400">–</span>}</TableCell>
               <TableCell>
-                <Badge variant={acc.status === "active" ? "default" : "outline"}>
-                  {acc.status ?? "-"}
-                </Badge>
+                {getStatusBadge(acc.status)}
               </TableCell>
               <TableCell className="text-right pr-6">
                 {/* Aktionen können ergänzt werden */}

@@ -40,10 +40,10 @@ const WhatsappPage: React.FC = () => {
 
   // Wenn sich der selectedChat ändert und dieser null ist, Chats neu laden
   useEffect(() => {
-    if (!selectedChat && accountIds.length > 0) {
+    if (!selectedChat) {
       refetchChats();
     }
-  }, [selectedChat, refetchChats, accountIds]);
+  }, [selectedChat, refetchChats]);
 
   // Wenn ein neuer Chat ausgewählt wird, die Unread-Count zurücksetzen
   useEffect(() => {
@@ -95,15 +95,15 @@ const WhatsappPage: React.FC = () => {
       if (error) throw error;
       
       // Nur benachrichtigen, wenn tatsächlich neue Nachrichten verarbeitet wurden
-      if (data.processed > 0) {
+      if (data && data.processed > 0) {
         refetchChats();
         setLastRefresh(Date.now());
         
-        if (showNotifications || data.successful > 0) {
+        if (showNotifications || (data.successful && data.successful > 0)) {
           toast({
             title: "Nachrichten verarbeitet",
-            description: `${data.successful} neue WhatsApp-Nachricht(en) empfangen.`,
-            variant: data.successful > 0 ? "default" : "destructive",
+            description: `${data.successful || 0} neue WhatsApp-Nachricht(en) empfangen.`,
+            variant: (data.successful && data.successful > 0) ? "default" : "destructive",
           });
         }
       }

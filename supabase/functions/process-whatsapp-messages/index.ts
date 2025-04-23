@@ -57,19 +57,39 @@ serve(async (req) => {
         if (!existingChats || existingChats.length === 0) {
           console.log(`Erstelle neuen Chat für Nummer ${msg.from_number}`);
           
-          // Alle WhatsApp-Konten abrufen (später könnten wir dies verfeinern, um das richtige Konto zu wählen)
+          // Alle WhatsApp-Konten abrufen
           const { data: accounts, error: accountError } = await supabase
             .from('whatsapp_accounts')
             .select('id')
-            .limit(1);  // Einfachste Lösung: Nimm das erste Konto
+            .eq('status', 'active')  // Nur aktive Accounts verwenden
+            .limit(1);  // Einfachste Lösung: Nimm das erste aktive Konto
             
           if (accountError) throw accountError;
           
           if (!accounts || accounts.length === 0) {
-            console.error('Kein WhatsApp-Konto gefunden, um Chat zuzuordnen');
-            results.push({ from: msg.from_number, status: 'error', message: 'Kein WhatsApp-Konto verfügbar' });
-            continue;
+            console.error('Kein aktives WhatsApp-Konto gefunden, um Chat zuzuordnen');
+            
+            // Fallback: Wenn kein aktives Konto vorhanden ist, nimm einfach irgendein Konto
+            const { data: anyAccounts, error: anyAccountError } = await supabase
+              .from('whatsapp_accounts')
+              .select('id')
+              .limit(1);
+              
+            if (anyAccountError || !anyAccounts || anyAccounts.length === 0) {
+              results.push({ 
+                from: msg.from_number, 
+                status: 'error', 
+                message: 'Kein WhatsApp-Konto verfügbar' 
+              });
+              continue;
+            }
+            
+            // Verwende das erste verfügbare Konto (auch wenn nicht aktiv)
+            accounts = anyAccounts;
           }
+          
+          // Formatiere den Kontaktnamen basierend auf der Nummer
+          const contactName = formatContactName(msg.from_number);
           
           // Neuen Chat erstellen
           const { data: newChat, error: createChatError } = await supabase
@@ -77,7 +97,7 @@ serve(async (req) => {
             .insert({
               account_id: accounts[0].id,
               contact_number: msg.from_number,
-              contact_name: msg.from_number.replace('+', ''), // Vorübergehend die Nummer als Namen verwenden
+              contact_name: contactName,
               unread_count: 1,
               last_message: msg.body,
               last_message_time: msg.timestamp
@@ -87,8 +107,11 @@ serve(async (req) => {
             
           if (createChatError) throw createChatError;
           chatId = newChat.id;
+          
+          console.log(`Neuer Chat mit ID ${chatId} erstellt für Nummer ${msg.from_number}`);
         } else {
           chatId = existingChats[0].id;
+          console.log(`Bestehender Chat ${chatId} gefunden für Nummer ${msg.from_number}`);
           
           // Unread count und letzten Nachrichten aktualisieren
           await supabase
@@ -113,14 +136,16 @@ serve(async (req) => {
           
         if (insertError) throw insertError;
         
-        // 4. Die verarbeitete Nachricht aus der Tabelle whatsapp_inbound_webhooks löschen (optional)
-        // Hier entscheiden wir uns, sie zu behalten, könnten aber einen Status "verarbeitet" hinzufügen
+        console.log(`Nachricht von ${msg.from_number} erfolgreich in Chat ${chatId} gespeichert`);
         
-        results.push({ from: msg.from_number, status: 'success' });
+        // Optionale Bereinigung: Verarbeitete Nachricht aus der Inbound-Tabelle löschen
+        // await supabase.from('whatsapp_inbound_webhooks').delete().eq('id', msg.id);
+        
+        results.push({ from: msg.from_number, status: 'success', chat_id: chatId });
         
       } catch (err) {
         console.error(`Fehler bei der Verarbeitung von Nachricht von ${msg.from_number}:`, err);
-        results.push({ from: msg.from_number, status: 'error', message: err.message });
+        results.push({ from: msg.from_number, status: 'error', message: err instanceof Error ? err.message : String(err) });
       }
     }
     
@@ -139,9 +164,18 @@ serve(async (req) => {
 
   } catch (err) {
     console.error('Allgemeiner Fehler bei der Nachrichtenverarbeitung:', err);
-    return new Response(JSON.stringify({ error: err.message }), { 
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), { 
       status: 500, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });
   }
 });
+
+// Hilfsfunktion zur Formatierung des Kontaktnamens
+function formatContactName(phoneNumber: string): string {
+  // Entferne WhatsApp-Präfix, falls vorhanden
+  let formattedNumber = phoneNumber.replace('whatsapp:', '');
+  
+  // Füge "WhatsApp Kontakt" als Präfix hinzu
+  return `WhatsApp Kontakt ${formattedNumber}`;
+}
