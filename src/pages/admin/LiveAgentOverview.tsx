@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Clock, MessageSquare } from 'lucide-react';
 import { format, formatDistance } from 'date-fns';
@@ -30,7 +29,6 @@ const LiveAgentOverview = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch initial agents data
   useEffect(() => {
     const fetchAgents = async () => {
       try {
@@ -42,18 +40,15 @@ const LiveAgentOverview = () => {
 
         if (error) throw error;
 
-        // Get short break status
         const { data: shortBreaks } = await supabase
           .from('short_breaks')
           .select('user_id, start_time')
           .eq('status', 'active');
 
-        // Get customer assignments
         const { data: assignments } = await supabase
           .from('user_customer_assignments')
           .select('user_id, customer_id, customers(name)');
 
-        // Format the agent data
         const formattedAgents: Agent[] = (profiles || []).map(profile => {
           const activeBreak = shortBreaks?.find(b => b.user_id === profile.id);
           const assignment = assignments?.find(a => a.user_id === profile.id);
@@ -65,7 +60,7 @@ const LiveAgentOverview = () => {
             statusSince: activeBreak ? new Date(activeBreak.start_time) : new Date(),
             customerId: assignment?.customer_id,
             customerName: assignment?.customers?.name,
-            lastActivity: new Date() // This would be updated with actual data
+            lastActivity: new Date()
           };
         });
 
@@ -82,7 +77,6 @@ const LiveAgentOverview = () => {
 
     fetchAgents();
 
-    // Subscribe to real-time updates
     const channel = supabase
       .channel('agent-status-changes')
       .on('postgres_changes', { 
@@ -228,7 +222,7 @@ const LiveAgentOverview = () => {
           agent={selectedAgent}
           supervisor={{ 
             id: user?.id || '', 
-            fullName: `${user?.fullName || 'Admin'} (Supervisor)` 
+            fullName: user?.firstName || 'Admin' 
           }}
         />
       )}

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Send, X } from 'lucide-react';
+import { Send, X, Minimize2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,6 +61,7 @@ const AgentChatPopup = ({ onClose }: AgentChatPopupProps) => {
             sender_id,
             recipient_id,
             created_at,
+            is_read,
             profiles:sender_id("Full Name")
           `)
           .or(`recipient_id.eq.${user.id},sender_id.eq.${user.id}`)
