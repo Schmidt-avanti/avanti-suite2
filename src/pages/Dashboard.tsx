@@ -83,13 +83,11 @@ const Dashboard: React.FC = () => {
         </Link>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <RemindersList />
-      </div>
-
       <Card className="bg-avanti-50/30">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">Ungelesene Benachrichtigungen</CardTitle>
+          <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">
+            Ungelesene Benachrichtigungen
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {unreadNotifications.length === 0 ? (
@@ -115,6 +113,8 @@ const Dashboard: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      <RemindersList />
     </div>
   );
 };
