@@ -5,9 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskChat } from "@/components/tasks/TaskChat";
-import { ChevronLeft, User2, Users, Inbox, UserCheck, BookOpen, Maximize2, Clock, Check } from "lucide-react";
+import {
+  ChevronLeft,
+  User2,
+  Users,
+  Inbox,
+  UserCheck,
+  Clock,
+  Check
+} from "lucide-react";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
-import { KnowledgeArticleModal } from "@/components/knowledge-articles/KnowledgeArticleModal";
 import { useTaskTimer } from '@/hooks/useTaskTimer';
 import { useTaskActivity } from '@/hooks/useTaskActivity';
 import type { TaskStatus } from '@/types';
@@ -16,7 +23,6 @@ const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [task, setTask] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
   const [replyTo, setReplyTo] = useState('');
   const [replyBody, setReplyBody] = useState('');
   const { toast } = useToast();
@@ -124,7 +130,20 @@ const TaskDetail = () => {
           </div>
           {task.status !== 'completed' && (
             <Button 
-              onClick={() => handleCompleteTask()}
+              onClick={async () => {
+                const { error } = await supabase
+                  .from('tasks')
+                  .update({ status: 'completed' })
+                  .eq('id', id);
+                if (!error) {
+                  await logTaskStatusChange(id, task.status as TaskStatus, 'completed' as TaskStatus);
+                  setTask({ ...task, status: 'completed' });
+                  toast({
+                    title: "Aufgabe abgeschlossen",
+                    description: "Die Aufgabe wurde erfolgreich abgeschlossen.",
+                  });
+                }
+              }}
               variant="secondary"
               className="mr-4 bg-green-100 text-green-700 hover:bg-green-200"
             >
@@ -136,9 +155,54 @@ const TaskDetail = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
-          {/* Left Section omitted for brevity — keep as is from previous version */}
+          {/* LEFT PANEL */}
+          <div className="flex flex-col gap-5">
+            <Card className="rounded-xl shadow-md border-none bg-white/85">
+              <CardContent className="p-6 pb-3 space-y-2 break-words whitespace-pre-wrap">
+                <h2 className="text-lg font-semibold mb-1">Aufgabendetails</h2>
+                <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                  <Inbox className="h-4 w-4" />
+                  <span className="font-medium">Beschreibung</span>
+                </div>
+                <div className="ml-6 text-gray-700">{task.description}</div>
 
-          {/* Right Section — Email Reply or Task Chat */}
+                {task.attachments?.length > 0 && (
+                  <div className="mt-4">
+                    <div className="text-sm font-medium text-muted-foreground mb-1">Anhänge</div>
+                    <ul className="ml-6 list-disc text-blue-600 text-sm space-y-1">
+                      {task.attachments.map((url: string, i: number) => (
+                        <li key={i}><a href={url} target="_blank" rel="noreferrer">Datei {i + 1}</a></li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+                  <Users className="h-4 w-4" />
+                  <span className="font-medium">Kunde</span>
+                </div>
+                <div className="ml-6">{task.customer?.name || 'Nicht zugewiesen'}</div>
+
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+                  <User2 className="h-4 w-4" />
+                  <span className="font-medium">Erstellt von</span>
+                </div>
+                <div className="ml-6 break-words">
+                  {task.creator?.["Full Name"]
+                    || (task.source === 'email' && task.from_email)
+                    || <span className="text-gray-400">Unbekannt</span>}
+                </div>
+
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+                  <UserCheck className="h-4 w-4" />
+                  <span className="font-medium">Zugewiesen an</span>
+                </div>
+                <div className="ml-6">{task.assignee?.["Full Name"] || 'Nicht zugewiesen'}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* RIGHT PANEL */}
           <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
             <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 mr-6 p-6">
               <CardHeader className="p-0 pb-2 flex flex-row items-center border-none">
