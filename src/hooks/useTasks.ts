@@ -74,6 +74,7 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             title,
             status,
             source,
+            endkunde_email,
             attachments, 
             created_at,
             created_by,
@@ -193,6 +194,7 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             status: validateTaskStatus(rawTask.status),
             created_at: rawTask.created_at,
             source: rawTask.source,
+            endkunde_email: rawTask.endkunde_email,
             customer: transformCustomer(rawTask.customer),
             creator: rawTask.creator, 
             attachments: rawTask.attachments
