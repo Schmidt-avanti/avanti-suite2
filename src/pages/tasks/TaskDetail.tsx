@@ -223,17 +223,28 @@ const TaskDetail = () => {
                 </div>
                 <div className="ml-6">{task.customer?.name || 'Nicht zugewiesen'}</div>
 
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
-                  <User2 className="h-4 w-4" />
-                  <span className="font-medium">Erstellt von</span>
-                </div>
-                <div className="ml-6">{task.creator?.["Full Name"] || 'Unbekannt'}</div>
 
+                
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+  <User2 className="h-4 w-4" />
+  <span className="font-medium">Erstellt von</span>
+</div>
+<div className="ml-6 break-words">
+  {task.creator?.["Full Name"]
+    || (task.source === 'email' && task.from_email)
+    || <span className="text-gray-400">Unbekannt</span>}
+</div>
+
+
+
+                
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
                   <UserCheck className="h-4 w-4" />
                   <span className="font-medium">Zugewiesen an</span>
                 </div>
                 <div className="ml-6">{task.assignee?.["Full Name"] || 'Nicht zugewiesen'}</div>
+
+                
               </CardContent>
             </Card>
 
