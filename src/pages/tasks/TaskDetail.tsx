@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskChat } from "@/components/tasks/TaskChat";
-import { ChevronLeft, User2, Users, Inbox, UserCheck, BookOpen, Maximize2, Clock } from "lucide-react";
+import { ChevronLeft, User2, Users, Inbox, UserCheck, BookOpen, Maximize2, Clock, Check } from "lucide-react";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 import { KnowledgeArticleModal } from "@/components/knowledge-articles/KnowledgeArticleModal";
 import { useTaskTimer } from '@/hooks/useTaskTimer';
@@ -185,6 +185,55 @@ const TaskDetail = () => {
     );
   }
 
+  const handleCompleteTask = async () => {
+    if (!task || !id) return;
+    
+    try {
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ status: 'completed' })
+        .eq('id', id);
+      
+      if (taskError) throw taskError;
+
+      const { data: activeTimer } = await supabase
+        .from('task_times')
+        .select('id')
+        .eq('task_id', id)
+        .is('ended_at', null)
+        .maybeSingle();
+
+      if (activeTimer) {
+        const { error: timerError } = await supabase
+          .from('task_times')
+          .update({ 
+            ended_at: new Date().toISOString(),
+            duration_seconds: Math.floor((Date.now() - new Date(task.started_at).getTime()) / 1000)
+          })
+          .eq('id', activeTimer.id);
+          
+        if (timerError) throw timerError;
+      }
+
+      await logTaskStatusChange(id, task.status, 'completed');
+
+      toast({
+        title: "Aufgabe abgeschlossen",
+        description: "Die Aufgabe wurde erfolgreich abgeschlossen.",
+      });
+
+      setTask({ ...task, status: 'completed' });
+
+    } catch (error: any) {
+      console.error('Error completing task:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Die Aufgabe konnte nicht abgeschlossen werden.",
+      });
+    }
+  };
+
   if (isLoading) {
     return <div className="text-center py-8">Lade Aufgabe...</div>;
   }
@@ -202,11 +251,21 @@ const TaskDetail = () => {
             Zurück zur Übersicht
           </Button>
           <div className="flex-1" />
-          <div className="text-sm font-medium bg-white/20 rounded-full px-4 py-1 flex items-center">
+          <div className="text-sm font-medium bg-white/20 rounded-full px-4 py-1 flex items-center mr-4">
             <Clock className="h-4 w-4 mr-2" />
             {formattedTime}
           </div>
-          <TaskStatusBadge status={task.status} />
+          {task?.status !== 'completed' && (
+            <Button 
+              onClick={handleCompleteTask}
+              variant="secondary"
+              className="mr-4 bg-green-100 text-green-700 hover:bg-green-200"
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Aufgabe abschließen
+            </Button>
+          )}
+          <TaskStatusBadge status={task?.status || 'new'} />
         </div>
         <div className={`grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8 transition-all`}>
           <div className="flex flex-col gap-5 h-full">
