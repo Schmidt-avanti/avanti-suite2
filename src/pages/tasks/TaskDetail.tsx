@@ -73,7 +73,7 @@ const TaskDetail = () => {
       setTask(enrichedTask);
 
       if (taskData.source === 'email') {
-        setReplyTo(extractEmail(taskData.endkunde_email || taskData.from_email || '') || '');
+        setReplyTo(extractEmail(taskData.endkunde_email || '') || '');
       }
 
     } catch (error: any) {
@@ -163,7 +163,6 @@ const TaskDetail = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
-          {/* LEFT PANEL */}
           <div className="flex flex-col gap-5">
             <Card className="rounded-xl shadow-md border-none bg-white/85">
               <CardContent className="p-6 pb-3 space-y-2 break-words whitespace-pre-wrap">
@@ -210,7 +209,6 @@ const TaskDetail = () => {
             </Card>
           </div>
 
-          {/* RIGHT PANEL */}
           <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
             <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 mr-6 p-6">
               <CardHeader className="p-0 pb-2 flex flex-row items-center border-none">

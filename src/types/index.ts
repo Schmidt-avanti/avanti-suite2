@@ -1,3 +1,4 @@
+
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -34,7 +35,11 @@ export interface Task {
     id: string;
     "Full Name": string;
   };
-  attachments?: any[]; // Added missing attachments property
+  attachments?: any[];
+  endkunde_email?: string; // Added missing field
+  from_email?: string;     // Added missing field
+  description?: string;    // Added missing field
+  matched_use_case_id?: string; // Added missing field
 }
 
 // Add missing types that are causing errors
@@ -82,7 +87,7 @@ export interface PaymentMethod {
   updated_at: string;
   last_used: string | null;
   active: boolean;
-  customer_id: string;
+  customer_id?: string;
   card_holder?: string;
   expiry_month?: number;
   expiry_year?: number;
@@ -90,3 +95,4 @@ export interface PaymentMethod {
   billing_zip?: string;
   billing_city?: string;
 }
+
