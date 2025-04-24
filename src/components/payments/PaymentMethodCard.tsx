@@ -1,5 +1,5 @@
 
-import { CreditCard, PaypalIcon, Pencil, Trash2 } from "lucide-react";
+import { CreditCard, Pencil, Trash2 } from "lucide-react";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -18,11 +18,7 @@ export const PaymentMethodCard = ({ type, value, onEdit, onDelete }: PaymentMeth
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center gap-2">
-        {type === 'creditcard' ? (
-          <CreditCard className="h-5 w-5" />
-        ) : (
-          <PaypalIcon className="h-5 w-5" />
-        )}
+        <CreditCard className="h-5 w-5" />
         <span className="font-semibold capitalize">{type}</span>
       </CardHeader>
       <CardContent>
