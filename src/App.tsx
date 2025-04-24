@@ -41,7 +41,7 @@ import ClientDashboard from "@/pages/customer/Dashboard";
 import CreateTask from "@/pages/tasks/CreateTask";
 import Tasks from '@/pages/tasks/Tasks';
 import TaskDetail from "./pages/tasks/TaskDetail";
-import CompletedTasks from './pages/tasks/CompletedTasks'; // Neu hinzugefügt
+import CompletedTasks from './pages/tasks/CompletedTasks';
 
 // Report Pages
 import Reports from "@/pages/reports/Reports";
@@ -226,12 +226,12 @@ const App = () => {
                     }
                   />
 
-                  {/* Add new task routes */}
+                  {/* Task routes - WICHTIG: Spezifischere Routen zuerst, dann dynamische */}
                   <Route
-                    path="/tasks"
+                    path="/tasks/completed"
                     element={
                       <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
-                        <Tasks />
+                        <CompletedTasks />
                       </ProtectedRoute>
                     }
                   />
@@ -240,6 +240,14 @@ const App = () => {
                     element={
                       <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
                         <CreateTask />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/tasks"
+                    element={
+                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                        <Tasks />
                       </ProtectedRoute>
                     }
                   />

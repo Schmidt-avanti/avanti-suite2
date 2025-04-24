@@ -81,8 +81,8 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
           `)
           .order('created_at', { ascending: false });
 
-        // Filter based on status
-        if (statusFilter) {
+        // Filter based on status - Fixed to properly handle status filter
+        if (statusFilter && statusFilter !== 'all') {
           query = query.eq('status', statusFilter);
         } else if (!includeAll) {
           // If includeAll is false, show all statuses except 'completed'
