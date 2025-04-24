@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 import { Button } from "@/components/ui/button";
-import { Clock, RotateCw, User } from "lucide-react";
+import { Clock, RotateCw, User2, User } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const ProcessingTime = () => {
@@ -202,7 +202,7 @@ const ProcessingTime = () => {
                   <TableCell>{summary.session_count}</TableCell>
                   <TableCell>
                     {isActivelyWorking(summary.user_id, summary.task_id) ? (
-                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                      <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-100">
                         <span className="relative flex h-2 w-2 mr-1">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
