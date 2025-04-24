@@ -44,7 +44,7 @@ const Navbar = () => {
               <NotificationButton />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Button variant="ghost" className="relative h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center">
                     <Avatar className="h-8 w-8">
                       {/* Conditionally render AvatarImage only if avatarUrl exists */}
                       {user.avatarUrl && (
