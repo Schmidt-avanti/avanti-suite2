@@ -9,6 +9,8 @@ import { ChevronLeft, User2, Users, Inbox, UserCheck, BookOpen, Maximize2, Clock
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 import { KnowledgeArticleModal } from "@/components/knowledge-articles/KnowledgeArticleModal";
 import { useTaskTimer } from '@/hooks/useTaskTimer';
+import { useTaskActivity } from '@/hooks/useTaskActivity';
+import type { TaskStatus } from '@/types';
 
 function classnames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
@@ -26,6 +28,7 @@ const TaskDetail = () => {
     taskId: id || '',
     isActive: true
   });
+  const { logTaskStatusChange } = useTaskActivity();
 
   useEffect(() => {
     if (id) {
@@ -215,7 +218,7 @@ const TaskDetail = () => {
         if (timerError) throw timerError;
       }
 
-      await logTaskStatusChange(id, task.status, 'completed');
+      await logTaskStatusChange(id, task.status as TaskStatus, 'completed' as TaskStatus);
 
       toast({
         title: "Aufgabe abgeschlossen",
