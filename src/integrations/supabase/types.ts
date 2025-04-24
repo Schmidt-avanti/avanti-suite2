@@ -150,7 +150,6 @@ export type Database = {
       }
       inbound_emails: {
         Row: {
-          attachment: Json | null
           attachments: Json | null
           body_html: string | null
           body_text: string | null
@@ -165,7 +164,6 @@ export type Database = {
           to_emails: string[]
         }
         Insert: {
-          attachment?: Json | null
           attachments?: Json | null
           body_html?: string | null
           body_text?: string | null
@@ -180,7 +178,6 @@ export type Database = {
           to_emails: string[]
         }
         Update: {
-          attachment?: Json | null
           attachments?: Json | null
           body_html?: string | null
           body_text?: string | null
@@ -540,7 +537,7 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
-          attachment: Json | null
+          attachments: Json | null
           created_at: string
           created_by: string | null
           customer_id: string
@@ -557,7 +554,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
-          attachment?: Json | null
+          attachments?: Json | null
           created_at?: string
           created_by?: string | null
           customer_id: string
@@ -574,7 +571,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
-          attachment?: Json | null
+          attachments?: Json | null
           created_at?: string
           created_by?: string | null
           customer_id?: string
