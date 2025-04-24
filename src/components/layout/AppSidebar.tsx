@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -185,7 +184,7 @@ const AppSidebar = () => {
                             }
                           >
                             <Radio className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Übersicht aktive Agenten</span>
+                            <span className="truncate">Active Agents</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
