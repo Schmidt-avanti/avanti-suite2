@@ -8,6 +8,7 @@ interface SupervisorChatContextType {
   hasNewMessages: boolean;
   openChat: () => void;
   closeChat: () => void;
+  isChatOpen: boolean;
 }
 
 const SupervisorChatContext = createContext<SupervisorChatContextType | undefined>(undefined);
@@ -25,14 +26,10 @@ export const SupervisorChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const { user } = useAuth();
 
-  // Explicitly check for the agent role
-  const isAgent = user?.role === 'agent';
-
   useEffect(() => {
-    if (!user?.id || !isAgent) return;
+    if (!user?.id) return;
     
-    // Debug log to verify user role
-    console.log('SupervisorChatProvider user role:', user.role);
+    console.log('SupervisorChatProvider initializing for user:', user.id);
     
     // Check for unread messages initially
     const checkUnreadMessages = async () => {
@@ -51,7 +48,6 @@ export const SupervisorChatProvider: React.FC<{ children: React.ReactNode }> = (
       
       if (count && count > 0) {
         setHasNewMessages(true);
-        setChatOpen(true); // Auto-open chat if there are unread messages
       }
     };
     
@@ -68,30 +64,29 @@ export const SupervisorChatProvider: React.FC<{ children: React.ReactNode }> = (
       }, (payload) => {
         console.log('New message received:', payload);
         setHasNewMessages(true);
-        setChatOpen(true); // Auto-open chat on new messages
       })
       .subscribe();
       
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, isAgent]);
+  }, [user]);
 
   const openChat = () => {
-    if (isAgent) {
-      setChatOpen(true);
-    }
-  };
-
-  const closeChat = () => {
-    setChatOpen(false);
+    console.log('Opening chat');
+    setChatOpen(true);
     setHasNewMessages(false);
   };
 
+  const closeChat = () => {
+    console.log('Closing chat');
+    setChatOpen(false);
+  };
+
   return (
-    <SupervisorChatContext.Provider value={{ hasNewMessages, openChat, closeChat }}>
+    <SupervisorChatContext.Provider value={{ hasNewMessages, openChat, closeChat, isChatOpen: chatOpen }}>
       {children}
-      {chatOpen && isAgent && (
+      {chatOpen && user && (
         <AgentChatPopup onClose={closeChat} />
       )}
     </SupervisorChatContext.Provider>

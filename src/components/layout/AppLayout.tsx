@@ -19,7 +19,7 @@ const AppLayout: React.FC = () => {
     openChat();
     if (!hasNewMessages) {
       toast({
-        description: "Keine neuen Nachrichten vorhanden."
+        description: "Chat geöffnet. Schreibe eine Nachricht."
       });
     }
   };
@@ -37,21 +37,19 @@ const AppLayout: React.FC = () => {
               </div>
             </div>
             
-            {/* Chat button for agents */}
-            {user?.role === 'agent' && (
-              <div className="fixed bottom-6 right-6">
-                <Button 
-                  onClick={handleChatOpen}
-                  className="rounded-full h-14 w-14 p-0 shadow-lg"
-                  size="icon"
-                >
-                  <MessageCircle className="h-6 w-6" />
-                  {hasNewMessages && (
-                    <span className="absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full"></span>
-                  )}
-                </Button>
-              </div>
-            )}
+            {/* Chat button for all users */}
+            <div className="fixed bottom-6 right-6">
+              <Button 
+                onClick={handleChatOpen}
+                className="rounded-full h-14 w-14 p-0 shadow-lg"
+                size="icon"
+              >
+                <MessageCircle className="h-6 w-6" />
+                {hasNewMessages && (
+                  <span className="absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full"></span>
+                )}
+              </Button>
+            </div>
           </main>
         </div>
       </div>
