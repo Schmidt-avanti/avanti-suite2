@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TaskStatusBadge } from './TaskStatusBadge';
@@ -12,10 +11,9 @@ interface TasksTableProps {
 export const TasksTable = ({ tasks, isLoading }: TasksTableProps) => {
   const navigate = useNavigate();
 
-  // Hilfsfunktion zum Rendern der Quelle, falls vorhanden
+  // Helper function to render source with fallback
   const renderSource = (source: string | undefined) => {
-    if (!source) return '-';
-    return source;
+    return source || '—';
   };
 
   return (
@@ -47,7 +45,7 @@ export const TasksTable = ({ tasks, isLoading }: TasksTableProps) => {
             >
               <TableCell>{task.title}</TableCell>
               <TableCell>{task.customer?.name || '-'}</TableCell>
-              <TableCell>{task.source || '—'}</TableCell>
+              <TableCell>{renderSource(task.source)}</TableCell>
               <TableCell>
                 <TaskStatusBadge status={task.status} />
               </TableCell>
