@@ -12,38 +12,67 @@ import { exportInvoiceToExcel } from '@/utils/excelExport';
 import { format } from 'date-fns';
 import { useInvoiceData } from '@/hooks/useInvoiceData';
 import { useInvoiceCalculation } from '@/hooks/useInvoiceCalculation';
+import { toast } from 'sonner';
 
 const InvoicePage = () => {
-  const { customers, isLoading } = useCustomers();
+  const { customers, isLoading: customersLoading } = useCustomers();
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: undefined,
-    to: undefined
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // Erster Tag des aktuellen Monats
+    to: new Date()
   });
 
+  // Daten für die Rechnung holen, aber nur wenn ein Kunde ausgewählt ist und beide Datumswerte gesetzt sind
+  const { data: invoiceData, isLoading: isInvoiceDataLoading } = useInvoiceData(
+    selectedCustomer, 
+    dateRange.from as Date, 
+    dateRange.to as Date
+  );
+
+  // Berechnungen für die Rechnung
+  const { data: calculations, isLoading: isCalculationsLoading } = useInvoiceCalculation(
+    selectedCustomer, 
+    dateRange.from as Date, 
+    dateRange.to as Date
+  );
+
   const handleExport = () => {
-    if (!selectedCustomer || !dateRange.from || !dateRange.to) return;
+    if (!selectedCustomer || !dateRange.from || !dateRange.to) {
+      toast.error("Bitte wählen Sie einen Kunden und einen Datumsbereich aus.");
+      return;
+    }
     
     const customer = customers.find(c => c.id === selectedCustomer);
-    if (!customer) return;
+    if (!customer) {
+      toast.error("Kunde konnte nicht gefunden werden.");
+      return;
+    }
 
-    const { data: invoiceData } = useInvoiceData(selectedCustomer, dateRange.from, dateRange.to);
-    const { data: calculations } = useInvoiceCalculation(selectedCustomer, dateRange.from, dateRange.to);
-    
-    if (!invoiceData || !calculations) return;
+    if (!invoiceData || !calculations) {
+      toast.error("Die Rechnungsdaten konnten nicht geladen werden.");
+      return;
+    }
 
-    const exportData = {
-      customerName: customer.name,
-      costCenter: customer.cost_center || '',
-      dateRange: `${format(dateRange.from, 'dd.MM.yyyy')} - ${format(dateRange.to, 'dd.MM.yyyy')}`,
-      contactPerson: customer.contact_person || '',
-      billingAddress: customer.billing_address || '',
-      dailyRecords: invoiceData,
-      summary: calculations
-    };
+    try {
+      const exportData = {
+        customerName: customer.name,
+        costCenter: customer.cost_center || '',
+        dateRange: `${format(dateRange.from, 'dd.MM.yyyy')} - ${format(dateRange.to, 'dd.MM.yyyy')}`,
+        contactPerson: customer.contact_person || '',
+        billingAddress: customer.billing_address || '',
+        dailyRecords: invoiceData,
+        summary: calculations
+      };
 
-    exportInvoiceToExcel(exportData);
+      exportInvoiceToExcel(exportData);
+      toast.success("Rechnung wurde erfolgreich exportiert.");
+    } catch (error) {
+      console.error("Fehler beim Exportieren der Rechnung:", error);
+      toast.error("Beim Exportieren der Rechnung ist ein Fehler aufgetreten.");
+    }
   };
+
+  const isLoading = customersLoading || isInvoiceDataLoading || isCalculationsLoading;
 
   return (
     <div className="space-y-6">
@@ -82,7 +111,16 @@ const InvoicePage = () => {
             </div>
           </div>
 
-          {selectedCustomer && dateRange.from && dateRange.to && (
+          {isLoading && (
+            <div className="py-8 text-center">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
+                <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+              </div>
+              <p className="mt-2 text-muted-foreground">Lade Rechnungsdaten...</p>
+            </div>
+          )}
+
+          {!isLoading && selectedCustomer && dateRange.from && dateRange.to && (
             <>
               <InvoiceTable customerId={selectedCustomer} from={dateRange.from} to={dateRange.to} />
               <div className="mt-6 flex justify-between items-start">

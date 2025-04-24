@@ -9,7 +9,16 @@ interface InvoiceSummaryProps {
 }
 
 export function InvoiceSummary({ customerId, from, to }: InvoiceSummaryProps) {
-  const { data } = useInvoiceCalculation(customerId, from, to);
+  const { data, isLoading, error } = useInvoiceCalculation(customerId, from, to);
+
+  if (error) {
+    console.error("Fehler bei der Berechnung:", error);
+    return <div className="text-red-500">Fehler bei der Berechnung. Bitte versuchen Sie es erneut.</div>;
+  }
+
+  if (isLoading) {
+    return <div>Berechne...</div>;
+  }
 
   if (!data) return null;
 
