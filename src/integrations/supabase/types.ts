@@ -293,6 +293,7 @@ export type Database = {
           billing_zip: string | null
           card_holder: string | null
           created_at: string
+          customer_id: string | null
           expiry_month: number | null
           expiry_year: number | null
           id: string
@@ -309,6 +310,7 @@ export type Database = {
           billing_zip?: string | null
           card_holder?: string | null
           created_at?: string
+          customer_id?: string | null
           expiry_month?: number | null
           expiry_year?: number | null
           id?: string
@@ -325,6 +327,7 @@ export type Database = {
           billing_zip?: string | null
           card_holder?: string | null
           created_at?: string
+          customer_id?: string | null
           expiry_month?: number | null
           expiry_year?: number | null
           id?: string
@@ -334,7 +337,15 @@ export type Database = {
           user_id?: string
           value?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

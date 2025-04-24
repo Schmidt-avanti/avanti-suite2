@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Table,
@@ -15,7 +14,7 @@ import { de } from "date-fns/locale";
 import { Pencil, Trash2 } from "lucide-react";
 
 interface PaymentMethodsTableProps {
-  paymentMethods: PaymentMethod[];
+  paymentMethods: (PaymentMethod & { customers: { name: string } })[];
   onEdit: (method: PaymentMethod) => void;
   onDelete: (method: PaymentMethod) => void;
 }
@@ -54,25 +53,11 @@ export const PaymentMethodsTable = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead 
-            className="cursor-pointer"
-            onClick={() => requestSort('type')}
-          >
-            Zahlungsart
-          </TableHead>
+          <TableHead>Kunde</TableHead>
+          <TableHead>Zahlungsart</TableHead>
           <TableHead>Details</TableHead>
-          <TableHead 
-            className="cursor-pointer"
-            onClick={() => requestSort('updated_at')}
-          >
-            Letzte Änderung
-          </TableHead>
-          <TableHead 
-            className="cursor-pointer"
-            onClick={() => requestSort('active')}
-          >
-            Status
-          </TableHead>
+          <TableHead>Letzte Änderung</TableHead>
+          <TableHead>Status</TableHead>
           <TableHead>Aktionen</TableHead>
         </TableRow>
       </TableHeader>
@@ -84,6 +69,7 @@ export const PaymentMethodsTable = ({
 
           return (
             <TableRow key={method.id}>
+              <TableCell>{method.customers?.name || 'N/A'}</TableCell>
               <TableCell className="capitalize">{method.type}</TableCell>
               <TableCell>{maskedValue}</TableCell>
               <TableCell>

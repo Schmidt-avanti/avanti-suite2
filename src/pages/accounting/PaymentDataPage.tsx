@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { PaymentMethodForm } from "@/components/payments/PaymentMethodForm";
 import { PaymentMethodCard } from "@/components/payments/PaymentMethodCard";
 import { PaymentMethodsTable } from "@/components/payments/PaymentMethodsTable";
+import { CustomerFilter } from "@/components/payments/CustomerFilter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PaymentMethod } from "@/types";
@@ -28,22 +29,25 @@ const PaymentDataPage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
   const [deletingMethod, setDeletingMethod] = useState<PaymentMethod | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>();
 
   const { data: paymentMethods = [] } = useQuery({
-    queryKey: ['payment-methods', user?.role],
+    queryKey: ['payment-methods', user?.role, selectedCustomerId],
     queryFn: async () => {
       let query = supabase
         .from('payment_methods')
-        .select('*');
+        .select('*, customers(name)');
 
       if (user?.role !== 'admin') {
         query = query.eq('user_id', user?.id);
+      } else if (selectedCustomerId) {
+        query = query.eq('customer_id', selectedCustomerId);
       }
 
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as PaymentMethod[];
+      return data as (PaymentMethod & { customers: { name: string } })[];
     },
   });
 
@@ -51,6 +55,7 @@ const PaymentDataPage = () => {
     mutationFn: async (data: {
       type: 'paypal' | 'creditcard';
       value: string;
+      customer_id: string;
       card_holder?: string;
       expiry_month?: number;
       expiry_year?: number;
@@ -77,6 +82,7 @@ const PaymentDataPage = () => {
       id: string;
       type: 'paypal' | 'creditcard';
       value: string;
+      customer_id: string;
       card_holder?: string;
       expiry_month?: number;
       expiry_year?: number;
@@ -117,6 +123,7 @@ const PaymentDataPage = () => {
   const handleSubmit = async (data: {
     type: 'paypal' | 'creditcard';
     value: string;
+    customer_id: string;
     card_holder?: string;
     expiry_month?: number;
     expiry_year?: number;
@@ -154,10 +161,18 @@ const PaymentDataPage = () => {
         <h1 className="text-2xl font-bold">
           {user?.role === 'admin' ? 'Alle Zahlungsdaten' : 'Meine Zahlungsdaten'}
         </h1>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Zahlungsmethode hinzufügen
-        </Button>
+        <div className="flex gap-4">
+          {user?.role === 'admin' && (
+            <CustomerFilter
+              selectedCustomerId={selectedCustomerId}
+              onSelectCustomer={setSelectedCustomerId}
+            />
+          )}
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Zahlungsmethode hinzufügen
+          </Button>
+        </div>
       </div>
 
       {user?.role === 'admin' ? (
@@ -200,6 +215,7 @@ const PaymentDataPage = () => {
         initialData={editingMethod ? {
           type: editingMethod.type,
           value: editingMethod.value,
+          customer_id: editingMethod.customer_id,
           card_holder: editingMethod.card_holder,
           expiry_month: editingMethod.expiry_month,
           expiry_year: editingMethod.expiry_year,
