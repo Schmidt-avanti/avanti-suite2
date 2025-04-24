@@ -1,4 +1,3 @@
-
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -73,3 +72,14 @@ export type Notification = {
   created_at: string;
   read_at: string | null;
 };
+
+export interface PaymentMethod {
+  id: string;
+  user_id: string;
+  type: 'paypal' | 'creditcard';
+  value: string;
+  created_at: string;
+  updated_at: string;
+  last_used: string | null;
+  active: boolean;
+}

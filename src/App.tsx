@@ -224,7 +224,7 @@ const App = () => {
                   <Route
                     path="/accounting/payment-data"
                     element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
+                      <ProtectedRoute allowedRoles={["admin", "client"]}>
                         <PaymentDataPage />
                       </ProtectedRoute>
                     }
