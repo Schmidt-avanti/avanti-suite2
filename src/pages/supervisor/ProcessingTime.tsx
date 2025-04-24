@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 import { Button } from "@/components/ui/button";
-import { Clock, RotateCw, User2, User, Filter, Search } from "lucide-react";
+import { Clock, RotateCw, User, Filter, Search } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useCustomers } from "@/hooks/useCustomers";
 import {
