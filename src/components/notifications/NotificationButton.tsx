@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { 
   Popover,
   PopoverContent,
@@ -28,7 +27,11 @@ export const NotificationButton: React.FC = () => {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-9 w-9 bg-gray-100 rounded-full">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="relative h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center"
+        >
           <Bell className="h-5 w-5 text-gray-600 hover:text-gray-800" />
           {unreadCount > 0 && (
             <Badge 
