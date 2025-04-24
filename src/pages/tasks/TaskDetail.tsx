@@ -1,4 +1,4 @@
-// All imports remain the same
+// Imports stay the same
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -40,22 +40,16 @@ const TaskDetail = () => {
       if (taskError) throw taskError;
       if (!taskData) throw new Error('Aufgabe nicht gefunden');
 
-      const customerPromise = taskData.customer_id
-        ? supabase.from('customers').select('name').eq('id', taskData.customer_id).maybeSingle()
-        : Promise.resolve({ data: null });
-
-      const creatorPromise = taskData.created_by
-        ? supabase.from('profiles').select('id, "Full Name"').eq('id', taskData.created_by).maybeSingle()
-        : Promise.resolve({ data: null });
-
-      const assigneePromise = taskData.assigned_to
-        ? supabase.from('profiles').select('id, "Full Name"').eq('id', taskData.assigned_to).maybeSingle()
-        : Promise.resolve({ data: null });
-
       const [customer, creator, assignee] = await Promise.all([
-        customerPromise,
-        creatorPromise,
-        assigneePromise
+        taskData.customer_id
+          ? supabase.from('customers').select('name').eq('id', taskData.customer_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        taskData.created_by
+          ? supabase.from('profiles').select('id, "Full Name"').eq('id', taskData.created_by).maybeSingle()
+          : Promise.resolve({ data: null }),
+        taskData.assigned_to
+          ? supabase.from('profiles').select('id, "Full Name"').eq('id', taskData.assigned_to).maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
 
       const enrichedTask = {
@@ -73,7 +67,6 @@ const TaskDetail = () => {
           .select('*')
           .eq('use_case_id', taskData.matched_use_case_id)
           .maybeSingle();
-
         if (article) setKnowledgeArticle(article);
       }
 
@@ -135,35 +128,6 @@ const TaskDetail = () => {
     }
   };
 
-  const renderArticlePreview = (article: any) => {
-    if (!article) return null;
-    let preview = "";
-    try {
-      const div = document.createElement("div");
-      div.innerHTML = article.content;
-      preview = (div.textContent ?? "").split(".").slice(0, 2).join(".") + ".";
-    } catch {}
-    return (
-      <Card className="rounded-xl shadow-md border-none bg-white/85">
-        <CardHeader className="p-5 pb-3 flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-blue-900" />
-          <span className="font-semibold text-base text-blue-900">{article.title}</span>
-        </CardHeader>
-        <CardContent className="p-5 pt-2">
-          <div className="text-sm text-gray-700 line-clamp-3">{preview}</div>
-          <Button
-            variant="ghost"
-            className="mt-3 text-primary underline px-0 hover:bg-muted"
-            onClick={() => setIsArticleModalOpen(true)}
-          >
-            <Maximize2 className="w-4 h-4 mr-1" />
-            Artikel anzeigen
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  };
-
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
   if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
 
@@ -197,14 +161,13 @@ const TaskDetail = () => {
           {/* Left Column */}
           <div className="flex flex-col gap-5">
             <Card className="rounded-xl shadow-md border-none bg-white/85">
-              <CardContent className="p-6 pb-3 space-y-2">
+              <CardContent className="p-6 pb-3 space-y-2 break-words whitespace-pre-wrap">
                 <h2 className="text-lg font-semibold mb-1">Aufgabendetails</h2>
                 <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                   <Inbox className="h-4 w-4" />
                   <span className="font-medium">Beschreibung</span>
                 </div>
-                <div className="ml-6 text-gray-700 whitespace-pre-wrap break-words">{task.description}</div>
-
+                <div className="ml-6 text-gray-700">{task.description}</div>
 
                 {task.attachments?.length > 0 && (
                   <div className="mt-4">
@@ -223,47 +186,36 @@ const TaskDetail = () => {
                 </div>
                 <div className="ml-6">{task.customer?.name || 'Nicht zugewiesen'}</div>
 
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+                  <User2 className="h-4 w-4" />
+                  <span className="font-medium">Erstellt von</span>
+                </div>
+                <div className="ml-6 break-words">
+                  {task.creator?.["Full Name"]
+                    || (task.source === 'email' && task.from_email)
+                    || <span className="text-gray-400">Unbekannt</span>}
+                </div>
 
-                
-             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
-  <User2 className="h-4 w-4" />
-  <span className="font-medium">Erstellt von</span>
-</div>
-<div className="ml-6 break-words">
-  {task.creator?.["Full Name"]
-    || (task.source === 'email' && task.from_email)
-    || <span className="text-gray-400">Unbekannt</span>}
-</div>
-
-
-
-
-                
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
                   <UserCheck className="h-4 w-4" />
                   <span className="font-medium">Zugewiesen an</span>
                 </div>
                 <div className="ml-6">{task.assignee?.["Full Name"] || 'Nicht zugewiesen'}</div>
-
-                
               </CardContent>
             </Card>
 
-            {renderArticlePreview(knowledgeArticle)}
-
-            <KnowledgeArticleModal
-              open={isArticleModalOpen}
-              onClose={() => setIsArticleModalOpen(false)}
-              article={knowledgeArticle}
-            />
+            {knowledgeArticle && (
+              <KnowledgeArticleModal
+                open={isArticleModalOpen}
+                onClose={() => setIsArticleModalOpen(false)}
+                article={knowledgeArticle}
+              />
+            )}
           </div>
 
-          {/* Right Column (Conditionally Rendered) */}
+          {/* Right Column */}
           <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
-            <div
-              className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 mr-6"
-              style={{ padding: "1.5rem" }}
-            >
+            <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 mr-6 p-6">
               <CardHeader className="p-0 pb-2 flex flex-row items-center border-none">
                 <CardTitle className="text-xl font-semibold text-blue-900">
                   {task.source === 'email' ? 'E-Mail Antwort' : 'Bearbeitung der Aufgabe'}
