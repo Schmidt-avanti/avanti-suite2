@@ -1,11 +1,10 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { SupervisorChatProvider } from "@/contexts/SupervisorChatContext";
+import { SupervisorChatProvider } from "./contexts/SupervisorChatContext";
 
 // Layout
 import AppLayout from "@/components/layout/AppLayout";
