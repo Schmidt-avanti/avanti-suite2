@@ -1,3 +1,4 @@
+
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -39,12 +40,6 @@ export interface Task {
   from_email?: string;     // Added missing field
   description?: string;    // Added missing field
   matched_use_case_id?: string; // Added missing field
-  customer_id: string;
-  created_by?: string;
-  assigned_to?: string;
-  updated_at: string;
-  match_confidence?: number;
-  match_reasoning?: string;
 }
 
 // Add missing types that are causing errors
@@ -100,3 +95,4 @@ export interface PaymentMethod {
   billing_zip?: string;
   billing_city?: string;
 }
+
