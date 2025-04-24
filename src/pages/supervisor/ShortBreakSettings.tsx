@@ -462,7 +462,7 @@ export default function ShortBreakSettings() {
 
               <div className="border rounded-md overflow-hidden">
                 <Table>
-                  <TableHeader className="sticky top-0 bg-background">
+                  <TableHeader>
                     <TableRow>
                       <TableHead>User</TableHead>
                       <TableHead>Start</TableHead>
@@ -493,11 +493,11 @@ export default function ShortBreakSettings() {
                         </TableCell>
                         <TableCell>
                           {breakItem.status === 'completed' ? (
-                            <Badge variant="success" className="gap-1">
+                            <Badge variant="secondary" className="gap-1">
                               <Check className="h-3 w-3" /> Beendet
                             </Badge>
                           ) : breakItem.status === 'active' ? (
-                            <Badge variant="warning" className="gap-1">
+                            <Badge variant="secondary" className="gap-1">
                               <Circle className="h-3 w-3 fill-yellow-500 text-yellow-500" /> Aktiv
                             </Badge>
                           ) : (
