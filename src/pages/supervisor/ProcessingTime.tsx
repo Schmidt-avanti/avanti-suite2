@@ -78,39 +78,44 @@ const ProcessingTime = () => {
     }
   });
   
-  // Modified query to support filtering
+  // Modified query to support filtering and fix the relationship issue
   const { data: taskTimeSummaries, isLoading, refetch } = useQuery({
     queryKey: ['taskTimeSummaries', selectedUserId, selectedCustomerId, searchTerm],
     queryFn: async () => {
+      // Use a raw SQL query to properly join the relationships
       let query = supabase
-        .from('task_time_summary')
+        .from('task_times')
         .select(`
-          *,
-          user:user_id (
+          task_id,
+          user_id,
+          count(*) as session_count,
+          sum(duration_seconds)::bigint as total_seconds,
+          (sum(duration_seconds) / 3600.0)::numeric(10,2) as total_hours,
+          profiles:user_id (
             id,
             "Full Name",
             email
           ),
-          task:task_id (
+          tasks:task_id (
             id,
             title,
             status,
             customer_id,
-            customer:customer_id (
+            customers:customer_id (
               id,
               name
             )
           )
-        `);
+        `)
+        .is('ended_at', 'not.null')
+        .group('task_id, user_id, profiles.id, tasks.id, tasks.customer_id, customers.id');
       
       // Apply user filter if selected
       if (selectedUserId) {
         query = query.eq('user_id', selectedUserId);
       }
       
-      // We'll filter by customer on the client side since the relationship 
-      // is through the task, not directly on task_time_summary
-      
+      // We'll filter by customer on the client side since it's nested in the tasks relation
       const { data, error } = await query;
 
       if (error) {
@@ -129,7 +134,7 @@ const ProcessingTime = () => {
         // Filter by customer if selected
         if (selectedCustomerId) {
           filteredData = filteredData.filter(
-            summary => summary.task?.customer_id === selectedCustomerId
+            summary => summary.tasks?.customers?.id === selectedCustomerId
           );
         }
         
@@ -137,9 +142,9 @@ const ProcessingTime = () => {
         if (searchTerm) {
           const term = searchTerm.toLowerCase();
           filteredData = filteredData.filter(summary => 
-            summary.task?.title.toLowerCase().includes(term) || 
-            summary.user?.["Full Name"]?.toLowerCase().includes(term) ||
-            summary.task?.customer?.name.toLowerCase().includes(term)
+            summary.tasks?.title.toLowerCase().includes(term) || 
+            summary.profiles?.["Full Name"]?.toLowerCase().includes(term) ||
+            summary.tasks?.customers?.name.toLowerCase().includes(term)
           );
         }
         
@@ -209,7 +214,7 @@ const ProcessingTime = () => {
   const onSubmit = (values: FilterFormValues) => {
     setSelectedUserId(values.userId);
     setSelectedCustomerId(values.customerId);
-    setSearchTerm(values.search);
+    setSearchTerm(values.search || '');
   };
   
   // Count active users and tasks
@@ -263,8 +268,8 @@ const ProcessingTime = () => {
                   <FormItem className="flex-1 min-w-[200px]">
                     <FormControl>
                       <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value || undefined}
+                        onValueChange={(value) => field.onChange(value || null)}
+                        value={field.value || ""}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Nutzer filtern" />
@@ -290,8 +295,8 @@ const ProcessingTime = () => {
                   <FormItem className="flex-1 min-w-[200px]">
                     <FormControl>
                       <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value || undefined}
+                        onValueChange={(value) => field.onChange(value || null)}
+                        value={field.value || ""}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Kunden filtern" />
@@ -386,21 +391,21 @@ const ProcessingTime = () => {
                   className="cursor-pointer hover:bg-muted/80"
                 >
                   <TableCell className="font-medium">
-                    {summary.user?.["Full Name"]}
+                    {summary.profiles?.["Full Name"]}
                   </TableCell>
                   <TableCell onClick={() => handleTaskClick(summary.task_id)}>
                     <span className="text-primary underline hover:text-primary/80">
-                      {summary.task?.title}
+                      {summary.tasks?.title}
                     </span>
                   </TableCell>
-                  <TableCell>{summary.task?.customer?.name}</TableCell>
+                  <TableCell>{summary.tasks?.customers?.name}</TableCell>
                   <TableCell>
-                    {summary.task?.status && (
-                      <TaskStatusBadge status={summary.task.status} />
+                    {summary.tasks?.status && (
+                      <TaskStatusBadge status={summary.tasks.status} />
                     )}
                   </TableCell>
                   <TableCell>
-                    {getFormattedTime(summary.total_hours)}
+                    {summary.total_hours ? getFormattedTime(Number(summary.total_hours)) : "00:00:00"}
                   </TableCell>
                   <TableCell>{summary.session_count}</TableCell>
                   <TableCell>
