@@ -1,290 +1,313 @@
-import React, { useState, useEffect } from 'react';
-import { X, MinusCircle, Send, MessageCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
-interface Message {
+import React, { useState, useEffect, useRef } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { Send, X, Minimize2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/contexts/AuthContext';
+
+interface ChatMessage {
   id: string;
+  senderId: string;
+  senderName: string;
   content: string;
-  sender_id: string;
-  recipient_id: string;
-  created_at: string;
-  is_read: boolean;
-  sender_name?: string; // Optional field for sender name
+  timestamp: Date;
 }
 
 interface AgentChatPopupProps {
   onClose: () => void;
 }
 
-const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+const AgentChatPopup = ({ onClose }: AgentChatPopupProps) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
+  const [sending, setSending] = useState(false);
+  const [minimized, setMinimized] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
+  const [supervisor, setSupervisor] = useState<{ id: string; fullName: string } | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
-    console.log('AgentChatPopup rendered', user?.id);
-  }, []);
+    if (!minimized) {
+      scrollToBottom();
+      setHasUnread(false);
+    }
+  }, [messages, minimized]);
 
   useEffect(() => {
     if (!user?.id) return;
     
+    // Play notification sound on new messages
+    const audio = new Audio('/sounds/notification.mp3');
+    
     const fetchMessages = async () => {
-      setIsLoading(true);
-      // First get messages
-      const { data, error } = await supabase
-        .from('supervisor_messages')
-        .select('*')
-        .or(`recipient_id.eq.${user.id},sender_id.eq.${user.id}`)
-        .order('created_at', { ascending: true });
-        
-      if (error) {
-        console.error('Error fetching messages:', error);
-        toast({
-          variant: "destructive",
-          title: "Fehler",
-          description: "Konnte keine Nachrichten laden."
-        });
-        setIsLoading(false);
-        return;
-      }
+      try {
+        const { data: messages, error } = await supabase
+          .from('supervisor_messages')
+          .select(`
+            id,
+            content,
+            sender_id,
+            recipient_id,
+            created_at,
+            is_read,
+            profiles:sender_id("Full Name")
+          `)
+          .or(`recipient_id.eq.${user.id},sender_id.eq.${user.id}`)
+          .order('created_at', { ascending: true });
 
-      console.log('Fetched messages:', data?.length);
+        if (error) throw error;
 
-      // Then fetch profiles separately to get sender names
-      if (data && data.length > 0) {
-        const senderIds = data.map(msg => msg.sender_id)
-          .filter((id, index, self) => self.indexOf(id) === index);
-
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('"Full Name", id')
-          .in('id', senderIds);
+        if (messages && messages.length > 0) {
+          // Find supervisor from messages
+          const supervisorMessage = messages.find(msg => msg.sender_id !== user.id);
+          if (supervisorMessage) {
+            setSupervisor({
+              id: supervisorMessage.sender_id,
+              fullName: supervisorMessage.profiles["Full Name"]
+            });
+          }
           
-        if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
-        }
-
-        // Create a map of id -> name for quick lookups
-        const profileMap = new Map();
-        if (profilesData) {
-          profilesData.forEach(profile => {
-            profileMap.set(profile.id, profile["Full Name"]);
-          });
-        }
-
-        // Combine the messages with sender names
-        const messagesWithSenderNames = data.map(msg => ({
-          ...msg,
-          sender_name: profileMap.get(msg.sender_id) || "Unbekannter Nutzer"
-        }));
-
-        setMessages(messagesWithSenderNames);
-        
-        // Mark messages as read
-        const unreadMsgIds = data
-          .filter(msg => msg.recipient_id === user.id && !msg.is_read)
-          .map(msg => msg.id);
+          // Format messages
+          const formattedMessages = messages.map(msg => ({
+            id: msg.id,
+            senderId: msg.sender_id,
+            senderName: msg.sender_id === user.id ? 'You' : `${msg.profiles["Full Name"]} (Supervisor)`,
+            content: msg.content,
+            timestamp: new Date(msg.created_at)
+          }));
           
-        if (unreadMsgIds.length > 0) {
-          await supabase
-            .from('supervisor_messages')
-            .update({ is_read: true })
-            .in('id', unreadMsgIds);
+          setMessages(formattedMessages);
+          
+          // Mark messages as read
+          const unreadIds = messages
+            .filter(msg => msg.recipient_id === user.id && !msg.is_read)
+            .map(msg => msg.id);
+            
+          if (unreadIds.length > 0) {
+            await supabase
+              .from('supervisor_messages')
+              .update({ is_read: true })
+              .in('id', unreadIds);
+          }
         }
-      } else {
-        setMessages([]);
+      } catch (error) {
+        console.error('Error loading messages:', error);
       }
-      
-      setIsLoading(false);
     };
-    
+
     fetchMessages();
-    
-    // Subscribe to new messages
+
+    // Subscribe to new messages from supervisors
     const channel = supabase
-      .channel('agent-chat-updates')
+      .channel('agent-supervisor-chat')
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'supervisor_messages',
         filter: `recipient_id=eq.${user.id}` 
-      }, async (payload) => {
-        console.log('New chat message received:', payload);
+      }, async payload => {
+        const newMsg = payload.new as any;
         
-        // Fetch the new message with sender info
-        const { data: newMsg, error } = await supabase
-          .from('supervisor_messages')
-          .select('*')
-          .eq('id', payload.new.id)
+        // Get sender name
+        const { data: sender } = await supabase
+          .from('profiles')
+          .select('"Full Name"')
+          .eq('id', newMsg.sender_id)
           .single();
           
-        if (!error && newMsg) {
-          // Fetch sender name
-          const { data: senderProfile } = await supabase
-            .from('profiles')
-            .select('"Full Name"')
-            .eq('id', newMsg.sender_id)
-            .single();
-            
-          // Add the new message to the state
+        if (sender) {
+          // Add new message
           setMessages(prev => [...prev, {
-            ...newMsg,
-            sender_name: senderProfile ? senderProfile["Full Name"] : "Unbekannter Nutzer"
+            id: newMsg.id,
+            senderId: newMsg.sender_id,
+            senderName: `${sender["Full Name"]} (Supervisor)`,
+            content: newMsg.content,
+            timestamp: new Date(newMsg.created_at)
           }]);
           
-          // Mark as read since chat is open
-          await supabase
-            .from('supervisor_messages')
-            .update({ is_read: true })
-            .eq('id', newMsg.id);
+          // Show notification if minimized
+          if (minimized) {
+            setHasUnread(true);
+            audio.play().catch(console.error);
+          } else {
+            // Mark as read immediately if chat is open
+            await supabase
+              .from('supervisor_messages')
+              .update({ is_read: true })
+              .eq('id', newMsg.id);
+          }
+          
+          // Update supervisor info if not set
+          if (!supervisor) {
+            setSupervisor({
+              id: newMsg.sender_id,
+              fullName: sender["Full Name"]
+            });
+          }
         }
       })
       .subscribe();
-      
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, toast]);
+  }, [user?.id, supervisor, minimized]);
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !user?.id) return;
+  const sendMessage = async () => {
+    if (!newMessage.trim() || sending || !user?.id || !supervisor) return;
+    
+    setSending(true);
     
     try {
-      // Find the supervisor who sent the most recent message
-      const supervisors = messages
-        .filter(msg => msg.recipient_id === user.id)
-        .map(msg => msg.sender_id);
-        
-      const lastSupervisorId = supervisors[supervisors.length - 1];
-      
-      if (!lastSupervisorId) {
-        toast({
-          variant: "destructive",
-          title: "Fehler",
-          description: "Kein Supervisor gefunden, um zu antworten."
-        });
-        return;
-      }
-      
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('supervisor_messages')
         .insert({
           content: newMessage.trim(),
           sender_id: user.id,
-          recipient_id: lastSupervisorId,
+          recipient_id: supervisor.id,
           is_read: false
-        });
-        
+        })
+        .select()
+        .single();
+      
       if (error) throw error;
       
-      setNewMessage('');
-      
+      if (data) {
+        setMessages(prev => [...prev, {
+          id: data.id,
+          senderId: data.sender_id,
+          senderName: 'You',
+          content: data.content,
+          timestamp: new Date(data.created_at)
+        }]);
+        
+        setNewMessage('');
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
-        variant: "destructive",
         title: "Fehler",
-        description: "Die Nachricht konnte nicht gesendet werden."
+        description: "Die Nachricht konnte nicht gesendet werden.",
+        variant: "destructive",
       });
+    } finally {
+      setSending(false);
     }
   };
 
-  const toggleMinimize = () => {
-    setIsMinimized(!isMinimized);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
+  const formatMessageTime = (timestamp: Date) => {
+    return formatDistanceToNow(timestamp, { 
+      addSuffix: true, 
+      locale: de 
+    });
+  };
+
+  const toggleMinimize = () => {
+    setMinimized(!minimized);
+    if (minimized) {
+      setHasUnread(false);
+    }
+  };
+
+  if (!messages.length && !supervisor) {
+    return null;
+  }
+
   return (
-    <div className={`fixed bottom-4 right-4 w-80 z-50 shadow-lg transition-all duration-300 ${isMinimized ? 'h-12' : 'h-96'}`}>
-      <Card className="h-full flex flex-col">
-        <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0 border-b">
-          <CardTitle className="text-sm font-medium flex items-center">
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Supervisor Chat
-          </CardTitle>
-          <div className="flex items-center">
-            <Button variant="ghost" size="sm" onClick={toggleMinimize} className="h-8 w-8 p-0">
-              <MinusCircle className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        
-        {!isMinimized && (
-          <>
-            <CardContent className="flex-1 overflow-auto p-3 space-y-4 flex flex-col">
-              {isLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="animate-spin h-5 w-5 border-t-2 border-primary rounded-full" />
+    <Card className={`fixed right-6 bottom-6 shadow-lg transition-all duration-300 w-80 z-50 ${
+      minimized ? 'h-14' : 'h-[450px]'
+    }`}>
+      <CardHeader 
+        className={`p-3 cursor-pointer ${hasUnread ? 'bg-avanti-100' : 'bg-white'} border-b flex-row items-center justify-between`}
+        onClick={toggleMinimize}
+      >
+        <CardTitle className="text-sm">
+          {hasUnread && <span className="inline-block w-2 h-2 bg-avanti-600 rounded-full mr-2"></span>}
+          {supervisor?.fullName || "Supervisor"} 
+        </CardTitle>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={toggleMinimize}>
+            <Minimize2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onClose}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </CardHeader>
+      
+      {!minimized && (
+        <>
+          <CardContent className="flex-grow overflow-y-auto p-3 space-y-3 max-h-[330px]">
+            {messages.map(message => (
+              <div 
+                key={message.id} 
+                className={`flex flex-col ${
+                  message.senderName === 'You' ? 'items-end' : 'items-start'
+                }`}
+              >
+                <div className={`max-w-[85%] rounded-lg px-3 py-2 shadow-sm ${
+                  message.senderName === 'You' 
+                    ? 'bg-avanti-100 text-avanti-900' 
+                    : 'bg-white border border-gray-100'
+                }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium">
+                      {message.senderName}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {formatMessageTime(message.timestamp)}
+                    </span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 </div>
-              ) : messages.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">
-                  Keine Nachrichten vorhanden
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div 
-                      key={message.id}
-                      className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div 
-                        className={`max-w-[80%] rounded-lg p-3 ${
-                          message.sender_id === user?.id 
-                            ? 'bg-primary text-primary-foreground' 
-                            : 'bg-muted'
-                        }`}
-                      >
-                        {message.sender_id !== user?.id && (
-                          <div className="text-xs font-medium mb-1">
-                            {message.sender_name || "Supervisor"}
-                          </div>
-                        )}
-                        <div className="text-sm break-words">{message.content}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-            
-            <div className="p-3 border-t">
-              <div className="flex">
-                <Textarea
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Antworten..."
-                  className="min-h-8 text-sm resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                />
-                <Button 
-                  size="icon"
-                  className="ml-2"
-                  onClick={handleSendMessage}
-                  disabled={!newMessage.trim()}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
               </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </CardContent>
+          
+          <CardFooter className="p-3 pt-0">
+            <div className="flex items-end gap-2 w-full">
+              <Textarea
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Nachricht eingeben..."
+                className="resize-none flex-grow text-sm min-h-[60px]"
+                rows={2}
+              />
+              <Button 
+                type="button" 
+                onClick={sendMessage}
+                disabled={!newMessage.trim() || sending}
+                size="sm"
+                className="h-8 w-8 rounded-full p-0 flex items-center justify-center"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
-          </>
-        )}
-      </Card>
-    </div>
+          </CardFooter>
+        </>
+      )}
+    </Card>
   );
 };
 
