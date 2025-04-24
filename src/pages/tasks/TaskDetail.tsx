@@ -71,7 +71,6 @@ const TaskDetail = () => {
       };
 
       setTask(enrichedTask);
-
       if (taskData.source === 'email') {
         setReplyTo(extractEmail(taskData.endkunde_email || '') || '');
       }
@@ -88,35 +87,43 @@ const TaskDetail = () => {
   };
 
   const handleSendEmail = async () => {
-    if (!replyTo || !replyBody) {
+    if (!replyBody) {
       toast({
         variant: 'destructive',
         title: 'Fehler',
-        description: 'Bitte Empfänger und Nachricht angeben.'
+        description: 'Bitte Nachricht angeben.'
       });
       return;
     }
 
-    const { error } = await supabase.functions.invoke('send-reply-email', {
-      body: {
-        to: replyTo,
-        subject: `Re: ${task.subject || 'Ihre Anfrage'}`,
-        body: replyBody,
-      },
-    });
-
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Fehler beim Senden',
-        description: error.message,
+    try {
+      const response = await fetch('/functions/send-reply-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          task_id: task.id,
+          subject: `Re: ${task.subject || 'Ihre Anfrage'}`,
+          body: replyBody
+        })
       });
-    } else {
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Fehler beim E-Mail Versand');
+      }
+
       toast({
         title: 'E-Mail gesendet',
         description: `Antwort an ${replyTo} wurde gesendet.`,
       });
       setReplyBody('');
+
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Fehler beim Senden',
+        description: error.message,
+      });
     }
   };
 
