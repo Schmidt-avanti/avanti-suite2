@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskChat } from "@/components/tasks/TaskChat";
-import { ChevronLeft, User2, Users, Inbox, UserCheck, BookOpen, Maximize2 } from "lucide-react";
+import { ChevronLeft, User2, Users, Inbox, UserCheck, BookOpen, Maximize2, Clock } from "lucide-react";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 import { KnowledgeArticleModal } from "@/components/knowledge-articles/KnowledgeArticleModal";
+import { useTaskTimer } from '@/hooks/useTaskTimer';
 
 function classnames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
@@ -21,6 +22,10 @@ const TaskDetail = () => {
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { formattedTime } = useTaskTimer({
+    taskId: id || '',
+    isActive: true
+  });
 
   useEffect(() => {
     if (id) {
@@ -197,6 +202,10 @@ const TaskDetail = () => {
             Zurück zur Übersicht
           </Button>
           <div className="flex-1" />
+          <div className="text-sm font-medium bg-white/20 rounded-full px-4 py-1 flex items-center">
+            <Clock className="h-4 w-4 mr-2" />
+            {formattedTime}
+          </div>
           <TaskStatusBadge status={task.status} />
         </div>
         <div className={`grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8 transition-all`}>
