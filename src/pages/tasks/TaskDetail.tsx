@@ -280,6 +280,24 @@ const TaskDetail = () => {
                   <span className="font-medium">Beschreibung</span>
                 </div>
                 <div className="ml-6 text-gray-700 whitespace-pre-wrap">{task.description}</div>
+                {task.attachments?.length > 0 && (
+  <div className="mt-4">
+    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+      <Inbox className="h-4 w-4" />
+      <span className="font-medium">Anhänge</span>
+    </div>
+    <ul className="ml-6 list-disc list-inside text-blue-600 text-sm space-y-1">
+      {task.attachments.map((url: string, index: number) => (
+        <li key={index}>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            Datei {index + 1}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
                   <Users className="h-4 w-4" />
                   <span className="font-medium">Kunde</span>
