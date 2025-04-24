@@ -42,6 +42,37 @@ export const useInvoiceData = (customerId: string, from: Date, to: Date) => {
           console.log('Debug data (raw task times):', debugData);
         }
 
+        // Direct query to validate customer's tasks
+        const { data: taskData, error: taskError } = await supabase
+          .from('tasks')
+          .select('id, title, customer_id')
+          .eq('customer_id', customerId)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (taskError) {
+          console.error('Error fetching tasks for customer:', taskError);
+        } else {
+          console.log(`Found ${taskData?.length || 0} tasks for customer:`, taskData);
+        }
+
+        // Direct query to check task_times for validation
+        if (taskData && taskData.length > 0) {
+          const taskIds = taskData.map(t => t.id);
+          const { data: timeData, error: timeError } = await supabase
+            .from('task_times')
+            .select('*')
+            .in('task_id', taskIds)
+            .order('started_at', { ascending: false })
+            .limit(10);
+
+          if (timeError) {
+            console.error('Error fetching time entries:', timeError);
+          } else {
+            console.log(`Found ${timeData?.length || 0} time entries for customer tasks:`, timeData);
+          }
+        }
+
         // Then fetch the actual daily summary data
         const { data, error } = await supabase.rpc(
           'calculate_completed_times_for_customer',

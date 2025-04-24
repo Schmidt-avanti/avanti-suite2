@@ -62,7 +62,7 @@ const InvoicePage = () => {
           // Check für Kundenaufgaben
           const { data: taskData, error: taskError } = await supabase
             .from('tasks')
-            .select('id, title')
+            .select('id, title, customer_id')
             .eq('customer_id', selectedCustomer)
             .order('created_at', { ascending: false })
             .limit(5);
@@ -71,6 +71,28 @@ const InvoicePage = () => {
           
           if (taskError) {
             console.error('Error checking tasks:', taskError);
+          }
+          
+          // Wenn taskData vorhanden ist, prüfe, ob es Zeiteinträge für diese Aufgaben gibt
+          if (taskData && taskData.length > 0) {
+            const taskIds = taskData.map((task: any) => task.id);
+            
+            const { data: timeEntries, error: timeError } = await supabase
+              .from('task_times')
+              .select('*')
+              .in('task_id', taskIds)
+              .order('started_at', { ascending: false })
+              .limit(5);
+            
+            console.log('Time entries for selected customer tasks:', timeEntries);
+            
+            if (timeError) {
+              console.error('Error checking time entries for tasks:', timeError);
+            } else if (!timeEntries || timeEntries.length === 0) {
+              toast.warning('Es wurden keine Zeiterfassungen für die Aufgaben dieses Kunden gefunden.');
+            }
+          } else {
+            toast.warning('Es wurden keine Aufgaben für diesen Kunden gefunden.');
           }
         } catch (e) {
           console.error('Debug check failed:', e);
