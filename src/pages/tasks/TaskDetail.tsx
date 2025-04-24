@@ -5,8 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/components/ui/sonner'; // Changed from use-toast to sonner
+import { toast } from '@/components/ui/sonner';
 import { Input } from '@/components/ui/input';
+import { Task } from '@/types';
 
 // Function to fetch task details by ID
 const fetchTaskById = async (taskId: string) => {
@@ -21,7 +22,7 @@ const fetchTaskById = async (taskId: string) => {
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Task;
 };
 
 const TaskDetail = () => {
@@ -39,8 +40,6 @@ const TaskDetail = () => {
   const handleSendEmail = async () => {
     if (!replyTo || !replyBody) {
       toast({
-        variant: 'destructive',
-        title: 'Fehler',
         description: 'Bitte Empfänger und Nachricht angeben.'
       });
       return;
@@ -52,7 +51,7 @@ const TaskDetail = () => {
       const { error } = await supabase.functions.invoke('send-reply-email', {
         body: {
           to: replyTo,
-          subject: `Re: ${task.subject || 'Ihre Anfrage'}`,
+          subject: `Re: ${task?.title || 'Ihre Anfrage'}`,
           body: replyBody,
         },
         headers: {
@@ -62,22 +61,17 @@ const TaskDetail = () => {
 
       if (error) {
         toast({
-          variant: 'destructive',
-          title: 'Fehler beim Senden',
-          description: error.message,
+          description: `Fehler beim Senden: ${error.message}`,
         });
       } else {
         toast({
-          title: 'E-Mail gesendet',
           description: `Antwort an ${replyTo} wurde gesendet.`,
         });
         setReplyBody('');
       }
     } catch (err) {
       toast({
-        variant: 'destructive',
-        title: 'Unbekannter Fehler',
-        description: String(err),
+        description: `Unbekannter Fehler: ${String(err)}`,
       });
     }
   };
@@ -109,11 +103,10 @@ const TaskDetail = () => {
         </div>
       )}
       
-      {(task.endkunde_email || task.from_email) && (
+      {(task.endkunde_email) && (
         <div className="bg-gray-50 p-4 rounded-lg">
           <h2 className="text-lg font-medium mb-2">E-Mail Informationen</h2>
           {task.endkunde_email && <p><strong>Empfänger:</strong> {task.endkunde_email}</p>}
-          {task.from_email && <p><strong>Absender:</strong> {task.from_email}</p>}
         </div>
       )}
 
