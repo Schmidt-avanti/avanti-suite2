@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { TasksTable } from '@/components/tasks/TasksTable';
 import { useTasks } from '@/hooks/useTasks';
-import { ReportFilters } from '@/components/reports/ReportFilters';
+import { ReportFilters } from '@/components/reports/ReportFilters'; // Changed from default import
 import { ReportFilters as ReportFiltersType } from '@/hooks/useReportData';
 import { useCustomers } from '@/hooks/useCustomers';
 import { supabase } from '@/integrations/supabase/client';

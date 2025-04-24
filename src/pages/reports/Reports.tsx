@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useReportData } from '@/hooks/useReportData';
-import ReportFilters from '@/components/reports/ReportFilters';
+import { ReportFilters } from '@/components/reports/ReportFilters'; // Changed from default import
 import ReportKpiCard from '@/components/reports/ReportKpiCard';
 import ReportCharts from '@/components/reports/ReportCharts';
 import ReportTasksTable from '@/components/reports/ReportTasksTable';
