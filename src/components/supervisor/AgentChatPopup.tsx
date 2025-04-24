@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, MinusCircle, Send, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,7 +29,10 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Load messages on component mount
+  useEffect(() => {
+    console.log('AgentChatPopup rendered', user?.id);
+  }, []);
+
   useEffect(() => {
     if (!user?.id) return;
     
@@ -53,6 +55,8 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
         setIsLoading(false);
         return;
       }
+
+      console.log('Fetched messages:', data?.length);
 
       // Then fetch profiles separately to get sender names
       if (data && data.length > 0) {
@@ -86,8 +90,8 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
         
         // Mark messages as read
         const unreadMsgIds = data
-          ?.filter(msg => msg.recipient_id === user.id && !msg.is_read)
-          .map(msg => msg.id) || [];
+          .filter(msg => msg.recipient_id === user.id && !msg.is_read)
+          .map(msg => msg.id);
           
         if (unreadMsgIds.length > 0) {
           await supabase
@@ -113,6 +117,8 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
         table: 'supervisor_messages',
         filter: `recipient_id=eq.${user.id}` 
       }, async (payload) => {
+        console.log('New chat message received:', payload);
+        
         // Fetch the new message with sender info
         const { data: newMsg, error } = await supabase
           .from('supervisor_messages')
