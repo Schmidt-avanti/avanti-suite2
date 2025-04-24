@@ -28,6 +28,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { useCustomers } from "@/hooks/useCustomers";
+import { useAuth } from "@/contexts/AuthContext";
 
 const currentYear = new Date().getFullYear();
 
@@ -42,6 +44,7 @@ const formSchema = z.object({
   }, {
     message: "Ungültiges Format",
   }),
+  customer_id: z.string().uuid(),
   card_holder: z.string().optional(),
   expiry_month: z.number().min(1).max(12).optional(),
   expiry_year: z.number().min(currentYear).optional(),
@@ -65,6 +68,7 @@ interface PaymentMethodFormProps {
   onClose: () => void;
   onSubmit: (data: PaymentMethodFormValues) => Promise<void>;
   initialData?: PaymentMethodFormValues;
+  selectedCustomerId?: string;
 }
 
 export const PaymentMethodForm = ({
@@ -72,16 +76,20 @@ export const PaymentMethodForm = ({
   onClose,
   onSubmit,
   initialData,
+  selectedCustomerId,
 }: PaymentMethodFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentType, setPaymentType] = useState(initialData?.type || 'creditcard');
+  const { user } = useAuth();
+  const { customers } = useCustomers();
 
   const form = useForm<PaymentMethodFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: initialData || {
       type: 'creditcard',
       value: '',
+      customer_id: selectedCustomerId || '',
     },
   });
 
@@ -143,6 +151,37 @@ export const PaymentMethodForm = ({
                 </FormItem>
               )}
             />
+
+            {user?.role === 'admin' && (
+              <FormField
+                control={form.control}
+                name="customer_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kunde</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      disabled={!!initialData}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Kunde auswählen" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {customers.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
