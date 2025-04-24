@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDuration, calculateAverageTime } from '@/utils/timeUtils';
@@ -99,54 +98,47 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
           <CardHeader className="py-4">
             <CardTitle className="text-lg">Verteilung der Bearbeitungszeiten</CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 px-0 pb-2">
-            <div className="h-[300px] w-full px-2">
+          <CardContent className="pt-0">
+            <div className="h-80 w-full">
               {taskTimeSummaries.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
                   Keine Bearbeitungszeiten verfügbar
                 </div>
               ) : (
                 <ChartContainer config={chartConfig}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="99%" height="99%">
                     <BarChart 
                       data={timeDistributionData}
                       margin={{ 
-                        top: 20, 
-                        right: isMobile ? 20 : 40, 
-                        left: isMobile ? 10 : 20, 
-                        bottom: isMobile ? 70 : 40 
+                        top: 5, 
+                        right: isMobile ? 5 : 15, 
+                        left: isMobile ? 0 : 5, 
+                        bottom: 20 
                       }}
-                      barCategoryGap={isMobile ? "15%" : "30%"}
-                      barSize={isMobile ? 24 : 45}
+                      barCategoryGap={isMobile ? "10%" : "25%"}
+                      barSize={isMobile ? 20 : 40}
                     >
                       <XAxis 
                         dataKey="name" 
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                        height={isMobile ? 60 : 40}
-                        tickMargin={isMobile ? 8 : 10}
-                        angle={isMobile ? -45 : 0}
-                        textAnchor={isMobile ? "end" : "middle"}
+                        tick={{ fontSize: 11 }}
+                        height={30}
+                        tickMargin={8}
                       />
                       <YAxis 
-                        tick={{ fontSize: isMobile ? 10 : 12 }} 
-                        width={40}
+                        tick={{ fontSize: 11 }} 
+                        width={30}
                         allowDecimals={false}
-                        domain={[0, 'dataMax + 1']}
-                        padding={{ top: 20 }}
+                        domain={[0, 'auto']}
                       />
-                      <ChartTooltip 
-                        content={
-                          <ChartTooltipContent 
-                            labelFormatter={(value) => `Zeitbereich: ${value}`}
-                            formatter={(value, name) => [`${value} Aufgaben`, 'Anzahl']}
-                          />
-                        } 
+                      <ChartTooltip
+                        content={<ChartTooltipContent />}
                       />
+                      <Legend wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
                       <Bar 
                         dataKey="value" 
                         name="Aufgaben" 
                         fill="var(--color-tasks)"
-                        radius={[4, 4, 0, 0]}
+                        radius={[4, 4, 0, 0]} 
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -159,4 +151,3 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
     </div>
   );
 };
-
