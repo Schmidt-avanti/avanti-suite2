@@ -73,10 +73,10 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             id,
             title,
             status,
+            source,
             created_at,
             created_by,
             customer_id,
-            source,
             customer:customer_id(id, name)
           `)
           .order('created_at', { ascending: false });
@@ -191,6 +191,7 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             title: rawTask.title,
             status: validateTaskStatus(rawTask.status),
             created_at: rawTask.created_at,
+            source: rawTask.source,
             customer: transformCustomer(rawTask.customer),
             creator: rawTask.creator
           };
