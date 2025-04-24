@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const PRICE_PER_MINUTE = 0.75;
 const FREE_MINUTES = 1000;
@@ -21,43 +22,30 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
       console.log('Calculating invoice for customer:', customerId);
       console.log('Date range:', from.toISOString(), 'to', to.toISOString());
 
-      // Sicherstellen, dass wir volles Datum für die Vergleiche haben (Ende des Tages für "to")
-      const fromDate = new Date(from);
-      const toDate = new Date(to);
-      toDate.setHours(23, 59, 59, 999); // Set to end of day
-      
-      console.log('Adjusted date range:', fromDate.toISOString(), 'to', toDate.toISOString());
-      
+      if (!customerId || !from || !to) {
+        console.error('Missing required parameters');
+        return null;
+      }
+
       try {
-        // Summe der Zeiten direkt über einen SQL-Join ermitteln
-        const { data, error } = await supabase
-          .from('task_times')
-          .select('duration_seconds, tasks!inner(customer_id)')
-          .eq('tasks.customer_id', customerId)
-          .gte('started_at', fromDate.toISOString())
-          .lte('started_at', toDate.toISOString());
-        
+        const { data: totalSeconds, error } = await supabase.rpc(
+          'calculate_total_time_for_customer',
+          {
+            customer_id_param: customerId,
+            from_date_param: from.toISOString(),
+            to_date_param: to.toISOString()
+          }
+        );
+
         if (error) {
-          console.error('Error fetching task times:', error);
+          console.error('Error calculating total time:', error);
+          toast.error('Fehler bei der Berechnung der Gesamtzeit');
           throw error;
         }
 
-        console.log('Raw time data found:', data?.length, 'records');
-        console.log('Sample data:', data?.slice(0, 3));
+        console.log('Total seconds from database:', totalSeconds);
         
-        // Berechne die Gesamtzeit manuell aus den Rohdaten
-        let totalSeconds = 0;
-        if (data && data.length > 0) {
-          totalSeconds = data.reduce((sum, entry) => {
-            const duration = entry.duration_seconds || 0;
-            console.log('Adding duration:', duration, 'seconds');
-            return sum + duration;
-          }, 0);
-        }
-        
-        console.log('Total seconds calculated:', totalSeconds);
-        
-        // Umrechnung von Sekunden in Minuten
+        // Convert seconds to minutes for calculations
         const totalMinutes = Math.round(totalSeconds / 60);
         console.log('Total minutes calculated:', totalMinutes);
         
@@ -83,6 +71,7 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
         } as InvoiceCalculation;
       } catch (error) {
         console.error('Error in useInvoiceCalculation:', error);
+        toast.error('Fehler bei der Rechnungsberechnung');
         throw error;
       }
     },

@@ -859,9 +859,42 @@ export type Database = {
         Args: { "": string } | { "": unknown }
         Returns: unknown
       }
+      calculate_completed_times_for_customer: {
+        Args: {
+          customer_id_param: string
+          from_date_param: string
+          to_date_param: string
+        }
+        Returns: {
+          date_day: string
+          total_minutes: number
+        }[]
+      }
+      calculate_total_time_for_customer: {
+        Args: {
+          customer_id_param: string
+          from_date_param: string
+          to_date_param: string
+        }
+        Returns: number
+      }
       create_chat_session: {
         Args: { chat_id_param: string; user_id_param: string }
         Returns: undefined
+      }
+      debug_customer_times: {
+        Args: {
+          customer_id_param: string
+          from_date_param: string
+          to_date_param: string
+        }
+        Returns: {
+          task_id: string
+          task_title: string
+          started_at: string
+          duration_seconds: number
+          user_id: string
+        }[]
       }
       generate_embedding: {
         Args: { input_text: string }

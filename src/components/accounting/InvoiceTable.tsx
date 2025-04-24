@@ -14,7 +14,11 @@ export function InvoiceTable({ customerId, from, to }: InvoiceTableProps) {
 
   if (error) {
     console.error("Fehler beim Laden der Rechnungsdaten:", error);
-    return <div className="text-red-500">Fehler beim Laden der Daten. Bitte versuchen Sie es erneut.</div>;
+    return (
+      <div className="p-4 text-red-500 bg-red-50 rounded-md">
+        Fehler beim Laden der Daten. Bitte versuchen Sie es erneut.
+      </div>
+    );
   }
 
   if (isLoading) {
@@ -22,10 +26,14 @@ export function InvoiceTable({ customerId, from, to }: InvoiceTableProps) {
   }
 
   if (!data || data.length === 0) {
-    return <div className="py-4 text-center text-muted-foreground">Keine Daten für den ausgewählten Zeitraum gefunden.</div>;
+    return (
+      <div className="py-4 text-center text-muted-foreground">
+        Keine Zeiterfassung für den ausgewählten Zeitraum gefunden.
+      </div>
+    );
   }
 
-  // Berechne Summe der Minuten
+  // Calculate total minutes
   const totalMinutes = data.reduce((sum, row) => sum + row.minutes, 0);
 
   return (
@@ -41,12 +49,12 @@ export function InvoiceTable({ customerId, from, to }: InvoiceTableProps) {
           {data.map((row: DailyMinutesRecord) => (
             <TableRow key={row.date}>
               <TableCell>{format(new Date(row.date), "dd.MM.yyyy")}</TableCell>
-              <TableCell className="text-right">{row.minutes}</TableCell>
+              <TableCell className="text-right font-medium">{row.minutes}</TableCell>
             </TableRow>
           ))}
-          <TableRow className="font-bold">
-            <TableCell>Gesamt</TableCell>
-            <TableCell className="text-right">{totalMinutes}</TableCell>
+          <TableRow className="bg-muted/50">
+            <TableCell className="font-bold">Gesamtsumme</TableCell>
+            <TableCell className="text-right font-bold">{totalMinutes}</TableCell>
           </TableRow>
         </TableBody>
       </Table>
