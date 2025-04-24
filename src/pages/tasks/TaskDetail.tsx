@@ -71,6 +71,7 @@ const TaskDetail = () => {
       };
 
       setTask(enrichedTask);
+
       if (taskData.source === 'email') {
         setReplyTo(extractEmail(taskData.endkunde_email || taskData.from_email || '') || '');
       }
