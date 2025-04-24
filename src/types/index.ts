@@ -1,3 +1,4 @@
+
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -33,4 +34,26 @@ export interface Task {
     id: string;
     "Full Name": string;
   };
+}
+
+// Add missing types that are causing errors
+export type UserRole = 'admin' | 'agent' | 'client';
+
+export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'comment';
+
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  branch?: string;
+  createdAt: string;
+  isActive?: boolean;
 }
