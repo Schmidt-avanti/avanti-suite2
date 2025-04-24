@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Select, 
@@ -31,7 +30,7 @@ interface ReportFiltersComponentProps {
   users: Array<{ id: string; full_name: string }>;
 }
 
-const ReportFilters: React.FC<ReportFiltersComponentProps> = ({ 
+export const ReportFilters: React.FC<ReportFiltersComponentProps> = ({ 
   filters, 
   setFilters,
   customers,
@@ -252,5 +251,3 @@ const ReportFilters: React.FC<ReportFiltersComponentProps> = ({
     </Card>
   );
 };
-
-export default ReportFilters;
