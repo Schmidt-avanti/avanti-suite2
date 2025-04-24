@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,10 +48,22 @@ const PaymentDataPage = () => {
   });
 
   const addPaymentMethod = useMutation({
-    mutationFn: async (data: Omit<PaymentMethod, 'id' | 'created_at' | 'updated_at' | 'last_used' | 'active'>) => {
+    mutationFn: async (data: {
+      type: 'paypal' | 'creditcard';
+      value: string;
+      card_holder?: string;
+      expiry_month?: number;
+      expiry_year?: number;
+      billing_address?: string;
+      billing_zip?: string;
+      billing_city?: string;
+    }) => {
       const { error } = await supabase
         .from('payment_methods')
-        .insert([data]);
+        .insert([{
+          ...data,
+          user_id: user?.id!,
+        }]);
       
       if (error) throw error;
     },
@@ -62,7 +73,17 @@ const PaymentDataPage = () => {
   });
 
   const updatePaymentMethod = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<PaymentMethod> & { id: string }) => {
+    mutationFn: async ({ id, ...data }: { 
+      id: string;
+      type: 'paypal' | 'creditcard';
+      value: string;
+      card_holder?: string;
+      expiry_month?: number;
+      expiry_year?: number;
+      billing_address?: string;
+      billing_zip?: string;
+      billing_city?: string;
+    }) => {
       const { error } = await supabase
         .from('payment_methods')
         .update(data)
@@ -93,7 +114,16 @@ const PaymentDataPage = () => {
     },
   });
 
-  const handleSubmit = async (data: { type: 'paypal' | 'creditcard'; value: string }) => {
+  const handleSubmit = async (data: {
+    type: 'paypal' | 'creditcard';
+    value: string;
+    card_holder?: string;
+    expiry_month?: number;
+    expiry_year?: number;
+    billing_address?: string;
+    billing_zip?: string;
+    billing_city?: string;
+  }) => {
     if (editingMethod) {
       await updatePaymentMethod.mutateAsync({
         id: editingMethod.id,
@@ -101,10 +131,7 @@ const PaymentDataPage = () => {
       });
       setEditingMethod(null);
     } else {
-      await addPaymentMethod.mutateAsync({
-        ...data,
-        user_id: user?.id!,
-      });
+      await addPaymentMethod.mutateAsync(data);
     }
     setIsFormOpen(false);
   };
@@ -153,6 +180,9 @@ const PaymentDataPage = () => {
               key={method.id}
               type={method.type}
               value={method.value}
+              cardHolder={method.card_holder}
+              expiryMonth={method.expiry_month}
+              expiryYear={method.expiry_year}
               onEdit={() => handleEdit(method)}
               onDelete={() => setDeletingMethod(method)}
             />
@@ -170,6 +200,12 @@ const PaymentDataPage = () => {
         initialData={editingMethod ? {
           type: editingMethod.type,
           value: editingMethod.value,
+          card_holder: editingMethod.card_holder,
+          expiry_month: editingMethod.expiry_month,
+          expiry_year: editingMethod.expiry_year,
+          billing_address: editingMethod.billing_address,
+          billing_zip: editingMethod.billing_zip,
+          billing_city: editingMethod.billing_city,
         } : undefined}
       />
 

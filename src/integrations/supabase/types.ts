@@ -288,7 +288,13 @@ export type Database = {
       payment_methods: {
         Row: {
           active: boolean
+          billing_address: string | null
+          billing_city: string | null
+          billing_zip: string | null
+          card_holder: string | null
           created_at: string
+          expiry_month: number | null
+          expiry_year: number | null
           id: string
           last_used: string | null
           type: string
@@ -298,7 +304,13 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_zip?: string | null
+          card_holder?: string | null
           created_at?: string
+          expiry_month?: number | null
+          expiry_year?: number | null
           id?: string
           last_used?: string | null
           type: string
@@ -308,7 +320,13 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_zip?: string | null
+          card_holder?: string | null
           created_at?: string
+          expiry_month?: number | null
+          expiry_year?: number | null
           id?: string
           last_used?: string | null
           type?: string
