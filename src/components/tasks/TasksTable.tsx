@@ -47,7 +47,7 @@ export const TasksTable = ({ tasks, isLoading }: TasksTableProps) => {
             >
               <TableCell>{task.title}</TableCell>
               <TableCell>{task.customer?.name || '-'}</TableCell>
-              <TableCell>{renderSource(task.source)}</TableCell>
+              <TableCell>{task.source || '—'}</TableCell>
               <TableCell>
                 <TaskStatusBadge status={task.status} />
               </TableCell>
