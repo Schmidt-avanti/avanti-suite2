@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -78,28 +77,28 @@ const ProcessingTime = () => {
     }
   });
   
-  // Modified query to correctly handle the task time data
+  // Modify query to correctly handle the task time data and active status
   const { data: taskTimeSummaries, isLoading, refetch } = useQuery({
     queryKey: ['taskTimeSummaries', selectedUserId, selectedCustomerId, searchTerm],
     queryFn: async () => {
       try {
-        // Create a simpler query first to get task_times
+        // Only fetch active task times (where ended_at is null)
         let query = supabase.from('task_times')
           .select(`
             id, 
             task_id, 
             user_id, 
-            duration_seconds, 
+            started_at,
             ended_at
           `)
-          .not('ended_at', 'is', null); // Only fetch completed task times
+          .is('ended_at', null); // Only get currently active sessions
         
         // Apply user filter if selected
         if (selectedUserId) {
           query = query.eq('user_id', selectedUserId);
         }
 
-        const { data: taskTimeData, error: taskTimeError } = await query;
+        const { data: activeTaskTimes, error: taskTimeError } = await query;
         
         if (taskTimeError) {
           toast({
@@ -110,10 +109,14 @@ const ProcessingTime = () => {
           throw taskTimeError;
         }
         
-        // Now get the profile data separately
+        if (!activeTaskTimes || activeTaskTimes.length === 0) {
+          return [];
+        }
+
+        // Get the profile data
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, "Full Name"'); // Remove 'email' from here as it doesn't exist
+          .select('id, "Full Name"');
           
         if (profilesError) {
           toast({
@@ -123,8 +126,9 @@ const ProcessingTime = () => {
           });
           throw profilesError;
         }
-        
-        // Get tasks separately as well
+
+        // Get tasks data
+        const taskIds = activeTaskTimes.map(time => time.task_id);
         const { data: tasksData, error: tasksError } = await supabase
           .from('tasks')
           .select(`
@@ -136,7 +140,8 @@ const ProcessingTime = () => {
               id,
               name
             )
-          `);
+          `)
+          .in('id', taskIds);
           
         if (tasksError) {
           toast({
@@ -146,8 +151,8 @@ const ProcessingTime = () => {
           });
           throw tasksError;
         }
-        
-        // Create lookup maps for faster access
+
+        // Create lookup maps
         const profilesMap = new Map();
         profilesData?.forEach(profile => {
           profilesMap.set(profile.id, profile);
@@ -157,62 +162,51 @@ const ProcessingTime = () => {
         tasksData?.forEach(task => {
           tasksMap.set(task.id, task);
         });
-        
-        // Process and combine data
-        if (taskTimeData && taskTimeData.length > 0) {
-          // Create a map to group task times by task_id and user_id
-          const summaryMap = new Map();
-          
-          taskTimeData.forEach(item => {
-            const key = `${item.task_id}-${item.user_id}`;
-            const taskData = tasksMap.get(item.task_id);
-            const profileData = profilesMap.get(item.user_id);
-            
-            // Skip if we can't find the related data
-            if (!taskData || !profileData) return;
-            
-            if (!summaryMap.has(key)) {
-              summaryMap.set(key, {
-                task_id: item.task_id,
-                user_id: item.user_id,
-                session_count: 1,
-                total_seconds: item.duration_seconds || 0,
-                total_hours: (item.duration_seconds || 0) / 3600,
-                profiles: profileData,
-                tasks: taskData
-              });
-            } else {
-              const existing = summaryMap.get(key);
-              existing.session_count += 1;
-              existing.total_seconds += (item.duration_seconds || 0);
-              existing.total_hours = existing.total_seconds / 3600;
-            }
+
+        // Filter by customer if selected
+        let filteredTaskTimes = activeTaskTimes;
+        if (selectedCustomerId) {
+          filteredTaskTimes = activeTaskTimes.filter(time => {
+            const task = tasksMap.get(time.task_id);
+            return task?.customer_id === selectedCustomerId;
           });
-          
-          // Convert map to array
-          let summaries = Array.from(summaryMap.values());
-          
-          // Filter by customer if selected
-          if (selectedCustomerId) {
-            summaries = summaries.filter(
-              summary => summary.tasks?.customer_id === selectedCustomerId
-            );
-          }
-          
-          // Filter by search term if provided (case insensitive)
-          if (searchTerm) {
-            const term = searchTerm.toLowerCase();
-            summaries = summaries.filter(summary => 
-              summary.tasks?.title.toLowerCase().includes(term) || 
-              summary.profiles?.["Full Name"]?.toLowerCase().includes(term) ||
-              summary.tasks?.customers?.name?.toLowerCase().includes(term)
-            );
-          }
-          
-          return summaries;
         }
-        
-        return [];
+
+        // Process and combine data
+        const summaries = filteredTaskTimes.map(time => {
+          const task = tasksMap.get(time.task_id);
+          const profile = profilesMap.get(time.user_id);
+          
+          if (!task || !profile) return null;
+
+          // Calculate duration since start
+          const startTime = new Date(time.started_at);
+          const now = new Date();
+          const durationSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+          
+          return {
+            task_id: time.task_id,
+            user_id: time.user_id,
+            session_count: 1,
+            total_seconds: durationSeconds,
+            total_hours: durationSeconds / 3600,
+            profiles: profile,
+            tasks: task,
+            started_at: time.started_at
+          };
+        }).filter(Boolean);
+
+        // Apply search filter if provided
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          return summaries.filter(summary => 
+            summary.tasks?.title.toLowerCase().includes(term) || 
+            summary.profiles?.["Full Name"]?.toLowerCase().includes(term) ||
+            summary.tasks?.customers?.name?.toLowerCase().includes(term)
+          );
+        }
+
+        return summaries;
       } catch (error) {
         console.error("Error fetching task time summaries:", error);
         toast({
@@ -225,7 +219,7 @@ const ProcessingTime = () => {
     },
     refetchInterval: refreshInterval
   });
-  
+
   // Get active task times to show live timers
   const { data: activeTaskTimes, isLoading: isLoadingActive } = useQuery({
     queryKey: ['activeTaskTimes', selectedUserId],
@@ -287,14 +281,9 @@ const ProcessingTime = () => {
     setSearchTerm(values.search || '');
   };
   
-  // Count active users and tasks
-  const activeUserCount = activeTaskTimes 
-    ? new Set(activeTaskTimes.filter(time => !time.ended_at).map(time => time.user_id)).size 
-    : 0;
-  
-  const activeTaskCount = activeTaskTimes
-    ? new Set(activeTaskTimes.filter(time => !time.ended_at).map(time => time.task_id)).size
-    : 0;
+  // Count active users and tasks correctly from live data
+  const activeUserCount = new Set(taskTimeSummaries?.map(summary => summary.user_id)).size;
+  const activeTaskCount = new Set(taskTimeSummaries?.map(summary => summary.task_id)).size;
 
   if (isLoading || isLoadingActive || isLoadingUsers || isLoadingCustomers) {
     return (
@@ -497,7 +486,7 @@ const ProcessingTime = () => {
               {(!taskTimeSummaries || taskTimeSummaries.length === 0) && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
-                    Keine Bearbeitungszeiten gefunden
+                    Keine aktiven Bearbeitungen gefunden
                   </TableCell>
                 </TableRow>
               )}
