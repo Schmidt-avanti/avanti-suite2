@@ -16,3 +16,21 @@ export interface TaskTimeSummary {
   total_hours: number;
   session_count: number;
 }
+
+// Existing types (to fix build errors)
+export type TaskStatus = 'new' | 'in_progress' | 'followup' | 'completed';
+
+export interface Task {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  created_at: string;
+  customer?: {
+    id: string;
+    name: string;
+  };
+  creator?: {
+    id: string;
+    "Full Name": string;
+  };
+}
