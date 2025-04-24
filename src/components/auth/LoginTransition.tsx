@@ -28,7 +28,7 @@ const LoginTransition: React.FC<LoginTransitionProps> = ({ userName, onComplete 
 
       // Start the animation sequence
       setTimeout(playSound, 800); // Play sound when logo appears
-      setTimeout(onComplete, 2300); // Complete after full animation
+      setTimeout(onComplete, 5300); // Complete after full animation (extended to 5 seconds)
       setHasPlayed(true);
     }
   }, [hasPlayed, onComplete, soundEnabled]);
