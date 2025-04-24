@@ -11,17 +11,32 @@ interface ProcessingTimeStatsProps {
     total_seconds: number;
     total_hours: number;
     session_count: number;
+    user_id?: string;
   }>;
 }
 
 export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTimeSummaries }) => {
-  const totalProcessingTime = taskTimeSummaries.reduce((acc, curr) => acc + curr.total_seconds, 0);
-  const averageTimePerTask = taskTimeSummaries.length ? totalProcessingTime / taskTimeSummaries.length : 0;
-  const totalSessions = taskTimeSummaries.reduce((acc, curr) => acc + curr.session_count, 0);
+  // Debug logging
+  console.log('ProcessingTimeStats received:', taskTimeSummaries);
+  
+  // Ensure taskTimeSummaries is an array 
+  const validSummaries = Array.isArray(taskTimeSummaries) ? taskTimeSummaries : [];
+  
+  const totalProcessingTime = validSummaries.reduce((acc, curr) => acc + (curr.total_seconds || 0), 0);
+  const averageTimePerTask = validSummaries.length ? totalProcessingTime / validSummaries.length : 0;
+  const totalSessions = validSummaries.reduce((acc, curr) => acc + (curr.session_count || 0), 0);
+
+  console.log('Calculated stats:', { 
+    totalSummaries: validSummaries.length,
+    totalProcessingTime, 
+    averageTimePerTask, 
+    totalSessions 
+  });
 
   // Prepare data for time distribution chart
-  const timeDistribution = taskTimeSummaries.reduce((acc, curr) => {
-    const hours = Math.floor(curr.total_seconds / 3600);
+  const timeDistribution = validSummaries.reduce((acc, curr) => {
+    const seconds = curr.total_seconds || 0;
+    const hours = Math.floor(seconds / 3600);
     const category = hours < 1 ? '< 1h' : hours < 2 ? '1-2h' : hours < 4 ? '2-4h' : '4h+';
     acc[category] = (acc[category] || 0) + 1;
     return acc;
@@ -79,16 +94,22 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
         </CardHeader>
         <CardContent>
           <div className="h-[200px] w-full">
-            <ChartContainer config={chartConfig}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" name="Aufgaben" fill="var(--color-tasks)" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            {chartData.length > 0 ? (
+              <ChartContainer config={chartConfig}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="value" name="Aufgaben" fill="var(--color-tasks)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                Keine Bearbeitungszeiten verfügbar
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

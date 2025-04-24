@@ -9,6 +9,9 @@ export const useTaskTimeSummaries = (taskIds: string[]) => {
     queryFn: async () => {
       if (!taskIds.length) return [];
       
+      // Debug log to check taskIds being passed
+      console.log('Fetching time summaries for task IDs:', taskIds);
+      
       const { data, error } = await supabase
         .from('task_time_summary')
         .select('*')
@@ -16,16 +19,22 @@ export const useTaskTimeSummaries = (taskIds: string[]) => {
         
       if (error) {
         console.error('Error fetching task time summaries:', error);
-        return [];
+        throw error;
       }
+      
+      // Debug log to inspect returned data
+      console.log('Task time summaries returned:', data);
       
       return data as TaskTimeSummary[];
     },
     enabled: taskIds.length > 0
   });
+  
+  // Additional log to verify what's being returned from the hook
+  console.log('useTaskTimeSummaries returning:', taskTimeSummaries);
 
   return {
-    taskTimeSummaries,
+    taskTimeSummaries: taskTimeSummaries || [],
     isLoading
   };
 };

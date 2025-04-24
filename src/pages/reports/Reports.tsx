@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportFilters } from '@/components/reports/ReportFilters';
 import ReportKpiCard from '@/components/reports/ReportKpiCard';
@@ -7,6 +7,7 @@ import ReportTasksTable from '@/components/reports/ReportTasksTable';
 import { ProcessingTimeStats } from '@/components/reports/ProcessingTimeStats';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTaskTimeSummaries } from '@/hooks/useTaskTimeSummaries';
+import { toast } from 'sonner';
 
 const Reports: React.FC = () => {
   const { 
@@ -21,7 +22,21 @@ const Reports: React.FC = () => {
     kpiData 
   } = useReportData();
 
-  const { taskTimeSummaries, isLoading: isLoadingTimes } = useTaskTimeSummaries(tasks?.map(t => t.id) || []);
+  const taskIds = tasks?.map(t => t.id) || [];
+  
+  console.log('Report tasks:', tasks);
+  console.log('Report taskIds for time summaries:', taskIds);
+  
+  const { taskTimeSummaries, isLoading: isLoadingTimes } = useTaskTimeSummaries(taskIds);
+  
+  useEffect(() => {
+    console.log('Tasks or taskIds updated in Reports component:', { 
+      taskCount: tasks?.length, 
+      taskIdCount: taskIds.length 
+    });
+    
+    console.log('Time summaries in Reports:', taskTimeSummaries);
+  }, [tasks, taskIds, taskTimeSummaries]);
 
   if (isLoading || isLoadingTimes) {
     return (
