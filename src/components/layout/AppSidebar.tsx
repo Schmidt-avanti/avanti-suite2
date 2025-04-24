@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -15,7 +16,8 @@ import {
   Clock,
   Check,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Receipt
 } from 'lucide-react';
 
 import {
@@ -36,6 +38,7 @@ const AppSidebar = () => {
   const { user } = useAuth();
   const [adminOpen, setAdminOpen] = useState(true);
   const [supervisorOpen, setSupervisorOpen] = useState(true);
+  const [accountingOpen, setAccountingOpen] = useState(true);
 
   if (!user) return null;
 
@@ -213,6 +216,48 @@ const AppSidebar = () => {
                           >
                             <Clock className="h-5 w-5 text-sidebar-primary" />
                             <span className="truncate">Live Monitoring</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </div>
+                </SidebarGroupContent>
+              </SidebarGroup>
+
+              <SidebarGroup>
+                <SidebarGroupLabel
+                  className="flex items-center select-none cursor-pointer px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider"
+                  onClick={() => setAccountingOpen((open) => !open)}
+                  tabIndex={0}
+                  role="button"
+                  aria-expanded={accountingOpen}
+                >
+                  <span className="flex-1">Accounting</span>
+                  {accountingOpen ? (
+                    <ChevronDown className="ml-2 h-4 w-4 transition-all duration-200" />
+                  ) : (
+                    <ChevronRight className="ml-2 h-4 w-4 transition-all duration-200" />
+                  )}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      accountingOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+                    }`}
+                  >
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/accounting/invoices"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Receipt className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Rechnung</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
