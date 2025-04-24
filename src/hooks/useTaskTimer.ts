@@ -34,7 +34,10 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         .select('id')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating task time entry:', error);
+        throw error;
+      }
 
       console.log(`Created task time entry: ${data.id}`);
       
@@ -73,20 +76,29 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       const seconds = elapsedTime > 0 ? elapsedTime : 
         (startTimeRef.current ? Math.floor((Date.now() - startTimeRef.current) / 1000) : 0);
       
-      // Update task time entry
-      const { error } = await supabase
-        .from('task_times')
-        .update({
-          ended_at: new Date().toISOString(),
-          duration_seconds: seconds
-        })
-        .eq('id', taskTimeEntryRef.current);
-      
-      if (error) {
-        console.error('Error updating task time entry:', error);
-        toast.error('Fehler beim Speichern der Bearbeitungszeit');
+      // Nur speichern, wenn die Dauer größer als 0 ist
+      if (seconds > 0) {
+        const endTime = new Date().toISOString();
+        
+        console.log(`Updating task time entry ${taskTimeEntryRef.current} with duration: ${seconds}s and end time: ${endTime}`);
+        
+        // Update task time entry
+        const { error } = await supabase
+          .from('task_times')
+          .update({
+            ended_at: endTime,
+            duration_seconds: seconds
+          })
+          .eq('id', taskTimeEntryRef.current);
+        
+        if (error) {
+          console.error('Error updating task time entry:', error);
+          toast.error('Fehler beim Speichern der Bearbeitungszeit');
+        } else {
+          console.log(`Successfully updated time entry with duration: ${seconds}s`);
+        }
       } else {
-        console.log(`Updated time entry with duration: ${seconds}s`);
+        console.warn(`Skipping update for task time entry ${taskTimeEntryRef.current} because duration is ${seconds}s`);
       }
 
       // Reset states
@@ -110,13 +122,15 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
   // Effect to start/stop tracking based on task view
   useEffect(() => {
-    if (isActive) {
+    console.log(`Task timer effect triggered - isActive: ${isActive}, taskId: ${taskId}, isTracking: ${isTracking}`);
+    
+    if (isActive && !isTracking) {
       startTracking();
-    } else {
+    } else if (!isActive && isTracking) {
       stopTracking();
     }
 
-    // Cleanup on unmount
+    // Cleanup on unmount or when taskId changes
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);

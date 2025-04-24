@@ -3,7 +3,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { formatDuration } from '@/utils/timeUtils';
+import { formatDuration, calculateAverageTime } from '@/utils/timeUtils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProcessingTimeStatsProps {
   taskTimeSummaries: Array<{
@@ -16,26 +17,29 @@ interface ProcessingTimeStatsProps {
 }
 
 export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTimeSummaries }) => {
-  // Debug-Logging
+  // Debug-Logging um zu verstehen, welche Daten ankommen
   console.log('ProcessingTimeStats empfangene Daten:', taskTimeSummaries);
   
   // Stelle sicher, dass taskTimeSummaries ein Array ist und gültige Daten enthält
   const validSummaries = Array.isArray(taskTimeSummaries) ? 
-    taskTimeSummaries.filter(s => s && typeof s === 'object') : [];
+    taskTimeSummaries.filter(s => s && typeof s === 'object' && s.total_seconds && s.total_seconds > 0) : [];
   
+  // Berechne Gesamtbearbeitungszeit
   const totalProcessingTime = validSummaries.reduce((acc, curr) => {
     const seconds = curr.total_seconds || 0;
     return acc + seconds;
   }, 0);
   
-  const averageTimePerTask = validSummaries.length ? 
-    Math.round(totalProcessingTime / validSummaries.length) : 0;
+  // Berechne Durchschnittszeit pro Aufgabe
+  const averageTimePerTask = calculateAverageTime(totalProcessingTime, validSummaries.length);
   
+  // Berechne Anzahl der Arbeitssitzungen
   const totalSessions = validSummaries.reduce((acc, curr) => {
     const sessions = curr.session_count || 0;
     return acc + sessions;
   }, 0);
 
+  // Log der berechneten Statistiken
   console.log('Berechnete Statistiken:', { 
     totalSummaries: validSummaries.length,
     totalProcessingTime, 
@@ -63,11 +67,13 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
     return acc;
   }, {} as Record<string, number>);
 
+  // Erstellen der Diagramm-Daten
   const chartData = Object.entries(timeDistribution).map(([name, value]) => ({
     name,
     value
   }));
 
+  // Chart-Konfiguration
   const chartConfig = {
     tasks: {
       label: 'Aufgaben',
@@ -78,6 +84,54 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
     },
   };
 
+  // Wenn keine Daten vorhanden sind, zeigen wir eine Nachricht an
+  if (!hasTimeData) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="shadow-sm">
+            <CardHeader className="py-4">
+              <CardTitle className="text-sm text-gray-500">Gesamtbearbeitungszeit</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="text-2xl font-bold">0h 0m</p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader className="py-4">
+              <CardTitle className="text-sm text-gray-500">Durchschnittszeit pro Aufgabe</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="text-2xl font-bold">0h 0m</p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader className="py-4">
+              <CardTitle className="text-sm text-gray-500">Arbeitssitzungen</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="text-2xl font-bold">0</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg">Verteilung der Bearbeitungszeiten</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px] w-full flex items-center justify-center">
+              <p className="text-gray-500">Keine Bearbeitungszeiten verfügbar</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Normale Anzeige mit Daten
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -115,7 +169,7 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
         </CardHeader>
         <CardContent>
           <div className="h-[200px] w-full">
-            {hasTimeData && chartData.length > 0 ? (
+            {chartData.length > 0 ? (
               <ChartContainer config={chartConfig}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
@@ -128,7 +182,7 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
               </ChartContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-gray-500">
-                {hasData ? 'Keine Bearbeitungszeiten für die Verteilung verfügbar' : 'Keine Bearbeitungszeiten verfügbar'}
+                Keine Bearbeitungszeiten für die Verteilung verfügbar
               </div>
             )}
           </div>

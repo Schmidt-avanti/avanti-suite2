@@ -23,13 +23,21 @@ const Reports: React.FC = () => {
     kpiData 
   } = useReportData();
 
-  // Extrahiere und logge die Task-IDs aus den gefilterten Tasks für die Zeitberechnung
-  const taskIds = tasks && Array.isArray(tasks) ? tasks.map(t => t.id) : [];
+  // Extrahiere die Task-IDs aus den gefilterten Tasks
+  const taskIds = tasks && Array.isArray(tasks) 
+    ? tasks.filter(t => t && t.id).map(t => t.id) 
+    : [];
   
+  // Debug-Logging
   console.log('Report tasks count:', tasks?.length);
   console.log('Report taskIds for time summaries:', taskIds);
   
-  const { taskTimeSummaries, isLoading: isLoadingTimes, error } = useTaskTimeSummaries(taskIds);
+  // Hole die Zeitzusammenfassungen
+  const { 
+    taskTimeSummaries, 
+    isLoading: isLoadingTimes, 
+    error 
+  } = useTaskTimeSummaries(taskIds);
   
   useEffect(() => {
     if (error) {
@@ -47,6 +55,7 @@ const Reports: React.FC = () => {
     console.log('Zeitzusammenfassungen im Reports:', taskTimeSummaries);
   }, [tasks, taskIds, taskTimeSummaries]);
 
+  // Zeige einen Ladebalken, wenn noch Daten geladen werden
   if (isLoading || isLoadingTimes) {
     return (
       <div className="py-8">
