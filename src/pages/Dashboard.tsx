@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { InboxIcon, CheckCircleIcon } from 'lucide-react';
@@ -8,6 +9,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { RemindersList } from '@/components/reminders/RemindersList';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -81,6 +83,10 @@ const Dashboard: React.FC = () => {
         </Link>
       </div>
       
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <RemindersList />
+      </div>
+
       <Card className="bg-avanti-50/30">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">Ungelesene Benachrichtigungen</CardTitle>
