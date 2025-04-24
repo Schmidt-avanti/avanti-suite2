@@ -25,7 +25,7 @@ export const useInvoiceData = (customerId: string, from: Date, to: Date) => {
         // Direkte und optimierte Abfrage auf task_times mit JOIN zu tasks
         const { data: rawData, error } = await supabase
           .from('task_times')
-          .select('duration_seconds, started_at, task_id, tasks!inner(customer_id)')
+          .select('duration_seconds, started_at, task_id, tasks!inner(customer_id, title)')
           .eq('tasks.customer_id', customerId)
           .gte('started_at', fromDate.toISOString())
           .lte('started_at', toDate.toISOString());
@@ -36,32 +36,33 @@ export const useInvoiceData = (customerId: string, from: Date, to: Date) => {
         }
 
         console.log('Raw time data found:', rawData?.length, 'records');
-        console.log('First few records:', rawData?.slice(0, 3));
-        
-        if (!rawData || rawData.length === 0) {
+        if (rawData && rawData.length > 0) {
+          console.log('First few records:', rawData.slice(0, 3));
+        } else {
           console.log('No task times found for this customer in the selected period');
           return [] as DailyMinutesRecord[];
         }
 
         // Gruppieren nach Datum und Minuten berechnen
-        const dailyMinutes = rawData.reduce<Record<string, number>>((acc, entry) => {
-          if (!entry.duration_seconds) return acc;
+        const dailySeconds: Record<string, number> = {};
+        
+        rawData.forEach(entry => {
+          if (!entry.duration_seconds) return;
           
+          // Nur das YYYY-MM-DD Format des Datums extrahieren
           const date = entry.started_at.split('T')[0];
-          const minutes = Math.round(entry.duration_seconds / 60);
-          
-          acc[date] = (acc[date] || 0) + minutes;
-          return acc;
-        }, {});
+          dailySeconds[date] = (dailySeconds[date] || 0) + entry.duration_seconds;
+        });
 
-        console.log('Grouped daily minutes:', dailyMinutes);
+        console.log('Grouped daily seconds:', dailySeconds);
 
-        // Konvertieren zu Array von Objekten für die Rückgabe
-        const result = Object.entries(dailyMinutes)
-          .map(([date, minutes]) => ({ 
+        // Konvertieren zu Array von Objekten und Sekunden in Minuten umrechnen
+        const result = Object.entries(dailySeconds)
+          .map(([date, seconds]) => ({ 
             date, 
-            minutes
-          })) as DailyMinutesRecord[];
+            minutes: Math.round(seconds / 60)
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date)); // Nach Datum sortieren
           
         console.log('Final processed records:', result);
         return result;

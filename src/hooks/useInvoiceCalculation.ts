@@ -29,74 +29,44 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
       console.log('Adjusted date range:', fromDate.toISOString(), 'to', toDate.toISOString());
       
       try {
-        // Direkte und optimierte Abfrage mit Aggregation der Gesamtzeit
+        // Summe der Zeiten direkt über einen SQL-Join ermitteln
         const { data, error } = await supabase
-          .rpc('calculate_total_time_for_customer', { 
-            customer_id_param: customerId,
-            from_date_param: fromDate.toISOString(),
-            to_date_param: toDate.toISOString()
-          });
+          .from('task_times')
+          .select('duration_seconds, tasks!inner(customer_id)')
+          .eq('tasks.customer_id', customerId)
+          .gte('started_at', fromDate.toISOString())
+          .lte('started_at', toDate.toISOString());
         
         if (error) {
-          console.error('Error calculating from task_times using RPC:', error);
-          
-          // Fallback zur direkten Abfrage, falls die RPC-Funktion nicht verfügbar ist
-          const { data: rawData, error: fallbackError } = await supabase
-            .from('task_times')
-            .select('duration_seconds, tasks!inner(customer_id)')
-            .eq('tasks.customer_id', customerId)
-            .gte('started_at', fromDate.toISOString())
-            .lte('started_at', toDate.toISOString());
-            
-          if (fallbackError) {
-            console.error('Fallback query also failed:', fallbackError);
-            throw fallbackError;
-          }
-          
-          // Berechne die Gesamtzeit manuell aus den Rohdaten
-          let totalSeconds = 0;
-          if (rawData && rawData.length > 0) {
-            totalSeconds = rawData.reduce((sum, entry) => {
-              return sum + (entry.duration_seconds || 0);
-            }, 0);
-          }
-          
-          console.log('Fallback calculation: Total seconds from direct query:', totalSeconds);
-          
-          const totalMinutes = Math.round(totalSeconds / 60);
-          const billableMinutes = Math.max(0, totalMinutes - FREE_MINUTES);
-          const netAmount = billableMinutes * PRICE_PER_MINUTE;
-          const vat = netAmount * VAT_RATE;
-          const totalAmount = netAmount + vat;
+          console.error('Error fetching task times:', error);
+          throw error;
+        }
 
-          console.log('Final calculation from fallback:', {
-            totalMinutes,
-            billableMinutes,
-            netAmount,
-            vat,
-            totalAmount
-          });
-
-          return {
-            totalMinutes,
-            billableMinutes,
-            netAmount,
-            vat,
-            totalAmount
-          } as InvoiceCalculation;
+        console.log('Raw time data found:', data?.length, 'records');
+        console.log('Sample data:', data?.slice(0, 3));
+        
+        // Berechne die Gesamtzeit manuell aus den Rohdaten
+        let totalSeconds = 0;
+        if (data && data.length > 0) {
+          totalSeconds = data.reduce((sum, entry) => {
+            const duration = entry.duration_seconds || 0;
+            console.log('Adding duration:', duration, 'seconds');
+            return sum + duration;
+          }, 0);
         }
         
-        // Wenn die RPC erfolgreich war, verwende die zurückgegebenen Daten
-        const totalSeconds = data || 0;
-        console.log('Total seconds from RPC:', totalSeconds);
+        console.log('Total seconds calculated:', totalSeconds);
         
+        // Umrechnung von Sekunden in Minuten
         const totalMinutes = Math.round(totalSeconds / 60);
+        console.log('Total minutes calculated:', totalMinutes);
+        
         const billableMinutes = Math.max(0, totalMinutes - FREE_MINUTES);
         const netAmount = billableMinutes * PRICE_PER_MINUTE;
         const vat = netAmount * VAT_RATE;
         const totalAmount = netAmount + vat;
 
-        console.log('Final calculation from RPC:', {
+        console.log('Final calculation:', {
           totalMinutes,
           billableMinutes,
           netAmount,
@@ -112,7 +82,7 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
           totalAmount
         } as InvoiceCalculation;
       } catch (error) {
-        console.error('Fatal error in useInvoiceCalculation:', error);
+        console.error('Error in useInvoiceCalculation:', error);
         throw error;
       }
     },

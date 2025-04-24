@@ -1,6 +1,5 @@
 
--- Diese Datei dient dazu, die neue gespeicherte Prozedur für die Berechnung von Kundenzeiten in Supabase zu erstellen
--- Bitte führen Sie diese SQL-Anweisungen in Ihrer Supabase SQL-Konsole aus
+-- Diese Datei enthält die gespeicherte Prozedur für die Berechnung von Kundenzeiten in Supabase
 
 CREATE OR REPLACE FUNCTION calculate_total_time_for_customer(
   customer_id_param UUID,
@@ -26,7 +25,7 @@ BEGIN
 END;
 $$;
 
--- Füge eine Test-Funktion hinzu, um die Daten zu überprüfen
+-- Füge eine Debug-Funktion hinzu, um die einzelnen Zeiteinträge zu überprüfen
 CREATE OR REPLACE FUNCTION debug_customer_times(
   customer_id_param UUID,
   from_date_param TIMESTAMP WITH TIME ZONE,
@@ -34,6 +33,7 @@ CREATE OR REPLACE FUNCTION debug_customer_times(
 ) 
 RETURNS TABLE (
   task_id UUID,
+  task_title TEXT,
   started_at TIMESTAMP WITH TIME ZONE,
   duration_seconds INTEGER
 )
@@ -42,11 +42,12 @@ SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY
-  SELECT tt.task_id, tt.started_at, tt.duration_seconds
+  SELECT tt.task_id, t.title, tt.started_at, tt.duration_seconds
   FROM task_times tt
   JOIN tasks t ON tt.task_id = t.id
   WHERE t.customer_id = customer_id_param
     AND tt.started_at >= from_date_param
-    AND tt.started_at <= to_date_param;
+    AND tt.started_at <= to_date_param
+  ORDER BY tt.started_at;
 END;
 $$;

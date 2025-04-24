@@ -25,22 +25,29 @@ export function InvoiceTable({ customerId, from, to }: InvoiceTableProps) {
     return <div className="py-4 text-center text-muted-foreground">Keine Daten für den ausgewählten Zeitraum gefunden.</div>;
   }
 
+  // Berechne Summe der Minuten
+  const totalMinutes = data.reduce((sum, row) => sum + row.minutes, 0);
+
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Datum</TableHead>
-            <TableHead className="text-right">Minuten gesamt</TableHead>
+            <TableHead className="text-right">Minuten</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((row: DailyMinutesRecord) => (
             <TableRow key={row.date}>
               <TableCell>{format(new Date(row.date), "dd.MM.yyyy")}</TableCell>
-              <TableCell className="text-right">{row.minutes} Min</TableCell>
+              <TableCell className="text-right">{row.minutes}</TableCell>
             </TableRow>
           ))}
+          <TableRow className="font-bold">
+            <TableCell>Gesamt</TableCell>
+            <TableCell className="text-right">{totalMinutes}</TableCell>
+          </TableRow>
         </TableBody>
       </Table>
     </div>
