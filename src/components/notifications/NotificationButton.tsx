@@ -29,10 +29,10 @@ export const NotificationButton: React.FC = () => {
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative h-9 w-9">
-          <Bell className="h-5 w-5" />
+          <Bell className="h-5 w-5 text-gray-600 hover:text-gray-800" />
           {unreadCount > 0 && (
             <Badge 
-              className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-avanti-500 p-0 text-xs text-white"
+              className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 p-0 text-xs text-white"
             >
               {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>
