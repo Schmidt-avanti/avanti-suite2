@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -183,7 +182,7 @@ const AppSidebar = () => {
                             }
                           >
                             <Radio className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Live-Agentenübersicht</span>
+                            <span className="truncate">Übersicht aktive Agenten</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -213,7 +212,7 @@ const AppSidebar = () => {
                             }
                           >
                             <Clock className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Bearbeitungsdauer</span>
+                            <span className="truncate">Live Monitoring</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
