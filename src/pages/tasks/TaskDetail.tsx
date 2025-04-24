@@ -203,7 +203,8 @@ const TaskDetail = () => {
                   <Inbox className="h-4 w-4" />
                   <span className="font-medium">Beschreibung</span>
                 </div>
-                <div className="ml-6 text-gray-700 whitespace-pre-wrap">{task.description}</div>
+                <div className="ml-6 text-gray-700 whitespace-pre-wrap break-words">{task.description}</div>
+
 
                 {task.attachments?.length > 0 && (
                   <div className="mt-4">
