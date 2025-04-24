@@ -62,3 +62,12 @@ export interface Customer {
   billing_address?: string;
   contact_person?: string;
 }
+
+export type Notification = {
+  id: string;
+  user_id: string;
+  message: string;
+  task_id?: string;
+  created_at: string;
+  read_at: string | null;
+};

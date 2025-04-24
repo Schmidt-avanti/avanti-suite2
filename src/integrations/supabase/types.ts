@@ -506,6 +506,7 @@ export type Database = {
           created_by: string | null
           customer_id: string
           description: string
+          endkunde_email: string | null
           id: string
           match_confidence: number | null
           match_reasoning: string | null
@@ -521,6 +522,7 @@ export type Database = {
           created_by?: string | null
           customer_id: string
           description: string
+          endkunde_email?: string | null
           id?: string
           match_confidence?: number | null
           match_reasoning?: string | null
@@ -536,6 +538,7 @@ export type Database = {
           created_by?: string | null
           customer_id?: string
           description?: string
+          endkunde_email?: string | null
           id?: string
           match_confidence?: number | null
           match_reasoning?: string | null

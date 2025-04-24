@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Search } from 'lucide-react';
 import { ShortBreakButton } from '@/components/short-break/ShortBreakButton';
+import { NotificationButton } from '@/components/notifications/NotificationButton';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -39,38 +40,41 @@ const Navbar = () => {
         <div className="flex items-center gap-4 shrink-0">
           <ShortBreakButton />
           {user && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    {/* Conditionally render AvatarImage only if avatarUrl exists */}
-                    {user.avatarUrl && (
-                      <AvatarImage 
-                        src={user.avatarUrl} 
-                        alt={user.firstName || user.email} 
-                      />
-                    )}
-                    <AvatarFallback className="bg-avanti-100 text-avanti-800 text-sm">
-                      {user.firstName?.charAt(0) || user.email.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.firstName || 'User'}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  Abmelden
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <>
+              <NotificationButton />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      {/* Conditionally render AvatarImage only if avatarUrl exists */}
+                      {user.avatarUrl && (
+                        <AvatarImage 
+                          src={user.avatarUrl} 
+                          alt={user.firstName || user.email} 
+                        />
+                      )}
+                      <AvatarFallback className="bg-avanti-100 text-avanti-800 text-sm">
+                        {user.firstName?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.firstName || 'User'}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    Abmelden
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           )}
         </div>
       </div>
