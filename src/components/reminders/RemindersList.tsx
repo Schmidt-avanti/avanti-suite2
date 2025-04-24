@@ -60,18 +60,18 @@ export const RemindersList = () => {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center"
                       onClick={() => handleComplete(reminder.id, reminder.title)}
                     >
-                      <Check className="h-4 w-4" />
+                      <Check className="h-5 w-5 text-gray-600 hover:text-gray-800" />
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      className="h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center"
                       onClick={() => handleDelete(reminder.id, reminder.title)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-5 w-5 text-gray-600 hover:text-gray-800" />
                     </Button>
                   </div>
                 </div>
@@ -86,3 +86,4 @@ export const RemindersList = () => {
     </Card>
   );
 };
+
