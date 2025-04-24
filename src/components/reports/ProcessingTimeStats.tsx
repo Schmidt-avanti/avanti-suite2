@@ -20,27 +20,37 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
   const totalSessions = taskTimeSummaries.reduce((acc, item) => acc + (item.session_count || 0), 0);
   const averageTimePerTask = calculateAverageTime(totalTimeSeconds, totalTasks);
 
-  // Erstelle Daten für die Diagramme
+  // Erstelle Daten für die Diagramme mit besserer Verteilung
   const timeDistributionData = [
-    { name: '4h+', value: 0 },
-    { name: '2-4h', value: 0 },
-    { name: '1-2h', value: 0 },
-    { name: '< 1h', value: 0 }
+    { name: '< 15m', value: 0, range: '< 15m' },
+    { name: '15-30m', value: 0, range: '15-30m' },
+    { name: '30m-1h', value: 0, range: '30m-1h' },
+    { name: '1-2h', value: 0, range: '1-2h' },
+    { name: '2h+', value: 0, range: '2h+' }
   ];
 
-  // Fülle die Daten für das Diagramm
+  // Debug: Log task time summaries to check the data
+  console.log('Task time summaries for chart:', taskTimeSummaries);
+
+  // Fülle die Daten für das Diagramm mit feingranulareren Zeitbereichen
   taskTimeSummaries.forEach(summary => {
-    const hours = (summary.total_seconds || 0) / 3600;
-    if (hours >= 4) {
+    const minutes = (summary.total_seconds || 0) / 60;
+    
+    if (minutes < 15) {
       timeDistributionData[0].value += 1;
-    } else if (hours >= 2) {
+    } else if (minutes < 30) {
       timeDistributionData[1].value += 1;
-    } else if (hours >= 1) {
+    } else if (minutes < 60) {
       timeDistributionData[2].value += 1;
-    } else {
+    } else if (minutes < 120) {
       timeDistributionData[3].value += 1;
+    } else {
+      timeDistributionData[4].value += 1;
     }
   });
+
+  // Debug: Log the distribution data
+  console.log('Time distribution data for chart:', timeDistributionData);
 
   // Konfiguration für das Diagramm
   const chartConfig = {
@@ -103,21 +113,38 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
                       margin={{ 
                         top: 20, 
                         right: isMobile ? 10 : 30, 
-                        left: isMobile ? 5 : 20, 
-                        bottom: 20 
+                        left: isMobile ? 0 : 10, 
+                        bottom: isMobile ? 60 : 20 
                       }}
-                      barCategoryGap={isMobile ? "15%" : "30%"}
+                      barCategoryGap={isMobile ? "10%" : "25%"}
+                      barSize={isMobile ? 20 : 40}
                     >
                       <XAxis 
                         dataKey="name" 
                         tick={{ fontSize: isMobile ? 10 : 12 }}
+                        height={isMobile ? 60 : 30}
+                        tickMargin={isMobile ? 5 : 8}
                       />
                       <YAxis 
                         tick={{ fontSize: isMobile ? 10 : 12 }} 
                         width={30}
+                        allowDecimals={false}
+                        domain={[0, 'auto']}
                       />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="value" name="Aufgaben" fill="var(--color-tasks)" />
+                      <ChartTooltip 
+                        content={
+                          <ChartTooltipContent 
+                            labelFormatter={(value) => `Zeitbereich: ${value}`}
+                            formatter={(value, name) => [`${value} Aufgaben`, 'Anzahl']}
+                          />
+                        } 
+                      />
+                      <Bar 
+                        dataKey="value" 
+                        name="Aufgaben" 
+                        fill="var(--color-tasks)"
+                        radius={[4, 4, 0, 0]}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </ChartContainer>
