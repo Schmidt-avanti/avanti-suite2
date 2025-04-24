@@ -13,7 +13,12 @@ export const useInvoiceData = (customerId: string, from: Date, to: Date) => {
     queryKey: ['invoice-data', customerId, from, to],
     queryFn: async () => {
       console.log('Fetching invoice data for customer:', customerId);
-      console.log('Date range:', from.toISOString(), 'to', to.toISOString());
+      
+      // Create a copy of the to date and set it to the end of the day
+      const toDateEnd = new Date(to);
+      toDateEnd.setHours(23, 59, 59, 999);
+      
+      console.log('Date range:', from.toISOString(), 'to', toDateEnd.toISOString());
       
       if (!customerId || !from || !to) {
         console.error('Missing required parameters');
@@ -21,12 +26,29 @@ export const useInvoiceData = (customerId: string, from: Date, to: Date) => {
       }
 
       try {
+        // First, let's run a debug query to check if there's any data
+        const { data: debugData, error: debugError } = await supabase.rpc(
+          'debug_customer_times',
+          {
+            customer_id_param: customerId,
+            from_date_param: from.toISOString(),
+            to_date_param: toDateEnd.toISOString()
+          }
+        );
+
+        if (debugError) {
+          console.error('Error running debug query:', debugError);
+        } else {
+          console.log('Debug data (raw task times):', debugData);
+        }
+
+        // Then fetch the actual daily summary data
         const { data, error } = await supabase.rpc(
           'calculate_completed_times_for_customer',
           {
             customer_id_param: customerId,
             from_date_param: from.toISOString(),
-            to_date_param: to.toISOString()
+            to_date_param: toDateEnd.toISOString()
           }
         );
 
@@ -36,9 +58,15 @@ export const useInvoiceData = (customerId: string, from: Date, to: Date) => {
           throw error;
         }
 
-        console.log('Time data from database:', data);
+        console.log('Daily time data from database:', data);
 
-        // Data comes back in the correct format now, just need to format the date
+        // If no data was returned, return an empty array
+        if (!data || data.length === 0) {
+          console.log('No time data found for this customer in the date range');
+          return [] as DailyMinutesRecord[];
+        }
+
+        // Data should already come back in the correct format
         const result = data.map((record: any) => ({
           date: record.date_day,
           minutes: record.total_minutes

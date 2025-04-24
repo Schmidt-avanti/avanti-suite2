@@ -20,7 +20,12 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
     queryKey: ['invoice-calculation', customerId, from, to],
     queryFn: async () => {
       console.log('Calculating invoice for customer:', customerId);
-      console.log('Date range:', from.toISOString(), 'to', to.toISOString());
+      
+      // Create a copy of the to date and set it to the end of the day
+      const toDateEnd = new Date(to);
+      toDateEnd.setHours(23, 59, 59, 999);
+      
+      console.log('Date range:', from.toISOString(), 'to', toDateEnd.toISOString());
 
       if (!customerId || !from || !to) {
         console.error('Missing required parameters');
@@ -33,7 +38,7 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
           {
             customer_id_param: customerId,
             from_date_param: from.toISOString(),
-            to_date_param: to.toISOString()
+            to_date_param: toDateEnd.toISOString()
           }
         );
 
@@ -45,8 +50,11 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
 
         console.log('Total seconds from database:', totalSeconds);
         
+        // Ensure totalSeconds is a number (handle null/undefined)
+        const secondsValue = typeof totalSeconds === 'number' ? totalSeconds : 0;
+        
         // Convert seconds to minutes for calculations
-        const totalMinutes = Math.round(totalSeconds / 60);
+        const totalMinutes = Math.round(secondsValue / 60);
         console.log('Total minutes calculated:', totalMinutes);
         
         const billableMinutes = Math.max(0, totalMinutes - FREE_MINUTES);
