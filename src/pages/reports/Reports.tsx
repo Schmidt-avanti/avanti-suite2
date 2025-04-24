@@ -22,12 +22,19 @@ const Reports: React.FC = () => {
     kpiData 
   } = useReportData();
 
-  const taskIds = tasks?.map(t => t.id) || [];
+  const taskIds = tasks && Array.isArray(tasks) ? tasks.map(t => t.id) : [];
   
-  console.log('Report tasks:', tasks);
+  console.log('Report tasks count:', tasks?.length);
   console.log('Report taskIds for time summaries:', taskIds);
   
-  const { taskTimeSummaries, isLoading: isLoadingTimes } = useTaskTimeSummaries(taskIds);
+  const { taskTimeSummaries, isLoading: isLoadingTimes, error } = useTaskTimeSummaries(taskIds);
+  
+  useEffect(() => {
+    if (error) {
+      console.error('Error fetching time summaries:', error);
+      toast.error('Fehler beim Laden der Zeitdaten');
+    }
+  }, [error]);
   
   useEffect(() => {
     console.log('Tasks or taskIds updated in Reports component:', { 

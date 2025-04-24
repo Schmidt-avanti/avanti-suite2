@@ -4,7 +4,7 @@
  */
 export function formatDuration(seconds: number): string {
   // Handle invalid or zero input
-  if (!seconds || typeof seconds !== 'number' || isNaN(seconds)) {
+  if (!seconds || typeof seconds !== 'number' || isNaN(seconds) || seconds <= 0) {
     return '0m';
   }
   

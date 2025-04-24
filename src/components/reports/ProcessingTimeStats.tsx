@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { formatDuration } from '@/utils/timeUtils';
+import { toast } from 'sonner';
 
 interface ProcessingTimeStatsProps {
   taskTimeSummaries: Array<{
@@ -19,12 +20,22 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
   // Debug logging
   console.log('ProcessingTimeStats received:', taskTimeSummaries);
   
-  // Ensure taskTimeSummaries is an array 
-  const validSummaries = Array.isArray(taskTimeSummaries) ? taskTimeSummaries : [];
+  // Ensure taskTimeSummaries is an array and has valid data
+  const validSummaries = Array.isArray(taskTimeSummaries) ? 
+    taskTimeSummaries.filter(s => s && typeof s === 'object') : [];
   
-  const totalProcessingTime = validSummaries.reduce((acc, curr) => acc + (curr.total_seconds || 0), 0);
-  const averageTimePerTask = validSummaries.length ? totalProcessingTime / validSummaries.length : 0;
-  const totalSessions = validSummaries.reduce((acc, curr) => acc + (curr.session_count || 0), 0);
+  const totalProcessingTime = validSummaries.reduce((acc, curr) => {
+    const seconds = curr.total_seconds || 0;
+    return acc + seconds;
+  }, 0);
+  
+  const averageTimePerTask = validSummaries.length ? 
+    Math.round(totalProcessingTime / validSummaries.length) : 0;
+  
+  const totalSessions = validSummaries.reduce((acc, curr) => {
+    const sessions = curr.session_count || 0;
+    return acc + sessions;
+  }, 0);
 
   console.log('Calculated stats:', { 
     totalSummaries: validSummaries.length,
@@ -33,11 +44,26 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
     totalSessions 
   });
 
+  // Check if we have meaningful data
+  const hasData = validSummaries.length > 0 && totalProcessingTime > 0;
+  
+  if (!hasData && taskTimeSummaries.length > 0) {
+    // We have task summaries but no time data
+    console.warn('Task time summaries found but no valid time data', taskTimeSummaries);
+  }
+
   // Prepare data for time distribution chart
   const timeDistribution = validSummaries.reduce((acc, curr) => {
     const seconds = curr.total_seconds || 0;
-    const hours = Math.floor(seconds / 3600);
-    const category = hours < 1 ? '< 1h' : hours < 2 ? '1-2h' : hours < 4 ? '2-4h' : '4h+';
+    if (seconds <= 0) return acc; // Skip entries with no time
+    
+    const hours = seconds / 3600;
+    let category = '< 1h';
+    
+    if (hours >= 4) category = '4h+';
+    else if (hours >= 2) category = '2-4h';
+    else if (hours >= 1) category = '1-2h';
+    
     acc[category] = (acc[category] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -107,7 +133,7 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
               </ChartContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-gray-500">
-                Keine Bearbeitungszeiten verfügbar
+                {hasData ? 'Keine Bearbeitungszeiten für die Verteilung verfügbar' : 'Keine Bearbeitungszeiten verfügbar'}
               </div>
             )}
           </div>
