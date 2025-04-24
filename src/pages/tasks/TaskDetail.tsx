@@ -71,6 +71,7 @@ const TaskDetail = () => {
       };
 
       setTask(enrichedTask);
+
       if (taskData.source === 'email') {
         setReplyTo(extractEmail(taskData.endkunde_email || '') || '');
       }
@@ -86,46 +87,52 @@ const TaskDetail = () => {
     }
   };
 
-  const handleSendEmail = async () => {
-    if (!replyBody) {
-      toast({
-        variant: 'destructive',
-        title: 'Fehler',
-        description: 'Bitte Nachricht angeben.'
-      });
-      return;
-    }
+const handleSendEmail = async () => {
+  if (!replyTo || !replyBody) {
+    toast({
+      variant: 'destructive',
+      title: 'Fehler',
+      description: 'Bitte Empfänger und Nachricht angeben.'
+    });
+    return;
+  }
 
-    try {
-      const response = await fetch('/functions/send-reply-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          task_id: task.id,
-          subject: `Re: ${task.subject || 'Ihre Anfrage'}`,
-          body: replyBody
-        })
-      });
+  try {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Fehler beim E-Mail Versand');
+    const { error } = await supabase.functions.invoke('send-reply-email', {
+      body: {
+        to: replyTo,
+        subject: `Re: ${task.subject || 'Ihre Anfrage'}`,
+        body: replyBody,
+      },
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`
       }
+    });
 
-      toast({
-        title: 'E-Mail gesendet',
-        description: `Antwort an ${replyTo} wurde gesendet.`,
-      });
-      setReplyBody('');
-
-    } catch (error: any) {
+    if (error) {
       toast({
         variant: 'destructive',
         title: 'Fehler beim Senden',
         description: error.message,
       });
+    } else {
+      toast({
+        title: 'E-Mail gesendet',
+        description: `Antwort an ${replyTo} wurde gesendet.`,
+      });
+      setReplyBody('');
     }
-  };
+  } catch (err) {
+    toast({
+      variant: 'destructive',
+      title: 'Unbekannter Fehler',
+      description: String(err),
+    });
+  }
+};
+
 
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
   if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
