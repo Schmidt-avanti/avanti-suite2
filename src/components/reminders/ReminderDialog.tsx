@@ -8,7 +8,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogFooter,
-  DialogTrigger 
+  DialogTrigger,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
@@ -32,19 +33,27 @@ export const ReminderDialog = () => {
   const handleSubmit = async () => {
     if (!title.trim()) return;
 
-    await createReminder(
+    const result = await createReminder(
       title, 
       reminderDate ? reminderDate.toISOString() : null
     );
 
-    toast({
-      title: "Notiz erstellt",
-      description: "Deine Notiz wurde erfolgreich erstellt.",
-    });
+    if (result) {
+      toast({
+        title: "Notiz erstellt",
+        description: "Deine Notiz wurde erfolgreich erstellt.",
+      });
 
-    setTitle('');
-    setReminderDate(undefined);
-    setIsOpen(false);
+      setTitle('');
+      setReminderDate(undefined);
+      setIsOpen(false);
+    } else {
+      toast({
+        title: "Fehler",
+        description: "Beim Erstellen der Notiz ist ein Fehler aufgetreten.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -55,6 +64,9 @@ export const ReminderDialog = () => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Neue Notiz erstellen</DialogTitle>
+          <DialogDescription>
+            Erstelle eine neue Notiz mit optionalem Erinnerungsdatum.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">

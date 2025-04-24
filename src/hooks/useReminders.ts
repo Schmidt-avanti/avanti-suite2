@@ -19,67 +19,90 @@ export const useReminders = () => {
     if (!user) return;
 
     setIsLoading(true);
-    // Use the raw query method to bypass type issues
-    const { data, error } = await supabase
-      .from('user_reminders')
-      .select('*')
-      .eq('completed', false)
-      .order('created_at', { ascending: false });
+    
+    try {
+      console.log('Fetching reminders for user:', user.id);
+      
+      // Use the raw query method with explicit type casting
+      const { data, error } = await supabase
+        .from('user_reminders')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('completed', false)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching reminders:', error);
-    } else {
-      // Cast the data to our Reminder interface
-      setReminders((data || []) as Reminder[]);
+      if (error) {
+        console.error('Error fetching reminders:', error);
+      } else {
+        console.log('Fetched reminders:', data);
+        // Cast the data to our Reminder interface
+        setReminders((data || []) as Reminder[]);
+      }
+    } catch (err) {
+      console.error('Exception when fetching reminders:', err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const createReminder = async (title: string, remind_at: string | null = null) => {
     if (!user) return null;
 
-    // Use the raw query method with explicit typing
-    const { data, error } = await supabase
-      .from('user_reminders')
-      .insert({ 
-        user_id: user.id, 
-        title, 
-        remind_at 
-      })
-      .select();
+    try {
+      // Use the raw query method with explicit typing
+      const { data, error } = await supabase
+        .from('user_reminders')
+        .insert({ 
+          user_id: user.id, 
+          title, 
+          remind_at 
+        })
+        .select();
 
-    if (error) {
-      console.error('Error creating reminder:', error);
+      if (error) {
+        console.error('Error creating reminder:', error);
+        return null;
+      }
+
+      await fetchReminders();
+      return data[0] as Reminder;
+    } catch (err) {
+      console.error('Exception when creating reminder:', err);
       return null;
     }
-
-    await fetchReminders();
-    return data[0] as Reminder;
   };
 
   const completeReminder = async (reminderId: string) => {
-    const { error } = await supabase
-      .from('user_reminders')
-      .update({ completed: true })
-      .eq('id', reminderId);
+    try {
+      const { error } = await supabase
+        .from('user_reminders')
+        .update({ completed: true })
+        .eq('id', reminderId);
 
-    if (error) {
-      console.error('Error completing reminder:', error);
-    } else {
-      await fetchReminders();
+      if (error) {
+        console.error('Error completing reminder:', error);
+      } else {
+        await fetchReminders();
+      }
+    } catch (err) {
+      console.error('Exception when completing reminder:', err);
     }
   };
 
   const deleteReminder = async (reminderId: string) => {
-    const { error } = await supabase
-      .from('user_reminders')
-      .delete()
-      .eq('id', reminderId);
+    try {
+      const { error } = await supabase
+        .from('user_reminders')
+        .delete()
+        .eq('id', reminderId);
 
-    if (error) {
-      console.error('Error deleting reminder:', error);
-    } else {
-      await fetchReminders();
+      if (error) {
+        console.error('Error deleting reminder:', error);
+      } else {
+        await fetchReminders();
+      }
+    } catch (err) {
+      console.error('Exception when deleting reminder:', err);
     }
   };
 
