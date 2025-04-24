@@ -510,6 +510,7 @@ export type Database = {
           match_confidence: number | null
           match_reasoning: string | null
           matched_use_case_id: string | null
+          source: string | null
           status: string
           title: string
           updated_at: string
@@ -524,6 +525,7 @@ export type Database = {
           match_confidence?: number | null
           match_reasoning?: string | null
           matched_use_case_id?: string | null
+          source?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -538,6 +540,7 @@ export type Database = {
           match_confidence?: number | null
           match_reasoning?: string | null
           matched_use_case_id?: string | null
+          source?: string | null
           status?: string
           title?: string
           updated_at?: string

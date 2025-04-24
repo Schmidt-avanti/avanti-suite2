@@ -1,3 +1,4 @@
+
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -47,7 +48,7 @@ export interface User {
   createdAt: string;
   firstName?: string;
   lastName?: string;
-  avatarUrl?: string;  // Add this optional property
+  avatarUrl?: string;
 }
 
 export interface Customer {
@@ -56,4 +57,8 @@ export interface Customer {
   branch?: string;
   createdAt: string;
   isActive?: boolean;
+  cost_center?: string;
+  billing_email?: string;
+  billing_address?: string;
+  contact_person?: string;
 }

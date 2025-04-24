@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCustomers } from '@/hooks/useCustomers';
@@ -9,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Download } from 'lucide-react';
 import { exportInvoiceToExcel } from '@/utils/excelExport';
 import { format } from 'date-fns';
+import { useInvoiceData } from '@/hooks/useInvoiceData';
+import { useInvoiceCalculation } from '@/hooks/useInvoiceCalculation';
 
 const InvoicePage = () => {
   const { customers, isLoading } = useCustomers();
@@ -18,7 +21,7 @@ const InvoicePage = () => {
     to: undefined
   });
 
-  const handleExport = async () => {
+  const handleExport = () => {
     if (!selectedCustomer || !dateRange.from || !dateRange.to) return;
     
     const customer = customers.find(c => c.id === selectedCustomer);
