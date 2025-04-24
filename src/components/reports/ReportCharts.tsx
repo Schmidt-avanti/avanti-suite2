@@ -3,6 +3,7 @@ import React from 'react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Line, LineChart, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChartData {
   name: string;
@@ -15,6 +16,8 @@ interface ReportChartsProps {
 }
 
 const ReportCharts: React.FC<ReportChartsProps> = ({ weekdayDistribution, tasksByWeek }) => {
+  const isMobile = useIsMobile();
+  
   const chartConfig = {
     tasks: {
       label: 'Aufgaben',
@@ -29,22 +32,37 @@ const ReportCharts: React.FC<ReportChartsProps> = ({ weekdayDistribution, tasksB
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
       <Card className="shadow-sm w-full overflow-hidden">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Aufgabenverteilung nach Wochentagen</CardTitle>
+          <CardTitle className="text-base lg:text-lg">Aufgabenverteilung nach Wochentagen</CardTitle>
         </CardHeader>
-        <CardContent className="px-0 sm:px-2 lg:px-4">
-          <div className="h-60 max-h-60 w-full">
+        <CardContent className="px-0 sm:px-2">
+          <div className="h-80 w-full">
             <ChartContainer config={chartConfig}>
               <ResponsiveContainer width="99%" height="99%">
                 <BarChart 
                   data={weekdayDistribution}
-                  margin={{ top: 5, right: 15, left: 0, bottom: 5 }}
+                  margin={{ 
+                    top: 5, 
+                    right: isMobile ? 5 : 15, 
+                    left: isMobile ? 0 : 5, 
+                    bottom: 20 
+                  }}
                 >
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} width={30} />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: 11 }}
+                    height={40}
+                    tickMargin={5}
+                    angle={isMobile ? -45 : 0}
+                    textAnchor={isMobile ? "end" : "middle"}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 11 }} 
+                    width={30}
+                  />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
                   />
-                  <Legend wrapperStyle={{ fontSize: '12px', marginTop: '10px' }} />
+                  <Legend wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
                   <Bar dataKey="value" name="Aufgaben" fill="var(--color-tasks)" />
                 </BarChart>
               </ResponsiveContainer>
@@ -55,22 +73,35 @@ const ReportCharts: React.FC<ReportChartsProps> = ({ weekdayDistribution, tasksB
 
       <Card className="shadow-sm w-full overflow-hidden">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Aufgabenentwicklung nach Woche</CardTitle>
+          <CardTitle className="text-base lg:text-lg">Aufgabenentwicklung nach Woche</CardTitle>
         </CardHeader>
-        <CardContent className="px-0 sm:px-2 lg:px-4">
-          <div className="h-60 max-h-60 w-full">
+        <CardContent className="px-0 sm:px-2">
+          <div className="h-80 w-full">
             <ChartContainer config={chartConfig}>
               <ResponsiveContainer width="99%" height="99%">
                 <LineChart 
                   data={tasksByWeek}
-                  margin={{ top: 5, right: 15, left: 0, bottom: 5 }}
+                  margin={{ 
+                    top: 5, 
+                    right: isMobile ? 5 : 15, 
+                    left: isMobile ? 0 : 5, 
+                    bottom: 20 
+                  }}
                 >
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} width={30} />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: 11 }}
+                    height={40}
+                    tickMargin={5}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 11 }} 
+                    width={30}
+                  />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
                   />
-                  <Legend wrapperStyle={{ fontSize: '12px', marginTop: '10px' }} />
+                  <Legend wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
                   <Line 
                     type="monotone" 
                     dataKey="value" 

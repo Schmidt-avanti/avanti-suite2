@@ -1,146 +1,67 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDuration, calculateAverageTime } from '@/utils/timeUtils';
+import type { TaskTimeSummary } from '@/types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { formatDuration, calculateAverageTime } from '@/utils/timeUtils';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ProcessingTimeStatsProps {
-  taskTimeSummaries: Array<{
-    task_id: string;
-    total_seconds: number;
-    total_hours: number;
-    session_count: number;
-    user_id?: string;
-  }>;
+  taskTimeSummaries: TaskTimeSummary[];
 }
 
 export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTimeSummaries }) => {
-  // Debug-Logging um zu verstehen, welche Daten ankommen
-  console.log('ProcessingTimeStats empfangene Daten:', taskTimeSummaries);
-  
-  // Stelle sicher, dass taskTimeSummaries ein Array ist und gültige Daten enthält
-  const validSummaries = Array.isArray(taskTimeSummaries) ? 
-    taskTimeSummaries.filter(s => s && typeof s === 'object' && s.total_seconds && s.total_seconds > 0) : [];
-  
-  // Berechne Gesamtbearbeitungszeit
-  const totalProcessingTime = validSummaries.reduce((acc, curr) => {
-    const seconds = curr.total_seconds || 0;
-    return acc + seconds;
-  }, 0);
-  
-  // Berechne Durchschnittszeit pro Aufgabe
-  const averageTimePerTask = calculateAverageTime(totalProcessingTime, validSummaries.length);
-  
-  // Berechne Anzahl der Arbeitssitzungen
-  const totalSessions = validSummaries.reduce((acc, curr) => {
-    const sessions = curr.session_count || 0;
-    return acc + sessions;
-  }, 0);
+  const isMobile = useIsMobile();
 
-  // Log der berechneten Statistiken
-  console.log('Berechnete Statistiken:', { 
-    totalSummaries: validSummaries.length,
-    totalProcessingTime, 
-    averageTimePerTask, 
-    totalSessions 
+  // Berechne Gesamtzahlen
+  const totalTasks = taskTimeSummaries.length;
+  const totalTimeSeconds = taskTimeSummaries.reduce((acc, item) => acc + (item.total_seconds || 0), 0);
+  const totalSessions = taskTimeSummaries.reduce((acc, item) => acc + (item.session_count || 0), 0);
+  const averageTimePerTask = calculateAverageTime(totalTimeSeconds, totalTasks);
+
+  // Erstelle Daten für die Diagramme
+  const timeDistributionData = [
+    { name: '4h+', value: 0 },
+    { name: '2-4h', value: 0 },
+    { name: '1-2h', value: 0 },
+    { name: '< 1h', value: 0 }
+  ];
+
+  // Fülle die Daten für das Diagramm
+  taskTimeSummaries.forEach(summary => {
+    const hours = (summary.total_seconds || 0) / 3600;
+    if (hours >= 4) {
+      timeDistributionData[0].value += 1;
+    } else if (hours >= 2) {
+      timeDistributionData[1].value += 1;
+    } else if (hours >= 1) {
+      timeDistributionData[2].value += 1;
+    } else {
+      timeDistributionData[3].value += 1;
+    }
   });
 
-  // Überprüfen, ob wir aussagekräftige Daten haben
-  const hasData = validSummaries.length > 0;
-  const hasTimeData = totalProcessingTime > 0;
-  
-  // Vorbereiten der Daten für das Zeitverteilungsdiagramm
-  const timeDistribution = validSummaries.reduce((acc, curr) => {
-    const seconds = curr.total_seconds || 0;
-    if (seconds <= 0) return acc; // Überspringe Einträge ohne Zeit
-    
-    const hours = seconds / 3600;
-    let category = '< 1h';
-    
-    if (hours >= 4) category = '4h+';
-    else if (hours >= 2) category = '2-4h';
-    else if (hours >= 1) category = '1-2h';
-    
-    acc[category] = (acc[category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  // Erstellen der Diagramm-Daten
-  const chartData = Object.entries(timeDistribution).map(([name, value]) => ({
-    name,
-    value
-  }));
-
-  // Chart-Konfiguration
+  // Konfiguration für das Diagramm
   const chartConfig = {
     tasks: {
       label: 'Aufgaben',
       theme: {
         light: '#9b87f5',
-        dark: '#7E69AB',
-      },
-    },
+        dark: '#7E69AB'
+      }
+    }
   };
 
-  // Wenn keine Daten vorhanden sind, zeigen wir eine Nachricht an
-  if (!hasTimeData) {
-    return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="shadow-sm">
-            <CardHeader className="py-4">
-              <CardTitle className="text-sm text-gray-500">Gesamtbearbeitungszeit</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-2xl font-bold">0h 0m</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader className="py-4">
-              <CardTitle className="text-sm text-gray-500">Durchschnittszeit pro Aufgabe</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-2xl font-bold">0h 0m</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader className="py-4">
-              <CardTitle className="text-sm text-gray-500">Arbeitssitzungen</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-2xl font-bold">0</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Verteilung der Bearbeitungszeiten</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px] w-full flex items-center justify-center">
-              <p className="text-gray-500">Keine Bearbeitungszeiten verfügbar</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Normale Anzeige mit Daten
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="col-span-1 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
         <Card className="shadow-sm">
           <CardHeader className="py-4">
             <CardTitle className="text-sm text-gray-500">Gesamtbearbeitungszeit</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-2xl font-bold">{formatDuration(totalProcessingTime)}</p>
+            <p className="text-2xl lg:text-3xl font-bold">{formatDuration(totalTimeSeconds)}</p>
           </CardContent>
         </Card>
 
@@ -149,7 +70,7 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
             <CardTitle className="text-sm text-gray-500">Durchschnittszeit pro Aufgabe</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-2xl font-bold">{formatDuration(averageTimePerTask)}</p>
+            <p className="text-2xl lg:text-3xl font-bold">{formatDuration(averageTimePerTask)}</p>
           </CardContent>
         </Card>
 
@@ -158,36 +79,53 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
             <CardTitle className="text-sm text-gray-500">Arbeitssitzungen</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-2xl font-bold">{totalSessions}</p>
+            <p className="text-2xl lg:text-3xl font-bold">{totalSessions}</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg">Verteilung der Bearbeitungszeiten</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[200px] w-full">
-            {chartData.length > 0 ? (
-              <ChartContainer config={chartConfig}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="value" name="Aufgaben" fill="var(--color-tasks)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                Keine Bearbeitungszeiten für die Verteilung verfügbar
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="col-span-1 lg:col-span-2">
+        <Card className="shadow-sm w-full overflow-hidden h-full">
+          <CardHeader className="py-4">
+            <CardTitle className="text-lg">Verteilung der Bearbeitungszeiten</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 px-0 sm:px-4">
+            <div className="h-64 w-full">
+              {taskTimeSummaries.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  Keine Bearbeitungszeiten verfügbar
+                </div>
+              ) : (
+                <ChartContainer config={chartConfig}>
+                  <ResponsiveContainer width="99%" height="99%">
+                    <BarChart 
+                      data={timeDistributionData}
+                      margin={{ 
+                        top: 20, 
+                        right: isMobile ? 10 : 30, 
+                        left: isMobile ? 5 : 20, 
+                        bottom: 20 
+                      }}
+                      barCategoryGap={isMobile ? "15%" : "30%"}
+                    >
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fontSize: isMobile ? 10 : 12 }}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: isMobile ? 10 : 12 }} 
+                        width={30}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="value" name="Aufgaben" fill="var(--color-tasks)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

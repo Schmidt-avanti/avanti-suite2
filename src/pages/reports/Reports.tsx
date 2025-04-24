@@ -45,39 +45,30 @@ const Reports: React.FC = () => {
       toast.error('Fehler beim Laden der Zeitdaten');
     }
   }, [error]);
-  
-  useEffect(() => {
-    console.log('Tasks oder taskIds aktualisiert im Reports-Component:', { 
-      taskCount: tasks?.length, 
-      taskIdCount: taskIds.length 
-    });
-    
-    console.log('Zeitzusammenfassungen im Reports:', taskTimeSummaries);
-  }, [tasks, taskIds, taskTimeSummaries]);
 
   // Zeige einen Ladebalken, wenn noch Daten geladen werden
   if (isLoading || isLoadingTimes) {
     return (
-      <div className="py-8">
-        <h1 className="text-2xl font-bold mb-6">Reports</h1>
-        <div className="py-4 px-6 rounded-lg bg-white shadow-sm mb-6">
+      <div className="py-4 space-y-6">
+        <h1 className="text-2xl font-bold mb-4">Reports</h1>
+        <div className="py-4 px-4 rounded-lg bg-white shadow-sm mb-4">
           <Skeleton className="h-10 w-full mb-4" />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
-              <Skeleton className="h-5 w-24 mb-4" />
+            <div key={i} className="rounded-xl border bg-card text-card-foreground shadow-sm p-4">
+              <Skeleton className="h-5 w-24 mb-2" />
               <Skeleton className="h-8 w-16" />
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
           {[1, 2].map(i => (
-            <div key={i} className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
+            <div key={i} className="rounded-xl border bg-card text-card-foreground shadow-sm p-4">
               <Skeleton className="h-6 w-40 mb-4" />
               <Skeleton className="h-64 w-full" />
             </div>
@@ -88,17 +79,19 @@ const Reports: React.FC = () => {
   }
 
   return (
-    <div className="py-6">
-      <h1 className="text-2xl font-bold mb-6">Reports</h1>
+    <div className="py-4 space-y-6">
+      <h1 className="text-2xl font-bold mb-4">Reports</h1>
       
-      <ReportFilters 
-        filters={filters}
-        setFilters={setFilters}
-        customers={customers}
-        users={users}
-      />
+      <div className="overflow-x-auto pb-4">
+        <ReportFilters 
+          filters={filters}
+          setFilters={setFilters}
+          customers={customers}
+          users={users}
+        />
+      </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <ReportKpiCard 
           title="Gesamtanzahl Aufgaben" 
           value={kpiData.totalTasks}
@@ -117,14 +110,20 @@ const Reports: React.FC = () => {
         />
       </div>
       
-      <ProcessingTimeStats taskTimeSummaries={taskTimeSummaries || []} />
+      <div className="overflow-x-auto">
+        <ProcessingTimeStats taskTimeSummaries={taskTimeSummaries || []} />
+      </div>
       
-      <ReportCharts 
-        weekdayDistribution={weekdayDistribution}
-        tasksByWeek={tasksByWeek}
-      />
+      <div className="overflow-hidden">
+        <ReportCharts 
+          weekdayDistribution={weekdayDistribution}
+          tasksByWeek={tasksByWeek}
+        />
+      </div>
       
-      <ReportTasksTable tasks={tasks} />
+      <div className="overflow-x-auto pb-4">
+        <ReportTasksTable tasks={tasks} />
+      </div>
     </div>
   );
 };
