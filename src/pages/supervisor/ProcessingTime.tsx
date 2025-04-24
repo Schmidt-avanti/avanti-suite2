@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -82,13 +83,15 @@ const ProcessingTime = () => {
     queryKey: ['taskTimeSummaries', selectedUserId, selectedCustomerId, searchTerm],
     queryFn: async () => {
       try {
-        // Creating a query to properly get task time summaries
+        // Creating a query to properly get task time data
         let query = supabase
           .from('task_times')
           .select(`
+            id,
             task_id,
             user_id,
             duration_seconds,
+            ended_at,
             profiles!task_times_user_id_fkey (
               id,
               "Full Name",
@@ -104,8 +107,10 @@ const ProcessingTime = () => {
                 name
               )
             )
-          `)
-          .not('ended_at', 'is', null); // Filter only completed task times
+          `);
+        
+        // Only fetch completed task times
+        query = query.not('ended_at', 'is', null);
         
         // Apply user filter if selected
         if (selectedUserId) {
@@ -129,6 +134,8 @@ const ProcessingTime = () => {
           const summaryMap = new Map();
           
           taskTimeData.forEach(item => {
+            if (!item.tasks || !item.profiles) return; // Skip items with missing relationships
+            
             const key = `${item.task_id}-${item.user_id}`;
             
             if (!summaryMap.has(key)) {
@@ -155,7 +162,7 @@ const ProcessingTime = () => {
           // Filter by customer if selected
           if (selectedCustomerId) {
             summaries = summaries.filter(
-              summary => summary.tasks?.customers?.id === selectedCustomerId
+              summary => summary.tasks?.customer_id === selectedCustomerId
             );
           }
           
@@ -298,14 +305,14 @@ const ProcessingTime = () => {
                   <FormItem className="flex-1 min-w-[200px]">
                     <FormControl>
                       <Select
-                        onValueChange={(value) => field.onChange(value || null)}
-                        value={field.value || ""}
+                        onValueChange={(value) => field.onChange(value === "all" ? null : value)}
+                        value={field.value || "all"}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Nutzer filtern" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Alle Nutzer</SelectItem>
+                          <SelectItem value="all">Alle Nutzer</SelectItem>
                           {users?.map(user => (
                             <SelectItem key={user.id} value={user.id}>
                               {user["Full Name"]}
@@ -325,14 +332,14 @@ const ProcessingTime = () => {
                   <FormItem className="flex-1 min-w-[200px]">
                     <FormControl>
                       <Select
-                        onValueChange={(value) => field.onChange(value || null)}
-                        value={field.value || ""}
+                        onValueChange={(value) => field.onChange(value === "all" ? null : value)}
+                        value={field.value || "all"}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Kunden filtern" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Alle Kunden</SelectItem>
+                          <SelectItem value="all">Alle Kunden</SelectItem>
                           {customers?.map(customer => (
                             <SelectItem key={customer.id} value={customer.id}>
                               {customer.name}
