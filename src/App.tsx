@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -192,6 +191,16 @@ const App = () => {
                     element={
                       <ProtectedRoute allowedRoles={["admin"]}>
                         <WhatsappAccountsAdminPage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Accounting routes */}
+                  <Route
+                    path="/accounting/invoices"
+                    element={
+                      <ProtectedRoute allowedRoles={["admin"]}>
+                        <InvoicesPage />
                       </ProtectedRoute>
                     }
                   />

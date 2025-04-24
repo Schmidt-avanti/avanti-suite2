@@ -87,8 +87,12 @@ export type Database = {
       }
       customers: {
         Row: {
+          billing_address: string | null
+          billing_email: string | null
           branch: string | null
           city: string | null
+          contact_person: string | null
+          cost_center: string | null
           created_at: string
           email: string | null
           has_invoice_address: boolean | null
@@ -103,8 +107,12 @@ export type Database = {
           zip: string | null
         }
         Insert: {
+          billing_address?: string | null
+          billing_email?: string | null
           branch?: string | null
           city?: string | null
+          contact_person?: string | null
+          cost_center?: string | null
           created_at?: string
           email?: string | null
           has_invoice_address?: boolean | null
@@ -119,8 +127,12 @@ export type Database = {
           zip?: string | null
         }
         Update: {
+          billing_address?: string | null
+          billing_email?: string | null
           branch?: string | null
           city?: string | null
+          contact_person?: string | null
+          cost_center?: string | null
           created_at?: string
           email?: string | null
           has_invoice_address?: boolean | null
