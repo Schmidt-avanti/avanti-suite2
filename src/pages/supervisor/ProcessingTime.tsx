@@ -82,41 +82,40 @@ const ProcessingTime = () => {
   const { data: taskTimeSummaries, isLoading, refetch } = useQuery({
     queryKey: ['taskTimeSummaries', selectedUserId, selectedCustomerId, searchTerm],
     queryFn: async () => {
-      // Use a raw SQL query to properly join the relationships
+      // Creating a manual query to properly get task time summaries
       let query = supabase
         .from('task_times')
         .select(`
           task_id,
           user_id,
-          count(*) as session_count,
-          sum(duration_seconds)::bigint as total_seconds,
-          (sum(duration_seconds) / 3600.0)::numeric(10,2) as total_hours,
-          profiles:user_id (
+          count(*),
+          sum(duration_seconds),
+          profiles!task_times_user_id_fkey (
             id,
             "Full Name",
             email
           ),
-          tasks:task_id (
+          tasks!task_times_task_id_fkey (
             id,
             title,
             status,
             customer_id,
-            customers:customer_id (
+            customers!tasks_customer_id_fkey (
               id,
               name
             )
           )
         `)
-        .is('ended_at', 'not.null')
-        .group('task_id, user_id, profiles.id, tasks.id, tasks.customer_id, customers.id');
+        .not('ended_at', 'is', null); // Fix: Use not() and is() with null
       
       // Apply user filter if selected
       if (selectedUserId) {
         query = query.eq('user_id', selectedUserId);
       }
       
-      // We'll filter by customer on the client side since it's nested in the tasks relation
-      const { data, error } = await query;
+      // Group by task_id and user_id
+      const { data, error } = await query
+        .groupBy('task_id, user_id, profiles.id, tasks.id, tasks.customer_id, customers.id');
 
       if (error) {
         toast({
@@ -127,9 +126,20 @@ const ProcessingTime = () => {
         throw error;
       }
       
-      // Filter by customer and search term on the client side
+      // Transform and filter data
       if (data) {
-        let filteredData = data;
+        const transformedData = data.map(item => ({
+          task_id: item.task_id,
+          user_id: item.user_id,
+          session_count: parseInt(item.count, 10),
+          total_seconds: parseInt(item.sum, 10) || 0,
+          total_hours: (parseInt(item.sum, 10) || 0) / 3600,
+          profiles: item.profiles,
+          tasks: item.tasks
+        }));
+        
+        // Filter by customer and search term on the client side
+        let filteredData = transformedData;
         
         // Filter by customer if selected
         if (selectedCustomerId) {
@@ -151,7 +161,7 @@ const ProcessingTime = () => {
         return filteredData;
       }
       
-      return data;
+      return [];
     },
     refetchInterval: refreshInterval
   });
