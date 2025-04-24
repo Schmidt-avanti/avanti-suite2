@@ -707,6 +707,33 @@ export type Database = {
           },
         ]
       }
+      user_reminders: {
+        Row: {
+          completed: boolean
+          created_at: string
+          id: string
+          remind_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          remind_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          remind_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_accounts: {
         Row: {
           api_key: string | null
