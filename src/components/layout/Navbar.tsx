@@ -43,7 +43,13 @@ const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatarUrl} alt={user.firstName || user.email} />
+                    {/* Conditionally render AvatarImage only if avatarUrl exists */}
+                    {user.avatarUrl && (
+                      <AvatarImage 
+                        src={user.avatarUrl} 
+                        alt={user.firstName || user.email} 
+                      />
+                    )}
                     <AvatarFallback className="bg-avanti-100 text-avanti-800 text-sm">
                       {user.firstName?.charAt(0) || user.email.charAt(0).toUpperCase()}
                     </AvatarFallback>
