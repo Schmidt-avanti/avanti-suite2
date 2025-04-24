@@ -42,7 +42,7 @@ interface FilterFormValues {
 const ProcessingTime = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [refreshInterval, setRefreshInterval] = useState(10000); // 10 seconds by default
+  const [refreshInterval, setRefreshInterval] = useState(5000); // Change to 5 seconds
   
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
