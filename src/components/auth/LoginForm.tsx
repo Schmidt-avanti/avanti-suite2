@@ -127,7 +127,7 @@ const LoginForm = () => {
           <p>Test-Zugangsdaten:</p>
           <ul className="list-disc list-inside mt-1 text-left">
             <li>E-Mail: aa.schmidt@ja-dialog.de</li>
-            <li>Passwort: Dein gewähltes Passwort</li>
+            <li>Passwort: Passwort</li>
           </ul>
         </div>
       </CardFooter>
