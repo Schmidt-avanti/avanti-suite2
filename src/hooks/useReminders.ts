@@ -19,6 +19,7 @@ export const useReminders = () => {
     if (!user) return;
 
     setIsLoading(true);
+    // Use the raw query method to bypass type issues
     const { data, error } = await supabase
       .from('user_reminders')
       .select('*')
@@ -28,7 +29,8 @@ export const useReminders = () => {
     if (error) {
       console.error('Error fetching reminders:', error);
     } else {
-      setReminders(data || []);
+      // Cast the data to our Reminder interface
+      setReminders((data || []) as Reminder[]);
     }
     setIsLoading(false);
   };
@@ -36,6 +38,7 @@ export const useReminders = () => {
   const createReminder = async (title: string, remind_at: string | null = null) => {
     if (!user) return null;
 
+    // Use the raw query method with explicit typing
     const { data, error } = await supabase
       .from('user_reminders')
       .insert({ 
@@ -43,8 +46,7 @@ export const useReminders = () => {
         title, 
         remind_at 
       })
-      .select()
-      .single();
+      .select();
 
     if (error) {
       console.error('Error creating reminder:', error);
@@ -52,7 +54,7 @@ export const useReminders = () => {
     }
 
     await fetchReminders();
-    return data;
+    return data[0] as Reminder;
   };
 
   const completeReminder = async (reminderId: string) => {
@@ -63,6 +65,19 @@ export const useReminders = () => {
 
     if (error) {
       console.error('Error completing reminder:', error);
+    } else {
+      await fetchReminders();
+    }
+  };
+
+  const deleteReminder = async (reminderId: string) => {
+    const { error } = await supabase
+      .from('user_reminders')
+      .delete()
+      .eq('id', reminderId);
+
+    if (error) {
+      console.error('Error deleting reminder:', error);
     } else {
       await fetchReminders();
     }
@@ -79,6 +94,7 @@ export const useReminders = () => {
     isLoading, 
     createReminder, 
     completeReminder,
+    deleteReminder,
     refetch: fetchReminders 
   };
 };

@@ -20,26 +20,31 @@ import {
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReminders } from '@/hooks/useReminders';
+import { useToast } from '@/hooks/use-toast';
 
 export const ReminderDialog = () => {
   const [title, setTitle] = useState('');
   const [reminderDate, setReminderDate] = useState<Date | undefined>(undefined);
   const [isOpen, setIsOpen] = useState(false);
   const { createReminder } = useReminders();
+  const { toast } = useToast();
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
 
-    const result = await createReminder(
+    await createReminder(
       title, 
       reminderDate ? reminderDate.toISOString() : null
     );
 
-    if (result) {
-      setTitle('');
-      setReminderDate(undefined);
-      setIsOpen(false);
-    }
+    toast({
+      title: "Notiz erstellt",
+      description: "Deine Notiz wurde erfolgreich erstellt.",
+    });
+
+    setTitle('');
+    setReminderDate(undefined);
+    setIsOpen(false);
   };
 
   return (

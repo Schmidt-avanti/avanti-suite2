@@ -6,11 +6,29 @@ import { Button } from '@/components/ui/button';
 import { Check, Trash2 } from 'lucide-react';
 import { useReminders } from '@/hooks/useReminders';
 import { ReminderDialog } from './ReminderDialog';
+import { useToast } from '@/hooks/use-toast';
 
 export const RemindersList = () => {
-  const { reminders, completeReminder, isLoading } = useReminders();
+  const { reminders, completeReminder, deleteReminder, isLoading } = useReminders();
+  const { toast } = useToast();
 
-  if (isLoading) return <div>Laden...</div>;
+  const handleComplete = async (id: string, title: string) => {
+    await completeReminder(id);
+    toast({
+      title: "Notiz erledigt",
+      description: `"${title}" wurde als erledigt markiert.`,
+    });
+  };
+
+  const handleDelete = async (id: string, title: string) => {
+    await deleteReminder(id);
+    toast({
+      title: "Notiz gelöscht",
+      description: `"${title}" wurde gelöscht.`,
+    });
+  };
+
+  if (isLoading) return <div className="flex justify-center py-4">Laden...</div>;
 
   return (
     <Card className="w-full">
@@ -42,13 +60,14 @@ export const RemindersList = () => {
                   <Button 
                     variant="outline" 
                     size="icon" 
-                    onClick={() => completeReminder(reminder.id)}
+                    onClick={() => handleComplete(reminder.id, reminder.title)}
                   >
                     <Check className="h-4 w-4" />
                   </Button>
                   <Button 
                     variant="destructive" 
                     size="icon"
+                    onClick={() => handleDelete(reminder.id, reminder.title)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
