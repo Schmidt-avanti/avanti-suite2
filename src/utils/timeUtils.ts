@@ -1,10 +1,10 @@
 
 /**
- * Formats time duration from seconds to a human-readable string format
+ * Formatiert eine Zeitdauer in Sekunden in ein menschenlesbares Format
  */
 export function formatDuration(seconds: number): string {
-  // Handle invalid or zero input
-  if (!seconds || typeof seconds !== 'number' || isNaN(seconds) || seconds <= 0) {
+  // Behandlung ungültiger oder Null-Eingaben
+  if (typeof seconds !== 'number' || isNaN(seconds) || seconds <= 0) {
     return '0m';
   }
   
@@ -13,6 +13,8 @@ export function formatDuration(seconds: number): string {
   
   if (hours === 0) {
     return `${minutes}m`;
+  } else if (minutes === 0) {
+    return `${hours}h`;
   }
   
   return `${hours}h ${minutes}m`;

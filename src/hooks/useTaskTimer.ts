@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface TaskTimerOptions {
   taskId: string;
@@ -21,6 +22,8 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (!user || isTracking) return;
 
     try {
+      console.log(`Starting time tracking for task ${taskId}`);
+      
       const { data, error } = await supabase
         .from('task_times')
         .insert({
@@ -33,6 +36,8 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
       if (error) throw error;
 
+      console.log(`Created task time entry: ${data.id}`);
+      
       // Store the entry ID for later updates
       taskTimeEntryRef.current = data.id;
       startTimeRef.current = Date.now();
@@ -47,6 +52,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       }, 1000);
     } catch (err) {
       console.error('Error starting task timer:', err);
+      toast.error('Fehler beim Starten der Zeitmessung');
     }
   };
 
@@ -55,19 +61,33 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (!isTracking || !taskTimeEntryRef.current) return;
 
     try {
+      console.log(`Stopping time tracking for task ${taskId}, entry ${taskTimeEntryRef.current}`);
+      
       // Clear interval
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
 
+      // Berechnete Dauer in Sekunden
+      const seconds = elapsedTime > 0 ? elapsedTime : 
+        (startTimeRef.current ? Math.floor((Date.now() - startTimeRef.current) / 1000) : 0);
+      
       // Update task time entry
-      await supabase
+      const { error } = await supabase
         .from('task_times')
         .update({
           ended_at: new Date().toISOString(),
-          duration_seconds: elapsedTime
+          duration_seconds: seconds
         })
         .eq('id', taskTimeEntryRef.current);
+      
+      if (error) {
+        console.error('Error updating task time entry:', error);
+        toast.error('Fehler beim Speichern der Bearbeitungszeit');
+      } else {
+        console.log(`Updated time entry with duration: ${seconds}s`);
+      }
 
       // Reset states
       setIsTracking(false);
@@ -76,6 +96,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       taskTimeEntryRef.current = null;
     } catch (err) {
       console.error('Error stopping task timer:', err);
+      toast.error('Fehler beim Stoppen der Zeitmessung');
     }
   };
 
@@ -100,7 +121,9 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      stopTracking();
+      if (isTracking) {
+        stopTracking();
+      }
     };
   }, [isActive, taskId]);
 

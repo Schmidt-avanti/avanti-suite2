@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { formatDuration } from '@/utils/timeUtils';
-import { toast } from 'sonner';
 
 interface ProcessingTimeStatsProps {
   taskTimeSummaries: Array<{
@@ -17,10 +16,10 @@ interface ProcessingTimeStatsProps {
 }
 
 export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTimeSummaries }) => {
-  // Debug logging
-  console.log('ProcessingTimeStats received:', taskTimeSummaries);
+  // Debug-Logging
+  console.log('ProcessingTimeStats empfangene Daten:', taskTimeSummaries);
   
-  // Ensure taskTimeSummaries is an array and has valid data
+  // Stelle sicher, dass taskTimeSummaries ein Array ist und gültige Daten enthält
   const validSummaries = Array.isArray(taskTimeSummaries) ? 
     taskTimeSummaries.filter(s => s && typeof s === 'object') : [];
   
@@ -37,25 +36,21 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
     return acc + sessions;
   }, 0);
 
-  console.log('Calculated stats:', { 
+  console.log('Berechnete Statistiken:', { 
     totalSummaries: validSummaries.length,
     totalProcessingTime, 
     averageTimePerTask, 
     totalSessions 
   });
 
-  // Check if we have meaningful data
-  const hasData = validSummaries.length > 0 && totalProcessingTime > 0;
+  // Überprüfen, ob wir aussagekräftige Daten haben
+  const hasData = validSummaries.length > 0;
+  const hasTimeData = totalProcessingTime > 0;
   
-  if (!hasData && taskTimeSummaries.length > 0) {
-    // We have task summaries but no time data
-    console.warn('Task time summaries found but no valid time data', taskTimeSummaries);
-  }
-
-  // Prepare data for time distribution chart
+  // Vorbereiten der Daten für das Zeitverteilungsdiagramm
   const timeDistribution = validSummaries.reduce((acc, curr) => {
     const seconds = curr.total_seconds || 0;
-    if (seconds <= 0) return acc; // Skip entries with no time
+    if (seconds <= 0) return acc; // Überspringe Einträge ohne Zeit
     
     const hours = seconds / 3600;
     let category = '< 1h';
@@ -120,7 +115,7 @@ export const ProcessingTimeStats: React.FC<ProcessingTimeStatsProps> = ({ taskTi
         </CardHeader>
         <CardContent>
           <div className="h-[200px] w-full">
-            {chartData.length > 0 ? (
+            {hasTimeData && chartData.length > 0 ? (
               <ChartContainer config={chartConfig}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>

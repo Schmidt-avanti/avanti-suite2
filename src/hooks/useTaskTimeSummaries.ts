@@ -13,10 +13,10 @@ export const useTaskTimeSummaries = (taskIds: string[]) => {
       console.log('Fetching time summaries for task IDs:', taskIds);
       
       try {
-        // Direct query to the task_times table to calculate summaries
+        // Direkte Abfrage der task_times Tabelle
         const { data: timeEntries, error: timeError } = await supabase
           .from('task_times')
-          .select('task_id, user_id, duration_seconds, started_at, ended_at')
+          .select('id, task_id, user_id, duration_seconds, started_at, ended_at')
           .in('task_id', taskIds);
           
         if (timeError) {
@@ -30,8 +30,11 @@ export const useTaskTimeSummaries = (taskIds: string[]) => {
           return [];
         }
         
-        // Process raw time entries to calculate summaries
+        // Verarbeite die Zeiteinträge und berechne die Zusammenfassungen
         const taskSummaries: Record<string, TaskTimeSummary> = {};
+        
+        // Aktuelles Datum für Vergleich mit aktiven Sitzungen
+        const now = new Date();
         
         timeEntries.forEach(entry => {
           if (!entry.task_id) return;
@@ -49,12 +52,29 @@ export const useTaskTimeSummaries = (taskIds: string[]) => {
           const summary = taskSummaries[entry.task_id];
           summary.session_count++;
           
-          // Calculate duration if not available
+          // Berechne die Dauer
           let duration = entry.duration_seconds;
-          if (!duration && entry.ended_at && entry.started_at) {
-            const start = new Date(entry.started_at).getTime();
-            const end = new Date(entry.ended_at).getTime();
-            duration = Math.round((end - start) / 1000);
+          
+          // Wenn keine Dauer verfügbar ist, aber Start- und Endzeit vorhanden sind
+          if (!duration && entry.started_at) {
+            const startTime = new Date(entry.started_at).getTime();
+            let endTime;
+            
+            if (entry.ended_at) {
+              endTime = new Date(entry.ended_at).getTime();
+            } else {
+              // Wenn keine Endzeit vorhanden ist, nutzen wir die aktuelle Zeit für laufende Sitzungen
+              // aber nur wenn die Startzeit nicht älter als 24 Stunden ist, um verwaiste Einträge zu vermeiden
+              const oneDay = 24 * 60 * 60 * 1000; // 24 Stunden in Millisekunden
+              if (now.getTime() - startTime <= oneDay) {
+                endTime = now.getTime();
+              } else {
+                // Setze ein festes Ende für verwaiste Sitzungen (30 Minuten nach Start)
+                endTime = startTime + (30 * 60 * 1000);
+              }
+            }
+            
+            duration = Math.round((endTime - startTime) / 1000);
           }
           
           if (duration && duration > 0) {

@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportFilters } from '@/components/reports/ReportFilters';
@@ -22,6 +23,7 @@ const Reports: React.FC = () => {
     kpiData 
   } = useReportData();
 
+  // Extrahiere und logge die Task-IDs aus den gefilterten Tasks für die Zeitberechnung
   const taskIds = tasks && Array.isArray(tasks) ? tasks.map(t => t.id) : [];
   
   console.log('Report tasks count:', tasks?.length);
@@ -37,12 +39,12 @@ const Reports: React.FC = () => {
   }, [error]);
   
   useEffect(() => {
-    console.log('Tasks or taskIds updated in Reports component:', { 
+    console.log('Tasks oder taskIds aktualisiert im Reports-Component:', { 
       taskCount: tasks?.length, 
       taskIdCount: taskIds.length 
     });
     
-    console.log('Time summaries in Reports:', taskTimeSummaries);
+    console.log('Zeitzusammenfassungen im Reports:', taskTimeSummaries);
   }, [tasks, taskIds, taskTimeSummaries]);
 
   if (isLoading || isLoadingTimes) {
