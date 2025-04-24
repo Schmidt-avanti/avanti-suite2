@@ -1,5 +1,7 @@
 
 import { utils, writeFile } from 'xlsx';
+import { DailyMinutesRecord } from '@/hooks/useInvoiceData';
+import { InvoiceCalculation } from '@/hooks/useInvoiceCalculation';
 
 export interface InvoiceData {
   customerName: string;
@@ -7,14 +9,8 @@ export interface InvoiceData {
   dateRange: string;
   contactPerson: string;
   billingAddress: string;
-  dailyRecords: Array<{ date: string; minutes: number }>;
-  summary: {
-    totalMinutes: number;
-    billableMinutes: number;
-    netAmount: number;
-    vat: number;
-    totalAmount: number;
-  };
+  dailyRecords: DailyMinutesRecord[];
+  summary: InvoiceCalculation;
 }
 
 export const exportInvoiceToExcel = (data: InvoiceData) => {

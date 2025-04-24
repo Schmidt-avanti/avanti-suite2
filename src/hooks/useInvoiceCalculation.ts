@@ -6,7 +6,7 @@ const PRICE_PER_MINUTE = 0.75;
 const FREE_MINUTES = 1000;
 const VAT_RATE = 0.19;
 
-interface InvoiceCalculation {
+export interface InvoiceCalculation {
   totalMinutes: number;
   billableMinutes: number;
   netAmount: number;
@@ -29,94 +29,35 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
       console.log('Adjusted date range:', fromDate.toISOString(), 'to', toDate.toISOString());
       
       try {
-        // Try first getting the summarized data from task_time_summary
-        const { data: summaryData, error: summaryError } = await supabase
-          .from('task_time_summary')
-          .select(`
-            total_seconds
-          `)
-          .eq('user_id', customerId);
-          
-        if (summaryError) {
-          console.error('Error getting summary data:', summaryError);
-          // Fall back to task_times
-        } else if (summaryData && summaryData.length > 0) {
-          console.log('Found summary data:', summaryData);
-          
-          // Calculate total seconds from all tasks matching this customer
-          const totalSeconds = summaryData.reduce((sum, entry) => {
-            return sum + (entry.total_seconds || 0);
-          }, 0);
-          
-          console.log('Total seconds from summary:', totalSeconds);
-          
-          const totalMinutes = Math.round(totalSeconds / 60);
-          const billableMinutes = Math.max(0, totalMinutes - FREE_MINUTES);
-          const netAmount = billableMinutes * PRICE_PER_MINUTE;
-          const vat = netAmount * VAT_RATE;
-          const totalAmount = netAmount + vat;
-
-          return {
-            totalMinutes,
-            billableMinutes,
-            netAmount,
-            vat,
-            totalAmount
-          } as InvoiceCalculation;
-        }
-      
-        // If we reach here, summary data failed or was empty, use task_times directly
-        const { data: timesData, error: timesError } = await supabase
+        // Direkt auf task_times zugreifen mit JOIN auf tasks um die Kundenfilterung zu ermöglichen
+        const { data: taskTimesData, error: taskTimesError } = await supabase
           .from('task_times')
           .select(`
             duration_seconds,
-            tasks!inner(customer_id)
+            tasks(
+              id,
+              customer_id
+            )
           `)
           .eq('tasks.customer_id', customerId)
           .gte('started_at', fromDate.toISOString())
           .lte('started_at', toDate.toISOString());
         
-        if (timesError) {
-          console.error('Error calculating from task_times:', timesError);
-          throw timesError;
+        if (taskTimesError) {
+          console.error('Error calculating from task_times:', taskTimesError);
+          throw taskTimesError;
         }
         
-        console.log('Times data found:', timesData?.length, 'records');
+        console.log('Times data found:', taskTimesData?.length, 'records');
         
         let totalSeconds = 0;
         
-        if (timesData && timesData.length > 0) {
-          totalSeconds = timesData.reduce((sum, entry) => sum + (entry.duration_seconds || 0), 0);
-        } else {
-          // Alternative Abfrage über Tasks, falls keine direkten Zeiteinträge gefunden wurden
-          const { data: taskData, error: taskError } = await supabase
-            .from('tasks')
-            .select(`
-              id, 
-              created_at,
-              task_times(duration_seconds, started_at)
-            `)
-            .eq('customer_id', customerId)
-            .gte('created_at', fromDate.toISOString())
-            .lte('created_at', toDate.toISOString());
-          
-          if (taskError) {
-            console.error('Error fetching tasks with times:', taskError);
-            throw taskError;
-          }
-          
-          console.log('Task data with times:', taskData?.length);
-          
-          // Alle Zeiteinträge sammeln und summieren
-          taskData?.forEach(task => {
-            if (task.task_times && task.task_times.length > 0) {
-              const taskSeconds = task.task_times.reduce((sum: number, timeEntry: any) => 
-                sum + (timeEntry.duration_seconds || 0), 0);
-              totalSeconds += taskSeconds;
-            }
-          });
+        if (taskTimesData && taskTimesData.length > 0) {
+          totalSeconds = taskTimesData.reduce((sum, entry) => {
+            return sum + (entry.duration_seconds || 0);
+          }, 0);
         }
-
+        
         console.log('Total seconds calculated:', totalSeconds);
         
         const totalMinutes = Math.round(totalSeconds / 60);

@@ -1,6 +1,6 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useInvoiceData } from "@/hooks/useInvoiceData";
+import { useInvoiceData, DailyMinutesRecord } from "@/hooks/useInvoiceData";
 import { format } from "date-fns";
 
 interface InvoiceTableProps {
@@ -35,7 +35,7 @@ export function InvoiceTable({ customerId, from, to }: InvoiceTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((row) => (
+          {data.map((row: DailyMinutesRecord) => (
             <TableRow key={row.date}>
               <TableCell>{format(new Date(row.date), "dd.MM.yyyy")}</TableCell>
               <TableCell className="text-right">{row.minutes} Min</TableCell>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCustomers } from '@/hooks/useCustomers';
@@ -8,10 +7,10 @@ import { InvoiceSummary } from './InvoiceSummary';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download } from 'lucide-react';
-import { exportInvoiceToExcel } from '@/utils/excelExport';
+import { exportInvoiceToExcel, InvoiceData } from '@/utils/excelExport';
 import { format } from 'date-fns';
-import { useInvoiceData } from '@/hooks/useInvoiceData';
-import { useInvoiceCalculation } from '@/hooks/useInvoiceCalculation';
+import { useInvoiceData, DailyMinutesRecord } from '@/hooks/useInvoiceData';
+import { useInvoiceCalculation, InvoiceCalculation } from '@/hooks/useInvoiceCalculation';
 import { toast } from 'sonner';
 
 const InvoicePage = () => {
@@ -66,14 +65,13 @@ const InvoicePage = () => {
     }
 
     try {
-      const exportData = {
+      const exportData: InvoiceData = {
         customerName: customer.name,
         costCenter: customer.cost_center || '',
         dateRange: `${format(dateRange.from, 'dd.MM.yyyy')} - ${format(dateRange.to, 'dd.MM.yyyy')}`,
         contactPerson: customer.contact_person || '',
         billingAddress: customer.billing_address || '',
-        // Ensure every record has a properly typed minutes value
-        dailyRecords: invoiceData.map(record => ({
+        dailyRecords: invoiceData.map((record: DailyMinutesRecord) => ({
           date: record.date,
           minutes: record.minutes
         })),
