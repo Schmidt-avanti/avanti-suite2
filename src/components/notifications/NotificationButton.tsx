@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,13 @@ export const NotificationButton: React.FC = () => {
     await markAllAsRead();
     setIsOpen(false);
   };
+
+  // Debug-Logging für Benachrichtigungen
+  useEffect(() => {
+    if (unreadCount > 0) {
+      console.log(`Ungelesene Benachrichtigungen: ${unreadCount}`);
+    }
+  }, [unreadCount]);
 
   if (!user) return null;
 

@@ -150,6 +150,7 @@ export type Database = {
       }
       inbound_emails: {
         Row: {
+          attachment: Json | null
           attachments: Json | null
           body_html: string | null
           body_text: string | null
@@ -164,6 +165,7 @@ export type Database = {
           to_emails: string[]
         }
         Insert: {
+          attachment?: Json | null
           attachments?: Json | null
           body_html?: string | null
           body_text?: string | null
@@ -178,6 +180,7 @@ export type Database = {
           to_emails: string[]
         }
         Update: {
+          attachment?: Json | null
           attachments?: Json | null
           body_html?: string | null
           body_text?: string | null

@@ -1,67 +1,97 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Notification } from '@/types';
+import { toast } from "@/hooks/use-toast";
 
 export const useNotifications = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
+    try {
+      console.log('Fetching notifications for user:', user.id);
+      
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-    if (error) {
-      console.error('Error fetching notifications:', error);
-      return;
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return;
+      }
+
+      console.log('Fetched notifications:', data?.length || 0);
+      setNotifications(data || []);
+      setUnreadCount(data?.filter(n => !n.read_at).length || 0);
+    } catch (err) {
+      console.error('Exception when fetching notifications:', err);
     }
-
-    setNotifications(data);
-    setUnreadCount(data.filter(n => !n.read_at).length);
-  };
+  }, [user]);
 
   const markAsRead = async (notificationId: string) => {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('id', notificationId);
+    if (!user) return;
 
-    if (error) {
-      console.error('Error marking notification as read:', error);
-      return;
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('id', notificationId);
+
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        return;
+      }
+
+      await fetchNotifications();
+    } catch (err) {
+      console.error('Exception when marking notification as read:', err);
     }
-
-    await fetchNotifications();
   };
 
   const markAllAsRead = async () => {
     if (!user || notifications.length === 0) return;
 
-    const unreadIds = notifications
-      .filter(n => !n.read_at)
-      .map(n => n.id);
+    try {
+      const unreadIds = notifications
+        .filter(n => !n.read_at)
+        .map(n => n.id);
 
-    if (unreadIds.length === 0) return;
+      if (unreadIds.length === 0) return;
 
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read_at: new Date().toISOString() })
-      .in('id', unreadIds);
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .in('id', unreadIds);
 
-    if (error) {
-      console.error('Error marking all notifications as read:', error);
-      return;
+      if (error) {
+        console.error('Error marking all notifications as read:', error);
+        toast({
+          title: "Fehler",
+          description: "Benachrichtigungen konnten nicht als gelesen markiert werden.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      await fetchNotifications();
+      
+      if (unreadIds.length > 0) {
+        toast({
+          title: "Erfolg",
+          description: `${unreadIds.length} Benachrichtigung(en) als gelesen markiert.`,
+        });
+      }
+    } catch (err) {
+      console.error('Exception when marking all notifications as read:', err);
     }
-
-    await fetchNotifications();
   };
 
   useEffect(() => {
@@ -78,7 +108,10 @@ export const useNotifications = () => {
             table: 'notifications',
             filter: `user_id=eq.${user.id}`
           },
-          () => fetchNotifications()
+          (payload) => {
+            console.log('Notification change detected:', payload);
+            fetchNotifications();
+          }
         )
         .subscribe();
 
@@ -86,7 +119,7 @@ export const useNotifications = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [user]);
+  }, [user, fetchNotifications]);
 
   return {
     notifications,
