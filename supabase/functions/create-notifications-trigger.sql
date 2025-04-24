@@ -1,4 +1,3 @@
-
 -- Diese SQL-Datei erstellt den Trigger für Benachrichtigungen bei neuen E-Mail-Aufgaben
 
 -- Zunächst löschen wir den Trigger, falls er bereits existiert
@@ -21,14 +20,14 @@ BEGIN
     -- Benachrichtigungen für Benutzer basierend auf Rollen und Zuweisungen erstellen
     -- Zuerst für Administratoren
     INSERT INTO notifications (user_id, message, task_id)
-    SELECT p.id, 'Neue Aufgabe via E-Mail von ' || COALESCE(customer_name, 'unbekannt') || ' eingegangen.', NEW.id
+    SELECT p.id, 'Neue Aufgabe "' || NEW.title || '" via E-Mail von ' || COALESCE(customer_name, 'unbekannt') || ' eingegangen.', NEW.id
     FROM profiles p
     WHERE p.role = 'admin'
     AND p.is_active = true;
     
     -- Dann für Agenten, die diesem Kunden zugewiesen sind
     INSERT INTO notifications (user_id, message, task_id)
-    SELECT uca.user_id, 'Neue Aufgabe via E-Mail von ' || COALESCE(customer_name, 'unbekannt') || ' eingegangen.', NEW.id
+    SELECT uca.user_id, 'Neue Aufgabe "' || NEW.title || '" via E-Mail von ' || COALESCE(customer_name, 'unbekannt') || ' eingegangen.', NEW.id
     FROM user_customer_assignments uca
     JOIN profiles p ON uca.user_id = p.id
     WHERE uca.customer_id = NEW.customer_id
