@@ -72,7 +72,11 @@ const InvoicePage = () => {
         dateRange: `${format(dateRange.from, 'dd.MM.yyyy')} - ${format(dateRange.to, 'dd.MM.yyyy')}`,
         contactPerson: customer.contact_person || '',
         billingAddress: customer.billing_address || '',
-        dailyRecords: invoiceData,
+        // Ensure every record has a properly typed minutes value
+        dailyRecords: invoiceData.map(record => ({
+          date: record.date,
+          minutes: record.minutes
+        })),
         summary: calculations
       };
 
