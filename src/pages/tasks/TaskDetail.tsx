@@ -19,6 +19,11 @@ import { useTaskTimer } from '@/hooks/useTaskTimer';
 import { useTaskActivity } from '@/hooks/useTaskActivity';
 import type { TaskStatus } from '@/types';
 
+const extractEmail = (input: string): string | null => {
+  const match = input?.match(/<(.+?)>/);
+  return match ? match[1] : input?.includes('@') ? input : null;
+};
+
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [task, setTask] = useState<any>(null);
@@ -66,7 +71,9 @@ const TaskDetail = () => {
       };
 
       setTask(enrichedTask);
-      setReplyTo(taskData.from_email || '');
+      if (taskData.source === 'email') {
+        setReplyTo(extractEmail(taskData.endkunde_email || taskData.from_email || '') || '');
+      }
 
     } catch (error: any) {
       toast({
@@ -187,11 +194,11 @@ const TaskDetail = () => {
                   <User2 className="h-4 w-4" />
                   <span className="font-medium">Erstellt von</span>
                 </div>
-              <div className="ml-6 break-words">
-  {task.source === 'email' && task.endkunde_email
-    ? task.endkunde_email
-    : task.creator?.["Full Name"] || <span className="text-gray-400">Unbekannt</span>}
-</div>
+                <div className="ml-6 break-words">
+                  {task.source === 'email' && task.endkunde_email
+                    ? task.endkunde_email
+                    : task.creator?.["Full Name"] || <span className="text-gray-400">Unbekannt</span>}
+                </div>
 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
                   <UserCheck className="h-4 w-4" />
