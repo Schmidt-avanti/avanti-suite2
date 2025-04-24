@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,83 +6,61 @@ import { Check, Trash2 } from 'lucide-react';
 import { useReminders } from '@/hooks/useReminders';
 import { ReminderDialog } from './ReminderDialog';
 import { useToast } from '@/hooks/use-toast';
-
 export const RemindersList = () => {
-  const { reminders, completeReminder, deleteReminder, isLoading } = useReminders();
-  const { toast } = useToast();
-
+  const {
+    reminders,
+    completeReminder,
+    deleteReminder,
+    isLoading
+  } = useReminders();
+  const {
+    toast
+  } = useToast();
   const handleComplete = async (id: string, title: string) => {
     await completeReminder(id);
     toast({
       title: "Notiz erledigt",
-      description: `"${title}" wurde als erledigt markiert.`,
+      description: `"${title}" wurde als erledigt markiert.`
     });
   };
-
   const handleDelete = async (id: string, title: string) => {
     await deleteReminder(id);
     toast({
       title: "Notiz gelöscht",
-      description: `"${title}" wurde gelöscht.`,
+      description: `"${title}" wurde gelöscht.`
     });
   };
-
   if (isLoading) return <div className="flex justify-center py-4">Laden...</div>;
-
-  return (
-    <Card className="w-full bg-avanti-50/30">
+  return <Card className="w-full bg-avanti-50/30">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">Meine Notizen</CardTitle>
+        <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">PERSÖNLICHE NOTIZEN &amp; Erinnerungen</CardTitle>
       </CardHeader>
       <CardContent>
-        {reminders.length === 0 ? (
-          <p className="text-center text-avanti-600 py-4">
+        {reminders.length === 0 ? <p className="text-center text-avanti-600 py-4">
             Keine Notizen vorhanden
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {reminders.map((reminder) => (
-              <div 
-                key={reminder.id} 
-                className="flex flex-col bg-white p-3 rounded-lg hover:bg-avanti-50 shadow-sm"
-              >
+          </p> : <div className="space-y-4">
+            {reminders.map(reminder => <div key={reminder.id} className="flex flex-col bg-white p-3 rounded-lg hover:bg-avanti-50 shadow-sm">
                 <div className="flex justify-between items-start">
                   <div>
                     <div className="text-sm text-avanti-900">{reminder.title}</div>
-                    {reminder.remind_at && (
-                      <div className="text-xs text-avanti-600 mt-1">
+                    {reminder.remind_at && <div className="text-xs text-avanti-600 mt-1">
                         {format(new Date(reminder.remind_at), 'dd.MM.yyyy HH:mm')}
-                      </div>
-                    )}
+                      </div>}
                   </div>
                   <div className="flex items-center space-x-2 ml-4">
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center"
-                      onClick={() => handleComplete(reminder.id, reminder.title)}
-                    >
+                    <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center" onClick={() => handleComplete(reminder.id, reminder.title)}>
                       <Check className="h-5 w-5 text-gray-600 hover:text-gray-800" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center"
-                      onClick={() => handleDelete(reminder.id, reminder.title)}
-                    >
+                    <Button variant="ghost" size="icon" className="h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center" onClick={() => handleDelete(reminder.id, reminder.title)}>
                       <Trash2 className="h-5 w-5 text-gray-600 hover:text-gray-800" />
                     </Button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              </div>)}
+          </div>}
         <div className="mt-4 flex justify-end">
           <ReminderDialog />
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
-
