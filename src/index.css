@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -34,10 +35,10 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 214 94% 13%;
+    --sidebar-background: 215 94% 48%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 214 94% 13%;
+    --sidebar-primary-foreground: 215 94% 48%;
     --sidebar-accent: 217.2 91.2% 59.8%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 214.3 31.8% 91.4%;
