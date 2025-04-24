@@ -24,8 +24,8 @@ export const useNotifications = () => {
       return;
     }
 
-    setNotifications(data || []);
-    setUnreadCount(data?.filter(n => !n.read_at).length || 0);
+    setNotifications(data);
+    setUnreadCount(data.filter(n => !n.read_at).length);
   };
 
   const markAsRead = async (notificationId: string) => {
@@ -73,7 +73,7 @@ export const useNotifications = () => {
         .channel('notifications-changes')
         .on('postgres_changes', 
           {
-            event: 'INSERT',
+            event: '*',
             schema: 'public',
             table: 'notifications',
             filter: `user_id=eq.${user.id}`
