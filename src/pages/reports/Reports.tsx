@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportFilters } from '@/components/reports/ReportFilters';
@@ -110,11 +109,11 @@ const Reports: React.FC = () => {
         />
       </div>
       
-      <div className="overflow-x-auto">
+      <div className="w-full overflow-hidden">
         <ProcessingTimeStats taskTimeSummaries={taskTimeSummaries || []} />
       </div>
       
-      <div className="overflow-hidden">
+      <div className="w-full overflow-hidden">
         <ReportCharts 
           weekdayDistribution={weekdayDistribution}
           tasksByWeek={tasksByWeek}
