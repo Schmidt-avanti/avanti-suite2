@@ -225,7 +225,7 @@ const TaskDetail = () => {
 
 
                 
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
   <User2 className="h-4 w-4" />
   <span className="font-medium">Erstellt von</span>
 </div>
@@ -234,6 +234,7 @@ const TaskDetail = () => {
     || (task.source === 'email' && task.from_email)
     || <span className="text-gray-400">Unbekannt</span>}
 </div>
+
 
 
 
