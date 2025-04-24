@@ -64,7 +64,7 @@ const ProcessingTime = () => {
   // Get customers for filter
   const { customers, isLoading: isLoadingCustomers } = useCustomers();
 
-  // Get all users for filter
+  // Get all users for filter - Fix the query by removing 'email' which doesn't exist
   const { data: users, isLoading: isLoadingUsers } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
@@ -113,7 +113,7 @@ const ProcessingTime = () => {
         // Now get the profile data separately
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, "Full Name", email');
+          .select('id, "Full Name"'); // Remove 'email' from here as it doesn't exist
           
         if (profilesError) {
           toast({
