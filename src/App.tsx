@@ -41,6 +41,7 @@ import ClientDashboard from "@/pages/customer/Dashboard";
 import CreateTask from "@/pages/tasks/CreateTask";
 import Tasks from '@/pages/tasks/Tasks';
 import TaskDetail from "./pages/tasks/TaskDetail";
+import CompletedTasks from './pages/tasks/CompletedTasks'; // Neu hinzugefügt
 
 // Report Pages
 import Reports from "@/pages/reports/Reports";
