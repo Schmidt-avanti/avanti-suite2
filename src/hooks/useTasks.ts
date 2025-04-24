@@ -51,7 +51,7 @@ const transformCustomer = (customerData: any) => {
 };
 
 // Main hook for fetching and transforming tasks
-export const useTasks = (statusFilter: string | null, includeAll: boolean = false) => {
+export const useTasks = (statusFilter: string | null = null, includeAll: boolean = false) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
