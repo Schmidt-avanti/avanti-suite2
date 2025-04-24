@@ -295,7 +295,7 @@ const TaskDetail = () => {
         </li>
       ))}
     </ul>
-  </div>
+  </div>>
       <div className="mt-6">
   <h3 className="text-sm font-semibold text-muted-foreground mb-1">E-Mail Antwort</h3>
   <textarea
