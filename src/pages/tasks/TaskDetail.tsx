@@ -87,29 +87,45 @@ const TaskDetail = () => {
   };
 
   const handleSendEmail = async () => {
-    if (!replyBody) {
-      toast({
-        variant: 'destructive',
-        title: 'Fehler',
-        description: 'Bitte Nachricht angeben.'
-      });
-      return;
+  if (!replyBody) {
+    toast({
+      variant: 'destructive',
+      title: 'Fehler',
+      description: 'Bitte Nachricht angeben.'
+    });
+    return;
+  }
+
+  try {
+    const response = await fetch('/functions/send-reply-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        task_id: task.id,
+        subject: `Re: ${task.subject || 'Ihre Anfrage'}`,
+        body: replyBody
+      })
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      const errorData = text ? JSON.parse(text) : {};
+      throw new Error(errorData.error || 'Fehler beim E-Mail Versand');
     }
 
-    try {
-      const response = await fetch('/functions/send-reply-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          task_id: task.id,
-          subject: `Re: ${task.subject || 'Ihre Anfrage'}`,
-          body: replyBody
-        })
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        const errorData = text ? JSON.parse(text) : {};
+    toast({
+      title: 'E-Mail gesendet',
+      description: `Antwort an ${replyTo} wurde gesendet.`,
+    });
+    setReplyBody('');
+  } catch (error: any) {
+    toast({
+      variant: 'destructive',
+      title: 'Fehler beim Senden',
+      description: error.message,
+    });
+  }
+};
         throw new Error(errorData.error || 'Fehler beim E-Mail Versand');
       }
 
