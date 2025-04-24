@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -82,86 +81,107 @@ const ProcessingTime = () => {
   const { data: taskTimeSummaries, isLoading, refetch } = useQuery({
     queryKey: ['taskTimeSummaries', selectedUserId, selectedCustomerId, searchTerm],
     queryFn: async () => {
-      // Creating a manual query to properly get task time summaries
-      let query = supabase
-        .from('task_times')
-        .select(`
-          task_id,
-          user_id,
-          count(*),
-          sum(duration_seconds),
-          profiles!task_times_user_id_fkey (
-            id,
-            "Full Name",
-            email
-          ),
-          tasks!task_times_task_id_fkey (
-            id,
-            title,
-            status,
-            customer_id,
-            customers!tasks_customer_id_fkey (
+      try {
+        // Creating a query to properly get task time summaries
+        let query = supabase
+          .from('task_times')
+          .select(`
+            task_id,
+            user_id,
+            duration_seconds,
+            profiles!task_times_user_id_fkey (
               id,
-              name
+              "Full Name",
+              email
+            ),
+            tasks!task_times_task_id_fkey (
+              id,
+              title,
+              status,
+              customer_id,
+              customers!tasks_customer_id_fkey (
+                id,
+                name
+              )
             )
-          )
-        `)
-        .not('ended_at', 'is', null); // Fix: Use not() and is() with null
-      
-      // Apply user filter if selected
-      if (selectedUserId) {
-        query = query.eq('user_id', selectedUserId);
-      }
-      
-      // Group by task_id and user_id
-      const { data, error } = await query
-        .groupBy('task_id, user_id, profiles.id, tasks.id, tasks.customer_id, customers.id');
+          `)
+          .not('ended_at', 'is', null); // Filter only completed task times
+        
+        // Apply user filter if selected
+        if (selectedUserId) {
+          query = query.eq('user_id', selectedUserId);
+        }
 
-      if (error) {
+        const { data: taskTimeData, error } = await query;
+
+        if (error) {
+          toast({
+            variant: "destructive",
+            title: "Fehler beim Laden der Daten",
+            description: error.message
+          });
+          throw error;
+        }
+        
+        // Process data to create summaries by grouping in JavaScript
+        if (taskTimeData && taskTimeData.length > 0) {
+          // Create a map to group task times by task_id and user_id
+          const summaryMap = new Map();
+          
+          taskTimeData.forEach(item => {
+            const key = `${item.task_id}-${item.user_id}`;
+            
+            if (!summaryMap.has(key)) {
+              summaryMap.set(key, {
+                task_id: item.task_id,
+                user_id: item.user_id,
+                session_count: 1,
+                total_seconds: item.duration_seconds || 0,
+                total_hours: (item.duration_seconds || 0) / 3600,
+                profiles: item.profiles,
+                tasks: item.tasks
+              });
+            } else {
+              const existing = summaryMap.get(key);
+              existing.session_count += 1;
+              existing.total_seconds += (item.duration_seconds || 0);
+              existing.total_hours = existing.total_seconds / 3600;
+            }
+          });
+          
+          // Convert map to array
+          let summaries = Array.from(summaryMap.values());
+          
+          // Filter by customer if selected
+          if (selectedCustomerId) {
+            summaries = summaries.filter(
+              summary => summary.tasks?.customers?.id === selectedCustomerId
+            );
+          }
+          
+          // Filter by search term if provided (case insensitive)
+          if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            summaries = summaries.filter(summary => 
+              summary.tasks?.title.toLowerCase().includes(term) || 
+              summary.profiles?.["Full Name"]?.toLowerCase().includes(term) ||
+              summary.tasks?.customers?.name.toLowerCase().includes(term)
+            );
+          }
+          
+          return summaries;
+        }
+        
+        return [];
+      } catch (error) {
+        console.error("Error fetching task time summaries:", error);
         toast({
           variant: "destructive",
-          title: "Fehler beim Laden der Daten",
-          description: error.message
+          title: "Datenfehler",
+          description: "Die Bearbeitungszeiten konnten nicht geladen werden."
         });
-        throw error;
+        return [];
       }
-      
-      // Transform and filter data
-      if (data) {
-        const transformedData = data.map(item => ({
-          task_id: item.task_id,
-          user_id: item.user_id,
-          session_count: parseInt(item.count, 10),
-          total_seconds: parseInt(item.sum, 10) || 0,
-          total_hours: (parseInt(item.sum, 10) || 0) / 3600,
-          profiles: item.profiles,
-          tasks: item.tasks
-        }));
-        
-        // Filter by customer and search term on the client side
-        let filteredData = transformedData;
-        
-        // Filter by customer if selected
-        if (selectedCustomerId) {
-          filteredData = filteredData.filter(
-            summary => summary.tasks?.customers?.id === selectedCustomerId
-          );
-        }
-        
-        // Filter by search term if provided (case insensitive)
-        if (searchTerm) {
-          const term = searchTerm.toLowerCase();
-          filteredData = filteredData.filter(summary => 
-            summary.tasks?.title.toLowerCase().includes(term) || 
-            summary.profiles?.["Full Name"]?.toLowerCase().includes(term) ||
-            summary.tasks?.customers?.name.toLowerCase().includes(term)
-          );
-        }
-        
-        return filteredData;
-      }
-      
-      return [];
     },
     refetchInterval: refreshInterval
   });
