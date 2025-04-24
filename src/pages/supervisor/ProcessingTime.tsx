@@ -78,65 +78,98 @@ const ProcessingTime = () => {
     }
   });
   
-  // Modified query to support filtering and fix the relationship issue
+  // Modified query to correctly handle the task time data
   const { data: taskTimeSummaries, isLoading, refetch } = useQuery({
     queryKey: ['taskTimeSummaries', selectedUserId, selectedCustomerId, searchTerm],
     queryFn: async () => {
       try {
-        // Creating a query to properly get task time data
-        let query = supabase
-          .from('task_times')
+        // Create a simpler query first to get task_times
+        let query = supabase.from('task_times')
           .select(`
-            id,
-            task_id,
-            user_id,
-            duration_seconds,
-            ended_at,
-            profiles!task_times_user_id_fkey (
-              id,
-              "Full Name",
-              email
-            ),
-            tasks!task_times_task_id_fkey (
-              id,
-              title,
-              status,
-              customer_id,
-              customers!tasks_customer_id_fkey (
-                id,
-                name
-              )
-            )
-          `);
-        
-        // Only fetch completed task times
-        query = query.not('ended_at', 'is', null);
+            id, 
+            task_id, 
+            user_id, 
+            duration_seconds, 
+            ended_at
+          `)
+          .not('ended_at', 'is', null); // Only fetch completed task times
         
         // Apply user filter if selected
         if (selectedUserId) {
           query = query.eq('user_id', selectedUserId);
         }
 
-        const { data: taskTimeData, error } = await query;
-
-        if (error) {
+        const { data: taskTimeData, error: taskTimeError } = await query;
+        
+        if (taskTimeError) {
           toast({
             variant: "destructive",
-            title: "Fehler beim Laden der Daten",
-            description: error.message
+            title: "Fehler beim Laden der Zeitdaten",
+            description: taskTimeError.message
           });
-          throw error;
+          throw taskTimeError;
         }
         
-        // Process data to create summaries by grouping in JavaScript
+        // Now get the profile data separately
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, "Full Name", email');
+          
+        if (profilesError) {
+          toast({
+            variant: "destructive",
+            title: "Fehler beim Laden der Nutzerprofile",
+            description: profilesError.message
+          });
+          throw profilesError;
+        }
+        
+        // Get tasks separately as well
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select(`
+            id,
+            title,
+            status,
+            customer_id,
+            customers (
+              id,
+              name
+            )
+          `);
+          
+        if (tasksError) {
+          toast({
+            variant: "destructive",
+            title: "Fehler beim Laden der Aufgaben",
+            description: tasksError.message
+          });
+          throw tasksError;
+        }
+        
+        // Create lookup maps for faster access
+        const profilesMap = new Map();
+        profilesData?.forEach(profile => {
+          profilesMap.set(profile.id, profile);
+        });
+        
+        const tasksMap = new Map();
+        tasksData?.forEach(task => {
+          tasksMap.set(task.id, task);
+        });
+        
+        // Process and combine data
         if (taskTimeData && taskTimeData.length > 0) {
           // Create a map to group task times by task_id and user_id
           const summaryMap = new Map();
           
           taskTimeData.forEach(item => {
-            if (!item.tasks || !item.profiles) return; // Skip items with missing relationships
-            
             const key = `${item.task_id}-${item.user_id}`;
+            const taskData = tasksMap.get(item.task_id);
+            const profileData = profilesMap.get(item.user_id);
+            
+            // Skip if we can't find the related data
+            if (!taskData || !profileData) return;
             
             if (!summaryMap.has(key)) {
               summaryMap.set(key, {
@@ -145,8 +178,8 @@ const ProcessingTime = () => {
                 session_count: 1,
                 total_seconds: item.duration_seconds || 0,
                 total_hours: (item.duration_seconds || 0) / 3600,
-                profiles: item.profiles,
-                tasks: item.tasks
+                profiles: profileData,
+                tasks: taskData
               });
             } else {
               const existing = summaryMap.get(key);
@@ -172,7 +205,7 @@ const ProcessingTime = () => {
             summaries = summaries.filter(summary => 
               summary.tasks?.title.toLowerCase().includes(term) || 
               summary.profiles?.["Full Name"]?.toLowerCase().includes(term) ||
-              summary.tasks?.customers?.name.toLowerCase().includes(term)
+              summary.tasks?.customers?.name?.toLowerCase().includes(term)
             );
           }
           
