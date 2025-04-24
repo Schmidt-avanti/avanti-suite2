@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCustomers } from '@/hooks/useCustomers';
@@ -14,28 +13,34 @@ import { useInvoiceData, DailyMinutesRecord } from '@/hooks/useInvoiceData';
 import { useInvoiceCalculation, InvoiceCalculation } from '@/hooks/useInvoiceCalculation';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-
 const InvoicePage = () => {
-  const { customers, isLoading: customersLoading } = useCustomers();
+  const {
+    customers,
+    isLoading: customersLoading
+  } = useCustomers();
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // Erster Tag des aktuellen Monats
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    // Erster Tag des aktuellen Monats
     to: new Date()
   });
 
   // Daten für die Rechnung holen, aber nur wenn ein Kunde ausgewählt ist und beide Datumswerte gesetzt sind
-  const { data: invoiceData, isLoading: isInvoiceDataLoading, error: invoiceDataError } = useInvoiceData(
-    selectedCustomer, 
-    dateRange.from as Date, 
-    dateRange.to as Date
-  );
+  const {
+    data: invoiceData,
+    isLoading: isInvoiceDataLoading,
+    error: invoiceDataError
+  } = useInvoiceData(selectedCustomer, dateRange.from as Date, dateRange.to as Date);
 
   // Berechnungen für die Rechnung
-  const { data: calculations, isLoading: isCalculationsLoading, error: calculationsError } = useInvoiceCalculation(
-    selectedCustomer, 
-    dateRange.from as Date, 
-    dateRange.to as Date
-  );
+  const {
+    data: calculations,
+    isLoading: isCalculationsLoading,
+    error: calculationsError
+  } = useInvoiceCalculation(selectedCustomer, dateRange.from as Date, dateRange.to as Date);
 
   // Debug-Funktion um zu überprüfen, ob es überhaupt Daten für diesen Kunden gibt
   useEffect(() => {
@@ -45,47 +50,41 @@ const InvoicePage = () => {
           const fromDate = new Date(dateRange.from as Date);
           const toDate = new Date(dateRange.to as Date);
           toDate.setHours(23, 59, 59, 999);
-          
+
           // Direkter Check in der Datenbank, ob es task_times für die Aufgaben dieses Kunden gibt
-          const { data, error } = await supabase
-            .from('task_times')
-            .select('id, duration_seconds, started_at')
-            .order('started_at', { ascending: false })
-            .limit(5);
-          
+          const {
+            data,
+            error
+          } = await supabase.from('task_times').select('id, duration_seconds, started_at').order('started_at', {
+            ascending: false
+          }).limit(5);
           console.log('Raw task_times check (5 newest entries):', data);
-          
           if (error) {
             console.error('Error checking task_times:', error);
           }
-          
+
           // Check für Kundenaufgaben
-          const { data: taskData, error: taskError } = await supabase
-            .from('tasks')
-            .select('id, title, customer_id')
-            .eq('customer_id', selectedCustomer)
-            .order('created_at', { ascending: false })
-            .limit(5);
-          
+          const {
+            data: taskData,
+            error: taskError
+          } = await supabase.from('tasks').select('id, title, customer_id').eq('customer_id', selectedCustomer).order('created_at', {
+            ascending: false
+          }).limit(5);
           console.log('Customer tasks check (5 newest entries):', taskData);
-          
           if (taskError) {
             console.error('Error checking tasks:', taskError);
           }
-          
+
           // Wenn taskData vorhanden ist, prüfe, ob es Zeiteinträge für diese Aufgaben gibt
           if (taskData && taskData.length > 0) {
             const taskIds = taskData.map((task: any) => task.id);
-            
-            const { data: timeEntries, error: timeError } = await supabase
-              .from('task_times')
-              .select('*')
-              .in('task_id', taskIds)
-              .order('started_at', { ascending: false })
-              .limit(5);
-            
+            const {
+              data: timeEntries,
+              error: timeError
+            } = await supabase.from('task_times').select('*').in('task_id', taskIds).order('started_at', {
+              ascending: false
+            }).limit(5);
             console.log('Time entries for selected customer tasks:', timeEntries);
-            
             if (timeError) {
               console.error('Error checking time entries for tasks:', timeError);
             } else if (!timeEntries || timeEntries.length === 0) {
@@ -98,7 +97,6 @@ const InvoicePage = () => {
           console.error('Debug check failed:', e);
         }
       };
-      
       checkForData();
     }
   }, [selectedCustomer, dateRange.from, dateRange.to]);
@@ -114,24 +112,20 @@ const InvoicePage = () => {
       toast.error('Fehler bei der Rechnungsberechnung.');
     }
   }, [invoiceDataError, calculationsError]);
-
   const handleExport = () => {
     if (!selectedCustomer || !dateRange.from || !dateRange.to) {
       toast.error("Bitte wählen Sie einen Kunden und einen Datumsbereich aus.");
       return;
     }
-    
     const customer = customers.find(c => c.id === selectedCustomer);
     if (!customer) {
       toast.error("Kunde konnte nicht gefunden werden.");
       return;
     }
-
     if (!invoiceData || !calculations) {
       toast.error("Die Rechnungsdaten konnten nicht geladen werden.");
       return;
     }
-
     try {
       const exportData: InvoiceData = {
         customerName: customer.name,
@@ -145,7 +139,6 @@ const InvoicePage = () => {
         })),
         summary: calculations
       };
-
       exportInvoiceToExcel(exportData);
       toast.success("Rechnung wurde erfolgreich exportiert.");
     } catch (error) {
@@ -153,15 +146,12 @@ const InvoicePage = () => {
       toast.error("Beim Exportieren der Rechnung ist ein Fehler aufgetreten.");
     }
   };
-
   const isLoading = customersLoading || isInvoiceDataLoading || isCalculationsLoading;
   const hasError = !!invoiceDataError || !!calculationsError;
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>📄 Rechnungserstellung</CardTitle>
+          <CardTitle>Rechnungserstellung</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -172,46 +162,43 @@ const InvoicePage = () => {
                   <SelectValue placeholder="Kunden auswählen" />
                 </SelectTrigger>
                 <SelectContent>
-                  {customers
-                    .filter(customer => customer.isActive)
-                    .map(customer => (
-                      <SelectItem key={customer.id} value={customer.id}>
+                  {customers.filter(customer => customer.isActive).map(customer => <SelectItem key={customer.id} value={customer.id}>
                         {customer.name}
-                      </SelectItem>
-                    ))}
+                      </SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
               <label className="text-sm font-medium mb-2 block">Von</label>
-              <DatePicker date={dateRange.from} onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))} />
+              <DatePicker date={dateRange.from} onSelect={date => setDateRange(prev => ({
+              ...prev,
+              from: date
+            }))} />
             </div>
 
             <div>
               <label className="text-sm font-medium mb-2 block">Bis</label>
-              <DatePicker date={dateRange.to} onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))} />
+              <DatePicker date={dateRange.to} onSelect={date => setDateRange(prev => ({
+              ...prev,
+              to: date
+            }))} />
             </div>
           </div>
 
-          {isLoading && (
-            <div className="py-8 text-center">
+          {isLoading && <div className="py-8 text-center">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
                 <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
               </div>
               <p className="mt-2 text-muted-foreground">Lade Rechnungsdaten...</p>
-            </div>
-          )}
+            </div>}
 
-          {hasError && !isLoading && (
-            <div className="py-8 text-center text-red-500">
+          {hasError && !isLoading && <div className="py-8 text-center text-red-500">
               <p>Bei der Verarbeitung der Rechnungsdaten ist ein Fehler aufgetreten.</p>
               <p className="text-sm mt-2">Bitte versuchen Sie es erneut oder kontaktieren Sie den Support.</p>
-            </div>
-          )}
+            </div>}
 
-          {!isLoading && !hasError && selectedCustomer && dateRange.from && dateRange.to && (
-            <>
+          {!isLoading && !hasError && selectedCustomer && dateRange.from && dateRange.to && <>
               <InvoiceTable customerId={selectedCustomer} from={dateRange.from} to={dateRange.to} />
               <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-start">
                 <InvoiceSummary customerId={selectedCustomer} from={dateRange.from} to={dateRange.to} />
@@ -220,12 +207,9 @@ const InvoicePage = () => {
                   Rechnung als Excel herunterladen
                 </Button>
               </div>
-            </>
-          )}
+            </>}
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 export default InvoicePage;
