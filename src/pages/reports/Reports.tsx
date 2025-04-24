@@ -1,11 +1,12 @@
-
 import React from 'react';
 import { useReportData } from '@/hooks/useReportData';
-import { ReportFilters } from '@/components/reports/ReportFilters'; // Changed from default import
+import { ReportFilters } from '@/components/reports/ReportFilters';
 import ReportKpiCard from '@/components/reports/ReportKpiCard';
 import ReportCharts from '@/components/reports/ReportCharts';
 import ReportTasksTable from '@/components/reports/ReportTasksTable';
+import { ProcessingTimeStats } from '@/components/reports/ProcessingTimeStats';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTaskTimeSummaries } from '@/hooks/useTaskTimeSummaries';
 
 const Reports: React.FC = () => {
   const { 
@@ -20,11 +21,9 @@ const Reports: React.FC = () => {
     kpiData 
   } = useReportData();
 
-  console.log('Reports page - tasks:', tasks);
-  console.log('Reports page - isLoading:', isLoading);
-  console.log('Reports page - kpiData:', kpiData);
+  const { taskTimeSummaries, isLoading: isLoadingTimes } = useTaskTimeSummaries(tasks?.map(t => t.id) || []);
 
-  if (isLoading) {
+  if (isLoading || isLoadingTimes) {
     return (
       <div className="py-8">
         <h1 className="text-2xl font-bold mb-6">Reports</h1>
@@ -59,7 +58,6 @@ const Reports: React.FC = () => {
     <div className="py-6">
       <h1 className="text-2xl font-bold mb-6">Reports</h1>
       
-      {/* Filters */}
       <ReportFilters 
         filters={filters}
         setFilters={setFilters}
@@ -67,7 +65,6 @@ const Reports: React.FC = () => {
         users={users}
       />
       
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <ReportKpiCard 
           title="Gesamtanzahl Aufgaben" 
@@ -87,13 +84,13 @@ const Reports: React.FC = () => {
         />
       </div>
       
-      {/* Charts */}
+      <ProcessingTimeStats taskTimeSummaries={taskTimeSummaries || []} />
+      
       <ReportCharts 
         weekdayDistribution={weekdayDistribution}
         tasksByWeek={tasksByWeek}
       />
       
-      {/* Tasks Table */}
       <ReportTasksTable tasks={tasks} />
     </div>
   );
