@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Task, TaskStatus } from '@/types';
+import { ReportFilters } from '@/hooks/useReportData';
 
 // Helper function to validate task status
 const validateTaskStatus = (status: string): TaskStatus => {
@@ -51,7 +51,7 @@ const transformCustomer = (customerData: any) => {
 };
 
 // Main hook for fetching and transforming tasks
-export const useTasks = (statusFilter: string | null = null, includeAll: boolean = false) => {
+export const useTasks = (statusFilter: string | null = null, includeAll: boolean = false, filters?: ReportFilters) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,9 +65,8 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
       }
 
       try {
-        console.log(`Fetching tasks with statusFilter=${statusFilter}, includeAll=${includeAll}`);
+        console.log(`Fetching tasks with statusFilter=${statusFilter}, includeAll=${includeAll}, filters=`, filters);
 
-        // Initialize the query with basic selection
         let query = supabase
           .from('tasks')
           .select(`
@@ -81,12 +80,33 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
           `)
           .order('created_at', { ascending: false });
 
-        // Filter based on status - Fixed to properly handle status filter
+        // Status Filter
         if (statusFilter && statusFilter !== 'all') {
           query = query.eq('status', statusFilter);
         } else if (!includeAll) {
-          // If includeAll is false, show all statuses except 'completed'
           query = query.neq('status', 'completed');
+        }
+
+        // Zusätzliche Filter
+        if (filters) {
+          if (filters.customerId) {
+            query = query.eq('customer_id', filters.customerId);
+          }
+          
+          if (filters.createdBy) {
+            query = query.eq('created_by', filters.createdBy);
+          }
+          
+          if (filters.fromDate) {
+            query = query.gte('created_at', filters.fromDate.toISOString());
+          }
+          
+          if (filters.toDate) {
+            // Setze das Datum auf Ende des Tages für den "bis" Filter
+            const endOfDay = new Date(filters.toDate);
+            endOfDay.setHours(23, 59, 59, 999);
+            query = query.lte('created_at', endOfDay.toISOString());
+          }
         }
 
         // Apply user role-based filtering
@@ -186,7 +206,7 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
     };
 
     fetchTasks();
-  }, [user, statusFilter, includeAll]);
+  }, [user, statusFilter, includeAll, filters]);
 
   return { tasks, isLoading };
 };
