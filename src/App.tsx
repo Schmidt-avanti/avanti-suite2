@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -44,6 +45,9 @@ import CompletedTasks from './pages/tasks/CompletedTasks';
 
 // Report Pages
 import Reports from "@/pages/reports/Reports";
+
+// Accounting Pages
+import InvoicesPage from "@/pages/accounting/InvoicesPage";
 
 // Public Pages
 import Landing from "@/pages/Landing";
