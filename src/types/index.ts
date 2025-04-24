@@ -1,3 +1,4 @@
+
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -82,4 +83,11 @@ export interface PaymentMethod {
   updated_at: string;
   last_used: string | null;
   active: boolean;
+  // Add the new fields
+  card_holder?: string;
+  expiry_month?: number;
+  expiry_year?: number;
+  billing_address?: string;
+  billing_zip?: string;
+  billing_city?: string;
 }
