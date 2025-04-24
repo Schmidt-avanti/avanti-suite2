@@ -15,9 +15,7 @@ interface Message {
   recipient_id: string;
   created_at: string;
   is_read: boolean;
-  sender?: {
-    "Full Name": string;
-  };
+  sender_name?: string; // Optional field for sender name
 }
 
 interface AgentChatPopupProps {
@@ -38,9 +36,10 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
     
     const fetchMessages = async () => {
       setIsLoading(true);
+      // First get messages
       const { data, error } = await supabase
         .from('supervisor_messages')
-        .select('*, sender:profiles!supervisor_messages_sender_id_fkey("Full Name")')
+        .select('*')
         .or(`recipient_id.eq.${user.id},sender_id.eq.${user.id}`)
         .order('created_at', { ascending: true });
         
@@ -51,8 +50,39 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
           title: "Fehler",
           description: "Konnte keine Nachrichten laden."
         });
-      } else {
-        setMessages(data || []);
+        setIsLoading(false);
+        return;
+      }
+
+      // Then fetch profiles separately to get sender names
+      if (data && data.length > 0) {
+        const senderIds = data.map(msg => msg.sender_id)
+          .filter((id, index, self) => self.indexOf(id) === index);
+
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('"Full Name", id')
+          .in('id', senderIds);
+          
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+        }
+
+        // Create a map of id -> name for quick lookups
+        const profileMap = new Map();
+        if (profilesData) {
+          profilesData.forEach(profile => {
+            profileMap.set(profile.id, profile["Full Name"]);
+          });
+        }
+
+        // Combine the messages with sender names
+        const messagesWithSenderNames = data.map(msg => ({
+          ...msg,
+          sender_name: profileMap.get(msg.sender_id) || "Unbekannter Nutzer"
+        }));
+
+        setMessages(messagesWithSenderNames);
         
         // Mark messages as read
         const unreadMsgIds = data
@@ -65,7 +95,10 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
             .update({ is_read: true })
             .in('id', unreadMsgIds);
         }
+      } else {
+        setMessages([]);
       }
+      
       setIsLoading(false);
     };
     
@@ -81,20 +114,31 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
         filter: `recipient_id=eq.${user.id}` 
       }, async (payload) => {
         // Fetch the new message with sender info
-        const { data, error } = await supabase
+        const { data: newMsg, error } = await supabase
           .from('supervisor_messages')
-          .select('*, sender:profiles!supervisor_messages_sender_id_fkey("Full Name")')
+          .select('*')
           .eq('id', payload.new.id)
           .single();
           
-        if (!error && data) {
-          setMessages(prev => [...prev, data]);
+        if (!error && newMsg) {
+          // Fetch sender name
+          const { data: senderProfile } = await supabase
+            .from('profiles')
+            .select('"Full Name"')
+            .eq('id', newMsg.sender_id)
+            .single();
+            
+          // Add the new message to the state
+          setMessages(prev => [...prev, {
+            ...newMsg,
+            sender_name: senderProfile ? senderProfile["Full Name"] : "Unbekannter Nutzer"
+          }]);
           
           // Mark as read since chat is open
           await supabase
             .from('supervisor_messages')
             .update({ is_read: true })
-            .eq('id', data.id);
+            .eq('id', newMsg.id);
         }
       })
       .subscribe();
@@ -196,7 +240,7 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
                       >
                         {message.sender_id !== user?.id && (
                           <div className="text-xs font-medium mb-1">
-                            {message.sender?.["Full Name"] || "Supervisor"}
+                            {message.sender_name || "Supervisor"}
                           </div>
                         )}
                         <div className="text-sm break-words">{message.content}</div>
