@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,7 +7,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Info } from "lucide-react";
-
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,8 +14,10 @@ const LoginForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
-  
-  const { signIn, user } = useAuth();
+  const {
+    signIn,
+    user
+  } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -28,31 +28,25 @@ const LoginForm = () => {
       navigate('/');
     }
   }, [user, navigate]);
-
   const addDebugInfo = (message: string) => {
     console.log("Debug:", message);
     setDebugInfo(prev => [...prev, message]);
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email || !password) {
       setError('Bitte gib E-Mail und Passwort ein.');
       return;
     }
-
     setIsSubmitting(true);
     setError(null);
     setInfo(null);
     setDebugInfo([]);
-    
     try {
       addDebugInfo(`Anmeldeversuch für: ${email}`);
-      
       await signIn(email, password);
       addDebugInfo("Login erfolgreich, leite weiter...");
-      
+
       // Small delay to ensure state updates
       setTimeout(() => {
         navigate('/');
@@ -60,7 +54,6 @@ const LoginForm = () => {
     } catch (error: any) {
       console.error('Login error:', error);
       addDebugInfo(`Fehler: ${error.message || 'Unbekannter Fehler'}`);
-      
       if (error.message?.includes('Profil fehlt') || error.message === 'Kein Profil gefunden') {
         setError('Es existiert kein Profil für diesen Nutzer. Bitte kontaktiere deinen Administrator.');
         setInfo('Ein Administrator muss zuerst ein Profil für deinen Account anlegen, bevor du dich anmelden kannst.');
@@ -75,9 +68,7 @@ const LoginForm = () => {
       setIsSubmitting(false);
     }
   };
-
-  return (
-    <Card className="w-full max-w-md mx-auto">
+  return <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
         <CardDescription className="text-center">
@@ -85,62 +76,37 @@ const LoginForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {error && (
-          <Alert variant="destructive" className="mb-4">
+        {error && <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Fehler</AlertTitle>
             <AlertDescription>
               {error}
             </AlertDescription>
-          </Alert>
-        )}
+          </Alert>}
         
-        {info && (
-          <Alert className="mb-4 bg-avanti-50 border-avanti-200">
+        {info && <Alert className="mb-4 bg-avanti-50 border-avanti-200">
             <Info className="h-4 w-4 text-avanti-600" />
             <AlertTitle className="text-avanti-700">Information</AlertTitle>
             <AlertDescription className="text-avanti-600">
               {info}
             </AlertDescription>
-          </Alert>
-        )}
+          </Alert>}
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">E-Mail</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Passwort</Label>
-              <a 
-                href="/auth/forgot-password" 
-                className="text-sm text-avanti-600 hover:text-avanti-800"
-              >
+              <a href="/auth/forgot-password" className="text-sm text-avanti-600 hover:text-avanti-800">
                 Passwort vergessen?
               </a>
             </div>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
           </div>
-          <Button 
-            type="submit" 
-            className="w-full bg-avanti-600 hover:bg-avanti-700" 
-            disabled={isSubmitting}
-          >
+          <Button type="submit" className="w-full bg-avanti-600 hover:bg-avanti-700" disabled={isSubmitting}>
             {isSubmitting ? 'Wird angemeldet...' : 'Anmelden'}
           </Button>
         </form>
@@ -150,27 +116,21 @@ const LoginForm = () => {
           Nur für autorisierte Nutzer. Bitte kontaktiere deinen Administrator für Zugang.
         </p>
         
-        {debugInfo.length > 0 && (
-          <div className="text-xs text-left w-full text-gray-700 bg-gray-50 p-3 rounded-md border border-gray-200">
+        {debugInfo.length > 0 && <div className="text-xs text-left w-full text-gray-700 bg-gray-50 p-3 rounded-md border border-gray-200">
             <p className="font-semibold mb-1">Debug-Infos:</p>
             <ul className="list-disc list-inside space-y-1">
-              {debugInfo.map((info, index) => (
-                <li key={index}>{info}</li>
-              ))}
+              {debugInfo.map((info, index) => <li key={index}>{info}</li>)}
             </ul>
-          </div>
-        )}
+          </div>}
         
         <div className="text-xs text-center text-gray-500 bg-gray-50 p-2 rounded-md border border-gray-100">
           <p>Test-Zugangsdaten:</p>
           <ul className="list-disc list-inside mt-1 text-left">
-            <li>E-Mail: matthias.gawlich@gmail.com</li>
+            <li>E-Mail: aa.schmidt@ja-dialog.de</li>
             <li>Passwort: Dein gewähltes Passwort</li>
           </ul>
         </div>
       </CardFooter>
-    </Card>
-  );
+    </Card>;
 };
-
 export default LoginForm;
