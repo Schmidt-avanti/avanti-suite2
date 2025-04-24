@@ -69,10 +69,10 @@ export default {
           950: '#06254a',
         },
         sidebar: {
-          DEFAULT: '#100a29',
+          DEFAULT: '#162a51',
           foreground: '#FFFFFF',
           primary: '#FFFFFF',
-          'primary-foreground': '#100a29',
+          'primary-foreground': '#162a51',
           accent: '#1A1F2C',
           'accent-foreground': '#FFFFFF',
           border: '#2A2F3C',
