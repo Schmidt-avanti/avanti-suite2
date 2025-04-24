@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -280,35 +281,36 @@ const TaskDetail = () => {
                   <span className="font-medium">Beschreibung</span>
                 </div>
                 <div className="ml-6 text-gray-700 whitespace-pre-wrap">{task.description}</div>
+                
                 {task.attachments?.length > 0 && (
-  <div className="mt-4">
-    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-      <Inbox className="h-4 w-4" />
-      <span className="font-medium">Anhänge</span>
-    </div>
-    <ul className="ml-6 list-disc list-inside text-blue-600 text-sm space-y-1">
-      {task.attachments.map((url: string, index: number) => (
-        <li key={index}>
-          <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-            Datei {index + 1}
-          </a>
-        </li>
-      ))}
-    </ul>
-  </div>>
-      <div className="mt-6">
-  <h3 className="text-sm font-semibold text-muted-foreground mb-1">E-Mail Antwort</h3>
-  <textarea
-    rows={4}
-    placeholder="Antwort verfassen..."
-    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-  />
-  <Button className="mt-2 bg-blue-600 hover:bg-blue-700 text-white">
-    Senden
-  </Button>
-</div>
-
-)}
+                  <div className="mt-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Inbox className="h-4 w-4" />
+                      <span className="font-medium">Anhänge</span>
+                    </div>
+                    <ul className="ml-6 list-disc list-inside text-blue-600 text-sm space-y-1">
+                      {task.attachments.map((url: string, index: number) => (
+                        <li key={index}>
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                            Datei {index + 1}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-1">E-Mail Antwort</h3>
+                  <textarea
+                    rows={4}
+                    placeholder="Antwort verfassen..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <Button className="mt-2 bg-blue-600 hover:bg-blue-700 text-white">
+                    Senden
+                  </Button>
+                </div>
 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
                   <Users className="h-4 w-4" />
