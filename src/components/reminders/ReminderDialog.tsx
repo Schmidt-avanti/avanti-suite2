@@ -18,7 +18,7 @@ import {
   PopoverContent, 
   PopoverTrigger 
 } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReminders } from '@/hooks/useReminders';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 export const ReminderDialog = () => {
   const [title, setTitle] = useState('');
   const [reminderDate, setReminderDate] = useState<Date | undefined>(undefined);
+  const [reminderTime, setReminderTime] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const { createReminder } = useReminders();
   const { toast } = useToast();
@@ -33,10 +34,17 @@ export const ReminderDialog = () => {
   const handleSubmit = async () => {
     if (!title.trim()) return;
 
-    const result = await createReminder(
-      title, 
-      reminderDate ? reminderDate.toISOString() : null
-    );
+    let finalDate: string | null = null;
+    if (reminderDate) {
+      const date = new Date(reminderDate);
+      if (reminderTime) {
+        const [hours, minutes] = reminderTime.split(':');
+        date.setHours(parseInt(hours, 10), parseInt(minutes, 10));
+      }
+      finalDate = date.toISOString();
+    }
+
+    const result = await createReminder(title, finalDate);
 
     if (result) {
       toast({
@@ -46,6 +54,7 @@ export const ReminderDialog = () => {
 
       setTitle('');
       setReminderDate(undefined);
+      setReminderTime('');
       setIsOpen(false);
     } else {
       toast({
@@ -65,7 +74,7 @@ export const ReminderDialog = () => {
         <DialogHeader>
           <DialogTitle>Neue Notiz erstellen</DialogTitle>
           <DialogDescription>
-            Erstelle eine neue Notiz mit optionalem Erinnerungsdatum.
+            Erstelle eine neue Notiz mit optionalem Erinnerungsdatum und -uhrzeit.
           </DialogDescription>
         </DialogHeader>
         
@@ -76,33 +85,44 @@ export const ReminderDialog = () => {
             onChange={(e) => setTitle(e.target.value)}
           />
           
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !reminderDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {reminderDate ? (
-                  format(reminderDate, "PPP")
-                ) : (
-                  <span>Erinnerungsdatum wählen (optional)</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={reminderDate}
-                onSelect={setReminderDate}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "justify-start text-left font-normal flex-1",
+                    !reminderDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {reminderDate ? (
+                    format(reminderDate, "dd.MM.yyyy")
+                  ) : (
+                    <span>Datum wählen</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={reminderDate}
+                  onSelect={setReminderDate}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+
+            <Input
+              type="time"
+              value={reminderTime}
+              onChange={(e) => setReminderTime(e.target.value)}
+              className="w-[140px]"
+              placeholder="HH:MM"
+              disabled={!reminderDate}
+            />
+          </div>
         </div>
         
         <DialogFooter>
