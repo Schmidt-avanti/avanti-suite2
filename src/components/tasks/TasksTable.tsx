@@ -12,6 +12,12 @@ interface TasksTableProps {
 export const TasksTable = ({ tasks, isLoading }: TasksTableProps) => {
   const navigate = useNavigate();
 
+  // Hilfsfunktion zum Rendern der Quelle, falls vorhanden
+  const renderSource = (source: string | undefined) => {
+    if (!source) return '-';
+    return source;
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -41,7 +47,7 @@ export const TasksTable = ({ tasks, isLoading }: TasksTableProps) => {
             >
               <TableCell>{task.title}</TableCell>
               <TableCell>{task.customer?.name || '-'}</TableCell>
-              <TableCell>{task.source}</TableCell>
+              <TableCell>{renderSource(task.source)}</TableCell>
               <TableCell>
                 <TaskStatusBadge status={task.status} />
               </TableCell>
