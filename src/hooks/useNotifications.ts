@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,9 +27,12 @@ export const useNotifications = () => {
         return;
       }
 
-      console.log('Fetched notifications:', data?.length || 0);
+      // Only show unread notifications
+      const unreadNotifications = data?.filter(n => !n.read_at) || [];
+      console.log('Fetched unread notifications:', unreadNotifications.length);
+      
       setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.read_at).length || 0);
+      setUnreadCount(unreadNotifications.length);
     } catch (err) {
       console.error('Exception when fetching notifications:', err);
     }
