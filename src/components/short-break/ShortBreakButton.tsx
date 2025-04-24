@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Timer } from 'lucide-react';
@@ -36,9 +37,9 @@ export const ShortBreakButton = () => {
       <SheetTrigger asChild>
         <Button 
           variant="ghost" 
-          className="relative h-8 w-8 rounded-full border border-gray-200 bg-white hover:bg-gray-50"
+          className="relative h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center"
         >
-          <Timer className="h-5 w-5" />
+          <Timer className="h-5 w-5 text-gray-600 hover:text-gray-800" />
         </Button>
       </SheetTrigger>
       <SheetContent>
