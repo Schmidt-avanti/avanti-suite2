@@ -130,21 +130,6 @@ const AppSidebar = () => {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/reports"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                        }`
-                      }
-                    >
-                      <BarChart3 className="h-5 w-5 text-sidebar-primary" />
-                      <span className="truncate">Reports</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -185,6 +170,21 @@ const AppSidebar = () => {
                           >
                             <Radio className="h-5 w-5 text-sidebar-primary" />
                             <span className="truncate">Active Agents</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/reports"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <BarChart3 className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Reports</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
