@@ -1,9 +1,7 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import type { TaskTimeSummary } from '@/types';
 import {
   Table,
   TableBody,
@@ -35,7 +33,6 @@ import {
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 
-// Define the filter form fields
 interface FilterFormValues {
   userId: string | null;
   customerId: string | null;
@@ -47,12 +44,10 @@ const ProcessingTime = () => {
   const { toast } = useToast();
   const [refreshInterval, setRefreshInterval] = useState(10000); // 10 seconds by default
   
-  // Add filter states
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Use form for filters
   const form = useForm<FilterFormValues>({
     defaultValues: {
       userId: null,
@@ -61,10 +56,8 @@ const ProcessingTime = () => {
     },
   });
   
-  // Get customers for filter
   const { customers, isLoading: isLoadingCustomers } = useCustomers();
 
-  // Get all users for filter - Fixed query by removing 'email' which doesn't exist
   const { data: users, isLoading: isLoadingUsers } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
@@ -78,25 +71,37 @@ const ProcessingTime = () => {
     }
   });
   
-  // This query now ONLY gets CURRENTLY active task times
   const { data: activeTaskTimes, isLoading: isLoadingActive, refetch: refetchActive } = useQuery({
     queryKey: ['activeTaskTimes', selectedUserId, selectedCustomerId, searchTerm],
     queryFn: async () => {
       try {
-        // ONLY fetch CURRENTLY active task times (where ended_at is null)
         let query = supabase.from('task_times')
           .select(`
             id, 
             task_id, 
             user_id, 
             started_at,
-            ended_at
+            ended_at,
+            tasks!inner (
+              id,
+              title,
+              status,
+              customer_id,
+              customers (
+                id,
+                name
+              )
+            )
           `)
-          .is('ended_at', null); // Only get currently active sessions
+          .is('ended_at', null)
+          .eq('tasks.status', 'new');
         
-        // Apply user filter if selected
         if (selectedUserId) {
           query = query.eq('user_id', selectedUserId);
+        }
+
+        if (selectedCustomerId) {
+          query = query.eq('tasks.customer_id', selectedCustomerId);
         }
 
         const { data: activeTaskTimes, error: taskTimeError } = await query;
@@ -114,7 +119,6 @@ const ProcessingTime = () => {
           return [];
         }
 
-        // Get the profile data
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('id, "Full Name"');
@@ -128,59 +132,16 @@ const ProcessingTime = () => {
           throw profilesError;
         }
 
-        // Get tasks data for active tasks only
-        const taskIds = activeTaskTimes.map(time => time.task_id);
-        const { data: tasksData, error: tasksError } = await supabase
-          .from('tasks')
-          .select(`
-            id,
-            title,
-            status,
-            customer_id,
-            customers (
-              id,
-              name
-            )
-          `)
-          .in('id', taskIds);
-          
-        if (tasksError) {
-          toast({
-            variant: "destructive",
-            title: "Fehler beim Laden der Aufgaben",
-            description: tasksError.message
-          });
-          throw tasksError;
-        }
-
-        // Create lookup maps
         const profilesMap = new Map();
         profilesData?.forEach(profile => {
           profilesMap.set(profile.id, profile);
         });
-        
-        const tasksMap = new Map();
-        tasksData?.forEach(task => {
-          tasksMap.set(task.id, task);
-        });
 
-        // Filter by customer if selected
-        let filteredTaskTimes = activeTaskTimes;
-        if (selectedCustomerId) {
-          filteredTaskTimes = activeTaskTimes.filter(time => {
-            const task = tasksMap.get(time.task_id);
-            return task?.customer_id === selectedCustomerId;
-          });
-        }
-
-        // Process and combine data - Calculate live duration for each active task
-        const summaries = filteredTaskTimes.map(time => {
-          const task = tasksMap.get(time.task_id);
+        const summaries = activeTaskTimes.map(time => {
           const profile = profilesMap.get(time.user_id);
           
-          if (!task || !profile) return null;
+          if (!profile) return null;
 
-          // Calculate duration since start
           const startTime = new Date(time.started_at);
           const now = new Date();
           const durationSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
@@ -193,12 +154,11 @@ const ProcessingTime = () => {
             total_seconds: durationSeconds,
             total_hours: durationSeconds / 3600,
             profiles: profile,
-            tasks: task,
+            tasks: time.tasks,
             started_at: time.started_at
           };
         }).filter(Boolean);
 
-        // Apply search filter if provided
         if (searchTerm) {
           const term = searchTerm.toLowerCase();
           return summaries.filter(summary => 
@@ -242,14 +202,12 @@ const ProcessingTime = () => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
   
-  // Handle filter changes
   const onSubmit = (values: FilterFormValues) => {
     setSelectedUserId(values.userId);
     setSelectedCustomerId(values.customerId);
     setSearchTerm(values.search || '');
   };
 
-  // Count active users and tasks correctly from live data - only currently active tasks
   const activeUserCount = activeTaskTimes ? new Set(activeTaskTimes.map(summary => summary.user_id)).size : 0;
   const activeTaskCount = activeTaskTimes ? activeTaskTimes.length : 0;
 
@@ -277,7 +235,6 @@ const ProcessingTime = () => {
         </Button>
       </div>
       
-      {/* Filter Section */}
       <Card className="mb-6">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center">
