@@ -1,3 +1,4 @@
+
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -25,7 +26,7 @@ export interface Task {
   title: string;
   status: TaskStatus;
   created_at: string;
-  source?: string; // Add source property which was missing
+  source?: string;
   customer?: {
     id: string;
     name: string;
@@ -34,6 +35,7 @@ export interface Task {
     id: string;
     "Full Name": string;
   };
+  attachments?: any[]; // Added missing attachments property
 }
 
 // Add missing types that are causing errors
