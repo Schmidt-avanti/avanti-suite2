@@ -18,7 +18,7 @@ export function InvoiceTable({ customerId, from, to }: InvoiceTableProps) {
   }
 
   if (isLoading) {
-    return <div>Lade Daten...</div>;
+    return <div className="py-4 text-center text-muted-foreground">Lade Daten...</div>;
   }
 
   if (!data || data.length === 0) {

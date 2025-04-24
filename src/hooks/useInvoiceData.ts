@@ -22,36 +22,29 @@ export const useInvoiceData = (customerId: string, from: Date, to: Date) => {
       console.log('Adjusted date range:', fromDate.toISOString(), 'to', toDate.toISOString());
       
       try {
-        // Direkt auf task_times zugreifen mit JOIN auf tasks um die Kundenfilterung zu ermöglichen
-        const { data: taskTimesData, error: taskTimesError } = await supabase
+        // Direkte und optimierte Abfrage auf task_times mit JOIN zu tasks
+        const { data: rawData, error } = await supabase
           .from('task_times')
-          .select(`
-            id,
-            duration_seconds,
-            started_at,
-            tasks(
-              id,
-              customer_id
-            )
-          `)
+          .select('duration_seconds, started_at, task_id, tasks!inner(customer_id)')
           .eq('tasks.customer_id', customerId)
           .gte('started_at', fromDate.toISOString())
           .lte('started_at', toDate.toISOString());
         
-        if (taskTimesError) {
-          console.error('Error fetching task times:', taskTimesError);
-          throw taskTimesError;
+        if (error) {
+          console.error('Error fetching task times:', error);
+          throw error;
         }
 
-        console.log('Task times data:', taskTimesData);
+        console.log('Raw time data found:', rawData?.length, 'records');
+        console.log('First few records:', rawData?.slice(0, 3));
         
-        if (!taskTimesData || taskTimesData.length === 0) {
+        if (!rawData || rawData.length === 0) {
           console.log('No task times found for this customer in the selected period');
           return [] as DailyMinutesRecord[];
         }
 
         // Gruppieren nach Datum und Minuten berechnen
-        const dailyMinutes = taskTimesData.reduce<Record<string, number>>((acc, entry) => {
+        const dailyMinutes = rawData.reduce<Record<string, number>>((acc, entry) => {
           if (!entry.duration_seconds) return acc;
           
           const date = entry.started_at.split('T')[0];
@@ -64,11 +57,14 @@ export const useInvoiceData = (customerId: string, from: Date, to: Date) => {
         console.log('Grouped daily minutes:', dailyMinutes);
 
         // Konvertieren zu Array von Objekten für die Rückgabe
-        return Object.entries(dailyMinutes)
+        const result = Object.entries(dailyMinutes)
           .map(([date, minutes]) => ({ 
             date, 
-            minutes: minutes as number 
+            minutes
           })) as DailyMinutesRecord[];
+          
+        console.log('Final processed records:', result);
+        return result;
       } catch (error) {
         console.error('Error in useInvoiceData:', error);
         throw error;

@@ -29,36 +29,66 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
       console.log('Adjusted date range:', fromDate.toISOString(), 'to', toDate.toISOString());
       
       try {
-        // Direkt auf task_times zugreifen mit JOIN auf tasks um die Kundenfilterung zu ermöglichen
-        const { data: taskTimesData, error: taskTimesError } = await supabase
-          .from('task_times')
-          .select(`
-            duration_seconds,
-            tasks(
-              id,
-              customer_id
-            )
-          `)
-          .eq('tasks.customer_id', customerId)
-          .gte('started_at', fromDate.toISOString())
-          .lte('started_at', toDate.toISOString());
+        // Direkte und optimierte Abfrage mit Aggregation der Gesamtzeit
+        const { data, error } = await supabase
+          .rpc('calculate_total_time_for_customer', { 
+            customer_id_param: customerId,
+            from_date_param: fromDate.toISOString(),
+            to_date_param: toDate.toISOString()
+          });
         
-        if (taskTimesError) {
-          console.error('Error calculating from task_times:', taskTimesError);
-          throw taskTimesError;
+        if (error) {
+          console.error('Error calculating from task_times using RPC:', error);
+          
+          // Fallback zur direkten Abfrage, falls die RPC-Funktion nicht verfügbar ist
+          const { data: rawData, error: fallbackError } = await supabase
+            .from('task_times')
+            .select('duration_seconds, tasks!inner(customer_id)')
+            .eq('tasks.customer_id', customerId)
+            .gte('started_at', fromDate.toISOString())
+            .lte('started_at', toDate.toISOString());
+            
+          if (fallbackError) {
+            console.error('Fallback query also failed:', fallbackError);
+            throw fallbackError;
+          }
+          
+          // Berechne die Gesamtzeit manuell aus den Rohdaten
+          let totalSeconds = 0;
+          if (rawData && rawData.length > 0) {
+            totalSeconds = rawData.reduce((sum, entry) => {
+              return sum + (entry.duration_seconds || 0);
+            }, 0);
+          }
+          
+          console.log('Fallback calculation: Total seconds from direct query:', totalSeconds);
+          
+          const totalMinutes = Math.round(totalSeconds / 60);
+          const billableMinutes = Math.max(0, totalMinutes - FREE_MINUTES);
+          const netAmount = billableMinutes * PRICE_PER_MINUTE;
+          const vat = netAmount * VAT_RATE;
+          const totalAmount = netAmount + vat;
+
+          console.log('Final calculation from fallback:', {
+            totalMinutes,
+            billableMinutes,
+            netAmount,
+            vat,
+            totalAmount
+          });
+
+          return {
+            totalMinutes,
+            billableMinutes,
+            netAmount,
+            vat,
+            totalAmount
+          } as InvoiceCalculation;
         }
         
-        console.log('Times data found:', taskTimesData?.length, 'records');
-        
-        let totalSeconds = 0;
-        
-        if (taskTimesData && taskTimesData.length > 0) {
-          totalSeconds = taskTimesData.reduce((sum, entry) => {
-            return sum + (entry.duration_seconds || 0);
-          }, 0);
-        }
-        
-        console.log('Total seconds calculated:', totalSeconds);
+        // Wenn die RPC erfolgreich war, verwende die zurückgegebenen Daten
+        const totalSeconds = data || 0;
+        console.log('Total seconds from RPC:', totalSeconds);
         
         const totalMinutes = Math.round(totalSeconds / 60);
         const billableMinutes = Math.max(0, totalMinutes - FREE_MINUTES);
@@ -66,7 +96,7 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
         const vat = netAmount * VAT_RATE;
         const totalAmount = netAmount + vat;
 
-        console.log('Final calculation:', {
+        console.log('Final calculation from RPC:', {
           totalMinutes,
           billableMinutes,
           netAmount,

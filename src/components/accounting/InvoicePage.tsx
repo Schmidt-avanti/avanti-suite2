@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCustomers } from '@/hooks/useCustomers';
 import { DatePicker } from './DatePicker';
@@ -12,6 +13,7 @@ import { format } from 'date-fns';
 import { useInvoiceData, DailyMinutesRecord } from '@/hooks/useInvoiceData';
 import { useInvoiceCalculation, InvoiceCalculation } from '@/hooks/useInvoiceCalculation';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const InvoicePage = () => {
   const { customers, isLoading: customersLoading } = useCustomers();
@@ -34,6 +36,50 @@ const InvoicePage = () => {
     dateRange.from as Date, 
     dateRange.to as Date
   );
+
+  // Debug-Funktion um zu überprüfen, ob es überhaupt Daten für diesen Kunden gibt
+  useEffect(() => {
+    if (selectedCustomer && dateRange.from && dateRange.to) {
+      const checkForData = async () => {
+        try {
+          const fromDate = new Date(dateRange.from as Date);
+          const toDate = new Date(dateRange.to as Date);
+          toDate.setHours(23, 59, 59, 999);
+          
+          // Direkter Check in der Datenbank, ob es task_times für die Aufgaben dieses Kunden gibt
+          const { data, error } = await supabase
+            .from('task_times')
+            .select('id, duration_seconds, started_at')
+            .order('started_at', { ascending: false })
+            .limit(5);
+          
+          console.log('Raw task_times check (5 newest entries):', data);
+          
+          if (error) {
+            console.error('Error checking task_times:', error);
+          }
+          
+          // Check für Kundenaufgaben
+          const { data: taskData, error: taskError } = await supabase
+            .from('tasks')
+            .select('id, title')
+            .eq('customer_id', selectedCustomer)
+            .order('created_at', { ascending: false })
+            .limit(5);
+          
+          console.log('Customer tasks check (5 newest entries):', taskData);
+          
+          if (taskError) {
+            console.error('Error checking tasks:', taskError);
+          }
+        } catch (e) {
+          console.error('Debug check failed:', e);
+        }
+      };
+      
+      checkForData();
+    }
+  }, [selectedCustomer, dateRange.from, dateRange.to]);
 
   // Fehler-Handling
   React.useEffect(() => {
