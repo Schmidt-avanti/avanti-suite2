@@ -76,6 +76,7 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             created_at,
             created_by,
             customer_id,
+            source
             customer:customer_id(id, name)
           `)
           .order('created_at', { ascending: false });
