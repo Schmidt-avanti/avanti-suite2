@@ -30,14 +30,16 @@ export const useInvoiceData = (customerId: string, from: Date, to: Date) => {
             total_seconds
           `)
           .eq('user_id', customerId)
-          .or(`task_id.in.(${
+          .in('task_id', 
+            // Fix: replaced the .query() call which doesn't exist
+            // Create a subquery string instead
             supabase.from('tasks')
               .select('id')
               .eq('customer_id', customerId)
               .gte('created_at', fromDate.toISOString())
               .lte('created_at', toDate.toISOString())
-              .query()
-          })`);
+              .then(({ data }) => data?.map(task => task.id) || [])
+          );
 
         if (summaryError) {
           console.error('Error fetching from task_time_summary:', summaryError);

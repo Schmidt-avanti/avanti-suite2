@@ -1,4 +1,3 @@
-
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -26,6 +25,7 @@ export interface Task {
   title: string;
   status: TaskStatus;
   created_at: string;
+  source?: string; // Add source property which was missing
   customer?: {
     id: string;
     name: string;
