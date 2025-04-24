@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { TasksTable } from '@/components/tasks/TasksTable';
 import { useTasks } from '@/hooks/useTasks';
-import { ReportFilters } from '@/components/reports/ReportFilters'; // Changed from default import
+import { ReportFilters } from '@/components/reports/ReportFilters';
 import { ReportFilters as ReportFiltersType } from '@/hooks/useReportData';
 import { useCustomers } from '@/hooks/useCustomers';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,11 +17,10 @@ const CompletedTasks = () => {
     createdBy: null,
   });
 
-  const { tasks, isLoading } = useTasks('completed', true, filters);
+  const { tasks, isLoading } = useTasks(filters.status, true, filters);
   const { customers } = useCustomers();
   const [users, setUsers] = useState<Array<{ id: string; full_name: string }>>([]);
 
-  // Benutzer laden
   React.useEffect(() => {
     const loadUsers = async () => {
       const { data } = await supabase
@@ -45,7 +44,7 @@ const CompletedTasks = () => {
         <h1 className="text-2xl font-bold">Abgeschlossene Aufgaben</h1>
       </div>
 
-      <ReportFilters
+      <ReportFilters 
         filters={filters}
         setFilters={setFilters}
         customers={customers}

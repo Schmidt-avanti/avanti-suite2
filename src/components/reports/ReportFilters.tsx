@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Select, 
@@ -13,15 +14,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Card } from '@/components/ui/card';
-import type { TaskStatus } from '@/types';
 import { ReportFilters as ReportFiltersType } from '@/hooks/useReportData';
-
-const taskStatusOptions = [
-  { value: 'new', label: 'Neu' },
-  { value: 'in_progress', label: 'In Bearbeitung' },
-  { value: 'followup', label: 'Nachverfolgung' },
-  { value: 'completed', label: 'Erledigt' }
-];
 
 interface ReportFiltersComponentProps {
   filters: ReportFiltersType;
@@ -40,13 +33,6 @@ export const ReportFilters: React.FC<ReportFiltersComponentProps> = ({
     setFilters(prev => ({
       ...prev,
       customerId: value === 'all' ? null : value
-    }));
-  };
-
-  const handleStatusChange = (value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      status: value === 'all' ? null : value as TaskStatus
     }));
   };
 
@@ -108,7 +94,7 @@ export const ReportFilters: React.FC<ReportFiltersComponentProps> = ({
 
   return (
     <Card className="p-4 mb-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {/* Kundenfilter */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Kunde</label>
@@ -208,25 +194,6 @@ export const ReportFilters: React.FC<ReportFiltersComponentProps> = ({
               </div>
             </PopoverContent>
           </Popover>
-        </div>
-
-        {/* Status filter */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Status</label>
-          <Select 
-            value={filters.status || 'all'} 
-            onValueChange={handleStatusChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Alle Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Status</SelectItem>
-              {taskStatusOptions.map(status => (
-                <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Erstellt von filter */}
