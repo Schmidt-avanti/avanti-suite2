@@ -50,6 +50,7 @@ import Reports from "@/pages/reports/Reports";
 
 // Accounting Pages
 import InvoicesPage from "@/pages/accounting/InvoicesPage";
+import PaymentDataPage from "@/pages/accounting/PaymentDataPage";
 
 // Public Pages
 import Landing from "@/pages/Landing";
@@ -217,6 +218,14 @@ const App = () => {
                     element={
                       <ProtectedRoute allowedRoles={["admin"]}>
                         <InvoicesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/accounting/payment-data"
+                    element={
+                      <ProtectedRoute allowedRoles={["admin"]}>
+                        <PaymentDataPage />
                       </ProtectedRoute>
                     }
                   />

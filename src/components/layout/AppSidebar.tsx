@@ -16,7 +16,8 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Receipt
+  Receipt,
+  CreditCard
 } from 'lucide-react';
 
 import {
@@ -257,6 +258,22 @@ const AppSidebar = () => {
                           >
                             <Receipt className="h-5 w-5 text-sidebar-primary" />
                             <span className="truncate">Rechnung</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/accounting/payment-data"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <CreditCard className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Zahlungsdaten</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
