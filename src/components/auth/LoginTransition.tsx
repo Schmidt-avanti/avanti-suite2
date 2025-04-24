@@ -73,7 +73,7 @@ const LoginTransition: React.FC<LoginTransitionProps> = ({ userName, onComplete 
               className="w-32 h-32 flex items-center justify-center"
             >
               <img
-                src="/lovable-uploads/73e13e0c-4f3b-4dc7-a65b-953f5b5beafb.png"
+                src="/lovable-uploads/eff651fc-49c9-4b51-b5bc-d14c401b3934.png"
                 alt="avanti suite"
                 className="w-full h-full object-contain"
               />
