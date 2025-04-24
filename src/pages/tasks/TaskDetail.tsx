@@ -300,19 +300,17 @@ const TaskDetail = () => {
                   </div>
                 )}
                 
-              {task?.source === 'email' && (
-  <div className="mt-6">
-    <h3 className="text-sm font-semibold text-muted-foreground mb-1">E-Mail Antwort</h3>
-    <textarea
-      rows={4}
-      placeholder="Antwort verfassen..."
-      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-    />
-    <Button className="mt-2 bg-blue-600 hover:bg-blue-700 text-white">
-      Senden
-    </Button>
-  </div>
-)}
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-1">E-Mail Antwort</h3>
+                  <textarea
+                    rows={4}
+                    placeholder="Antwort verfassen..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <Button className="mt-2 bg-blue-600 hover:bg-blue-700 text-white">
+                    Senden
+                  </Button>
+                </div>
 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
                   <Users className="h-4 w-4" />
