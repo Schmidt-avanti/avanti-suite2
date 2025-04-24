@@ -74,6 +74,7 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             title,
             status,
             source,
+            attachments, 
             created_at,
             created_by,
             customer_id,
@@ -193,7 +194,8 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             created_at: rawTask.created_at,
             source: rawTask.source,
             customer: transformCustomer(rawTask.customer),
-            creator: rawTask.creator
+            creator: rawTask.creator, 
+            attachments: rawTask.attachments
           };
         });
         
