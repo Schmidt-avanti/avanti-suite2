@@ -1,12 +1,11 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { TasksTable } from '@/components/tasks/TasksTable';
 import { useTasks } from '@/hooks/useTasks';
 
 const CompletedTasks = () => {
-  const { tasks, isLoading } = useTasks('completed');
+  const { tasks, isLoading } = useTasks('completed', true);
 
   return (
     <div className="space-y-4">
