@@ -23,18 +23,30 @@ const InvoicePage = () => {
   });
 
   // Daten für die Rechnung holen, aber nur wenn ein Kunde ausgewählt ist und beide Datumswerte gesetzt sind
-  const { data: invoiceData, isLoading: isInvoiceDataLoading } = useInvoiceData(
+  const { data: invoiceData, isLoading: isInvoiceDataLoading, error: invoiceDataError } = useInvoiceData(
     selectedCustomer, 
     dateRange.from as Date, 
     dateRange.to as Date
   );
 
   // Berechnungen für die Rechnung
-  const { data: calculations, isLoading: isCalculationsLoading } = useInvoiceCalculation(
+  const { data: calculations, isLoading: isCalculationsLoading, error: calculationsError } = useInvoiceCalculation(
     selectedCustomer, 
     dateRange.from as Date, 
     dateRange.to as Date
   );
+
+  // Fehler-Handling
+  React.useEffect(() => {
+    if (invoiceDataError) {
+      console.error('Fehler beim Laden der Rechnungsdaten:', invoiceDataError);
+      toast.error('Fehler beim Laden der Rechnungsdaten.');
+    }
+    if (calculationsError) {
+      console.error('Fehler bei der Berechnung:', calculationsError);
+      toast.error('Fehler bei der Rechnungsberechnung.');
+    }
+  }, [invoiceDataError, calculationsError]);
 
   const handleExport = () => {
     if (!selectedCustomer || !dateRange.from || !dateRange.to) {
@@ -73,6 +85,7 @@ const InvoicePage = () => {
   };
 
   const isLoading = customersLoading || isInvoiceDataLoading || isCalculationsLoading;
+  const hasError = !!invoiceDataError || !!calculationsError;
 
   return (
     <div className="space-y-6">
@@ -120,12 +133,19 @@ const InvoicePage = () => {
             </div>
           )}
 
-          {!isLoading && selectedCustomer && dateRange.from && dateRange.to && (
+          {hasError && !isLoading && (
+            <div className="py-8 text-center text-red-500">
+              <p>Bei der Verarbeitung der Rechnungsdaten ist ein Fehler aufgetreten.</p>
+              <p className="text-sm mt-2">Bitte versuchen Sie es erneut oder kontaktieren Sie den Support.</p>
+            </div>
+          )}
+
+          {!isLoading && !hasError && selectedCustomer && dateRange.from && dateRange.to && (
             <>
               <InvoiceTable customerId={selectedCustomer} from={dateRange.from} to={dateRange.to} />
-              <div className="mt-6 flex justify-between items-start">
+              <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-start">
                 <InvoiceSummary customerId={selectedCustomer} from={dateRange.from} to={dateRange.to} />
-                <Button onClick={handleExport} className="ml-4">
+                <Button onClick={handleExport} className="mt-4 md:mt-0 md:ml-4">
                   <Download className="mr-2 h-4 w-4" />
                   Rechnung als Excel herunterladen
                 </Button>

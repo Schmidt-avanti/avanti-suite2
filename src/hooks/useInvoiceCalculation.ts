@@ -13,70 +13,93 @@ export const useInvoiceCalculation = (customerId: string, from: Date, to: Date) 
       console.log('Calculating invoice for customer:', customerId);
       console.log('Date range:', from.toISOString(), 'to', to.toISOString());
 
-      // Zuerst versuchen wir, die aggregierten Daten zu verwenden
-      let totalSeconds = 0;
+      // Sicherstellen, dass wir volles Datum für die Vergleiche haben (Ende des Tages für "to")
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+      toDate.setHours(23, 59, 59, 999); // Set to end of day
       
-      const { data: summaryData, error: summaryError } = await supabase
-        .from('task_time_summary')
-        .select(`
-          total_seconds,
-          tasks!inner(customer_id, created_at)
-        `)
-        .eq('tasks.customer_id', customerId)
-        .gte('tasks.created_at', from.toISOString())
-        .lte('tasks.created_at', to.toISOString());
+      console.log('Adjusted date range:', fromDate.toISOString(), 'to', toDate.toISOString());
       
-      if (summaryError) {
-        console.error('Error calculating from summary:', summaryError);
-      } else if (summaryData && summaryData.length > 0) {
-        // Berechne Gesamtzeit aus den Zusammenfassungsdaten
-        console.log('Summary data found:', summaryData.length, 'records');
-        totalSeconds = summaryData.reduce((sum, entry) => sum + (entry.total_seconds || 0), 0);
-      } else {
-        console.log('No summary data found, trying raw task times');
-        // Wenn keine Zusammenfassungsdaten, versuche die Rohdaten
-        const { data: rawData, error: rawError } = await supabase
+      try {
+        // Direkt mit der Originalquelle task_times arbeiten
+        const { data: timesData, error: timesError } = await supabase
           .from('task_times')
           .select(`
             duration_seconds,
             tasks!inner(customer_id)
           `)
           .eq('tasks.customer_id', customerId)
-          .gte('started_at', from.toISOString())
-          .lte('started_at', to.toISOString());
-
-        if (rawError) {
-          console.error('Error calculating from raw data:', rawError);
-          throw rawError;
+          .gte('started_at', fromDate.toISOString())
+          .lte('started_at', toDate.toISOString());
+        
+        if (timesError) {
+          console.error('Error calculating from task_times:', timesError);
+          throw timesError;
         }
         
-        console.log('Raw data found:', rawData?.length, 'records');
-        totalSeconds = rawData.reduce((sum, entry) => sum + (entry.duration_seconds || 0), 0);
+        console.log('Times data found:', timesData?.length, 'records');
+        
+        let totalSeconds = 0;
+        
+        if (timesData && timesData.length > 0) {
+          totalSeconds = timesData.reduce((sum, entry) => sum + (entry.duration_seconds || 0), 0);
+        } else {
+          // Alternative Abfrage über Tasks, falls keine direkten Zeiteinträge gefunden wurden
+          const { data: taskData, error: taskError } = await supabase
+            .from('tasks')
+            .select(`
+              id, 
+              created_at,
+              task_times(duration_seconds, started_at)
+            `)
+            .eq('customer_id', customerId)
+            .gte('created_at', fromDate.toISOString())
+            .lte('created_at', toDate.toISOString());
+          
+          if (taskError) {
+            console.error('Error fetching tasks with times:', taskError);
+            throw taskError;
+          }
+          
+          console.log('Task data with times:', taskData?.length);
+          
+          // Alle Zeiteinträge sammeln und summieren
+          taskData?.forEach(task => {
+            if (task.task_times && task.task_times.length > 0) {
+              const taskSeconds = task.task_times.reduce((sum: number, timeEntry: any) => 
+                sum + (timeEntry.duration_seconds || 0), 0);
+              totalSeconds += taskSeconds;
+            }
+          });
+        }
+
+        console.log('Total seconds calculated:', totalSeconds);
+        
+        const totalMinutes = Math.round(totalSeconds / 60);
+        const billableMinutes = Math.max(0, totalMinutes - FREE_MINUTES);
+        const netAmount = billableMinutes * PRICE_PER_MINUTE;
+        const vat = netAmount * VAT_RATE;
+        const totalAmount = netAmount + vat;
+
+        console.log('Final calculation:', {
+          totalMinutes,
+          billableMinutes,
+          netAmount,
+          vat,
+          totalAmount
+        });
+
+        return {
+          totalMinutes,
+          billableMinutes,
+          netAmount,
+          vat,
+          totalAmount
+        };
+      } catch (error) {
+        console.error('Fatal error in useInvoiceCalculation:', error);
+        throw error;
       }
-
-      console.log('Total seconds calculated:', totalSeconds);
-      
-      const totalMinutes = Math.round(totalSeconds / 60);
-      const billableMinutes = Math.max(0, totalMinutes - FREE_MINUTES);
-      const netAmount = billableMinutes * PRICE_PER_MINUTE;
-      const vat = netAmount * VAT_RATE;
-      const totalAmount = netAmount + vat;
-
-      console.log('Final calculation:', {
-        totalMinutes,
-        billableMinutes,
-        netAmount,
-        vat,
-        totalAmount
-      });
-
-      return {
-        totalMinutes,
-        billableMinutes,
-        netAmount,
-        vat,
-        totalAmount
-      };
     },
     enabled: Boolean(customerId && from && to)
   });
