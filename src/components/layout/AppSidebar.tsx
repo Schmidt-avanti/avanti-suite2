@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -12,7 +13,10 @@ import {
   Settings,
   Timer,
   Radio,
-  Clock
+  Clock,
+  Check,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 
 import {
