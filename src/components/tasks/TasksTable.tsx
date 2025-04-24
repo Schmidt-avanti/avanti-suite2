@@ -18,7 +18,7 @@ export const TasksTable = ({ tasks, isLoading }: TasksTableProps) => {
         <TableRow>
           <TableHead>Titel</TableHead>
           <TableHead>Kunde</TableHead>
-          <TableHead>Erstellt von</TableHead>
+          <TableHead>Source</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Datum</TableHead>
         </TableRow>
@@ -41,7 +41,7 @@ export const TasksTable = ({ tasks, isLoading }: TasksTableProps) => {
             >
               <TableCell>{task.title}</TableCell>
               <TableCell>{task.customer?.name || '-'}</TableCell>
-              <TableCell>{task.creator?.["Full Name"] || '-'}</TableCell>
+              <TableCell>{task.source}</TableCell>
               <TableCell>
                 <TaskStatusBadge status={task.status} />
               </TableCell>
