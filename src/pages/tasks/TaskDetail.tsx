@@ -87,38 +87,76 @@ const TaskDetail = () => {
   };
 
   const handleSendEmail = async () => {
-    if (!replyBody) {
-      toast({
-        title: "Fehler",
-        description: "Bitte Nachricht angeben.",
-        variant: "destructive"
-      });
-      return;
+  if (!replyBody) {
+    toast({
+      variant: 'destructive',
+      title: 'Fehler',
+      description: 'Bitte Nachricht angeben.'
+    });
+    return;
+  }
+
+  try {
+    const response = await fetch('/functions/send-reply-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        task_id: task.id,
+        subject: `Re: ${task.title || 'Ihre Anfrage'}`,
+        body: replyBody
+      })
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      const errorData = text ? JSON.parse(text) : {};
+      throw new Error(errorData.error || 'Fehler beim E-Mail Versand');
     }
 
-    try {
-      const { error } = await supabase.functions.invoke('send-reply-email', {
-        body: {
-          task_id: task.id,
-          subject: `Re: ${task.title || 'Ihre Anfrage'}`,
-          body: replyBody
-        }
-      });
-
-      if (error) throw error;
+    toast({
+      title: 'E-Mail gesendet',
+      description: `Antwort an ${replyTo} wurde gesendet.`,
+    });
+    setReplyBody('');
+  } catch (error: any) {
+    toast({
+      variant: 'destructive',
+      title: 'Fehler beim Senden',
+      description: error.message,
+    });
+  }
+};
+        throw new Error(errorData.error || 'Fehler beim E-Mail Versand');
+      }
 
       toast({
-        title: "Email gesendet",
-        description: `Antwort an ${replyTo} wurde gesendet.`
+        title: 'E-Mail gesendet',
+        description: `Antwort an ${replyTo} wurde gesendet.`,
       });
-      
       setReplyBody('');
 
     } catch (error: any) {
       toast({
-        title: "Fehler beim Senden",
+        variant: 'destructive',
+        title: 'Fehler beim Senden',
         description: error.message,
-        variant: "destructive"
+      });
+    }
+  };
+        throw new Error(errorData.error || 'Fehler beim E-Mail Versand');
+      }
+
+      toast({
+        title: 'E-Mail gesendet',
+        description: `Antwort an ${replyTo} wurde gesendet.`,
+      });
+      setReplyBody('');
+
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Fehler beim Senden',
+        description: error.message,
       });
     }
   };
