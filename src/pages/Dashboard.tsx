@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,53 +54,51 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <UserCircle className="h-8 w-8 text-muted-foreground" />
+        <UserCircle className="h-8 w-8 text-avanti-600" />
         <h1 className="text-2xl font-bold">Willkommen zurück, {firstName}!</h1>
       </div>
       
-      {/* Task statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="hover:shadow-md transition-shadow bg-muted/10">
+        <Card className="hover:shadow-md transition-shadow bg-avanti-50/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg font-semibold text-muted-foreground uppercase tracking-wide">Neue Aufgaben</CardTitle>
-            <InboxIcon className="absolute top-4 right-4 text-muted-foreground h-6 w-6" />
+            <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">Neue Aufgaben</CardTitle>
+            <InboxIcon className="absolute top-4 right-4 text-avanti-600 h-6 w-6" />
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold mt-2">{newTasksCount}</div>
-            <p className="text-sm text-muted-foreground">Aufgaben mit Status "neu"</p>
+            <div className="text-4xl font-bold mt-2 text-avanti-900">{newTasksCount}</div>
+            <p className="text-sm text-avanti-600">Aufgaben mit Status "neu"</p>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow bg-emerald-100/20">
+        <Card className="hover:shadow-md transition-shadow bg-avanti-50/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg font-semibold text-muted-foreground uppercase tracking-wide">Erledigte Aufgaben</CardTitle>
-            <CheckCircleIcon className="absolute top-4 right-4 text-muted-foreground h-6 w-6" />
+            <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">Erledigte Aufgaben</CardTitle>
+            <CheckCircleIcon className="absolute top-4 right-4 text-avanti-600 h-6 w-6" />
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold mt-2">{completedTasksCount}</div>
-            <p className="text-sm text-muted-foreground">Aufgaben mit Status "abgeschlossen"</p>
+            <div className="text-4xl font-bold mt-2 text-avanti-900">{completedTasksCount}</div>
+            <p className="text-sm text-avanti-600">Aufgaben mit Status "abgeschlossen"</p>
           </CardContent>
         </Card>
       </div>
       
-      {/* Recent notifications */}
-      <Card className="bg-orange-50/50">
+      <Card className="bg-avanti-50/30">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-muted-foreground uppercase tracking-wide">Ungelesene Benachrichtigungen</CardTitle>
+          <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">Ungelesene Benachrichtigungen</CardTitle>
         </CardHeader>
         <CardContent>
           {unreadNotifications.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">Keine ungelesenen Benachrichtigungen</p>
+            <p className="text-center text-avanti-600 py-4">Keine ungelesenen Benachrichtigungen</p>
           ) : (
             <div className="space-y-4">
               {unreadNotifications.map((notification) => (
                 <div 
                   key={notification.id} 
-                  className="flex flex-col bg-white p-3 rounded-lg hover:bg-gray-50 cursor-pointer shadow-sm"
+                  className="flex flex-col bg-white p-3 rounded-lg hover:bg-avanti-50 cursor-pointer shadow-sm"
                   onClick={() => handleNotificationClick(notification)}
                 >
-                  <div className="text-sm">{notification.message}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
+                  <div className="text-sm text-avanti-900">{notification.message}</div>
+                  <div className="text-xs text-avanti-600 mt-1">
                     {notification.created_at && formatDistanceToNow(new Date(notification.created_at), { 
                       addSuffix: true,
                       locale: de 
