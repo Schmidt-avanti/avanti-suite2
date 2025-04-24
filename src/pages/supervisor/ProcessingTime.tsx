@@ -34,6 +34,7 @@ import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface FilterFormValues {
   userId: string | null;
@@ -45,6 +46,7 @@ const ProcessingTime = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [refreshInterval, setRefreshInterval] = useState(5000);
+  const { user } = useAuth();
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
