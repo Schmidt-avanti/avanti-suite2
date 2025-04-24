@@ -1,4 +1,3 @@
-
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -95,4 +94,3 @@ export interface PaymentMethod {
   billing_zip?: string;
   billing_city?: string;
 }
-
