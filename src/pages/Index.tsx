@@ -15,12 +15,8 @@ const Index = () => {
     }
 
     // Routing basierend auf Rollen aus profile
-    if (user.role === "admin") {
-      navigate("/admin/users", { replace: true });
-    } else if (user.role === "agent") {
+    if (user.role === "admin" || user.role === "agent" || user.role === "client") {
       navigate("/dashboard", { replace: true });
-    } else if (user.role === "client") {
-      navigate("/meine-aufgaben", { replace: true });
     } else {
       navigate("/error", { replace: true });
     }

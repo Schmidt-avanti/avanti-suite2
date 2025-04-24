@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -69,13 +70,13 @@ export default {
           950: '#06254a',
         },
         sidebar: {
-          DEFAULT: '#100a29',
+          DEFAULT: '#162a51',
           foreground: '#FFFFFF',
           primary: '#FFFFFF',
-          'primary-foreground': '#100a29',
-          accent: '#1A1F2C',
+          'primary-foreground': '#162a51',
+          accent: '#213561',
           'accent-foreground': '#FFFFFF',
-          border: '#2A2F3C',
+          border: '#2A3B5C',
           ring: '#FFFFFF'
         }
       },

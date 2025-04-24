@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +12,9 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Auth Pages
 import Login from "@/pages/auth/Login";
+
+// Dashboard Page
+import Dashboard from "@/pages/Dashboard";
 
 // Admin Pages
 import AdminDashboard from "@/pages/admin/Dashboard";
@@ -77,6 +79,16 @@ const App = () => {
 
                 {/* Admin routes, geschützt */}
                 <Route element={<AppLayout />}>
+                  {/* Main Dashboard for all users */}
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  
                   <Route
                     path="/admin/dashboard"
                     element={
@@ -221,7 +233,7 @@ const App = () => {
 
                   {/* Agent routes */}
                   <Route
-                    path="/dashboard"
+                    path="/agent/dashboard"
                     element={
                       <ProtectedRoute allowedRoles={["agent"]}>
                         <AgentDashboard />
