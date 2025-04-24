@@ -71,7 +71,6 @@ const TaskDetail = () => {
       };
 
       setTask(enrichedTask);
-
       if (taskData.source === 'email') {
         setReplyTo(extractEmail(taskData.endkunde_email || '') || '');
       }
@@ -87,52 +86,64 @@ const TaskDetail = () => {
     }
   };
 
-const handleSendEmail = async () => {
-  if (!replyTo || !replyBody) {
-    toast({
-      variant: 'destructive',
-      title: 'Fehler',
-      description: 'Bitte Empfänger und Nachricht angeben.'
-    });
-    return;
-  }
-
-  try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    const { error } = await supabase.functions.invoke('send-reply-email', {
-      body: {
-        to: replyTo,
-        subject: `Re: ${task.subject || 'Ihre Anfrage'}`,
-        body: replyBody,
-      },
-      headers: {
-        Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`
-      }
-    });
-
-    if (error) {
+  const handleSendEmail = async () => {
+    if (!replyBody) {
       toast({
         variant: 'destructive',
-        title: 'Fehler beim Senden',
-        description: error.message,
+        title: 'Fehler',
+        description: 'Bitte Nachricht angeben.'
       });
-    } else {
+      return;
+    }
+
+    try {
+      const response = await fetch('/functions/send-reply-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          task_id: task.id,
+          subject: `Re: ${task.subject || 'Ihre Anfrage'}`,
+          body: replyBody
+        })
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        const errorData = text ? JSON.parse(text) : {};
+        throw new Error(errorData.error || 'Fehler beim E-Mail Versand');
+      }
+
       toast({
         title: 'E-Mail gesendet',
         description: `Antwort an ${replyTo} wurde gesendet.`,
       });
       setReplyBody('');
-    }
-  } catch (err) {
-    toast({
-      variant: 'destructive',
-      title: 'Unbekannter Fehler',
-      description: String(err),
-    });
-  }
-};
 
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Fehler beim Senden',
+        description: error.message,
+      });
+    }
+  };
+        throw new Error(errorData.error || 'Fehler beim E-Mail Versand');
+      }
+
+      toast({
+        title: 'E-Mail gesendet',
+        description: `Antwort an ${replyTo} wurde gesendet.`,
+      });
+      setReplyBody('');
+
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Fehler beim Senden',
+        description: error.message,
+      });
+    }
+  };
 
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
   if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
