@@ -7,6 +7,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import Landing from "./pages/Landing";
 
+// Import all the pages your application uses
+// This is just a basic router setup - add more routes as needed
+
 export const router = createBrowserRouter([
   {
     path: "/",

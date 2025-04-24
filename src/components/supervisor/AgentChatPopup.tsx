@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, MinusCircle, Send, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,8 +6,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { formatDistanceToNow } from 'date-fns';
-import { de } from 'date-fns/locale';
 
 interface Message {
   id: string;
@@ -17,7 +14,7 @@ interface Message {
   recipient_id: string;
   created_at: string;
   is_read: boolean;
-  sender_name?: string;
+  sender_name?: string; // Optional field for sender name
 }
 
 interface AgentChatPopupProps {
@@ -29,27 +26,18 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Scroll to bottom of messages
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  useEffect(() => {
+    console.log('AgentChatPopup rendered', user?.id);
+  }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  useEffect(() => {
-    console.log('AgentChatPopup mounted, user:', user?.id);
     if (!user?.id) return;
     
     const fetchMessages = async () => {
       setIsLoading(true);
-      console.log('Fetching messages for user:', user.id);
-      
       // First get messages
       const { data, error } = await supabase
         .from('supervisor_messages')
@@ -69,52 +57,50 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
       }
 
       console.log('Fetched messages:', data?.length);
-      
-      if (!data || data.length === 0) {
-        setIsLoading(false);
-        return;
-      }
 
       // Then fetch profiles separately to get sender names
-      const senderIds = data
-        .map(msg => msg.sender_id)
-        .filter((id, index, self) => self.indexOf(id) === index);
+      if (data && data.length > 0) {
+        const senderIds = data.map(msg => msg.sender_id)
+          .filter((id, index, self) => self.indexOf(id) === index);
 
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('"Full Name", id')
-        .in('id', senderIds);
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('"Full Name", id')
+          .in('id', senderIds);
+          
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+        }
+
+        // Create a map of id -> name for quick lookups
+        const profileMap = new Map();
+        if (profilesData) {
+          profilesData.forEach(profile => {
+            profileMap.set(profile.id, profile["Full Name"]);
+          });
+        }
+
+        // Combine the messages with sender names
+        const messagesWithSenderNames = data.map(msg => ({
+          ...msg,
+          sender_name: profileMap.get(msg.sender_id) || "Unbekannter Nutzer"
+        }));
+
+        setMessages(messagesWithSenderNames);
         
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-      }
-
-      // Create a map of id -> name for quick lookups
-      const profileMap = new Map();
-      if (profilesData) {
-        profilesData.forEach(profile => {
-          profileMap.set(profile.id, profile["Full Name"]);
-        });
-      }
-
-      // Combine the messages with sender names
-      const messagesWithNames = data.map(msg => ({
-        ...msg,
-        sender_name: profileMap.get(msg.sender_id) || "Unbekannter Nutzer"
-      }));
-
-      setMessages(messagesWithNames);
-      
-      // Mark messages as read
-      const unreadMsgIds = data
-        .filter(msg => msg.recipient_id === user.id && !msg.is_read)
-        .map(msg => msg.id);
-        
-      if (unreadMsgIds.length > 0) {
-        await supabase
-          .from('supervisor_messages')
-          .update({ is_read: true })
-          .in('id', unreadMsgIds);
+        // Mark messages as read
+        const unreadMsgIds = data
+          .filter(msg => msg.recipient_id === user.id && !msg.is_read)
+          .map(msg => msg.id);
+          
+        if (unreadMsgIds.length > 0) {
+          await supabase
+            .from('supervisor_messages')
+            .update({ is_read: true })
+            .in('id', unreadMsgIds);
+        }
+      } else {
+        setMessages([]);
       }
       
       setIsLoading(false);
@@ -140,29 +126,26 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
           .eq('id', payload.new.id)
           .single();
           
-        if (error || !newMsg) {
-          console.error('Error getting new message details', error);
-          return;
-        }
-        
-        // Fetch sender name
-        const { data: senderProfile } = await supabase
-          .from('profiles')
-          .select('"Full Name"')
-          .eq('id', newMsg.sender_id)
-          .single();
+        if (!error && newMsg) {
+          // Fetch sender name
+          const { data: senderProfile } = await supabase
+            .from('profiles')
+            .select('"Full Name"')
+            .eq('id', newMsg.sender_id)
+            .single();
+            
+          // Add the new message to the state
+          setMessages(prev => [...prev, {
+            ...newMsg,
+            sender_name: senderProfile ? senderProfile["Full Name"] : "Unbekannter Nutzer"
+          }]);
           
-        // Add the new message to the state
-        setMessages(prev => [...prev, {
-          ...newMsg,
-          sender_name: senderProfile ? senderProfile["Full Name"] : "Unbekannter Nutzer"
-        }]);
-        
-        // Mark as read since chat is open
-        await supabase
-          .from('supervisor_messages')
-          .update({ is_read: true })
-          .eq('id', newMsg.id);
+          // Mark as read since chat is open
+          await supabase
+            .from('supervisor_messages')
+            .update({ is_read: true })
+            .eq('id', newMsg.id);
+        }
       })
       .subscribe();
       
@@ -175,45 +158,32 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
     if (!newMessage.trim() || !user?.id) return;
     
     try {
-      // For demonstration, we'll send a message to ourselves if there's no previous message
-      // In a real app, you'd have a way to determine the recipient
+      // Find the supervisor who sent the most recent message
+      const supervisors = messages
+        .filter(msg => msg.recipient_id === user.id)
+        .map(msg => msg.sender_id);
+        
+      const lastSupervisorId = supervisors[supervisors.length - 1];
       
-      // Find the other participant in the conversation
-      let recipientId = user.id; // Default to self for testing
-      
-      // Try to find another user in previous messages
-      const otherParticipant = messages.find(msg => 
-        msg.sender_id !== user.id || msg.recipient_id !== user.id
-      );
-      
-      if (otherParticipant) {
-        recipientId = otherParticipant.sender_id === user.id 
-          ? otherParticipant.recipient_id 
-          : otherParticipant.sender_id;
+      if (!lastSupervisorId) {
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "Kein Supervisor gefunden, um zu antworten."
+        });
+        return;
       }
       
-      console.log(`Sending message to: ${recipientId}`);
-      
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('supervisor_messages')
         .insert({
           content: newMessage.trim(),
           sender_id: user.id,
-          recipient_id: recipientId,
+          recipient_id: lastSupervisorId,
           is_read: false
-        })
-        .select()
-        .single();
+        });
         
       if (error) throw error;
-      
-      if (data) {
-        // Add our own message to the messages array
-        setMessages(prev => [...prev, {
-          ...data,
-          sender_name: user.role === 'admin' ? 'Admin' : user.email || 'You'
-        }]);
-      }
       
       setNewMessage('');
       
@@ -231,20 +201,13 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
     setIsMinimized(!isMinimized);
   };
 
-  const formatMessageTime = (timestamp: string) => {
-    return formatDistanceToNow(new Date(timestamp), { 
-      addSuffix: true, 
-      locale: de 
-    });
-  };
-
   return (
     <div className={`fixed bottom-4 right-4 w-80 z-50 shadow-lg transition-all duration-300 ${isMinimized ? 'h-12' : 'h-96'}`}>
       <Card className="h-full flex flex-col">
         <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0 border-b">
           <CardTitle className="text-sm font-medium flex items-center">
             <MessageCircle className="h-4 w-4 mr-2" />
-            Chat
+            Supervisor Chat
           </CardTitle>
           <div className="flex items-center">
             <Button variant="ghost" size="sm" onClick={toggleMinimize} className="h-8 w-8 p-0">
@@ -265,8 +228,7 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
                 </div>
               ) : messages.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
-                  Keine Nachrichten vorhanden.<br/>
-                  Schreibe eine Nachricht, um zu beginnen.
+                  Keine Nachrichten vorhanden
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -288,15 +250,11 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
                           </div>
                         )}
                         <div className="text-sm break-words">{message.content}</div>
-                        <div className="text-xs mt-1 opacity-70">
-                          {formatMessageTime(message.created_at)}
-                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </CardContent>
             
             <div className="p-3 border-t">
@@ -304,7 +262,7 @@ const AgentChatPopup: React.FC<AgentChatPopupProps> = ({ onClose }) => {
                 <Textarea
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Nachricht schreiben..."
+                  placeholder="Antworten..."
                   className="min-h-8 text-sm resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
