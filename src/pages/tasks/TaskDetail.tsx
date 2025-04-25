@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -98,7 +97,7 @@ const TaskDetail = () => {
     }
 
     try {
-      const response = await fetch('/functions/send-reply-email', {
+      const response = await fetch('https://knoevkvjyuchhcmzsdpq.functions.supabase.co/send-reply-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
