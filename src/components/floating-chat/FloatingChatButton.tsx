@@ -20,14 +20,14 @@ export function FloatingChatButton() {
         <Button
           onClick={toggleChat}
           className={cn(
-            "h-14 w-14 rounded-full shadow-lg",
+            "h-16 w-16 rounded-full shadow-xl",
             "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
-            "flex items-center justify-center transition-all duration-200 ease-in-out",
+            "flex items-center justify-center transition-all duration-300 ease-in-out",
             "hover:scale-110"
           )}
           aria-label="Öffne Wissensassistent"
         >
-          <MessageSquare className="h-6 w-6 text-white" />
+          <MessageSquare className="h-7 w-7 text-white" />
         </Button>
       )}
     </div>

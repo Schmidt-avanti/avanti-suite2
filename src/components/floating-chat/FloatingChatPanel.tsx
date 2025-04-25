@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Loader2, MessageSquare } from 'lucide-react';
+import { X, Send, Loader2, MessageSquare, Smile } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -117,16 +118,17 @@ export function FloatingChatPanel({
   };
 
   return (
-    <Card className="w-[380px] h-[500px] overflow-hidden flex flex-col rounded-[20px] shadow-xl bg-gradient-to-b from-white to-gray-50">
+    <Card className="w-[380px] h-[500px] overflow-hidden flex flex-col rounded-[20px] shadow-xl border-none">
+      {/* Header with gradient */}
       <div className="relative">
-        <div className="bg-gradient-to-r from-avanti-500 to-avanti-600 p-4 text-white">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-5 text-white rounded-t-[20px]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+              <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center">
                 <MessageSquare className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-medium">AVA</h3>
+                <h3 className="text-xl font-medium">AVA</h3>
                 <p className="text-sm text-white/80">Immer für Dich da</p>
               </div>
             </div>
@@ -140,15 +142,18 @@ export function FloatingChatPanel({
               <span className="sr-only">Schließen</span>
             </Button>
           </div>
+          {/* Wave shape at the bottom of the header */}
+          <div className="absolute bottom-0 left-0 right-0 h-4 overflow-hidden">
+            <div className="absolute bottom-0 left-0 right-0 h-8 bg-white rounded-t-[50%]"></div>
+          </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-b from-avanti-600/10 to-transparent"></div>
       </div>
 
-      <ScrollArea className="flex-1 px-4 py-6" ref={scrollRef}>
+      <ScrollArea className="flex-1 px-5 pt-6 pb-2 bg-white" ref={scrollRef}>
         <div className="space-y-4">
           {messages.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-center p-4">
-              <p className="text-slate-500 text-sm">
+            <div className="flex items-center justify-center text-center p-6">
+              <p className="text-gray-500 text-sm">
                 Frag mich etwas über Prozesse, Begriffe oder Abläufe.
               </p>
             </div>
@@ -166,9 +171,9 @@ export function FloatingChatPanel({
                   </div>
                 ) : (
                   <div
-                    className={`max-w-[280px] rounded-2xl px-4 py-3 shadow-sm
+                    className={`max-w-[280px] rounded-[18px] px-4 py-3 shadow-sm
                       ${message.from === 'user' 
-                        ? 'bg-avanti-500 text-white ml-12' 
+                        ? 'bg-blue-500 text-white ml-12' 
                         : 'bg-gray-100 text-gray-900 mr-12'
                       }`}
                   >
@@ -185,11 +190,11 @@ export function FloatingChatPanel({
           )}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-2xl px-4 py-3 max-w-[280px]">
+              <div className="bg-gray-100 rounded-[18px] px-4 py-3 max-w-[280px]">
                 <div className="flex space-x-2 items-center h-6">
-                  <div className="w-2 h-2 rounded-full bg-avanti-400 animate-bounce"></div>
-                  <div className="w-2 h-2 rounded-full bg-avanti-400 animate-bounce [animation-delay:0.2s]"></div>
-                  <div className="w-2 h-2 rounded-full bg-avanti-400 animate-bounce [animation-delay:0.4s]"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:0.2s]"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:0.4s]"></div>
                 </div>
               </div>
             </div>
@@ -203,7 +208,7 @@ export function FloatingChatPanel({
             id="gpt-fallback" 
             checked={useGPTFallback} 
             onCheckedChange={checked => setUseGPTFallback(checked === true)} 
-            className="border-avanti-200" 
+            className="border-blue-200" 
           />
           <Label htmlFor="gpt-fallback" className="text-xs text-gray-600">
             Bei fehlenden Einträgen GPT nutzen
@@ -217,19 +222,20 @@ export function FloatingChatPanel({
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ihre Frage..."
-            className="pr-12 resize-none min-h-[44px] max-h-[120px] text-sm rounded-2xl border-gray-200 focus-visible:ring-avanti-500"
+            className="pr-16 resize-none min-h-[50px] max-h-[120px] text-sm border-gray-200 shadow-sm focus-visible:ring-blue-500"
             rows={1}
             disabled={isLoading}
           />
           <Button
             onClick={() => handleSend()}
             disabled={!input.trim() || isLoading}
-            className="absolute bottom-1.5 right-1.5 h-8 w-8 rounded-xl bg-avanti-500 hover:bg-avanti-600 p-0 flex items-center justify-center"
+            className="absolute bottom-1.5 right-1.5 h-10 w-10 rounded-full bg-blue-500 hover:bg-blue-600 p-0 flex items-center justify-center shadow-md"
+            aria-label="Senden"
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
+              <Loader2 className="h-5 w-5 animate-spin text-white" />
             ) : (
-              <Send className="h-4 w-4 text-white" />
+              <Send className="h-5 w-5 text-white" />
             )}
           </Button>
         </div>
