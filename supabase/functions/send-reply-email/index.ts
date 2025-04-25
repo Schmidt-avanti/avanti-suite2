@@ -43,6 +43,10 @@ serve(async (req) => {
 
     console.log('Sending email to:', task.endkunde_email);
 
+    // Verify we're using an email that's been verified in SendGrid
+    const verifiedSenderEmail = "noreply@avanti-suite.app"; // Change this to your verified sender in SendGrid
+    const senderName = "avanti-suite";
+    
     const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
     
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -55,7 +59,7 @@ serve(async (req) => {
         personalizations: [{
           to: [{ email: task.endkunde_email }]
         }],
-        from: { email: "m.gawlich@ja-dialog.de", name: "avanti-suite" },
+        from: { email: verifiedSenderEmail, name: senderName },
         subject: emailSubject,
         content: [{
           type: 'text/plain',

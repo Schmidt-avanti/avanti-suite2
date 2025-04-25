@@ -15,7 +15,8 @@ import {
   Clock,
   Check,
   Send,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from "lucide-react";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 import { useTaskTimer } from '@/hooks/useTaskTimer';
@@ -34,6 +35,7 @@ const TaskDetail = () => {
   const [isSending, setIsSending] = useState(false);
   const [replyTo, setReplyTo] = useState('');
   const [replyBody, setReplyBody] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { formattedTime } = useTaskTimer({ taskId: id || '', isActive: true });
@@ -102,8 +104,9 @@ const TaskDetail = () => {
 
     try {
       setIsSending(true);
+      setSendError(null);
       
-      const response = await supabase.functions.invoke('send-reply-email', {
+      const { data, error } = await supabase.functions.invoke('send-reply-email', {
         body: {
           task_id: id,
           subject: `Re: ${task.title || 'Ihre Anfrage'}`,
@@ -111,8 +114,12 @@ const TaskDetail = () => {
         }
       });
 
-      if (response.error) {
-        throw new Error(response.error.message || 'Fehler beim E-Mail Versand');
+      if (error) {
+        throw new Error(error.message || 'Fehler beim E-Mail Versand');
+      }
+      
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       toast({
@@ -125,6 +132,7 @@ const TaskDetail = () => {
       
     } catch (error: any) {
       console.error('Email sending error:', error);
+      setSendError(error.message || 'Fehler beim E-Mail Versand');
       toast({
         variant: 'destructive',
         title: 'Fehler beim Senden',
@@ -242,6 +250,20 @@ const TaskDetail = () => {
                     className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm mb-4 bg-white"
                     disabled={isSending}
                   />
+
+                  {sendError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm flex items-start">
+                      <AlertTriangle className="h-4 w-4 mt-0.5 mr-2 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Fehler beim Senden</p>
+                        <p className="mt-1">{sendError}</p>
+                        <p className="mt-2 text-xs">
+                          Bitte stellen Sie sicher, dass die E-Mail-Adresse korrekt ist und dass in der SendGrid-Konfiguration 
+                          die Absender-E-Mail verifiziert wurde.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <textarea
                     rows={12}
