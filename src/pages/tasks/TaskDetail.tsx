@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,9 @@ import {
   Inbox,
   UserCheck,
   Clock,
-  Check
+  Check,
+  Send,
+  Loader2
 } from "lucide-react";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 import { useTaskTimer } from '@/hooks/useTaskTimer';
@@ -28,6 +31,7 @@ const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [task, setTask] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
   const [replyTo, setReplyTo] = useState('');
   const [replyBody, setReplyBody] = useState('');
   const { toast } = useToast();
@@ -97,33 +101,37 @@ const TaskDetail = () => {
     }
 
     try {
-      const response = await fetch('https://knoevkvjyuchhcmzsdpq.functions.supabase.co/send-reply-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          task_id: task.id,
+      setIsSending(true);
+      
+      const response = await supabase.functions.invoke('send-reply-email', {
+        body: {
+          task_id: id,
           subject: `Re: ${task.title || 'Ihre Anfrage'}`,
           body: replyBody
-        })
+        }
       });
 
-      if (!response.ok) {
-        const text = await response.text();
-        const errorData = text ? JSON.parse(text) : {};
-        throw new Error(errorData.error || 'Fehler beim E-Mail Versand');
+      if (response.error) {
+        throw new Error(response.error.message || 'Fehler beim E-Mail Versand');
       }
 
       toast({
         title: 'E-Mail gesendet',
-        description: `Antwort an ${replyTo} wurde gesendet.`,
+        description: `Antwort an ${replyTo} wurde erfolgreich gesendet.`,
       });
+      
       setReplyBody('');
+      fetchTaskDetails(); // Refresh task data
+      
     } catch (error: any) {
+      console.error('Email sending error:', error);
       toast({
         variant: 'destructive',
         title: 'Fehler beim Senden',
-        description: error.message,
+        description: error.message || 'Fehler beim E-Mail Versand',
       });
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -232,6 +240,7 @@ const TaskDetail = () => {
                     value={replyTo}
                     onChange={(e) => setReplyTo(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm mb-4 bg-white"
+                    disabled={isSending}
                   />
 
                   <textarea
@@ -240,12 +249,24 @@ const TaskDetail = () => {
                     value={replyBody}
                     onChange={(e) => setReplyBody(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 mb-4 bg-white"
+                    disabled={isSending}
                   />
                   <Button
                     className="w-fit bg-blue-600 hover:bg-blue-700 text-white self-start"
                     onClick={handleSendEmail}
+                    disabled={isSending || !replyBody.trim()}
                   >
-                    Senden
+                    {isSending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Senden...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Senden
+                      </>
+                    )}
                   </Button>
                 </div>
               ) : (
