@@ -42,7 +42,11 @@ export function UserChat() {
   
   // 1. Lade Benutzer beim ersten Render
   useEffect(() => {
-    fetchUsers();
+    fetchUsers().catch(err => {
+      console.error("Error in fetchUsers:", err);
+      setError("Fehler beim Laden der Benutzer. Bitte versuche es später erneut.");
+      setLoadingUsers(false);
+    });
   }, []);
 
   // 2. Lade Nachrichten und abonniere Updates, wenn ein Benutzer ausgewählt wird
@@ -50,11 +54,16 @@ export function UserChat() {
     if (selectedUserId) {
       setLoadingMessages(true);
       setMessages([]); // Nachrichten zurücksetzen
-      fetchMessages().catch(err => {
-        console.error("Fehler beim Laden der Nachrichten:", err);
-        setError("Fehler beim Laden der Nachrichten. Bitte versuchen Sie es später erneut.");
-        setLoadingMessages(false);
-      });
+      
+      fetchMessages()
+        .then(() => {
+          console.log("Messages fetched successfully");
+        })
+        .catch(err => {
+          console.error("Error in fetchMessages:", err);
+          setError("Fehler beim Laden der Nachrichten. Bitte versuchen Sie es später erneut.");
+          setLoadingMessages(false);
+        });
       
       const subscription = subscribeToMessages();
       return () => {
@@ -81,11 +90,12 @@ export function UserChat() {
       setLoadingUsers(true);
       
       if (!user) {
+        console.log("No authenticated user found");
         setLoadingUsers(false);
         return;
       }
       
-      console.log("Lade Benutzer...");
+      console.log("Loading users...");
       
       const { data: profiles, error } = await supabase
         .from('profiles')
@@ -94,12 +104,12 @@ export function UserChat() {
         .neq('id', user.id);
 
       if (error) {
-        console.error('Fehler beim Laden der Benutzer:', error);
+        console.error('Error loading users:', error);
         throw error;
       }
 
       if (profiles && Array.isArray(profiles)) {
-        console.log(`${profiles.length} Benutzer geladen`);
+        console.log(`${profiles.length} users loaded`);
         const formattedUsers = profiles.map(p => ({
           id: p.id,
           fullName: p["Full Name"] || "Unbekannter Nutzer",
@@ -107,7 +117,7 @@ export function UserChat() {
         }));
         setUsers(formattedUsers);
       } else {
-        console.log("Keine Benutzer gefunden oder ungültiges Format");
+        console.log("No users found or invalid format");
         setUsers([]);
       }
     } catch (error: any) {
@@ -123,15 +133,16 @@ export function UserChat() {
 
   const fetchMessages = async () => {
     if (!selectedUserId || !user) {
+      console.log("Cannot fetch messages: Missing selectedUserId or user");
       setLoadingMessages(false);
       return;
     }
 
     try {
       setError(null);
-      console.log(`Lade Nachrichten für Chat mit Benutzer ${selectedUserId}`);
+      console.log(`Loading messages for chat with user ${selectedUserId}`);
       
-      // Hole Nachrichten zwischen dem aktuellen Benutzer und dem ausgewählten Benutzer
+      // Get messages between the current user and the selected user
       const { data, error } = await supabase
         .from('user_chats')
         .select(`
@@ -142,21 +153,21 @@ export function UserChat() {
         .order('timestamp', { ascending: true });
 
       if (error) {
-        console.error('Fehler beim Laden der Nachrichten:', error);
+        console.error('Error loading messages:', error);
         throw error;
       }
 
       if (data && Array.isArray(data)) {
-        console.log(`${data.length} Nachrichten geladen`);
+        console.log(`${data.length} messages loaded`);
         setMessages(data.map(msg => ({
           ...msg,
           senderName: msg.sender && msg.sender["Full Name"] ? msg.sender["Full Name"] : "Unbekannter Nutzer"
         })));
         
-        // Markiere empfangene Nachrichten als gelesen
+        // Mark received messages as read
         await markMessagesAsRead();
       } else {
-        console.log("Keine Nachrichten gefunden oder ungültiges Format");
+        console.log("No messages found or invalid format");
         setMessages([]);
       }
     } catch (error: any) {
@@ -165,7 +176,6 @@ export function UserChat() {
       sonnerToast.error("Fehler beim Laden der Nachrichten", {
         description: "Die Nachrichten konnten nicht geladen werden."
       });
-      throw error;
     } finally {
       setLoadingMessages(false);
     }
@@ -174,28 +184,35 @@ export function UserChat() {
   const subscribeToMessages = () => {
     if (!user || !selectedUserId) return null;
 
-    const channel = supabase
-      .channel('user-chat')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'user_chats',
-        filter: `receiver_id=eq.${user.id}`
-      }, payload => {
-        if (payload.new && payload.new.sender_id === selectedUserId) {
-          fetchMessages().catch(console.error);
-        }
-      })
-      .subscribe();
+    try {
+      console.log("Setting up real-time subscription for new messages");
+      const channel = supabase
+        .channel('user-chat')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'user_chats',
+          filter: `receiver_id=eq.${user.id}`
+        }, payload => {
+          console.log("Received real-time message update", payload);
+          if (payload.new && payload.new.sender_id === selectedUserId) {
+            fetchMessages().catch(console.error);
+          }
+        })
+        .subscribe();
 
-    return channel;
+      return channel;
+    } catch (err) {
+      console.error("Failed to set up real-time subscription:", err);
+      return null;
+    }
   };
 
   const markMessagesAsRead = async () => {
     if (!selectedUserId || !user) return;
     
     try {
-      // Markiere alle Nachrichten vom ausgewählten Benutzer an den aktuellen Benutzer als gelesen
+      // Mark all messages from the selected user to the current user as read
       const { error } = await supabase
         .from('user_chats')
         .update({ read_status: true })
@@ -204,7 +221,9 @@ export function UserChat() {
         .eq('read_status', false);
 
       if (error) {
-        console.error('Fehler beim Markieren der Nachrichten als gelesen:', error);
+        console.error('Error marking messages as read:', error);
+      } else {
+        console.log("Messages marked as read successfully");
       }
     } catch (error: any) {
       console.error('Error marking messages as read:', error);
@@ -212,7 +231,11 @@ export function UserChat() {
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || !selectedUserId || !user) return;
+    if (!input.trim() || !selectedUserId || !user) {
+      console.log("Cannot send message: Missing input, selectedUserId, or user");
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -224,15 +247,18 @@ export function UserChat() {
         read_status: false
       };
       
+      console.log("Sending message:", messageData);
+      
       const { error } = await supabase
         .from('user_chats')
         .insert(messageData);
 
       if (error) {
-        console.error('Fehler beim Senden der Nachricht:', error);
+        console.error('Error sending message:', error);
         throw error;
       }
 
+      console.log("Message sent successfully");
       setInput('');
       await fetchMessages();
     } catch (error: any) {
@@ -246,12 +272,19 @@ export function UserChat() {
   };
 
   const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      console.error("Error formatting timestamp:", e);
+      return "";
+    }
   };
 
   const handleUserSelect = (userId: string) => {
-    console.log("Benutzer ausgewählt:", userId);
+    console.log("User selected:", userId);
+    if (userId === selectedUserId) return;
+    
     setSelectedUserId(userId);
     setMessages([]);
     setLoadingMessages(true);

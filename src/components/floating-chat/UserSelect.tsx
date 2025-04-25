@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,26 @@ export function UserSelect({ users = [], selectedUserId, onUserSelect, isLoading
   // Finden des ausgewählten Benutzers in der sicheren Liste
   const selectedUser = safeUsers.find(user => user.id === selectedUserId);
 
+  // Debug output
+  useEffect(() => {
+    console.log("UserSelect render:", { 
+      usersLength: safeUsers.length, 
+      selectedUserId, 
+      selectedUser, 
+      isLoading 
+    });
+  }, [safeUsers, selectedUserId, selectedUser, isLoading]);
+
+  const handleSelect = (userId: string) => {
+    try {
+      console.log("User selected in dropdown:", userId);
+      onUserSelect(userId);
+      setOpen(false);
+    } catch (error) {
+      console.error("Error in UserSelect handleSelect:", error);
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -71,10 +91,7 @@ export function UserSelect({ users = [], selectedUserId, onUserSelect, isLoading
                 <CommandItem
                   key={user.id}
                   value={user.fullName}
-                  onSelect={() => {
-                    onUserSelect(user.id);
-                    setOpen(false);
-                  }}
+                  onSelect={() => handleSelect(user.id)}
                   className="py-2 cursor-pointer"
                 >
                   <Check

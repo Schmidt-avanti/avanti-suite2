@@ -8,7 +8,11 @@ interface ChatTabsProps {
 
 export function ChatTabs({ activeTab, onTabChange }: ChatTabsProps) {
   return (
-    <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as "ava" | "colleagues")} className="w-full">
+    <Tabs 
+      value={activeTab} 
+      onValueChange={(value) => onTabChange(value as "ava" | "colleagues")} 
+      className="w-full"
+    >
       <TabsList className="w-full grid grid-cols-2 bg-blue-100/50 p-0 h-auto">
         <TabsTrigger 
           value="ava" 
