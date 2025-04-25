@@ -20,7 +20,7 @@ serve(async (req) => {
       throw new Error('Missing required fields: task_id, recipient_email, and body are required');
     }
 
-    // Get task details and the original inbound email
+    // Get task details including both relationship and direct email field
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') || '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
@@ -28,7 +28,13 @@ serve(async (req) => {
 
     const { data: task, error: taskError } = await supabase
       .from('tasks')
-      .select('*, inbound_emails!tasks_source_email_fkey(*)')
+      .select(`
+        *,
+        inbound_email:source_email_id (
+          from_email,
+          subject
+        )
+      `)
       .eq('id', task_id)
       .single();
 
@@ -37,9 +43,11 @@ serve(async (req) => {
       throw new Error('Could not find task');
     }
 
-    // Get the original sender email from inbound_emails
-    const originalEmail = task.source === 'email' ? task.inbound_emails?.from_email : null;
-    
+    // Try to get the original sender email from either the relationship or the direct field
+    const originalEmail = task.source === 'email' 
+      ? (task.inbound_email?.from_email || task.endkunde_email)
+      : null;
+
     if (!originalEmail) {
       throw new Error('No sender email found for this task');
     }

@@ -610,6 +610,7 @@ export type Database = {
           match_reasoning: string | null
           matched_use_case_id: string | null
           source: string | null
+          source_email_id: string | null
           status: string
           title: string
           updated_at: string
@@ -627,6 +628,7 @@ export type Database = {
           match_reasoning?: string | null
           matched_use_case_id?: string | null
           source?: string | null
+          source_email_id?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -644,6 +646,7 @@ export type Database = {
           match_reasoning?: string | null
           matched_use_case_id?: string | null
           source?: string | null
+          source_email_id?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -661,6 +664,13 @@ export type Database = {
             columns: ["matched_use_case_id"]
             isOneToOne: false
             referencedRelation: "use_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_source_email_id_fkey"
+            columns: ["source_email_id"]
+            isOneToOne: false
+            referencedRelation: "inbound_emails"
             referencedColumns: ["id"]
           },
         ]
