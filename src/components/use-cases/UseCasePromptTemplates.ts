@@ -24,7 +24,9 @@ FORMAT DER ANTWORT (STRIKT EINHALTEN):
     ]
   },
   "next_question": "Habe ich noch weitere Details vergessen, die wichtig sein könnten?"
-}`;
+}
+
+WICHTIG: chat_response darf NUR steps_block enthalten - keine anderen Felder wie info_block oder tone!`;
 
 export const knowledgeRequestTemplate = `Du bist Ava, die digitale Assistentin bei avanti.
 
@@ -49,7 +51,9 @@ FORMAT DER ANTWORT (STRIKT EINHALTEN):
     ]
   },
   "next_question": "Gibt es noch weitere Details, die ich berücksichtigen sollte?"
-}`;
+}
+
+WICHTIG: chat_response darf NUR steps_block enthalten - keine anderen Felder wie info_block oder tone!`;
 
 export const forwardingTemplate = `Du bist Ava, die digitale Assistentin bei avanti.
 
@@ -74,4 +78,6 @@ FORMAT DER ANTWORT (STRIKT EINHALTEN):
     ]
   },
   "next_question": "Gibt es noch etwas, das ich für die Weiterleitung wissen sollte?"
-}`;
+}
+
+WICHTIG: chat_response darf NUR steps_block enthalten - keine anderen Felder wie info_block oder tone!`;

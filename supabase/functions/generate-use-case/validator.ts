@@ -4,10 +4,10 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 // Define constants for valid use case types
 const USE_CASE_TYPES = ['knowledge_request', 'forwarding_use_case', 'direct_use_case'] as const;
 
-// Schema for chat_response object
+// Schema for chat_response object - SIMPLIFIED for steps_block-only approach
 const chatResponseSchema = z.object({
+  // Only steps_block is required now, all other fields are optional
   steps_block: z.array(z.string()).min(1),
-  // Mache alle anderen Felder optional
   title: z.string().optional(),
   info_block: z.string().optional(),
   activities_block: z.string().optional(),
@@ -65,6 +65,11 @@ export function validateResponse(data: unknown) {
   if (data && typeof data === 'object' && 'type' in data) {
     console.log(`Response type field: "${(data as any).type}"`, 
       `(typeof: ${typeof (data as any).type})`);
+  }
+  
+  // Log chat_response structure for debugging
+  if (data && typeof data === 'object' && 'chat_response' in data) {
+    console.log("chat_response structure:", JSON.stringify((data as any).chat_response, null, 2));
   }
   
   const result = useCaseResponseSchema.safeParse(data);
