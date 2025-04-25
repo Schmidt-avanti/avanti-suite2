@@ -4,10 +4,10 @@ import { Send, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 import { UserSelect } from "./UserSelect";
 
 interface Message {
@@ -48,6 +48,7 @@ export function UserChat() {
   useEffect(() => {
     if (selectedUserId) {
       setLoadingMessages(true);
+      setMessages([]);
       fetchMessages();
       const subscription = subscribeToMessages();
       return () => {
@@ -72,15 +73,21 @@ export function UserChat() {
       setLoadingUsers(true);
       if (!user) return;
       
+      console.log("Lade Benutzer...");
+      
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('id, "Full Name", role')
         .eq('is_active', true)
         .neq('id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Fehler beim Laden der Benutzer:', error);
+        throw error;
+      }
 
       if (profiles) {
+        console.log(`${profiles.length} Benutzer geladen`);
         const formattedUsers = profiles.map(p => ({
           id: p.id,
           fullName: p["Full Name"] || "Unbekannter Nutzer",
@@ -109,6 +116,7 @@ export function UserChat() {
 
     try {
       setError(null);
+      console.log(`Lade Nachrichten für Chat mit Benutzer ${selectedUserId}`);
       
       // Hole Nachrichten zwischen dem aktuellen Benutzer und dem ausgewählten Benutzer
       const { data, error } = await supabase
@@ -123,6 +131,7 @@ export function UserChat() {
       if (error) throw error;
 
       if (data) {
+        console.log(`${data.length} Nachrichten geladen`);
         setMessages(data.map(msg => ({
           ...msg,
           senderName: msg.sender["Full Name"] || "Unbekannter Nutzer"
@@ -217,6 +226,7 @@ export function UserChat() {
   };
 
   const handleUserSelect = (userId: string) => {
+    console.log("Benutzer ausgewählt:", userId);
     setSelectedUserId(userId);
     setMessages([]);
     setLoadingMessages(true);
