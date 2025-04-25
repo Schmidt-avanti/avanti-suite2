@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useUser } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { 
   Form,
@@ -26,7 +26,7 @@ interface TaskFormValues {
 }
 
 const CreateTask = () => {
-  const { user } = useUser();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { customers, isLoading: isLoadingCustomers } = useCustomers();
