@@ -58,13 +58,13 @@ serve(async (req) => {
     console.log("Prepared metadata for API call:", preparedMetadata);
 
     const payload = {
-      model: "gpt-4.1-preview",
+      model: "gpt-4.5-preview",
       instructions: `${prompt}\n\nDEFINITIV KEINE RÜCKFRAGEN STELLEN! Antworte immer direkt im geforderten Format ohne Rückfragen.`,
       input: userInput,
       metadata: preparedMetadata,
     };
 
-    console.log("Sending request to OpenAI Responses API");
+    console.log("Sending request to OpenAI Responses API with model:", payload.model);
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -86,6 +86,18 @@ serve(async (req) => {
         errorData = JSON.parse(errorText);
       } catch (e) {
         errorData = { raw: errorText };
+      }
+      
+      // Enhanced error message for model-related errors
+      if (errorData?.error?.code === 'model_not_found') {
+        return new Response(JSON.stringify({ 
+          error: `Invalid model configuration. Please contact support.`,
+          details: errorData,
+          status: "model_error" 
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       
       return new Response(JSON.stringify({ 
@@ -191,3 +203,4 @@ serve(async (req) => {
     });
   }
 });
+
