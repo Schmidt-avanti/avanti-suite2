@@ -1,5 +1,5 @@
 
-import { Share2 } from 'lucide-react';
+import { Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -17,7 +17,7 @@ export function ScreenShareButton() {
       onClick={handleScreenShare}
       aria-label="Screen Share"
     >
-      <Share2 className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-600`} />
+      <Monitor className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-600`} />
     </Button>
   );
 }
