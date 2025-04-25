@@ -2,8 +2,9 @@
 import { useBreakTimer } from '@/hooks/useBreakTimer';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useEffect } from 'react';
 
-interface ShortBreakTimerProps {
+export interface ShortBreakTimerProps {
   breakId: string;
   onComplete: () => void;
 }
@@ -15,10 +16,11 @@ export const ShortBreakTimer = ({ breakId, onComplete }: ShortBreakTimerProps) =
   const seconds = timeLeft % 60;
   const progress = ((300 - timeLeft) / 300) * 100;
 
-  if (timeLeft === 0) {
-    onComplete();
-    return null;
-  }
+  useEffect(() => {
+    if (timeLeft === 0) {
+      onComplete();
+    }
+  }, [timeLeft, onComplete]);
 
   return (
     <div className="space-y-4">

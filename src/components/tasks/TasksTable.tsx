@@ -73,7 +73,7 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading = false
                   {task.created_at && formatDistanceToNow(new Date(task.created_at), { addSuffix: true, locale: de })}
                 </div>
                 <div>
-                  {task.client?.name || 'Kein Kunde'}
+                  {task.customer?.name || 'Kein Kunde'}
                 </div>
               </div>
             </CardContent>
@@ -108,7 +108,7 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading = false
               <TableCell>
                 <TaskStatusBadge status={task.status} />
               </TableCell>
-              <TableCell>{task.client?.name || '-'}</TableCell>
+              <TableCell>{task.customer?.name || '-'}</TableCell>
               <TableCell>
                 {task.created_at && formatDistanceToNow(new Date(task.created_at), { addSuffix: true, locale: de })}
               </TableCell>
