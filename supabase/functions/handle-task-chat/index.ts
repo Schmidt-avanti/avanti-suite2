@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
@@ -26,13 +25,11 @@ serve(async (req) => {
       throw new Error('Task ID is required');
     }
 
-    // Initialize APIs and clients
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Fetch the task and use case details
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select('*, messages:task_messages(*)')
@@ -42,7 +39,6 @@ serve(async (req) => {
     if (taskError) throw taskError;
     if (!task) throw new Error('Task not found');
 
-    // Fetch the use case if id is provided
     let useCase = null;
     if (useCaseId) {
       const { data: fetchedUseCase, error: useCaseError } = await supabase
@@ -54,7 +50,6 @@ serve(async (req) => {
       if (useCaseError) throw useCaseError;
       useCase = fetchedUseCase;
     } else if (task.matched_use_case_id) {
-      // Use the matched use case from the task
       const { data: matchedUseCase, error: matchedUseCaseError } = await supabase
         .from('use_cases')
         .select('*')
@@ -65,7 +60,6 @@ serve(async (req) => {
       useCase = matchedUseCase;
     }
 
-    // Fetch previous messages from the task
     const { data: messages, error: messagesError } = await supabase
       .from('task_messages')
       .select('*')
@@ -74,10 +68,8 @@ serve(async (req) => {
 
     if (messagesError) throw messagesError;
 
-    // Build the conversation for the OpenAI API
     let conversationMessages = [];
     
-    // Add system message with instructions
     const processMapInstructions = useCase?.process_map ? 
       `\nFolge diesen Prozessschritten:\n${JSON.stringify(useCase.process_map, null, 2)}` : 
       '';
@@ -119,7 +111,6 @@ ${processMapInstructions}
 Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoice" Parameter. Reagiere entsprechend darauf.`
     });
 
-    // Add previous messages to the conversation
     for (const msg of messages) {
       conversationMessages.push({
         role: msg.role,
@@ -127,28 +118,23 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
       });
     }
 
-    // If there's a new button choice, add it to the conversation
     if (buttonChoice) {
       conversationMessages.push({
         role: "user", 
         content: `Ich wähle: ${buttonChoice}`
       });
       
-      // Save the button choice as a user message
       await supabase.from('task_messages').insert({
         task_id: taskId,
         role: 'user',
         content: `Ich wähle: ${buttonChoice}`
       });
-    } 
-    // If there's a new text message, add it to the conversation
-    else if (message) {
+    } else if (message) {
       conversationMessages.push({
         role: "user", 
         content: message
       });
       
-      // Save the new message
       await supabase.from('task_messages').insert({
         task_id: taskId,
         role: 'user',
@@ -156,7 +142,6 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
       });
     }
 
-    // Call OpenAI API
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -178,10 +163,8 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
       throw new Error(`OpenAI API error: ${responseData.error?.message || 'Unknown error'}`);
     }
 
-    // Save the assistant's response
     const assistantResponse = responseData.choices[0].message.content;
     
-    // Try to clean the response if it contains markdown code blocks
     const cleanedResponse = assistantResponse.replace(/```json\n?|\n?```/g, '').trim();
     
     await supabase.from('task_messages').insert({
@@ -190,10 +173,8 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
       content: cleanedResponse
     });
 
-    // Try to parse any potential button options from the response
     let buttonOptions = [];
     try {
-      // Look for JSON in the response that might contain button options
       let jsonContent;
       try {
         jsonContent = JSON.parse(cleanedResponse);
