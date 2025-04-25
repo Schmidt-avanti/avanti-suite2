@@ -59,7 +59,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       if (data) {
         const typedMessages: Message[] = data.map(msg => ({
           id: msg.id,
-          role: msg.role,
+          role: msg.role as "assistant" | "user",
           content: msg.content,
           created_at: msg.created_at
         }));
@@ -76,14 +76,12 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     setIsLoading(true);
 
     try {
-      const insertText = text || buttonChoice;
-
-      if (insertText) {
+      if ((text && !buttonChoice) || (!text && !buttonChoice)) {
         const { error: messageError } = await supabase
           .from('task_messages')
           .insert({
             task_id: taskId,
-            content: insertText,
+            content: text || "Start der Konversation",
             role: 'user',
             created_by: user.id
           });
@@ -104,7 +102,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       if (error) throw error;
 
       setPreviousResponseId(data.response_id);
-
       fetchMessages();
     } catch (error: any) {
       console.error('Error sending message:', error);
@@ -115,40 +112,15 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim() && !isLoading) {
-      sendMessage(inputValue);
-    }
-  };
-
-  const handleButtonClick = (option: string) => {
-    if (!isLoading) {
-      sendMessage("", option);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  };
-
   const renderMessage = (message: Message) => {
     if (message.role === "assistant") {
       try {
-        const clean = message.content
-          .replace(/```json/i, '')
-          .replace(/```/g, '')
-          .trim();
-
-        const parsed = JSON.parse(clean);
-
+        let parsed = JSON.parse(message.content);
+        
         if (parsed.text && Array.isArray(parsed.options)) {
           return (
             <div className="space-y-3">
-              <div className="text-sm font-semibold mb-2">{parsed.text}</div>
+              <div className="text-sm whitespace-pre-wrap">{parsed.text}</div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {parsed.options.map((option: string, idx: number) => (
                   <Button
@@ -177,13 +149,37 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           );
         }
 
-        return <p>{parsed.text || message.content}</p>;
+        if (parsed.text) {
+          return <div className="whitespace-pre-wrap">{parsed.text}</div>;
+        }
+
+        return <div className="whitespace-pre-wrap">{message.content}</div>;
       } catch (e) {
-        return <p>{message.content}</p>;
+        return <div className="whitespace-pre-wrap">{message.content}</div>;
       }
     }
 
-    return <p>{message.content}</p>;
+    return <div className="whitespace-pre-wrap">{message.content}</div>;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputValue.trim() && !isLoading) {
+      sendMessage(inputValue);
+    }
+  };
+
+  const handleButtonClick = (option: string) => {
+    if (!isLoading) {
+      sendMessage("", option);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
   };
 
   return (
