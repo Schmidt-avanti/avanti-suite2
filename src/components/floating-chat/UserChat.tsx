@@ -1,15 +1,14 @@
 
 import { useState, useRef, useEffect } from "react";
-import { Send } from "lucide-react";
+import { Send, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserSelect } from "./UserSelect";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 
 interface Message {
   id: string;
@@ -34,19 +33,21 @@ export function UserChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { toast } = useToast();
-
-  // Lade Benutzer beim ersten Render
+  
+  // 1. Lade Benutzer beim ersten Render
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // Lade Nachrichten und abonniere Updates, wenn ein Benutzer ausgewählt wird
+  // 2. Lade Nachrichten und abonniere Updates, wenn ein Benutzer ausgewählt wird
   useEffect(() => {
     if (selectedUserId) {
+      setLoadingMessages(true);
       fetchMessages();
       const subscription = subscribeToMessages();
       return () => {
@@ -55,7 +56,7 @@ export function UserChat() {
     }
   }, [selectedUserId]);
 
-  // Scroll zum Ende der Nachrichtenliste, wenn neue Nachrichten hinzukommen
+  // 3. Scroll zum Ende der Nachrichtenliste, wenn neue Nachrichten hinzukommen
   useEffect(() => {
     if (scrollRef.current) {
       const scrollArea = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -101,10 +102,12 @@ export function UserChat() {
   };
 
   const fetchMessages = async () => {
-    if (!selectedUserId || !user) return;
+    if (!selectedUserId || !user) {
+      setLoadingMessages(false);
+      return;
+    }
 
     try {
-      setLoading(true);
       setError(null);
       
       // Hole Nachrichten zwischen dem aktuellen Benutzer und dem ausgewählten Benutzer
@@ -137,7 +140,7 @@ export function UserChat() {
         description: "Die Nachrichten konnten nicht geladen werden."
       });
     } finally {
-      setLoading(false);
+      setLoadingMessages(false);
     }
   };
 
@@ -213,16 +216,23 @@ export function UserChat() {
     return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const handleUserSelect = (userId: string) => {
+    setSelectedUserId(userId);
+    setMessages([]);
+    setLoadingMessages(true);
+  };
+
   return (
     <div className="flex flex-col h-full space-y-4 p-4">
       <UserSelect
         users={users}
         selectedUserId={selectedUserId}
-        onUserSelect={setSelectedUserId}
+        onUserSelect={handleUserSelect}
+        isLoading={loadingUsers}
       />
 
       {error && (
-        <Alert variant="destructive" className="mt-2">
+        <Alert variant="destructive" className="mt-2 py-2">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -232,9 +242,12 @@ export function UserChat() {
         <>
           <ScrollArea className="flex-1 bg-gray-50 rounded-xl shadow-inner" ref={scrollRef}>
             <div className="space-y-4 p-4">
-              {loading && messages.length === 0 ? (
+              {loadingMessages ? (
                 <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                  <div className="flex flex-col items-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
+                    <span className="text-sm text-gray-500">Nachrichten werden geladen...</span>
+                  </div>
                 </div>
               ) : messages.length > 0 ? (
                 messages.map((message) => (
@@ -263,7 +276,7 @@ export function UserChat() {
                 ))
               ) : (
                 <div className="text-center py-10 text-muted-foreground">
-                  Keine Nachrichten in diesem Chat. Schreibe etwas, um die Konversation zu beginnen!
+                  Noch keine Nachrichten in diesem Chat. Schreibe etwas, um die Konversation zu beginnen!
                 </div>
               )}
             </div>
@@ -279,16 +292,19 @@ export function UserChat() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    sendMessage();
+                    if (!loading && input.trim()) {
+                      sendMessage();
+                    }
                   }
                 }}
+                disabled={loading}
               />
               <Button
                 onClick={sendMessage}
                 disabled={!input.trim() || loading}
                 className="self-end bg-blue-500 hover:bg-blue-600 rounded-xl"
               >
-                <Send className="h-4 w-4" />
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
           </div>

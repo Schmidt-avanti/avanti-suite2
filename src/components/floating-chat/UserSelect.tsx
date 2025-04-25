@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,17 +23,20 @@ interface User {
 }
 
 interface UserSelectProps {
-  users: User[];
+  users: User[] | undefined;
   selectedUserId: string | null;
   onUserSelect: (userId: string) => void;
+  isLoading?: boolean;
 }
 
-export function UserSelect({ users = [], selectedUserId, onUserSelect }: UserSelectProps) {
+export function UserSelect({ users = [], selectedUserId, onUserSelect, isLoading = false }: UserSelectProps) {
   const [open, setOpen] = useState(false);
-  const selectedUser = users?.find(user => user.id === selectedUserId);
-
-  // Sicherstellen, dass wir immer ein Array haben, auch wenn users undefined ist
+  
+  // Definieren einer sicheren Benutzerliste, die garantiert ein Array ist
   const safeUsers = Array.isArray(users) ? users : [];
+  
+  // Finden des ausgewählten Benutzers in der sicheren Liste
+  const selectedUser = safeUsers.find(user => user.id === selectedUserId);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -42,18 +45,28 @@ export function UserSelect({ users = [], selectedUserId, onUserSelect }: UserSel
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between bg-white border-gray-200 text-left font-normal"
+          className="w-full justify-between bg-white border-gray-200 text-left font-normal h-12 rounded-xl"
+          disabled={isLoading}
         >
           {selectedUser ? `${selectedUser.fullName} (${selectedUser.role})` : "Wähle Kolleg:in..."}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          {isLoading ? (
+            <Loader2 className="ml-2 h-4 w-4 animate-spin opacity-70" />
+          ) : (
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0 bg-white shadow-lg rounded-md">
-        <Command className="rounded-md">
-          <CommandInput placeholder="Suche nach Namen..." className="h-9" />
+      <PopoverContent className="w-full p-0 bg-white shadow-lg rounded-xl">
+        <Command className="rounded-xl">
+          <CommandInput placeholder="Suche nach Namen..." className="h-9 rounded-xl" />
           <CommandEmpty>Keine Kolleg:innen gefunden.</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-y-auto">
-            {safeUsers.length > 0 ? (
+            {isLoading ? (
+              <div className="py-6 flex justify-center items-center text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Lade Kolleg:innen...
+              </div>
+            ) : safeUsers.length > 0 ? (
               safeUsers.map((user) => (
                 <CommandItem
                   key={user.id}
@@ -78,7 +91,7 @@ export function UserSelect({ users = [], selectedUserId, onUserSelect }: UserSel
               ))
             ) : (
               <div className="py-6 text-center text-sm text-muted-foreground">
-                {users === undefined ? "Fehler beim Laden der Nutzer" : "Nutzer werden geladen..."}
+                Keine aktiven Kolleg:innen verfügbar
               </div>
             )}
           </CommandGroup>
