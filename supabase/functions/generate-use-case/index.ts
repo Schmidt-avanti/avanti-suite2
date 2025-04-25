@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateResponse } from "./validator.ts";
@@ -57,13 +58,13 @@ serve(async (req) => {
     console.log("Prepared metadata for API call:", preparedMetadata);
 
     const payload = {
-      model: "gpt-4.1-2025-04-14",
-      instructions: prompt,
+      model: "gpt-4.1-preview",
+      instructions: `${prompt}\n\nDEFINITIV KEINE RÜCKFRAGEN STELLEN! Antworte immer direkt im geforderten Format ohne Rückfragen.`,
       input: userInput,
       metadata: preparedMetadata,
     };
 
-    console.log("Sending request to OpenAI Responses API with model:", payload.model);
+    console.log("Sending request to OpenAI Responses API");
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
