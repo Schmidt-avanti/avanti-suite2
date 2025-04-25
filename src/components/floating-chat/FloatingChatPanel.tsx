@@ -41,7 +41,10 @@ export function FloatingChatPanel({ onClose }: FloatingChatPanelProps) {
   // Scroll to bottom when messages change
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollArea = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollArea) {
+        scrollArea.scrollTop = scrollArea.scrollHeight;
+      }
     }
   }, [messages]);
 
@@ -66,6 +69,7 @@ export function FloatingChatPanel({ onClose }: FloatingChatPanelProps) {
     setIsLoading(true);
     
     try {
+      console.log("Sending query:", queryText);
       const { data, error } = await supabase.functions.invoke('knowledge-chat', {
         body: {
           query: queryText,
@@ -83,6 +87,7 @@ export function FloatingChatPanel({ onClose }: FloatingChatPanelProps) {
         throw new Error(data.error);
       }
       
+      console.log("Response received:", data.result);
       const botMessage: Message = {
         id: crypto.randomUUID(),
         from: 'bot',

@@ -31,7 +31,9 @@ serve(async (req) => {
     // Create a Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // First try to find knowledge articles that match the query
+    console.log("Searching for query:", query);
+
+    // First try direct keyword search with lower threshold for better matches
     let knowledgeResponse = null;
     const embedding = await generateEmbedding(query);
 
@@ -40,7 +42,7 @@ serve(async (req) => {
         'match_similar_use_cases',
         {
           query_embedding: embedding,
-          match_threshold: 0.70,  // Adjust this threshold as needed
+          match_threshold: 0.65,  // Lowered threshold for better matching
           match_count: 5
         }
       );
@@ -49,6 +51,9 @@ serve(async (req) => {
         console.error('Error searching knowledge articles:', error);
         throw new Error(`Supabase RPC error: ${error.message || 'Unknown error'}`);
       } else if (articles && articles.length > 0) {
+        // Log the found articles for debugging
+        console.log("Found articles:", articles.map(a => ({title: a.title, similarity: a.similarity})));
+        
         // Get the most relevant article
         const bestMatch = articles[0];
         knowledgeResponse = {
@@ -57,6 +62,39 @@ serve(async (req) => {
           content: bestMatch.steps || bestMatch.information_needed,
           confidence: bestMatch.similarity
         };
+      } else {
+        console.log("No articles found with semantic search");
+      }
+    }
+
+    // If no knowledge articles found with semantic search, try a keyword-based search
+    if (!knowledgeResponse) {
+      console.log("Attempting keyword search");
+      // Extract keywords from the query and search for them
+      const keywords = extractKeywords(query);
+      console.log("Extracted keywords:", keywords);
+      
+      if (keywords.length > 0) {
+        const { data: keywordResults, error } = await supabase
+          .from('use_cases')
+          .select('id, title, type, information_needed, steps')
+          .or(keywords.map(keyword => `title.ilike.%${keyword}%`).join(','))
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (error) {
+          console.error('Error in keyword search:', error);
+        } else if (keywordResults && keywordResults.length > 0) {
+          console.log("Found articles by keywords:", keywordResults.map(a => a.title));
+          const bestKeywordMatch = keywordResults[0];
+          knowledgeResponse = {
+            source: 'knowledge',
+            title: bestKeywordMatch.title,
+            content: bestKeywordMatch.steps || bestKeywordMatch.information_needed,
+            confidence: 0.75 // Arbitrary confidence for keyword matches
+          };
+        }
       }
     }
 
@@ -164,4 +202,36 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
     console.error('Error generating embedding:', error);
     return null;
   }
+}
+
+// Helper function to extract relevant keywords from a query
+function extractKeywords(query: string): string[] {
+  // Normalize the query
+  const normalizedQuery = query.toLowerCase().trim();
+  
+  // Define common German stopwords to filter out
+  const stopwords = ['der', 'die', 'das', 'ein', 'eine', 'zu', 'und', 'in', 'mit', 'für', 'von', 'bei', 'im', 'auf', 'ist', 'sind', 'haben', 'hat', 'war'];
+  
+  // Important keywords to specifically look for
+  const importantTopics = ['schlüssel', 'verloren', 'verlust', 'wohnungsschlüssel', 'schließanlage', 'mieter', 'beleuchtung', 'defekt', 'bestellung', 'retoure', 'lieferadresse', 'kunde'];
+  
+  // Extract all words from the query
+  let words = normalizedQuery
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, " ") // Remove punctuation
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopwords.includes(word));
+  
+  // Check for important keywords first
+  const foundImportant = importantTopics.filter(topic => 
+    normalizedQuery.includes(topic) || 
+    words.some(word => word.startsWith(topic) || word.endsWith(topic))
+  );
+  
+  // If no important keywords found, use the longest words (likely most significant)
+  if (foundImportant.length === 0) {
+    words.sort((a, b) => b.length - a.length);
+    return words.slice(0, 3); // Return top 3 longest words
+  }
+  
+  return foundImportant;
 }
