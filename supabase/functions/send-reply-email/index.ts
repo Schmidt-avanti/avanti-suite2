@@ -43,8 +43,15 @@ serve(async (req) => {
 
     console.log('Sending email to:', task.endkunde_email);
 
-    // Verify we're using an email that's been verified in SendGrid
-    const verifiedSenderEmail = "noreply@avanti-suite.app"; // Change this to your verified sender in SendGrid
+    // Get the SendGrid API key
+    const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY');
+    if (!sendgridApiKey) {
+      throw new Error('SENDGRID_API_KEY environment variable is not set');
+    }
+
+    // Use a sender email that has been verified in SendGrid
+    // IMPORTANT: This email MUST be verified in your SendGrid account
+    const verifiedSenderEmail = "m.gawlich@ja-dialog.de"; 
     const senderName = "avanti-suite";
     
     const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
@@ -52,7 +59,7 @@ serve(async (req) => {
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('SENDGRID_API_KEY') || ''}`,
+        'Authorization': `Bearer ${sendgridApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
