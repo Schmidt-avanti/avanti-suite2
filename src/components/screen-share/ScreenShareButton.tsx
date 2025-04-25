@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 
 export const ScreenShareButton = () => {
   const handleScreenShare = () => {
-    // Open Screenleap in a new tab
-    window.open('https://www.screenleap.com/screen-share', '_blank');
+    // Open Screenleap homepage in a new tab
+    window.open('https://www.screenleap.com/', '_blank');
     
     toast.info('Bildschirmfreigabe wird gestartet', {
       description: 'Ein neuer Tab wurde geöffnet. Folgen Sie den Anweisungen dort.',
