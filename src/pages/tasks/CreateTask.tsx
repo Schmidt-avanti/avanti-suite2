@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -140,7 +139,6 @@ const CreateTask = () => {
     form.handleSubmit(onSubmit)();
   };
 
-  // Minimum character requirement for description
   const minLength = 10;
   const descriptionValid = description && description.length >= minLength;
   const formValid = customerId && descriptionValid;
