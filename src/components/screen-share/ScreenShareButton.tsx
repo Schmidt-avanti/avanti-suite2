@@ -1,35 +1,23 @@
 
-import React from 'react';
-import { Monitor } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-export const ScreenShareButton = () => {
+export function ScreenShareButton() {
   const isMobile = useIsMobile();
   
   const handleScreenShare = () => {
-    // Open Screenleap homepage in a new tab
     window.open('https://www.screenleap.com/', '_blank');
-    
-    toast.info('Bildschirmfreigabe wird gestartet', {
-      description: 'Ein neuer Tab wurde geöffnet. Folgen Sie den Anweisungen dort.',
-    });
   };
 
   return (
-    <div className="relative group">
-      <Button
-        variant="ghost"
-        size="icon"
-        className={`relative h-9 w-9 rounded-full bg-gray-100 hover:bg-gray-200 ${isMobile ? 'h-8 w-8' : ''}`}
-        onClick={handleScreenShare}
-      >
-        <Monitor className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-600`} />
-      </Button>
-      <div className="absolute hidden group-hover:block right-0 top-full mt-2 p-2 bg-white rounded-lg shadow-lg border border-gray-200 w-64 text-xs text-gray-600 z-50">
-        Hinweis: Die kostenlose Bildschirmfreigabe ist auf 40 Minuten pro Tag limitiert (Screenleap).
-      </div>
-    </div>
+    <Button 
+      variant="ghost" 
+      className={`relative ${isMobile ? 'h-8 w-8' : 'h-9 w-9'} bg-gray-100 rounded-full flex items-center justify-center`}
+      onClick={handleScreenShare}
+      aria-label="Screen Share"
+    >
+      <Share2 className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-600`} />
+    </Button>
   );
-};
+}

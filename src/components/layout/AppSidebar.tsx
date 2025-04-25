@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+
+import React, { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -33,17 +34,28 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const AppSidebar = () => {
   const { user } = useAuth();
   const [adminOpen, setAdminOpen] = useState(true);
   const [supervisorOpen, setSupervisorOpen] = useState(true);
   const [accountingOpen, setAccountingOpen] = useState(true);
+  const location = useLocation();
+  const isMobile = useIsMobile();
+  const { setOpen } = useSidebar();
+
+  // Close sidebar on mobile after navigation
+  useEffect(() => {
+    if (isMobile) {
+      setOpen(false);
+    }
+  }, [location.pathname, isMobile, setOpen]);
 
   if (!user) return null;
 
   return (
-    <Sidebar collapsible="none">
+    <Sidebar>
       <div className="flex flex-col h-full w-full">
         <div className="flex items-center px-4 pt-4 pb-4 border-b border-sidebar-border">
           <img

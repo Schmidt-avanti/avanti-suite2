@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { Notification } from '@/types';
 import { useNotifications } from '@/hooks/useNotifications';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface NotificationListProps {
   notifications: Notification[];
@@ -44,22 +45,27 @@ export const NotificationList: React.FC<NotificationListProps> = ({ notification
   }
 
   return (
-    <div className="max-h-[300px] overflow-y-auto">
-      {unreadNotifications.map((notification) => (
-        <div 
-          key={notification.id} 
-          className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 bg-gray-50"
-          onClick={() => handleNotificationClick(notification)}
-        >
-          <div className="text-sm">{notification.message}</div>
-          <div className="text-xs text-gray-500 mt-1">
-            {notification.created_at && formatDistanceToNow(new Date(notification.created_at), { 
-              addSuffix: true,
-              locale: de 
-            })}
+    <>
+      <div className="py-2 px-4 border-b border-gray-100">
+        <h3 className="text-sm font-medium">Benachrichtigungen</h3>
+      </div>
+      <ScrollArea className="max-h-[300px]">
+        {unreadNotifications.map((notification) => (
+          <div 
+            key={notification.id} 
+            className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 bg-gray-50"
+            onClick={() => handleNotificationClick(notification)}
+          >
+            <div className="text-sm">{notification.message}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {notification.created_at && formatDistanceToNow(new Date(notification.created_at), { 
+                addSuffix: true,
+                locale: de 
+              })}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </ScrollArea>
+    </>
   );
 };

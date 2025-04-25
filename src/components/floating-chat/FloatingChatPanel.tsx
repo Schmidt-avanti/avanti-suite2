@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader2, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -121,11 +120,10 @@ export function FloatingChatPanel({
 
   return (
     <Card 
-      className={`${isMobile ? 'w-full h-[calc(100vh-56px)]' : 'w-[380px] h-[500px]'} overflow-hidden flex flex-col rounded-[20px] shadow-xl border-none`}
-      style={isMobile ? { borderRadius: 0, maxHeight: '100vh' } : {}}
+      className={`${isMobile ? 'fixed inset-0 w-full h-full rounded-none' : 'w-[380px] h-[500px] rounded-[20px]'} overflow-hidden flex flex-col shadow-xl border-none`}
     >
       <div className="relative">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white rounded-t-[20px]">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center">

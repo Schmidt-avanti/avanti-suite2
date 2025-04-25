@@ -12,6 +12,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { RemindersList } from '@/components/reminders/RemindersList';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -96,23 +97,25 @@ const Dashboard: React.FC = () => {
           {unreadNotifications.length === 0 ? (
             <p className="text-center text-avanti-600 py-4">Keine ungelesenen Benachrichtigungen</p>
           ) : (
-            <div className="space-y-4">
-              {unreadNotifications.map((notification) => (
-                <div 
-                  key={notification.id} 
-                  className="flex flex-col bg-white p-3 rounded-lg hover:bg-avanti-50 cursor-pointer shadow-sm"
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="text-sm text-avanti-900">{notification.message}</div>
-                  <div className="text-xs text-avanti-600 mt-1">
-                    {notification.created_at && formatDistanceToNow(new Date(notification.created_at), { 
-                      addSuffix: true,
-                      locale: de 
-                    })}
+            <ScrollArea className={`${isMobile ? 'max-h-[200px]' : ''}`}>
+              <div className="space-y-4">
+                {unreadNotifications.map((notification) => (
+                  <div 
+                    key={notification.id} 
+                    className="flex flex-col bg-white p-3 rounded-lg hover:bg-avanti-50 cursor-pointer shadow-sm"
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="text-sm text-avanti-900">{notification.message}</div>
+                    <div className="text-xs text-avanti-600 mt-1">
+                      {notification.created_at && formatDistanceToNow(new Date(notification.created_at), { 
+                        addSuffix: true,
+                        locale: de 
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
