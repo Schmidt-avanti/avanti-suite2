@@ -743,6 +743,33 @@ export type Database = {
           },
         ]
       }
+      user_chats: {
+        Row: {
+          id: string
+          message: string
+          read_status: boolean
+          receiver_id: string
+          sender_id: string
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          message: string
+          read_status?: boolean
+          receiver_id: string
+          sender_id: string
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          message?: string
+          read_status?: boolean
+          receiver_id?: string
+          sender_id?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
       user_customer_assignments: {
         Row: {
           created_at: string
