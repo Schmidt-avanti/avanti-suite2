@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { UserSelect } from "./UserSelect";
+import { toast as sonnerToast } from "sonner";
 
 interface Message {
   id: string;
@@ -48,8 +49,13 @@ export function UserChat() {
   useEffect(() => {
     if (selectedUserId) {
       setLoadingMessages(true);
-      setMessages([]);
-      fetchMessages();
+      setMessages([]); // Nachrichten zurücksetzen
+      fetchMessages().catch(err => {
+        console.error("Fehler beim Laden der Nachrichten:", err);
+        setError("Fehler beim Laden der Nachrichten. Bitte versuchen Sie es später erneut.");
+        setLoadingMessages(false);
+      });
+      
       const subscription = subscribeToMessages();
       return () => {
         if (subscription) supabase.removeChannel(subscription);
@@ -59,19 +65,25 @@ export function UserChat() {
 
   // 3. Scroll zum Ende der Nachrichtenliste, wenn neue Nachrichten hinzukommen
   useEffect(() => {
-    if (scrollRef.current) {
-      const scrollArea = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollArea) {
-        scrollArea.scrollTop = scrollArea.scrollHeight;
-      }
+    if (scrollRef.current && !loadingMessages) {
+      setTimeout(() => {
+        const scrollArea = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollArea) {
+          scrollArea.scrollTop = scrollArea.scrollHeight;
+        }
+      }, 100);
     }
-  }, [messages]);
+  }, [messages, loadingMessages]);
 
   const fetchUsers = async () => {
     try {
       setError(null);
       setLoadingUsers(true);
-      if (!user) return;
+      
+      if (!user) {
+        setLoadingUsers(false);
+        return;
+      }
       
       console.log("Lade Benutzer...");
       
@@ -86,7 +98,7 @@ export function UserChat() {
         throw error;
       }
 
-      if (profiles) {
+      if (profiles && Array.isArray(profiles)) {
         console.log(`${profiles.length} Benutzer geladen`);
         const formattedUsers = profiles.map(p => ({
           id: p.id,
@@ -94,13 +106,14 @@ export function UserChat() {
           role: p.role || "Unbekannt"
         }));
         setUsers(formattedUsers);
+      } else {
+        console.log("Keine Benutzer gefunden oder ungültiges Format");
+        setUsers([]);
       }
     } catch (error: any) {
       console.error('Error fetching users:', error);
       setError("Fehler beim Laden der Benutzer: " + (error.message || "Unbekannter Fehler"));
-      toast({
-        variant: "destructive",
-        title: "Fehler beim Laden der Benutzer",
+      sonnerToast.error("Fehler beim Laden der Benutzer", {
         description: "Die Benutzerliste konnte nicht geladen werden."
       });
     } finally {
@@ -128,26 +141,31 @@ export function UserChat() {
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${selectedUserId}),and(sender_id.eq.${selectedUserId},receiver_id.eq.${user.id})`)
         .order('timestamp', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Fehler beim Laden der Nachrichten:', error);
+        throw error;
+      }
 
-      if (data) {
+      if (data && Array.isArray(data)) {
         console.log(`${data.length} Nachrichten geladen`);
         setMessages(data.map(msg => ({
           ...msg,
-          senderName: msg.sender["Full Name"] || "Unbekannter Nutzer"
+          senderName: msg.sender && msg.sender["Full Name"] ? msg.sender["Full Name"] : "Unbekannter Nutzer"
         })));
         
         // Markiere empfangene Nachrichten als gelesen
         await markMessagesAsRead();
+      } else {
+        console.log("Keine Nachrichten gefunden oder ungültiges Format");
+        setMessages([]);
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
       setError("Fehler beim Laden der Nachrichten: " + (error.message || "Unbekannter Fehler"));
-      toast({
-        variant: "destructive",
-        title: "Fehler beim Laden der Nachrichten",
+      sonnerToast.error("Fehler beim Laden der Nachrichten", {
         description: "Die Nachrichten konnten nicht geladen werden."
       });
+      throw error;
     } finally {
       setLoadingMessages(false);
     }
@@ -164,8 +182,8 @@ export function UserChat() {
         table: 'user_chats',
         filter: `receiver_id=eq.${user.id}`
       }, payload => {
-        if (payload.new.sender_id === selectedUserId) {
-          fetchMessages();
+        if (payload.new && payload.new.sender_id === selectedUserId) {
+          fetchMessages().catch(console.error);
         }
       })
       .subscribe();
@@ -185,7 +203,9 @@ export function UserChat() {
         .eq('receiver_id', user.id)
         .eq('read_status', false);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Fehler beim Markieren der Nachrichten als gelesen:', error);
+      }
     } catch (error: any) {
       console.error('Error marking messages as read:', error);
     }
@@ -196,23 +216,28 @@ export function UserChat() {
     setLoading(true);
 
     try {
+      const messageData = {
+        sender_id: user.id,
+        receiver_id: selectedUserId,
+        message: input.trim(),
+        timestamp: new Date().toISOString(),
+        read_status: false
+      };
+      
       const { error } = await supabase
         .from('user_chats')
-        .insert({
-          sender_id: user.id,
-          receiver_id: selectedUserId,
-          message: input.trim()
-        });
+        .insert(messageData);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Fehler beim Senden der Nachricht:', error);
+        throw error;
+      }
 
       setInput('');
       await fetchMessages();
     } catch (error: any) {
       console.error('Error sending message:', error);
-      toast({
-        variant: "destructive",
-        title: "Fehler beim Senden",
+      sonnerToast.error("Fehler beim Senden", {
         description: "Die Nachricht konnte nicht gesendet werden."
       });
     } finally {

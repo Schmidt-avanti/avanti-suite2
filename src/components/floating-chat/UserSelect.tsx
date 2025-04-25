@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ interface UserSelectProps {
 export function UserSelect({ users = [], selectedUserId, onUserSelect, isLoading = false }: UserSelectProps) {
   const [open, setOpen] = useState(false);
   
-  // Definieren einer sicheren Benutzerliste, die garantiert ein Array ist
+  // Sicherstellen, dass users ein Array ist, auch wenn undefined kommt
   const safeUsers = Array.isArray(users) ? users : [];
   
   // Finden des ausgewählten Benutzers in der sicheren Liste
