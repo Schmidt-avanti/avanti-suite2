@@ -13,6 +13,7 @@ interface Message {
   role: "assistant" | "user";
   content: string;
   created_at: string;
+  options?: string[];
 }
 
 interface TaskChatProps {
@@ -25,10 +26,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [buttonOptions, setButtonOptions] = useState<string[]>([]);
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
   const { user } = useAuth();
-
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,7 +42,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   useEffect(() => {
     if (initialMessages.length === 0) {
       fetchMessages();
-
       setTimeout(() => {
         sendMessage("", null);
       }, 500);
@@ -63,35 +61,31 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       if (data) {
         const typedMessages: Message[] = data.map(msg => ({
           id: msg.id,
-          role: msg.role === "assistant" || msg.role === "user"
-            ? msg.role as "assistant" | "user"
-            : "assistant",
+          role: msg.role,
           content: msg.content,
           created_at: msg.created_at
         }));
-
         setMessages(typedMessages);
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
-      toast.error('Fehler beim Laden der Nachrichten', {
-        description: error.message
-      });
+      toast.error('Fehler beim Laden der Nachrichten', { description: error.message });
     }
   };
 
   const sendMessage = async (text: string, buttonChoice: string | null = null) => {
     if (!user) return;
-
     setIsLoading(true);
 
     try {
-      if (text) {
+      const insertText = text || buttonChoice;
+
+      if (insertText) {
         const { error: messageError } = await supabase
           .from('task_messages')
           .insert({
             task_id: taskId,
-            content: text,
+            content: insertText,
             role: 'user',
             created_by: user.id
           });
@@ -113,19 +107,24 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
       setPreviousResponseId(data.response_id);
 
-      if (data.button_options && data.button_options.length > 0) {
-        setButtonOptions(data.button_options);
-      } else {
-        setButtonOptions([]);
+      // Save assistant response
+      const responseText = data.response_text || data?.message || "";
+      const newMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: responseText,
+        created_at: new Date().toISOString()
+      };
+
+      if (data.button_options && Array.isArray(data.button_options)) {
+        newMessage.options = data.button_options;
       }
 
-      fetchMessages();
+      setMessages(prev => [...prev, newMessage]);
 
     } catch (error: any) {
       console.error('Error sending message:', error);
-      toast.error('Fehler beim Senden der Nachricht', {
-        description: error.message
-      });
+      toast.error('Fehler beim Senden der Nachricht', { description: error.message });
     } finally {
       setIsLoading(false);
       setInputValue('');
@@ -142,7 +141,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const handleButtonClick = (option: string) => {
     if (!isLoading) {
       sendMessage("", option);
-      setButtonOptions([]);
     }
   };
 
@@ -200,11 +198,29 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
         return message.content;
       } catch (e) {
-        return message.content;
+        return (
+          <div>
+            <p>{message.content}</p>
+            {message.options && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {message.options.map((option: string, index: number) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    onClick={() => handleButtonClick(option)}
+                    className="rounded-full text-sm px-4"
+                  >
+                    {option}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
       }
     }
 
-    return message.content;
+    return <p>{message.content}</p>;
   };
 
   return (
@@ -265,21 +281,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                 </div>
               </div>
             )}
-
-            {buttonOptions.length > 0 && !isLoading && (
-              <div className="flex flex-wrap gap-2 justify-center">
-                {buttonOptions.map((option, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    onClick={() => handleButtonClick(option)}
-                    className="mt-2 rounded-2xl border-gray-300 hover:bg-blue-50 transition-all"
-                  >
-                    {option}
-                  </Button>
-                ))}
-              </div>
-            )}
           </div>
         </ScrollArea>
       </div>
@@ -296,11 +297,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             placeholder="Ihre Nachricht..."
             className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base"
             style={{ fontSize: '1rem', padding: 0 }}
-            disabled={isLoading || buttonOptions.length > 0}
+            disabled={isLoading}
           />
           <Button
             type="submit"
-            disabled={isLoading || !inputValue.trim() || buttonOptions.length > 0}
+            disabled={isLoading || !inputValue.trim()}
             className="self-end ml-1 bg-blue-500 hover:bg-blue-600 text-white rounded-full h-11 w-11 flex items-center justify-center shadow transition-all"
             tabIndex={0}
           >
