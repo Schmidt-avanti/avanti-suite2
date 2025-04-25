@@ -61,7 +61,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       if (data) {
         const typedMessages: Message[] = data.map(msg => ({
           id: msg.id,
-          role: msg.role,
+          role: (msg.role === "assistant" || msg.role === "user") ? msg.role : "user",
           content: msg.content,
           created_at: msg.created_at
         }));
@@ -107,7 +107,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
       setPreviousResponseId(data.response_id);
 
-      // Save assistant response
       const responseText = data.response_text || data?.message || "";
       const newMessage: Message = {
         id: `assistant-${Date.now()}`,
