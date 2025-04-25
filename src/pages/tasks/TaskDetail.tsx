@@ -143,29 +143,6 @@ const TaskDetail = () => {
     }
   };
 
-  const handleForward = async () => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ forwarded_to: 'team_leader' })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setTask({ ...task, forwarded_to: 'team_leader' });
-      toast({
-        title: "Aufgabe weitergeleitet",
-        description: "Die Aufgabe wurde erfolgreich an einen Teamleiter weitergeleitet.",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: error.message,
-      });
-    }
-  };
-
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
   if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
 
@@ -182,16 +159,6 @@ const TaskDetail = () => {
             <Clock className="h-4 w-4 mr-2" />
             {formattedTime}
           </div>
-          {!task.forwarded_to && task.status !== 'completed' && (
-            <Button 
-              onClick={handleForward}
-              variant="secondary"
-              className="mr-4 bg-blue-100 text-blue-700 hover:bg-blue-200"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              An Teamleiter weiterleiten
-            </Button>
-          )}
           {task.status !== 'completed' && (
             <Button 
               onClick={async () => {

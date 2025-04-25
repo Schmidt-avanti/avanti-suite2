@@ -1,9 +1,9 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2 } from "lucide-react";
+import { Send } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from '@/contexts/AuthContext';
@@ -113,25 +113,44 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     }
   };
 
+  const handleForward = async () => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ forwarded_to: 'team_leader' })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Aufgabe weitergeleitet",
+        description: "Die Aufgabe wurde erfolgreich an einen Teamleiter weitergeleitet.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: error.message,
+      });
+    }
+  };
+
   const renderMessage = (message: Message) => {
     if (message.role === "assistant") {
       try {
         let parsedContent;
         
         try {
-          // Try to parse as JSON
           parsedContent = JSON.parse(message.content);
         } catch (e) {
-          // If parsing fails, handle as plain text
           return <div className="whitespace-pre-wrap">{message.content}</div>;
         }
         
-        // Handle structured message with text and options
         if (parsedContent.text) {
           return (
             <div className="space-y-3">
               <div className="text-sm whitespace-pre-wrap">{parsedContent.text}</div>
-              {parsedContent.options && parsedContent.options.length > 0 && (
+              {parsedContent.options && parsedContent.options.length > 0 ? (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {parsedContent.options.map((option: string, idx: number) => (
                     <Button
@@ -144,12 +163,22 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                     </Button>
                   ))}
                 </div>
+              ) : (
+                !useCaseId && (
+                  <Button
+                    onClick={handleForward}
+                    variant="secondary"
+                    className="mt-4 bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    An Teamleiter weiterleiten
+                  </Button>
+                )
               )}
             </div>
           );
         }
 
-        // Handle steps block format if it exists
         if (parsedContent.chat_response?.steps_block && Array.isArray(parsedContent.chat_response.steps_block)) {
           return (
             <div className="space-y-2">
@@ -162,11 +191,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           );
         }
 
-        // Fallback to display whatever we got in the JSON
         return <div className="whitespace-pre-wrap">{message.content}</div>;
-        
       } catch (e) {
-        // If JSON parsing fails completely, display the content as plain text
         return <div className="whitespace-pre-wrap">{message.content}</div>;
       }
     }
