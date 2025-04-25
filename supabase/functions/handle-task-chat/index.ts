@@ -102,6 +102,9 @@ Gehe dabei folgendermaßen vor:
 
 Halte deine Antworten freundlich, präzise und auf den Punkt. Verwende einfache Sprache und vermeide Fachjargon.
 
+WICHTIG: Formatiere deine Antworten als REINES JSON ohne Markdown-Code-Blöcke, wenn du Optionen anbietest.
+Verwende NICHT ```json oder ``` Markdown-Tags um deine JSON-Antworten. Das führt zu Fehlern bei der Anzeige.
+
 Use Case Details:
 ${useCase ? `
 Titel: ${useCase.title}
@@ -177,21 +180,33 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
 
     // Save the assistant's response
     const assistantResponse = responseData.choices[0].message.content;
+    
+    // Try to clean the response if it contains markdown code blocks
+    const cleanedResponse = assistantResponse.replace(/```json\n?|\n?```/g, '').trim();
+    
     await supabase.from('task_messages').insert({
       task_id: taskId,
       role: 'assistant',
-      content: assistantResponse
+      content: cleanedResponse
     });
 
     // Try to parse any potential button options from the response
     let buttonOptions = [];
     try {
       // Look for JSON in the response that might contain button options
-      const jsonMatch = assistantResponse.match(/\{[\s\S]*?"options"[\s\S]*?\}/);
-      if (jsonMatch) {
-        const jsonData = JSON.parse(jsonMatch[0]);
-        if (jsonData.options && Array.isArray(jsonData.options)) {
-          buttonOptions = jsonData.options;
+      let jsonContent;
+      try {
+        jsonContent = JSON.parse(cleanedResponse);
+        if (jsonContent.options && Array.isArray(jsonContent.options)) {
+          buttonOptions = jsonContent.options;
+        }
+      } catch (e) {
+        const jsonMatch = cleanedResponse.match(/\{[\s\S]*?"options"[\s\S]*?\}/);
+        if (jsonMatch) {
+          const jsonData = JSON.parse(jsonMatch[0]);
+          if (jsonData.options && Array.isArray(jsonData.options)) {
+            buttonOptions = jsonData.options;
+          }
         }
       }
     } catch (e) {
@@ -200,7 +215,7 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
 
     return new Response(
       JSON.stringify({
-        response: assistantResponse,
+        response: cleanedResponse,
         button_options: buttonOptions
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

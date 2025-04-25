@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -115,8 +116,24 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const renderMessage = (message: Message) => {
     if (message.role === "assistant") {
       try {
-        let parsed = JSON.parse(message.content);
+        // Check if the content contains JSON structure markers
+        const jsonRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
+        const match = message.content.match(jsonRegex);
         
+        let jsonContent = message.content;
+        if (match && match[1]) {
+          jsonContent = match[1].trim();
+        }
+        
+        let parsed;
+        try {
+          parsed = JSON.parse(jsonContent);
+        } catch (e) {
+          // Try one more time with the raw content if the first attempt failed
+          parsed = JSON.parse(message.content);
+        }
+        
+        // Handle structured message with text and options
         if (parsed.text && Array.isArray(parsed.options)) {
           return (
             <div className="space-y-3">
@@ -137,6 +154,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           );
         }
 
+        // Handle steps block format
         if (parsed.chat_response?.steps_block && Array.isArray(parsed.chat_response.steps_block)) {
           return (
             <div className="space-y-2">
@@ -149,12 +167,16 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           );
         }
 
+        // Handle simple text format
         if (parsed.text) {
           return <div className="whitespace-pre-wrap">{parsed.text}</div>;
         }
 
+        // Fallback to plain text if JSON parsing was successful but format is unknown
         return <div className="whitespace-pre-wrap">{message.content}</div>;
+        
       } catch (e) {
+        // If JSON parsing fails completely, display the content as plain text
         return <div className="whitespace-pre-wrap">{message.content}</div>;
       }
     }
@@ -205,7 +227,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                 className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
               >
                 <div className={`
-                  max-w-[80%] p-4
+                  max-w-[80%] p-4 rounded
                   ${message.role === "assistant"
                     ? "bg-blue-100 text-gray-900"
                     : "bg-gray-100 text-gray-900"
@@ -217,7 +239,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                       {message.role === "assistant" ? "Ava" : "Du"}
                     </span>
                   </div>
-                  <div className="text-sm whitespace-pre-wrap">
+                  <div className="text-sm">
                     {renderMessage(message)}
                   </div>
                 </div>
