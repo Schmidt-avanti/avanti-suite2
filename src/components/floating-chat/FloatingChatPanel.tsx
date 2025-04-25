@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Loader2, MessageSquare } from 'lucide-react';
+import { X, Send, Loader2, MessageSquare, AlertCircle, RefreshCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 
 interface Message {
   id: string;
-  from: 'user' | 'bot';
+  from: 'user' | 'bot' | 'error';
   content: string;
   source?: 'knowledge' | 'gpt' | 'none';
 }
@@ -26,6 +26,7 @@ export function FloatingChatPanel({ onClose }: FloatingChatPanelProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [useGPTFallback, setUseGPTFallback] = useState(false);
+  const [lastQuery, setLastQuery] = useState<string | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -44,28 +45,43 @@ export function FloatingChatPanel({ onClose }: FloatingChatPanelProps) {
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (retryQuery?: string) => {
+    const queryText = retryQuery || input.trim();
     
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      from: 'user',
-      content: input.trim()
-    };
+    if ((!queryText && !retryQuery) || isLoading) return;
     
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    // If this is a new query (not a retry), add the user message
+    if (!retryQuery) {
+      const userMessage: Message = {
+        id: crypto.randomUUID(),
+        from: 'user',
+        content: queryText
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      setInput('');
+    }
+    
+    setLastQuery(queryText);
     setIsLoading(true);
     
     try {
       const { data, error } = await supabase.functions.invoke('knowledge-chat', {
         body: {
-          query: userMessage.content,
+          query: queryText,
           useGPTFallback
         }
       });
       
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(`Fehler bei der Abfrage: ${error.message}`);
+      }
+      
+      if (data.error) {
+        console.error('Knowledge chat error:', data.error);
+        throw new Error(data.error);
+      }
       
       const botMessage: Message = {
         id: crypto.randomUUID(),
@@ -76,16 +92,19 @@ export function FloatingChatPanel({ onClose }: FloatingChatPanelProps) {
       
       setMessages(prev => [...prev, botMessage]);
     } catch (err: any) {
-      toast.error('Fehler beim Abrufen der Antwort', {
-        description: err.message
-      });
+      console.error('Error fetching response:', err);
       
-      setMessages(prev => [...prev, {
+      const errorMessage: Message = {
         id: crypto.randomUUID(),
-        from: 'bot',
-        content: 'Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.',
-        source: 'none'
-      }]);
+        from: 'error',
+        content: `Fehler beim Abrufen der Antwort: ${err.message || 'Unbekannter Fehler'}`,
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast.error('Fehler beim Abrufen der Antwort', {
+        description: err.message || 'Bitte versuchen Sie es später erneut'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -95,6 +114,12 @@ export function FloatingChatPanel({ onClose }: FloatingChatPanelProps) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleRetry = () => {
+    if (lastQuery) {
+      handleSend(lastQuery);
     }
   };
 
@@ -127,20 +152,40 @@ export function FloatingChatPanel({ onClose }: FloatingChatPanelProps) {
                   message.from === 'user' ? 'justify-end' : 'justify-start'
                 }`}
               >
-                <div
-                  className={`max-w-[280px] rounded-xl px-4 py-2 ${
-                    message.from === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-900'
-                  }`}
-                >
-                  <div className="whitespace-pre-wrap text-sm">{message.content}</div>
-                  {message.source && message.source !== 'none' && (
-                    <div className="text-xs opacity-70 mt-1 text-right">
-                      {message.source === 'knowledge' ? 'Aus dem Wissenssystem' : 'Mit GPT generiert'}
+                {message.from === 'error' ? (
+                  <div className="max-w-[280px] rounded-xl px-4 py-2 bg-red-50 border border-red-200 text-red-800">
+                    <div className="flex items-start">
+                      <AlertCircle className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
+                      <div className="whitespace-pre-wrap text-sm">{message.content}</div>
                     </div>
-                  )}
-                </div>
+                    <div className="mt-2 flex justify-end">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleRetry} 
+                        className="h-7 text-xs px-2 py-1"
+                      >
+                        <RefreshCcw className="h-3 w-3 mr-1" />
+                        Wiederholen
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className={`max-w-[280px] rounded-xl px-4 py-2 ${
+                      message.from === 'user'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-900'
+                    }`}
+                  >
+                    <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+                    {message.source && message.source !== 'none' && (
+                      <div className="text-xs opacity-70 mt-1 text-right">
+                        {message.source === 'knowledge' ? 'Aus dem Wissenssystem' : 'Mit GPT generiert'}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
             {isLoading && (
@@ -182,7 +227,7 @@ export function FloatingChatPanel({ onClose }: FloatingChatPanelProps) {
             disabled={isLoading}
           />
           <Button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim() || isLoading}
             size="sm"
             className="h-10 w-10"

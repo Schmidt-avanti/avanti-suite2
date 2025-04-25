@@ -23,7 +23,7 @@ export function FloatingChatButton() {
             "h-14 w-14 rounded-full shadow-lg border border-gray-100",
             "bg-blue-600 hover:bg-blue-700 flex items-center justify-center"
           )}
-          aria-label="Öffne Chat-Assistenten"
+          aria-label="Öffne Wissensassistent"
         >
           <MessageSquare className="h-6 w-6 text-white" />
         </Button>

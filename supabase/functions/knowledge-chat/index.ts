@@ -23,6 +23,10 @@ serve(async (req) => {
     // Get the API key from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration is missing');
+    }
 
     // Create a Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -43,6 +47,7 @@ serve(async (req) => {
 
       if (error) {
         console.error('Error searching knowledge articles:', error);
+        throw new Error(`Supabase RPC error: ${error.message || 'Unknown error'}`);
       } else if (articles && articles.length > 0) {
         // Get the most relevant article
         const bestMatch = articles[0];
@@ -62,19 +67,19 @@ serve(async (req) => {
         throw new Error('OpenAI API key not configured');
       }
 
-      const gptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      const gptResponse = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${openAIApiKey}`
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: "gpt-4.1",
+          input: {
+            role: "system",
+            content: "Du bist ein sachlicher, fachlicher Support-Assistent für avanti-suite, ein Tool für Aufgabenverwaltung und Kundenkommunikation. Antworte prägnant und hilfreich, ohne Smalltalk oder Emojis. Fokussiere dich auf rein sachliche Informationen. Wenn du die Antwort nicht kennst, sage das direkt ohne Ausschmückung."
+          },
           messages: [
-            {
-              role: "system",
-              content: "Du bist ein sachlicher, fachlicher Support-Assistent für avanti-suite, ein Tool für Aufgabenverwaltung und Kundenkommunikation. Antworte prägnant und hilfreich, ohne Smalltalk oder Emojis. Fokussiere dich auf rein sachliche Informationen. Wenn du die Antwort nicht kennst, sage das direkt ohne Ausschmückung."
-            },
             {
               role: "user",
               content: query
@@ -83,13 +88,21 @@ serve(async (req) => {
         })
       });
 
+      if (!gptResponse.ok) {
+        const errorData = await gptResponse.json().catch(() => ({}));
+        console.error('OpenAI API error:', errorData);
+        throw new Error(`OpenAI API error: ${errorData.error?.message || `Status ${gptResponse.status}`}`);
+      }
+
       const gptData = await gptResponse.json();
-      if (gptData.choices && gptData.choices.length > 0) {
+      if (gptData.content) {
         knowledgeResponse = {
           source: 'gpt',
-          content: gptData.choices[0].message.content,
+          content: gptData.content,
           confidence: 0.9  // Arbitrary confidence for GPT responses
         };
+      } else {
+        throw new Error('Invalid response format from OpenAI');
       }
     }
 
@@ -106,7 +119,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in knowledge-chat function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        errorCode: error.code || 'UNKNOWN_ERROR'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
@@ -132,6 +148,12 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
         input: text
       })
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('OpenAI embeddings API error:', errorData);
+      throw new Error(`OpenAI embeddings API error: ${errorData.error?.message || `Status ${response.status}`}`);
+    }
 
     const { data } = await response.json();
     if (data && data[0] && data[0].embedding) {
