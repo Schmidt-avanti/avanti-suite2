@@ -9,16 +9,24 @@ interface ChatTabsProps {
 export function ChatTabs({ activeTab, onTabChange }: ChatTabsProps) {
   return (
     <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as "ava" | "colleagues")} className="w-full">
-      <TabsList className="w-full grid grid-cols-2 bg-blue-100/50">
+      <TabsList className="w-full grid grid-cols-2 bg-blue-100/50 p-0 h-auto">
         <TabsTrigger 
           value="ava" 
-          className={`flex-1 py-2 text-sm font-medium ${activeTab === "ava" ? "bg-white text-blue-800" : "text-blue-900/70 hover:text-blue-900"}`}
+          className={`py-2.5 rounded-none text-sm font-medium transition-colors ${
+            activeTab === "ava" 
+              ? "bg-white text-blue-800 shadow-sm" 
+              : "text-blue-900/70 hover:text-blue-900 hover:bg-blue-100"
+          }`}
         >
           AVA – Hilfe & Wissen
         </TabsTrigger>
         <TabsTrigger 
           value="colleagues" 
-          className={`flex-1 py-2 text-sm font-medium ${activeTab === "colleagues" ? "bg-white text-blue-800" : "text-blue-900/70 hover:text-blue-900"}`}
+          className={`py-2.5 rounded-none text-sm font-medium transition-colors ${
+            activeTab === "colleagues" 
+              ? "bg-white text-blue-800 shadow-sm" 
+              : "text-blue-900/70 hover:text-blue-900 hover:bg-blue-100"
+          }`}
         >
           Chat mit Kolleg:innen
         </TabsTrigger>

@@ -15,7 +15,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { supabase } from "@/integrations/supabase/client";
 
 interface User {
   id: string;
@@ -31,7 +30,10 @@ interface UserSelectProps {
 
 export function UserSelect({ users = [], selectedUserId, onUserSelect }: UserSelectProps) {
   const [open, setOpen] = useState(false);
-  const selectedUser = users.find(user => user.id === selectedUserId);
+  const selectedUser = users?.find(user => user.id === selectedUserId);
+
+  // Sicherstellen, dass wir immer ein Array haben, auch wenn users undefined ist
+  const safeUsers = Array.isArray(users) ? users : [];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -40,19 +42,19 @@ export function UserSelect({ users = [], selectedUserId, onUserSelect }: UserSel
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between bg-white border-gray-200"
+          className="w-full justify-between bg-white border-gray-200 text-left font-normal"
         >
           {selectedUser ? `${selectedUser.fullName} (${selectedUser.role})` : "Wähle Kolleg:in..."}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0 bg-white">
-        <Command>
+      <PopoverContent className="w-full p-0 bg-white shadow-lg rounded-md">
+        <Command className="rounded-md">
           <CommandInput placeholder="Suche nach Namen..." className="h-9" />
           <CommandEmpty>Keine Kolleg:innen gefunden.</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-y-auto">
-            {Array.isArray(users) && users.length > 0 ? (
-              users.map((user) => (
+            {safeUsers.length > 0 ? (
+              safeUsers.map((user) => (
                 <CommandItem
                   key={user.id}
                   value={user.fullName}
@@ -60,7 +62,7 @@ export function UserSelect({ users = [], selectedUserId, onUserSelect }: UserSel
                     onUserSelect(user.id);
                     setOpen(false);
                   }}
-                  className="py-2"
+                  className="py-2 cursor-pointer"
                 >
                   <Check
                     className={cn(
@@ -76,7 +78,7 @@ export function UserSelect({ users = [], selectedUserId, onUserSelect }: UserSel
               ))
             ) : (
               <div className="py-6 text-center text-sm text-muted-foreground">
-                Nutzer werden geladen...
+                {users === undefined ? "Fehler beim Laden der Nutzer" : "Nutzer werden geladen..."}
               </div>
             )}
           </CommandGroup>

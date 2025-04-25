@@ -8,6 +8,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserSelect } from "./UserSelect";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface Message {
   id: string;
@@ -32,6 +34,7 @@ export function UserChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -64,6 +67,7 @@ export function UserChat() {
 
   const fetchUsers = async () => {
     try {
+      setError(null);
       setLoadingUsers(true);
       if (!user) return;
       
@@ -78,13 +82,14 @@ export function UserChat() {
       if (profiles) {
         const formattedUsers = profiles.map(p => ({
           id: p.id,
-          fullName: p["Full Name"],
-          role: p.role
+          fullName: p["Full Name"] || "Unbekannter Nutzer",
+          role: p.role || "Unbekannt"
         }));
         setUsers(formattedUsers);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
+      setError("Fehler beim Laden der Benutzer: " + (error.message || "Unbekannter Fehler"));
       toast({
         variant: "destructive",
         title: "Fehler beim Laden der Benutzer",
@@ -100,6 +105,7 @@ export function UserChat() {
 
     try {
       setLoading(true);
+      setError(null);
       
       // Hole Nachrichten zwischen dem aktuellen Benutzer und dem ausgewählten Benutzer
       const { data, error } = await supabase
@@ -116,14 +122,15 @@ export function UserChat() {
       if (data) {
         setMessages(data.map(msg => ({
           ...msg,
-          senderName: msg.sender["Full Name"]
+          senderName: msg.sender["Full Name"] || "Unbekannter Nutzer"
         })));
         
         // Markiere empfangene Nachrichten als gelesen
         await markMessagesAsRead();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching messages:', error);
+      setError("Fehler beim Laden der Nachrichten: " + (error.message || "Unbekannter Fehler"));
       toast({
         variant: "destructive",
         title: "Fehler beim Laden der Nachrichten",
@@ -167,7 +174,7 @@ export function UserChat() {
         .eq('read_status', false);
 
       if (error) throw error;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error marking messages as read:', error);
     }
   };
@@ -189,7 +196,7 @@ export function UserChat() {
 
       setInput('');
       await fetchMessages();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
         variant: "destructive",
@@ -207,16 +214,23 @@ export function UserChat() {
   };
 
   return (
-    <div className="flex flex-col h-full space-y-4">
+    <div className="flex flex-col h-full space-y-4 p-4">
       <UserSelect
         users={users}
         selectedUserId={selectedUserId}
         onUserSelect={setSelectedUserId}
       />
 
+      {error && (
+        <Alert variant="destructive" className="mt-2">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {selectedUserId ? (
         <>
-          <ScrollArea className="flex-1" ref={scrollRef}>
+          <ScrollArea className="flex-1 bg-gray-50 rounded-xl shadow-inner" ref={scrollRef}>
             <div className="space-y-4 p-4">
               {loading && messages.length === 0 ? (
                 <div className="flex justify-center py-8">
@@ -229,21 +243,21 @@ export function UserChat() {
                     className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-xl px-4 py-2 ${
+                      className={`max-w-[80%] rounded-xl px-4 py-2 shadow-sm ${
                         message.sender_id === user?.id
-                          ? 'bg-blue-500 text-white ml-12'
-                          : 'bg-gray-100 text-gray-900 mr-12'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white text-gray-900'
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium">
+                        <span className={`text-xs font-medium ${message.sender_id === user?.id ? 'text-blue-50' : 'text-gray-700'}`}>
                           {message.senderName}
                         </span>
-                        <span className="text-xs opacity-70">
+                        <span className={`text-xs ${message.sender_id === user?.id ? 'text-blue-100' : 'text-gray-500'}`}>
                           {formatTimestamp(message.timestamp)}
                         </span>
                       </div>
-                      <p className="text-sm">{message.message}</p>
+                      <p className="text-sm whitespace-pre-wrap break-words">{message.message}</p>
                     </div>
                   </div>
                 ))
@@ -255,13 +269,13 @@ export function UserChat() {
             </div>
           </ScrollArea>
 
-          <div className="p-4 border-t bg-white">
+          <div className="bg-white rounded-xl shadow-sm p-3">
             <div className="flex gap-2">
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Deine Nachricht..."
-                className="flex-1 resize-none border-gray-200 min-h-[44px]"
+                className="flex-1 resize-none border-gray-200 min-h-[44px] rounded-xl"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -272,7 +286,7 @@ export function UserChat() {
               <Button
                 onClick={sendMessage}
                 disabled={!input.trim() || loading}
-                className="self-end bg-blue-500 hover:bg-blue-600"
+                className="self-end bg-blue-500 hover:bg-blue-600 rounded-xl"
               >
                 <Send className="h-4 w-4" />
               </Button>
@@ -280,7 +294,7 @@ export function UserChat() {
           </div>
         </>
       ) : (
-        <div className="flex-1 flex items-center justify-center p-6 text-center text-muted-foreground">
+        <div className="flex-1 flex items-center justify-center p-6 text-center text-muted-foreground bg-gray-50 rounded-xl">
           Wähle eine:n Kolleg:in aus, um den Chat zu starten
         </div>
       )}
