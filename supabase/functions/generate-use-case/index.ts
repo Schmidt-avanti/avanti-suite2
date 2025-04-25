@@ -59,7 +59,20 @@ serve(async (req) => {
 
     const payload = {
       model: "gpt-4.5-preview",
-      instructions: `${prompt}\n\nDEFINITIV KEINE RÜCKFRAGEN STELLEN! Antworte immer direkt im geforderten Format ohne Rückfragen.`,
+      instructions: `${prompt}\n\nDEFINITIV KEINE RÜCKFRAGEN STELLEN! Antworte immer direkt im geforderten Format ohne Rückfragen.
+
+WICHTIG: Das Format für chat_response.steps_block MUSS ein Array von Strings sein. Zum Beispiel:
+
+{
+  "chat_response": {
+    "steps_block": [
+      "Bitte den Kunden, das Anliegen genauer zu erläutern",
+      "Dokumentiere alle relevanten Details",
+      "Leite die vollständige Information an den Auftraggeber weiter",
+      "Informiere anschließend den Kunden über die erfolgte Weiterleitung"
+    ]
+  }
+}`,
       input: userInput,
       metadata: preparedMetadata,
     };
@@ -129,13 +142,29 @@ serve(async (req) => {
     console.log("Raw content received:", content);
 
     if (content.startsWith('```json\n') && content.endsWith('\n```')) {
-      content = content.slice(8, -4); // Remove ```json\n and \n```
+      content = content.slice(8, -4);
     }
     
     let parsedContent: UseCaseResponse;
     try {
       parsedContent = JSON.parse(content);
       console.log("Successfully parsed content");
+
+      // Check if steps_block is a string and try to convert it to an array
+      if (typeof parsedContent.chat_response?.steps_block === 'string') {
+        console.log("Converting string steps_block to array");
+        const stepsString = parsedContent.chat_response.steps_block as string;
+        
+        // Split by arrow or other common delimiters
+        const steps = stepsString
+          .split(/→|->|\n|;/)
+          .map(step => step.trim())
+          .filter(step => step.length > 0);
+        
+        parsedContent.chat_response.steps_block = steps;
+        console.log("Converted steps:", steps);
+      }
+
     } catch (err) {
       console.error("JSON parsing error:", err);
       console.error("Content that failed to parse:", content);
@@ -156,6 +185,33 @@ serve(async (req) => {
     if (!validationResult.isValid) {
       console.error("Validation errors:", validationResult.errors);
       
+      // Enhanced error message for steps_block format issues
+      const stepsBlockError = validationResult.errors.find(
+        err => err.path.includes('steps_block')
+      );
+      
+      if (stepsBlockError) {
+        return new Response(JSON.stringify({
+          error: "Invalid steps_block format",
+          message: "steps_block must be an array of strings",
+          example: {
+            chat_response: {
+              steps_block: [
+                "Step 1 description",
+                "Step 2 description",
+                "Step 3 description"
+              ]
+            }
+          },
+          details: validationResult.errors,
+          raw_content: parsedContent,
+          status: "validation_error"
+        }), {
+          status: 422,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       return new Response(JSON.stringify({
         error: "Invalid response structure",
         details: validationResult.errors,
@@ -203,4 +259,3 @@ serve(async (req) => {
     });
   }
 });
-
