@@ -19,17 +19,17 @@ const onSubmit = async (values: TaskFormValues) => {
         description: "Die Aufgabe wird trotzdem erstellt und an KVP weitergeleitet.",
       });
 
-      // Send notification to supervisors about unmatched task
-      const { error: notificationError } = await supabase
-        .from('notifications')
-        .insert([{
-          message: `Neue Aufgabe ohne passenden Use Case erstellt. Beschreibung: ${values.description.substring(0, 100)}...`,
-          user_id: user.id, // This will be filtered by RLS to only go to supervisors
-        }]);
-
-      if (notificationError) {
-        console.error("Error creating supervisor notification:", notificationError);
-      }
+      // Optional: Trigger a webhook/email notification to KVP team
+      await fetch('https://your-automation-endpoint/send-kvp-alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: values.customerId,
+          description: values.description,
+          createdBy: user.email,
+          reason: 'Kein Use Case erkannt',
+        }),
+      });
     }
 
     const { data: task, error: taskError } = await supabase
