@@ -2,29 +2,13 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateResponse } from "./validator.ts";
-import type { UseCaseResponse } from "./types.ts";
+import { prepareMetadata } from "./metadata.ts";
+import { callOpenAI } from "./openai.ts";
+import { processResponse } from "./response-processor.ts";
+import { corsHeaders } from "./cors.ts";
 import { USE_CASE_TYPES } from "./types.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-function prepareMetadata(raw: any) {
-  if (!raw) return {};
-  
-  const metadata = {
-    industry: raw.industry ?? "",
-    sw_tasks: raw.tools?.task_management ?? "",
-    sw_knowledge: raw.tools?.knowledge_base ?? "",
-    sw_CRM: raw.tools?.crm ?? "",
-  };
-  
-  console.log("Prepared metadata:", metadata);
-  return metadata;
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -95,60 +79,12 @@ BEISPIEL FÜR GÜLTIGES FORMAT:
   "next_question": "Benötigen Sie weitere Unterstützung?"
 }`;
 
-    const payload = {
+    const responseData = await callOpenAI(openAIApiKey, {
       model: "gpt-4.5-preview",
       instructions: baseInstructions,
       input: userInput,
       metadata: preparedMetadata,
-    };
-
-    console.log("Sending request to OpenAI Responses API with model:", payload.model);
-
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${openAIApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
     });
-
-    console.log("OpenAI API response status:", response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenAI API error response:", errorText);
-      
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        errorData = { raw: errorText };
-      }
-      
-      if (errorData?.error?.code === 'model_not_found') {
-        return new Response(JSON.stringify({ 
-          error: "Invalid model configuration. Please contact support.",
-          details: errorData,
-          status: "model_error" 
-        }), {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      return new Response(JSON.stringify({ 
-        error: `OpenAI API Error (${response.status})`,
-        details: errorData,
-        status: "api_error" 
-      }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const responseData = await response.json();
-    console.log("OpenAI response structure:", Object.keys(responseData));
 
     if (!responseData.output?.[0]?.content?.[0]?.text) {
       console.error("Unexpected OpenAI response format:", JSON.stringify(responseData, null, 2));
@@ -162,58 +98,17 @@ BEISPIEL FÜR GÜLTIGES FORMAT:
       });
     }
 
-    let content = responseData.output[0].content[0].text;
+    const content = responseData.output[0].content[0].text;
     console.log("Raw content received:", content);
 
-    if (content.startsWith('```json\n') && content.endsWith('\n```')) {
-      content = content.slice(8, -4);
-    }
-    
-    let parsedContent: UseCaseResponse;
-    try {
-      parsedContent = JSON.parse(content);
-      console.log("Successfully parsed content");
-
-      // Handle string steps_block conversion
-      if (typeof parsedContent.chat_response?.steps_block === 'string') {
-        console.log("Converting string steps_block to array");
-        const stepsString = parsedContent.chat_response.steps_block as string;
-        const steps = stepsString
-          .split(/→|->|\n|;/)
-          .map(step => step.trim())
-          .filter(step => step.length > 0);
-        
-        parsedContent.chat_response.steps_block = steps;
-        console.log("Converted steps:", steps);
-      }
-
-      // Ensure valid type
-      if (!Object.values(USE_CASE_TYPES).includes(parsedContent.type as any)) {
-        console.log("Invalid type detected, defaulting to direct_use_case");
-        parsedContent.type = USE_CASE_TYPES.DIRECT;
-      }
-
-    } catch (err) {
-      console.error("JSON parsing error:", err);
-      console.error("Content that failed to parse:", content);
-      
-      return new Response(JSON.stringify({ 
-        error: "Failed to parse OpenAI response as JSON",
-        raw_content: content,
-        status: "parsing_error" 
-      }), {
-        status: 422,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    const parsedContent = processResponse(content);
     console.log("Validating parsed content...");
+    
     const validationResult = validateResponse(parsedContent);
     
     if (!validationResult.isValid) {
       console.error("Validation errors:", validationResult.errors);
 
-      // Generate helpful error response
       const errorFields = validationResult.errors.map(err => ({
         field: err.path.join('.'),
         message: err.message,

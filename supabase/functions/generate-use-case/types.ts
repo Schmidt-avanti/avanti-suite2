@@ -1,42 +1,37 @@
 
-/**
- * Chat response structure that represents how responses
- * should be formatted for the chat interface
- */
-export type ChatResponse = {
-  title: string;
-  info_block: string;
-  steps_block: string;
-  activities_block: string;
-  result_block: string;
-  tone: string;
+export interface CustomerMetadata {
+  industry?: string;
+  sw_tasks?: string;
+  sw_knowledge?: string;
+  sw_CRM?: string;
 }
 
-/**
- * Step in a process map that outlines the workflow
- */
-export type ProcessMapStep = {
-  step: string;
-  action: string;
-  tool: string;
-  note?: string;
+export interface OpenAIPayload {
+  model: string;
+  instructions: string;
+  input: string;
+  metadata: CustomerMetadata;
 }
 
-/**
- * Represents a decision point with yes/no paths
- */
-export type DecisionLogicItem = {
-  condition: string;
-  yes: string;
-  no: string;
+export interface UseCaseResponse {
+  output: Array<{
+    content: Array<{
+      text: string;
+    }>;
+  }>;
 }
 
-/**
- * The complete structure of a use case response
- * returned from the OpenAI API
- */
-export type UseCaseResponse = {
-  type: 'knowledge_request' | 'forwarding_use_case' | 'direct_use_case';
+export interface ChatResponse {
+  steps_block: string[];
+  title?: string;
+  info_block?: string;
+  activities_block?: string;
+  result_block?: string;
+  tone?: string;
+}
+
+export interface ProcessedResponse {
+  type: string;
   title: string;
   information_needed: string;
   steps: string;
@@ -44,7 +39,11 @@ export type UseCaseResponse = {
   expected_result: string;
   chat_response: ChatResponse;
   next_question: string;
-  process_map?: ProcessMapStep[];
-  decision_logic?: DecisionLogicItem[];
   response_id?: string;
 }
+
+export const USE_CASE_TYPES = {
+  KNOWLEDGE_REQUEST: "knowledge_request",
+  FORWARDING: "forwarding_use_case",
+  DIRECT: "direct_use_case"
+} as const;
