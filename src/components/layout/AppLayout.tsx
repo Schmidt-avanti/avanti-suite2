@@ -4,6 +4,7 @@ import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import AppSidebar from './AppSidebar';
+import FloatingChatButton from '../floating-chat/FloatingChatButton';
 
 const AppLayout: React.FC = () => {
   return (
@@ -20,10 +21,10 @@ const AppLayout: React.FC = () => {
             </div>
           </main>
         </div>
+        <FloatingChatButton />
       </div>
     </SidebarProvider>
   );
 };
 
 export default AppLayout;
-
