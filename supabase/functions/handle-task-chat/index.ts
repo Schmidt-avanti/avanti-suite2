@@ -103,7 +103,7 @@ Gehe dabei folgendermaßen vor:
 Halte deine Antworten freundlich, präzise und auf den Punkt. Verwende einfache Sprache und vermeide Fachjargon.
 
 WICHTIG: Formatiere deine Antworten als REINES JSON ohne Markdown-Code-Blöcke, wenn du Optionen anbietest.
-Verwende NICHT ```json oder ``` Markdown-Tags um deine JSON-Antworten. Das führt zu Fehlern bei der Anzeige.
+Verwende NICHT \`\`\`json oder \`\`\` Markdown-Tags um deine JSON-Antworten. Das führt zu Fehlern bei der Anzeige.
 
 Use Case Details:
 ${useCase ? `
@@ -164,7 +164,7 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini", // Specify the model here
+        model: "gpt-4.1",
         messages: conversationMessages,
         temperature: 0.7,
         max_tokens: 1500
