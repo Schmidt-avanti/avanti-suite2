@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
@@ -29,9 +28,9 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [buttonOptions, setButtonOptions] = useState<string[]>([]);
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
   const { user } = useAuth();
-  
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -44,7 +43,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   useEffect(() => {
     if (initialMessages.length === 0) {
       fetchMessages();
-      
+
       setTimeout(() => {
         sendMessage("", null);
       }, 500);
@@ -58,19 +57,19 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         .select('*')
         .eq('task_id', taskId)
         .order('created_at', { ascending: true });
-        
+
       if (error) throw error;
-      
+
       if (data) {
         const typedMessages: Message[] = data.map(msg => ({
           id: msg.id,
-          role: msg.role === "assistant" || msg.role === "user" 
-            ? msg.role as "assistant" | "user" 
+          role: msg.role === "assistant" || msg.role === "user"
+            ? msg.role as "assistant" | "user"
             : "assistant",
           content: msg.content,
           created_at: msg.created_at
         }));
-        
+
         setMessages(typedMessages);
       }
     } catch (error: any) {
@@ -83,9 +82,9 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
   const sendMessage = async (text: string, buttonChoice: string | null = null) => {
     if (!user) return;
-    
+
     setIsLoading(true);
-    
+
     try {
       if (text) {
         const { error: messageError } = await supabase
@@ -109,19 +108,19 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           previousResponseId
         }
       });
-      
+
       if (error) throw error;
-      
+
       setPreviousResponseId(data.response_id);
-      
+
       if (data.button_options && data.button_options.length > 0) {
         setButtonOptions(data.button_options);
       } else {
         setButtonOptions([]);
       }
-      
+
       fetchMessages();
-      
+
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast.error('Fehler beim Senden der Nachricht', {
@@ -157,12 +156,38 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const renderMessage = (message: Message) => {
     if (message.role === "assistant") {
       try {
-        const parsed = JSON.parse(message.content);
+        const clean = message.content
+          .replace(/```json/i, '')
+          .replace(/```/g, '')
+          .trim();
+
+        const parsed = JSON.parse(clean);
+
+        if (parsed.text && Array.isArray(parsed.options)) {
+          return (
+            <div className="space-y-3">
+              <p>{parsed.text}</p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {parsed.options.map((option: string, idx: number) => (
+                  <Button
+                    key={idx}
+                    variant="outline"
+                    onClick={() => handleButtonClick(option)}
+                    className="rounded-full text-sm px-4"
+                  >
+                    {option}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
         if (parsed.chat_response?.steps_block && Array.isArray(parsed.chat_response.steps_block)) {
           return (
             <div className="space-y-2">
               {parsed.chat_response.steps_block.map((step: string, index: number) => (
-                <div 
+                <div
                   key={index}
                   className="p-2 rounded bg-blue-50/50 border border-blue-100/50"
                 >
@@ -172,40 +197,25 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             </div>
           );
         }
+
         return message.content;
       } catch (e) {
         return message.content;
       }
     }
+
     return message.content;
   };
 
   return (
     <div
-      className="
-        w-full h-full
-        flex flex-col
-        justify-between
-        rounded-2xl
-        bg-transparent
-        p-6
-      "
-      style={{
-        boxSizing: 'border-box',
-        minHeight: '400px',
-        maxHeight: '600px'
-      }}
+      className="w-full h-full flex flex-col justify-between rounded-2xl bg-transparent p-6"
+      style={{ boxSizing: 'border-box', minHeight: '400px', maxHeight: '600px' }}
       data-chat-panel
     >
       <div className="flex-1 flex flex-col min-h-0">
         <ScrollArea
-          className="
-            flex-1
-            pr-2
-            min-h-0
-            overflow-y-auto
-            custom-scrollbar
-            "
+          className="flex-1 pr-2 min-h-0 overflow-y-auto custom-scrollbar"
           ref={scrollAreaRef}
         >
           <div className="space-y-4 pb-2">
@@ -214,13 +224,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                 Starten Sie die Konversation...
               </div>
             )}
-            
+
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex flex-col ${
-                  message.role === "assistant" ? "items-start" : "items-end"
-                }`}
+                className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
               >
                 <div className={`
                   max-w-[80%] p-4 rounded-2xl
@@ -242,7 +250,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                 </div>
               </div>
             ))}
-            
+
             {isLoading && (
               <div className="flex items-start">
                 <div className="max-w-[80%] p-4 rounded-2xl bg-blue-100 shadow-sm border border-blue-50/40">
@@ -257,7 +265,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                 </div>
               </div>
             )}
-            
+
             {buttonOptions.length > 0 && !isLoading && (
               <div className="flex flex-wrap gap-2 justify-center">
                 {buttonOptions.map((option, index) => (
@@ -275,53 +283,25 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           </div>
         </ScrollArea>
       </div>
-      
-      <div
-        className="
-          w-full
-          mt-4
-          flex
-          items-center
-          bg-transparent
-          rounded-2xl
-        "
-      >
+
+      <div className="w-full mt-4 flex items-center bg-transparent rounded-2xl">
         <form
           onSubmit={handleSubmit}
-          className="
-            w-full
-            flex gap-2 items-end
-            border border-gray-200
-            p-3
-            bg-white
-            rounded-2xl
-            shadow-sm
-            "
+          className="w-full flex gap-2 items-end border border-gray-200 p-3 bg-white rounded-2xl shadow-sm"
         >
           <Textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ihre Nachricht..."
-            className="
-              flex-1 resize-none min-h-[48px] max-h-[96px]
-              border-none
-              bg-transparent
-              focus:ring-0
-              text-base
-            "
+            className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base"
             style={{ fontSize: '1rem', padding: 0 }}
             disabled={isLoading || buttonOptions.length > 0}
           />
           <Button
             type="submit"
             disabled={isLoading || !inputValue.trim() || buttonOptions.length > 0}
-            className="
-              self-end ml-1 bg-blue-500 hover:bg-blue-600
-              text-white rounded-full
-              h-11 w-11 flex items-center justify-center
-              shadow transition-all
-            "
+            className="self-end ml-1 bg-blue-500 hover:bg-blue-600 text-white rounded-full h-11 w-11 flex items-center justify-center shadow transition-all"
             tabIndex={0}
           >
             {isLoading ? (
