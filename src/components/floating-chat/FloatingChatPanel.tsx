@@ -8,8 +8,6 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ChatTabs } from './ChatTabs';
-import { UserChat } from './UserChat';
 
 interface Message {
   id: string;
@@ -22,18 +20,16 @@ interface FloatingChatPanelProps {
   onClose: () => void;
 }
 
-export function FloatingChatPanel({
-  onClose
-}: FloatingChatPanelProps) {
-  const [activeTab, setActiveTab] = useState<"ava" | "colleagues">("ava");
+export function FloatingChatPanel({ onClose }: FloatingChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [useGPTFallback, setUseGPTFallback] = useState(false);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
+  
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
@@ -51,43 +47,42 @@ export function FloatingChatPanel({
 
   const handleSend = async (retryQuery?: string) => {
     const queryText = retryQuery || input.trim();
-    if (!queryText && !retryQuery || isLoading) return;
-
+    
+    if ((!queryText && !retryQuery) || isLoading) return;
+    
     if (!retryQuery) {
       const userMessage: Message = {
         id: crypto.randomUUID(),
         from: 'user',
         content: queryText
       };
+      
       setMessages(prev => [...prev, userMessage]);
       setInput('');
     }
-
+    
     setLastQuery(queryText);
     setIsLoading(true);
-
+    
     try {
       console.log("Sending query:", queryText);
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('knowledge-chat', {
+      const { data, error } = await supabase.functions.invoke('knowledge-chat', {
         body: {
           query: queryText,
           useGPTFallback
         }
       });
-
+      
       if (error) {
         console.error('Supabase function error:', error);
         throw new Error(`Fehler bei der Abfrage: ${error.message}`);
       }
-
+      
       if (data.error) {
         console.error('Knowledge chat error:', data.error);
         throw new Error(data.error);
       }
-
+      
       console.log("Response received:", data.result);
       const botMessage: Message = {
         id: crypto.randomUUID(),
@@ -95,15 +90,19 @@ export function FloatingChatPanel({
         content: data.result.content,
         source: data.result.source
       };
+      
       setMessages(prev => [...prev, botMessage]);
     } catch (err: any) {
       console.error('Error fetching response:', err);
+      
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         from: 'error',
-        content: `Fehler beim Abrufen der Antwort: ${err.message || 'Unbekannter Fehler'}`
+        content: `Fehler beim Abrufen der Antwort: ${err.message || 'Unbekannter Fehler'}`,
       };
+      
       setMessages(prev => [...prev, errorMessage]);
+      
       toast.error('Fehler beim Abrufen der Antwort', {
         description: err.message || 'Bitte versuchen Sie es später erneut'
       });
@@ -127,82 +126,132 @@ export function FloatingChatPanel({
 
   return (
     <Card className="w-[380px] h-[500px] shadow-xl rounded-3xl overflow-hidden flex flex-col bg-gradient-to-b from-blue-600 to-blue-500">
-      <div className="p-4 text-white">
-        <div className="flex items-center justify-between">
-          <ChatTabs activeTab={activeTab} onTabChange={setActiveTab} />
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 w-8 p-0 ml-2 rounded-full hover:bg-white/20 text-white"
-            onClick={onClose}
+      <div className="p-4 text-white flex flex-row items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+            <MessageSquare className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="text-base font-medium">Wissensassistent</h3>
+            <p className="text-xs text-white/80">Immer für Sie da</p>
+          </div>
+        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 w-8 p-0 rounded-full hover:bg-white/20 text-white"
+          onClick={onClose}
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Schließen</span>
+        </Button>
+      </div>
+      
+      <ScrollArea className="flex-1 px-4 bg-white" ref={scrollRef}>
+        <div className="py-4">
+          {messages.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-center p-4">
+              <p className="text-slate-500 text-sm">
+                Frag mich etwas über Prozesse, Begriffe oder Abläufe...
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${
+                    message.from === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
+                >
+                  {message.from === 'error' ? (
+                    <div className="max-w-[280px] rounded-2xl px-4 py-2 bg-red-50 border border-red-200 text-red-800">
+                      <div className="flex items-start">
+                        <AlertCircle className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
+                        <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+                      </div>
+                      <div className="mt-2 flex justify-end">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleRetry}
+                          className="h-7 text-xs px-2 py-1"
+                        >
+                          <RefreshCcw className="h-3 w-3 mr-1" />
+                          Wiederholen
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={`max-w-[280px] rounded-2xl px-4 py-2 ${
+                        message.from === 'user'
+                          ? 'bg-blue-500 text-white ml-12'
+                          : 'bg-gray-100 text-gray-900 mr-12'
+                      }`}
+                    >
+                      <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+                      {message.source && message.source !== 'none' && (
+                        <div className="text-xs opacity-70 mt-1 text-right">
+                          {message.source === 'knowledge' ? 'Aus dem Wissenssystem' : 'Mit GPT generiert'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 rounded-2xl px-4 py-2 max-w-[280px]">
+                <div className="flex space-x-2 items-center h-6">
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+      
+      <div className="p-4 bg-white border-t">
+        <div className="flex items-center space-x-2 mb-3">
+          <Checkbox 
+            id="gpt-fallback" 
+            checked={useGPTFallback} 
+            onCheckedChange={(checked) => setUseGPTFallback(checked === true)}
+          />
+          <Label htmlFor="gpt-fallback" className="text-xs text-gray-600">
+            Bei fehlenden Einträgen GPT nutzen
+          </Label>
+        </div>
+        
+        <div className="relative">
+          <Textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ihre Frage..."
+            className="pr-12 resize-none min-h-[44px] max-h-[120px] text-sm rounded-2xl border-gray-200"
+            rows={1}
+            disabled={isLoading}
+          />
+          <Button
+            onClick={() => handleSend()}
+            disabled={!input.trim() || isLoading}
+            className="absolute bottom-1.5 right-1.5 h-8 w-8 rounded-xl bg-blue-500 hover:bg-blue-600 p-0 flex items-center justify-center"
           >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Schließen</span>
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+            ) : (
+              <Send className="h-4 w-4 text-white" />
+            )}
           </Button>
         </div>
       </div>
-
-      {activeTab === "ava" ? (
-        <>
-          
-          <ScrollArea className="flex-1 px-4 bg-white" ref={scrollRef}>
-            <div className="py-4">
-              {messages.length === 0 ? <div className="h-full flex items-center justify-center text-center p-4">
-                  <p className="text-slate-500 text-sm">
-                    Frag mich etwas über Prozesse, Begriffe oder Abläufe...
-                  </p>
-                </div> : <div className="space-y-4">
-                  {messages.map(message => <div key={message.id} className={`flex ${message.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      {message.from === 'error' ? <div className="max-w-[280px] rounded-2xl px-4 py-2 bg-red-50 border border-red-200 text-red-800">
-                          <div className="flex items-start">
-                            <AlertCircle className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
-                            <div className="whitespace-pre-wrap text-sm">{message.content}</div>
-                          </div>
-                          <div className="mt-2 flex justify-end">
-                            <Button variant="outline" size="sm" onClick={handleRetry} className="h-7 text-xs px-2 py-1">
-                              <RefreshCcw className="h-3 w-3 mr-1" />
-                              Wiederholen
-                            </Button>
-                          </div>
-                        </div> : <div className={`max-w-[280px] rounded-2xl px-4 py-2 ${message.from === 'user' ? 'bg-blue-500 text-white ml-12' : 'bg-gray-100 text-gray-900 mr-12'}`}>
-                          <div className="whitespace-pre-wrap text-sm">{message.content}</div>
-                          {message.source && message.source !== 'none' && <div className="text-xs opacity-70 mt-1 text-right">
-                              {message.source === 'knowledge' ? 'Aus dem Wissenssystem' : 'Mit GPT generiert'}
-                            </div>}
-                        </div>}
-                    </div>)}
-                </div>}
-              {isLoading && <div className="flex justify-start">
-                  <div className="bg-gray-100 rounded-2xl px-4 py-2 max-w-[280px]">
-                    <div className="flex space-x-2 items-center h-6">
-                      <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
-                      <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
-                      <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
-                    </div>
-                  </div>
-                </div>}
-            </div>
-          </ScrollArea>
-          
-          <div className="p-4 bg-white border-t">
-            <div className="flex items-center space-x-2 mb-3">
-              <Checkbox id="gpt-fallback" checked={useGPTFallback} onCheckedChange={checked => setUseGPTFallback(checked === true)} />
-              <Label htmlFor="gpt-fallback" className="text-xs text-gray-600">
-                Bei fehlenden Einträgen GPT nutzen
-              </Label>
-            </div>
-            
-            <div className="relative">
-              <Textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ihre Frage..." className="pr-12 resize-none min-h-[44px] max-h-[120px] text-sm rounded-2xl border-gray-200" rows={1} disabled={isLoading} />
-              <Button onClick={() => handleSend()} disabled={!input.trim() || isLoading} className="absolute bottom-1.5 right-1.5 h-8 w-8 rounded-xl bg-blue-500 hover:bg-blue-600 p-0 flex items-center justify-center">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <Send className="h-4 w-4 text-white" />}
-              </Button>
-            </div>
-          </div>
-        </>
-      ) : (
-        <UserChat />
-      )}
     </Card>
   );
 }
