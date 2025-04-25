@@ -14,11 +14,13 @@ import { useShortBreaks } from '@/hooks/useShortBreaks';
 import { ShortBreakTimer } from './ShortBreakTimer';
 import { ShortBreakHistory } from './ShortBreakHistory';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const ShortBreakButton = () => {
   const { user } = useAuth();
   const { activeBreaks, startBreak } = useShortBreaks();
   const [currentBreakId, setCurrentBreakId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const canStartBreak = activeBreaks && 
     activeBreaks.activeSlots < activeBreaks.maxSlots && 
@@ -37,12 +39,12 @@ export const ShortBreakButton = () => {
       <SheetTrigger asChild>
         <Button 
           variant="ghost" 
-          className="relative h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center"
+          className={`relative ${isMobile ? 'h-8 w-8' : 'h-9 w-9'} bg-gray-100 rounded-full flex items-center justify-center`}
         >
-          <Timer className="h-5 w-5 text-gray-600 hover:text-gray-800" />
+          <Timer className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-600 hover:text-gray-800`} />
         </Button>
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className={isMobile ? 'w-full' : ''}>
         <SheetHeader>
           <SheetTitle>Short-Break</SheetTitle>
           <SheetDescription className="space-y-1">

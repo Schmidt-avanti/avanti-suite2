@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Message {
   id: string;
@@ -29,6 +30,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
   const { user } = useAuth();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -149,13 +151,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             <div className="space-y-3">
               <div className="text-sm whitespace-pre-wrap">{parsedContent.text}</div>
               {parsedContent.options && parsedContent.options.length > 0 ? (
-                <div className="flex flex-wrap gap-2 mt-2">
+                <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
                   {parsedContent.options.map((option: string, idx: number) => (
                     <Button
                       key={idx}
                       variant="outline"
                       onClick={() => handleButtonClick(option)}
                       className="rounded text-sm px-4 py-1 hover:bg-blue-100"
+                      size={isMobile ? "sm" : "default"}
                     >
                       {option}
                     </Button>
@@ -220,7 +223,12 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
   return (
     <div className="w-full h-full flex flex-col justify-between rounded-2xl bg-transparent p-6"
-      style={{ boxSizing: 'border-box', minHeight: '400px', maxHeight: '600px' }}
+      style={{ 
+        boxSizing: 'border-box', 
+        minHeight: '400px', 
+        maxHeight: isMobile ? '100vh' : '600px',
+        padding: isMobile ? '1rem' : '1.5rem' 
+      }}
       data-chat-panel
     >
       <div className="flex-1 flex flex-col min-h-0">
@@ -241,7 +249,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                 className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
               >
                 <div className={`
-                  max-w-[80%] p-4 rounded
+                  ${isMobile ? 'max-w-[90%]' : 'max-w-[80%]'} p-4 rounded
                   ${message.role === "assistant"
                     ? "bg-blue-100 text-gray-900"
                     : "bg-gray-100 text-gray-900"

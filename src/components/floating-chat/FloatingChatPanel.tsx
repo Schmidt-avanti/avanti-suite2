@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Loader2, MessageSquare, Smile } from 'lucide-react';
+import { X, Send, Loader2, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Message {
   id: string;
@@ -30,6 +32,7 @@ export function FloatingChatPanel({
   const [lastQuery, setLastQuery] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (inputRef.current) {
@@ -117,7 +120,10 @@ export function FloatingChatPanel({
   };
 
   return (
-    <Card className="w-[380px] h-[500px] overflow-hidden flex flex-col rounded-[20px] shadow-xl border-none">
+    <Card 
+      className={`${isMobile ? 'w-full h-[calc(100vh-56px)]' : 'w-[380px] h-[500px]'} overflow-hidden flex flex-col rounded-[20px] shadow-xl border-none`}
+      style={isMobile ? { borderRadius: 0, maxHeight: '100vh' } : {}}
+    >
       <div className="relative">
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white rounded-t-[20px]">
           <div className="flex items-center justify-between">
@@ -158,14 +164,14 @@ export function FloatingChatPanel({
                 className={`flex ${message.from === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.from === 'error' ? (
-                  <div className="max-w-[280px] rounded-2xl px-4 py-3 bg-red-50 border border-red-200 text-red-800 shadow-sm">
+                  <div className={`${isMobile ? 'max-w-[90%]' : 'max-w-[280px]'} rounded-2xl px-4 py-3 bg-red-50 border border-red-200 text-red-800 shadow-sm`}>
                     <div className="flex items-start gap-2 text-sm">
                       {message.content}
                     </div>
                   </div>
                 ) : (
                   <div
-                    className={`max-w-[280px] rounded-[18px] px-4 py-3 shadow-sm
+                    className={`${isMobile ? 'max-w-[90%]' : 'max-w-[280px]'} rounded-[18px] px-4 py-3 shadow-sm
                       ${message.from === 'user' 
                         ? 'bg-blue-500 text-white ml-12' 
                         : 'bg-gray-100 text-gray-900 mr-12'

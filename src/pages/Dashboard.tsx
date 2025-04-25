@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -10,6 +11,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { RemindersList } from '@/components/reminders/RemindersList';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -18,6 +20,7 @@ const Dashboard: React.FC = () => {
   const { notifications, markAsRead } = useNotifications();
   const [newTasksCount, setNewTasksCount] = useState<number>(0);
   const [completedTasksCount, setCompletedTasksCount] = useState<number>(0);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!isTasksLoading && allTasks) {
@@ -53,13 +56,13 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Willkommen zurück, {firstName}!</h1>
+      <h1 className={`text-2xl font-bold ${isMobile ? 'text-xl mb-4' : ''}`}>Willkommen zurück, {firstName}!</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 ${isMobile ? '' : 'md:grid-cols-2'} gap-6`}>
         <Link to="/tasks" className="block">
           <Card className="hover:shadow-md transition-shadow bg-avanti-50/50">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">Neue Aufgaben</CardTitle>
+              <CardTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-avanti-800 uppercase tracking-wide`}>Neue Aufgaben</CardTitle>
               <InboxIcon className="absolute top-4 right-4 text-avanti-600 h-6 w-6" />
             </CardHeader>
             <CardContent>
@@ -72,7 +75,7 @@ const Dashboard: React.FC = () => {
         <Link to="/tasks/completed" className="block">
           <Card className="hover:shadow-md transition-shadow bg-avanti-50/50">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">Erledigte Aufgaben</CardTitle>
+              <CardTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-avanti-800 uppercase tracking-wide`}>Erledigte Aufgaben</CardTitle>
               <CheckCircleIcon className="absolute top-4 right-4 text-avanti-600 h-6 w-6" />
             </CardHeader>
             <CardContent>
@@ -85,7 +88,7 @@ const Dashboard: React.FC = () => {
       
       <Card className="bg-avanti-50/30">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-avanti-800 uppercase tracking-wide">
+          <CardTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-avanti-800 uppercase tracking-wide`}>
             Ungelesene Benachrichtigungen
           </CardTitle>
         </CardHeader>
@@ -100,7 +103,7 @@ const Dashboard: React.FC = () => {
                   className="flex flex-col bg-white p-3 rounded-lg hover:bg-avanti-50 cursor-pointer shadow-sm"
                   onClick={() => handleNotificationClick(notification)}
                 >
-                  <div className="text-sm text-avanti-900">{notification.message}</div>
+                  <div className="text-sm text-avanti-900">{notification.content || notification.message}</div>
                   <div className="text-xs text-avanti-600 mt-1">
                     {notification.created_at && formatDistanceToNow(new Date(notification.created_at), { 
                       addSuffix: true,

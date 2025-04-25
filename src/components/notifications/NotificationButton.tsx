@@ -1,72 +1,27 @@
 
-import React, { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { NotificationList } from './NotificationList';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useIsMobile } from '@/hooks/use-mobile';
 
-export const NotificationButton: React.FC = () => {
-  const { user } = useAuth();
-  const { notifications, unreadCount, markAllAsRead } = useNotifications();
-  const [isOpen, setIsOpen] = useState(false);
-
-  const handleMarkAllAsRead = async () => {
-    await markAllAsRead();
-    setIsOpen(false);
-  };
-
-  // Debug-Logging für Benachrichtigungen
-  useEffect(() => {
-    if (unreadCount > 0) {
-      console.log(`Ungelesene Benachrichtigungen: ${unreadCount}`);
-    }
-  }, [unreadCount]);
-
-  if (!user) return null;
+export function NotificationButton() {
+  const { notifications } = useNotifications();
+  const unreadCount = notifications?.filter(n => !n.read_at)?.length || 0;
+  const isMobile = useIsMobile();
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="relative h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center"
-        >
-          <Bell className="h-5 w-5 text-gray-600 hover:text-gray-800" />
-          {unreadCount > 0 && (
-            <Badge 
-              className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 p-0 text-xs text-white"
-            >
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </Badge>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="p-4 border-b border-gray-100">
-          <h3 className="font-medium text-sm">Benachrichtigungen</h3>
-        </div>
-        <NotificationList notifications={notifications} />
-        {notifications.length > 0 && (
-          <div className="p-2 border-t border-gray-100">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="w-full text-xs"
-              onClick={handleMarkAllAsRead}
-            >
-              Alle als gelesen markieren
-            </Button>
-          </div>
+    <div className="relative">
+      <Button 
+        variant="ghost" 
+        className={`relative ${isMobile ? 'h-8 w-8' : 'h-9 w-9'} bg-gray-100 rounded-full flex items-center justify-center`}
+      >
+        <Bell className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-600`} />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-medium rounded-full w-5 h-5 flex items-center justify-center">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
         )}
-      </PopoverContent>
-    </Popover>
+      </Button>
+    </div>
   );
-};
+}

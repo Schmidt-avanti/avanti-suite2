@@ -10,13 +10,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search } from 'lucide-react';
+import { Search, Menu } from 'lucide-react';
 import { ShortBreakButton } from '@/components/short-break/ShortBreakButton';
 import { NotificationButton } from '@/components/notifications/NotificationButton';
 import { ScreenShareButton } from '@/components/screen-share/ScreenShareButton';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useSidebar } from '@/components/ui/sidebar';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
+  const isMobile = useIsMobile();
+  const { toggleSidebar } = useSidebar();
 
   const handleSignOut = async () => {
     await signOut();
@@ -24,21 +28,33 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-20 w-full bg-white border-b border-gray-100 h-16">
-      <div className="h-full flex items-center justify-between px-8 sm:px-6">
-        {/* Suchfeld und linker Bereich */}
+      <div className="h-full flex items-center justify-between px-8 sm:px-4">
+        {/* Mobile menu button and search area */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className="relative w-full max-w-lg">
+          {isMobile && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="md:hidden mr-2" 
+              onClick={toggleSidebar}
+            >
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Toggle Menu</span>
+            </Button>
+          )}
+          
+          <div className={`relative w-full max-w-lg ${isMobile ? 'max-w-[180px]' : ''}`}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input 
               type="search"
-              placeholder="Suche..."
+              placeholder={isMobile ? "Suche" : "Suche..."}
               className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm outline-none focus:border-avanti-500 focus:ring-1 focus:ring-avanti-500"
             />
           </div>
         </div>
 
         {/* Add ShortBreakButton for all users */}
-        <div className="flex items-center gap-4 shrink-0">
+        <div className={`flex items-center ${isMobile ? 'gap-2' : 'gap-4'} shrink-0`}>
           {user && (
             <>
               <ShortBreakButton />
