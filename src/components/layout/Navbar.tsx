@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Search } from 'lucide-react';
 import { ShortBreakButton } from '@/components/short-break/ShortBreakButton';
 import { NotificationButton } from '@/components/notifications/NotificationButton';
+import { ScreenShareButton } from '@/components/screen-share/ScreenShareButton';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -38,10 +39,11 @@ const Navbar = () => {
 
         {/* Add ShortBreakButton for all users */}
         <div className="flex items-center gap-4 shrink-0">
-          <ShortBreakButton />
           {user && (
             <>
+              <ShortBreakButton />
               <NotificationButton />
+              <ScreenShareButton />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 bg-gray-100 rounded-full flex items-center justify-center">
