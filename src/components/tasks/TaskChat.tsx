@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -122,15 +123,12 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
       if (error) throw error;
 
-      toast({
-        title: "Aufgabe weitergeleitet",
-        description: "Die Aufgabe wurde erfolgreich an einen Teamleiter weitergeleitet.",
+      toast.success("Aufgabe weitergeleitet", {
+        description: "Die Aufgabe wurde erfolgreich an einen Teamleiter weitergeleitet."
       });
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: error.message,
+      toast.error("Fehler", {
+        description: error.message
       });
     }
   };
