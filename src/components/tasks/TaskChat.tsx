@@ -116,49 +116,44 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const renderMessage = (message: Message) => {
     if (message.role === "assistant") {
       try {
-        // Check if the content contains JSON structure markers
-        const jsonRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
-        const match = message.content.match(jsonRegex);
+        let parsedContent;
         
-        let jsonContent = message.content;
-        if (match && match[1]) {
-          jsonContent = match[1].trim();
-        }
-        
-        let parsed;
         try {
-          parsed = JSON.parse(jsonContent);
+          // Try to parse as JSON
+          parsedContent = JSON.parse(message.content);
         } catch (e) {
-          // Try one more time with the raw content if the first attempt failed
-          parsed = JSON.parse(message.content);
+          // If parsing fails, handle as plain text
+          return <div className="whitespace-pre-wrap">{message.content}</div>;
         }
         
         // Handle structured message with text and options
-        if (parsed.text && Array.isArray(parsed.options)) {
+        if (parsedContent.text) {
           return (
             <div className="space-y-3">
-              <div className="text-sm whitespace-pre-wrap">{parsed.text}</div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {parsed.options.map((option: string, idx: number) => (
-                  <Button
-                    key={idx}
-                    variant="outline"
-                    onClick={() => handleButtonClick(option)}
-                    className="rounded text-sm px-4 py-1 hover:bg-blue-100"
-                  >
-                    {option}
-                  </Button>
-                ))}
-              </div>
+              <div className="text-sm whitespace-pre-wrap">{parsedContent.text}</div>
+              {parsedContent.options && parsedContent.options.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {parsedContent.options.map((option: string, idx: number) => (
+                    <Button
+                      key={idx}
+                      variant="outline"
+                      onClick={() => handleButtonClick(option)}
+                      className="rounded text-sm px-4 py-1 hover:bg-blue-100"
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
           );
         }
 
-        // Handle steps block format
-        if (parsed.chat_response?.steps_block && Array.isArray(parsed.chat_response.steps_block)) {
+        // Handle steps block format if it exists
+        if (parsedContent.chat_response?.steps_block && Array.isArray(parsedContent.chat_response.steps_block)) {
           return (
             <div className="space-y-2">
-              {parsed.chat_response.steps_block.map((step: string, index: number) => (
+              {parsedContent.chat_response.steps_block.map((step: string, index: number) => (
                 <div key={index} className="p-2 rounded bg-blue-50/50 border border-blue-100/50">
                   {step}
                 </div>
@@ -167,12 +162,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           );
         }
 
-        // Handle simple text format
-        if (parsed.text) {
-          return <div className="whitespace-pre-wrap">{parsed.text}</div>;
-        }
-
-        // Fallback to plain text if JSON parsing was successful but format is unknown
+        // Fallback to display whatever we got in the JSON
         return <div className="whitespace-pre-wrap">{message.content}</div>;
         
       } catch (e) {

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
@@ -165,38 +166,65 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
 
     const assistantResponse = responseData.choices[0].message.content;
     
-    const cleanedResponse = assistantResponse.replace(/```json\n?|\n?```/g, '').trim();
-    
-    await supabase.from('task_messages').insert({
-      task_id: taskId,
-      role: 'assistant',
-      content: cleanedResponse
-    });
-
+    // Properly format the response to ensure consistent JSON structure
+    let cleanedResponse = assistantResponse.replace(/```json\n?|\n?```/g, '').trim();
+    let formattedResponse = cleanedResponse;
     let buttonOptions = [];
+    
     try {
-      let jsonContent;
+      // First try: attempt to parse as JSON directly
       try {
-        jsonContent = JSON.parse(cleanedResponse);
+        const jsonContent = JSON.parse(cleanedResponse);
+        
+        // If it parsed successfully but doesn't have the expected structure, add it
+        if (!jsonContent.text && typeof cleanedResponse === 'string' && !cleanedResponse.includes('"options"')) {
+          formattedResponse = JSON.stringify({ 
+            "text": cleanedResponse,
+            "options": [] 
+          });
+        }
+        
+        // Extract button options if they exist
         if (jsonContent.options && Array.isArray(jsonContent.options)) {
           buttonOptions = jsonContent.options;
         }
       } catch (e) {
-        const jsonMatch = cleanedResponse.match(/\{[\s\S]*?"options"[\s\S]*?\}/);
-        if (jsonMatch) {
-          const jsonData = JSON.parse(jsonMatch[0]);
-          if (jsonData.options && Array.isArray(jsonData.options)) {
-            buttonOptions = jsonData.options;
+        // Second try: If it's not JSON, assume it's plain text and format it
+        if (!cleanedResponse.includes('"text"') && !cleanedResponse.includes('"options"')) {
+          formattedResponse = JSON.stringify({ 
+            "text": cleanedResponse,
+            "options": [] 
+          });
+        } else {
+          // Third try: It might be malformatted JSON with options
+          const jsonMatch = cleanedResponse.match(/\{[\s\S]*?"options"[\s\S]*?\}/);
+          if (jsonMatch) {
+            try {
+              const jsonData = JSON.parse(jsonMatch[0]);
+              if (jsonData.options && Array.isArray(jsonData.options)) {
+                buttonOptions = jsonData.options;
+                formattedResponse = JSON.stringify(jsonData);
+              }
+            } catch (e) {
+              console.log('Failed to extract button options:', e);
+            }
           }
         }
       }
     } catch (e) {
-      console.log('No valid button options found in response');
+      console.log('Error formatting response:', e);
     }
+    
+    // Save the assistant's response to the database
+    await supabase.from('task_messages').insert({
+      task_id: taskId,
+      role: 'assistant',
+      content: formattedResponse
+    });
 
     return new Response(
       JSON.stringify({
-        response: cleanedResponse,
+        response: formattedResponse,
         button_options: buttonOptions
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
