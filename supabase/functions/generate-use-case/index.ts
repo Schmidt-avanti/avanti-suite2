@@ -3,6 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateResponse } from "./validator.ts";
 import type { UseCaseResponse } from "./types.ts";
+import { USE_CASE_TYPES } from "./types.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
@@ -57,22 +58,46 @@ serve(async (req) => {
     const preparedMetadata = prepareMetadata(metadata);
     console.log("Prepared metadata for API call:", preparedMetadata);
 
-    const payload = {
-      model: "gpt-4.5-preview",
-      instructions: `${prompt}\n\nDEFINITIV KEINE RÜCKFRAGEN STELLEN! Antworte immer direkt im geforderten Format ohne Rückfragen.
+    const baseInstructions = `${prompt}\n\nDEFINITIV KEINE RÜCKFRAGEN STELLEN! Antworte immer direkt im geforderten Format ohne Rückfragen.
 
-WICHTIG: Das Format für chat_response.steps_block MUSS ein Array von Strings sein. Zum Beispiel:
+KRITISCHE FORMATVORGABEN:
 
+1. type MUSS einer dieser Werte sein: "${USE_CASE_TYPES.KNOWLEDGE_REQUEST}", "${USE_CASE_TYPES.FORWARDING}", "${USE_CASE_TYPES.DIRECT}"
+
+2. chat_response.steps_block MUSS ein Array von Strings sein
+
+3. Alle diese Felder sind PFLICHT:
+  - type (einer der oben genannten Werte)
+  - title (string)
+  - information_needed (string) 
+  - steps (string)
+  - typical_activities (string)
+  - expected_result (string)
+  - chat_response.steps_block (string[])
+  - next_question (string)
+
+BEISPIEL FÜR GÜLTIGES FORMAT:
 {
+  "type": "${USE_CASE_TYPES.DIRECT}",
+  "title": "Direktbearbeitung: Support Anfrage",
+  "information_needed": "Kontaktdaten, Problembeschreibung",
+  "steps": "1. Anfrage erfassen, 2. Lösung bereitstellen",
+  "typical_activities": "Dokumentation, Beratung",
+  "expected_result": "Gelöste Supportanfrage",
   "chat_response": {
     "steps_block": [
-      "Bitte den Kunden, das Anliegen genauer zu erläutern",
-      "Dokumentiere alle relevanten Details",
-      "Leite die vollständige Information an den Auftraggeber weiter",
-      "Informiere anschließend den Kunden über die erfolgte Weiterleitung"
+      "Können Sie mir bitte Ihr Anliegen schildern?",
+      "Ich notiere die Details",
+      "Lassen Sie mich eine Lösung vorbereiten",
+      "Hier ist mein Vorschlag zur Lösung"
     ]
-  }
-}`,
+  },
+  "next_question": "Benötigen Sie weitere Unterstützung?"
+}`;
+
+    const payload = {
+      model: "gpt-4.5-preview",
+      instructions: baseInstructions,
       input: userInput,
       metadata: preparedMetadata,
     };
@@ -101,10 +126,9 @@ WICHTIG: Das Format für chat_response.steps_block MUSS ein Array von Strings se
         errorData = { raw: errorText };
       }
       
-      // Enhanced error message for model-related errors
       if (errorData?.error?.code === 'model_not_found') {
         return new Response(JSON.stringify({ 
-          error: `Invalid model configuration. Please contact support.`,
+          error: "Invalid model configuration. Please contact support.",
           details: errorData,
           status: "model_error" 
         }), {
@@ -150,12 +174,10 @@ WICHTIG: Das Format für chat_response.steps_block MUSS ein Array von Strings se
       parsedContent = JSON.parse(content);
       console.log("Successfully parsed content");
 
-      // Check if steps_block is a string and try to convert it to an array
+      // Handle string steps_block conversion
       if (typeof parsedContent.chat_response?.steps_block === 'string') {
         console.log("Converting string steps_block to array");
         const stepsString = parsedContent.chat_response.steps_block as string;
-        
-        // Split by arrow or other common delimiters
         const steps = stepsString
           .split(/→|->|\n|;/)
           .map(step => step.trim())
@@ -163,6 +185,12 @@ WICHTIG: Das Format für chat_response.steps_block MUSS ein Array von Strings se
         
         parsedContent.chat_response.steps_block = steps;
         console.log("Converted steps:", steps);
+      }
+
+      // Ensure valid type
+      if (!Object.values(USE_CASE_TYPES).includes(parsedContent.type as any)) {
+        console.log("Invalid type detected, defaulting to direct_use_case");
+        parsedContent.type = USE_CASE_TYPES.DIRECT;
       }
 
     } catch (err) {
@@ -184,37 +212,30 @@ WICHTIG: Das Format für chat_response.steps_block MUSS ein Array von Strings se
     
     if (!validationResult.isValid) {
       console.error("Validation errors:", validationResult.errors);
-      
-      // Enhanced error message for steps_block format issues
-      const stepsBlockError = validationResult.errors.find(
-        err => err.path.includes('steps_block')
-      );
-      
-      if (stepsBlockError) {
-        return new Response(JSON.stringify({
-          error: "Invalid steps_block format",
-          message: "steps_block must be an array of strings",
-          example: {
-            chat_response: {
-              steps_block: [
-                "Step 1 description",
-                "Step 2 description",
-                "Step 3 description"
-              ]
-            }
-          },
-          details: validationResult.errors,
-          raw_content: parsedContent,
-          status: "validation_error"
-        }), {
-          status: 422,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+
+      // Generate helpful error response
+      const errorFields = validationResult.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message,
+        received: err.received
+      }));
 
       return new Response(JSON.stringify({
         error: "Invalid response structure",
-        details: validationResult.errors,
+        message: "The response is missing required fields or has invalid values",
+        errors: errorFields,
+        example: {
+          type: USE_CASE_TYPES.DIRECT,
+          title: "Example Title",
+          information_needed: "Required Information",
+          steps: "Step-by-step process",
+          typical_activities: "Common activities",
+          expected_result: "Expected outcome",
+          chat_response: {
+            steps_block: ["Step 1", "Step 2", "Step 3"]
+          },
+          next_question: "Follow-up question"
+        },
         raw_content: parsedContent,
         status: "validation_error"
       }), {
