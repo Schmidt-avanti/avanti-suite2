@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -109,6 +108,7 @@ const TaskDetail = () => {
       const { data, error } = await supabase.functions.invoke('send-reply-email', {
         body: {
           task_id: id,
+          recipient_email: replyTo,
           subject: `Re: ${task.title || 'Ihre Anfrage'}`,
           body: replyBody
         }
