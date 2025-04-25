@@ -18,7 +18,6 @@ Format der Antwort (strikt einhalten):
   "chat_response": {
     "title": "Gleicher Titel wie oben",
     "steps_block": [
-      "Begrüßung und Einleitung der Hilfestellung",
       "Konkrete Frage nach benötigten Details",
       "Erklärung der nächsten Schritte",
       "Information über mögliche Kosten/Zeitrahmen",
@@ -45,7 +44,6 @@ Format der Antwort (strikt einhalten):
   "chat_response": {
     "title": "Gleicher Titel wie oben",
     "steps_block": [
-      "Begrüßung und Verständnis der Anfrage bestätigen",
       "Gezielte Fragen nach fehlenden Details",
       "Strukturierte Erklärung der Information",
       "Nachfrage, ob alles verständlich ist",
@@ -72,11 +70,10 @@ Format der Antwort (strikt einhalten):
   "chat_response": {
     "title": "Gleicher Titel wie oben",
     "steps_block": [
-      "Begrüßung und Verständnis des Anliegens bestätigen",
+      "Verständnis des Anliegens bestätigen",
       "Erklärung, warum eine Weiterleitung nötig ist",
       "Information über den weiteren Ablauf",
-      "Nennung der erwarteten Bearbeitungszeit",
-      "Angebot für Rückfragen"
+      "Nennung der erwarteten Bearbeitungszeit"
     ],
     "tone": "freundlich-direkt"
   }

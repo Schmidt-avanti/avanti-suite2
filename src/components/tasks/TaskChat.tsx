@@ -44,9 +44,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   useEffect(() => {
     if (initialMessages.length === 0) {
       fetchMessages();
-    }
-    
-    if (initialMessages.length === 0) {
+      
       setTimeout(() => {
         sendMessage("", null);
       }, 500);
@@ -161,8 +159,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       try {
         const parsed = JSON.parse(message.content);
         
-        // Check for steps_block format (newest format)
-        if (parsed.chat_response && parsed.chat_response.steps_block && Array.isArray(parsed.chat_response.steps_block)) {
+        // Prioritäre Prüfung auf chat_response.steps_block für das neue Format
+        if (parsed.chat_response?.steps_block && Array.isArray(parsed.chat_response.steps_block)) {
           return (
             <div className="space-y-2">
               {parsed.chat_response.steps_block.map((step: string, index: number) => (
@@ -177,7 +175,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           );
         }
         
-        // Legacy format: direct steps_block
+        // Fallback: Direktes steps_block (älteres Format)
         if (parsed.steps_block && Array.isArray(parsed.steps_block)) {
           return (
             <div className="space-y-2">
@@ -192,7 +190,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             </div>
           );
         }
+        
+        // Fallback für beliebige JSON-Strukturen
+        return JSON.stringify(parsed, null, 2);
       } catch (e) {
+        // Wenn kein valides JSON, zeige den Text direkt an
         return message.content;
       }
     }

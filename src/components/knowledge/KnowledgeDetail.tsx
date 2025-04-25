@@ -24,6 +24,7 @@ interface UseCase {
   steps?: string | null;
   created_at: string;
   chat_response?: {
+    title?: string;
     steps_block?: string[];
   } | null;
 }
@@ -95,7 +96,7 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
           />
         ) : (
           <div className="space-y-6">
-            {/* If we have chat_response with steps_block, render them in a more conversational way */}
+            {/* Priorisiere chat_response.steps_block für die dialogorientierte Darstellung */}
             {(item as UseCase).chat_response?.steps_block?.length > 0 ? (
               <div>
                 <h3 className="text-lg font-medium mb-4">Dialogschritte</h3>
@@ -112,7 +113,7 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
               </div>
             ) : (
               <>
-                {/* Fall back to the old format if chat_response is not available */}
+                {/* Fallback für ältere Use Cases ohne chat_response.steps_block */}
                 {(item as UseCase).information_needed && (
                   <div>
                     <h3 className="text-lg font-medium mb-2">Benötigte Informationen</h3>
@@ -138,6 +139,6 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
       </div>
     </div>
   );
-}
+};
 
 export default KnowledgeDetail;
