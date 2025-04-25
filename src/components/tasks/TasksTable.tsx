@@ -22,7 +22,7 @@ export const TasksTable = ({ tasks, isLoading }: TasksTableProps) => {
         <TableRow>
           <TableHead>Titel</TableHead>
           <TableHead>Kunde</TableHead>
-          <TableHead>Quelle</TableHead>
+          <TableHead>Source</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Datum</TableHead>
         </TableRow>
