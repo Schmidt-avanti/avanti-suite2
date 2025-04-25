@@ -107,8 +107,7 @@ export function FloatingChatPanel({
       handleSend(lastQuery);
     }
   };
-  return (
-    <Card className="w-[380px] h-[500px] shadow-xl rounded-3xl overflow-hidden flex flex-col bg-gradient-to-br from-avanti-600 to-avanti-700">
+  return <Card className="w-[380px] h-[500px] shadow-xl rounded-3xl overflow-hidden flex flex-col bg-gradient-to-br from-avanti-600 to-avanti-700">
       <div className="p-4 text-white flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
@@ -119,12 +118,7 @@ export function FloatingChatPanel({
             <p className="text-xs text-white/80">Immer für Dich da</p>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="h-8 w-8 p-0 rounded-full hover:bg-white/20 text-white" 
-          onClick={onClose}
-        >
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full hover:bg-white/20 text-white" onClick={onClose}>
           <X className="h-4 w-4" />
           <span className="sr-only">Schließen</span>
         </Button>
@@ -132,43 +126,24 @@ export function FloatingChatPanel({
 
       <ScrollArea className="flex-1 px-4 bg-white" ref={scrollRef}>
         <div className="py-4">
-          {messages.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-center p-4">
-              <p className="text-slate-500 text-sm">
-                Frag mich etwas über Prozesse, Begriffe oder Abläufe...
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {messages.map(message => (
-                <div key={message.id} className={`flex ${message.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {message.from === 'error' ? (
-                    <div className="max-w-[280px] rounded-2xl px-4 py-2 bg-red-50 border border-red-200 text-red-800 shadow-sm">
+          {messages.length === 0 ? <div className="h-full flex items-center justify-center text-center p-4">
+              <p className="text-slate-500 text-sm">Frag mich etwas über Prozesse, Begriffe oder Abläufe.</p>
+            </div> : <div className="space-y-4">
+              {messages.map(message => <div key={message.id} className={`flex ${message.from === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {message.from === 'error' ? <div className="max-w-[280px] rounded-2xl px-4 py-2 bg-red-50 border border-red-200 text-red-800 shadow-sm">
                       <div className="flex items-start gap-2">
                         <div className="whitespace-pre-wrap text-sm">{message.content}</div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className={`max-w-[280px] rounded-2xl px-4 py-2 shadow-sm
-                      ${message.from === 'user' 
-                        ? 'bg-avanti-600 text-white ml-12' 
-                        : 'bg-gray-100 text-gray-900 mr-12'
-                      }`}
-                    >
+                    </div> : <div className={`max-w-[280px] rounded-2xl px-4 py-2 shadow-sm
+                      ${message.from === 'user' ? 'bg-avanti-600 text-white ml-12' : 'bg-gray-100 text-gray-900 mr-12'}`}>
                       <div className="whitespace-pre-wrap text-sm">{message.content}</div>
-                      {message.source && message.source !== 'none' && (
-                        <div className="text-xs opacity-70 mt-1 text-right">
+                      {message.source && message.source !== 'none' && <div className="text-xs opacity-70 mt-1 text-right">
                           {message.source === 'knowledge' ? 'Aus dem Wissenssystem' : 'Mit GPT generiert'}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {isLoading && (
-            <div className="flex justify-start">
+                        </div>}
+                    </div>}
+                </div>)}
+            </div>}
+          {isLoading && <div className="flex justify-start">
               <div className="bg-gray-100 rounded-2xl px-4 py-2 max-w-[280px]">
                 <div className="flex space-x-2 items-center h-6">
                   <div className="w-2 h-2 rounded-full bg-avanti-400 animate-bounce"></div>
@@ -176,50 +151,25 @@ export function FloatingChatPanel({
                   <div className="w-2 h-2 rounded-full bg-avanti-400 animate-bounce [animation-delay:0.4s]"></div>
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
         </div>
       </ScrollArea>
 
       <div className="p-4 bg-white border-t border-gray-100">
         <div className="flex items-center space-x-2 mb-3">
-          <Checkbox 
-            id="gpt-fallback" 
-            checked={useGPTFallback} 
-            onCheckedChange={checked => setUseGPTFallback(checked === true)}
-            className="border-avanti-200"
-          />
+          <Checkbox id="gpt-fallback" checked={useGPTFallback} onCheckedChange={checked => setUseGPTFallback(checked === true)} className="border-avanti-200" />
           <Label htmlFor="gpt-fallback" className="text-xs text-gray-600">
             Bei fehlenden Einträgen GPT nutzen
           </Label>
         </div>
 
         <div className="relative">
-          <Textarea
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ihre Frage..."
-            className="pr-12 resize-none min-h-[44px] max-h-[120px] text-sm rounded-2xl border-gray-200 focus-visible:ring-avanti-500"
-            rows={1}
-            disabled={isLoading}
-          />
-          <Button
-            onClick={() => handleSend()}
-            disabled={!input.trim() || isLoading}
-            className="absolute bottom-1.5 right-1.5 h-8 w-8 rounded-xl bg-avanti-500 hover:bg-avanti-600 p-0 flex items-center justify-center"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
-            ) : (
-              <Send className="h-4 w-4 text-white" />
-            )}
+          <Textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ihre Frage..." className="pr-12 resize-none min-h-[44px] max-h-[120px] text-sm rounded-2xl border-gray-200 focus-visible:ring-avanti-500" rows={1} disabled={isLoading} />
+          <Button onClick={() => handleSend()} disabled={!input.trim() || isLoading} className="absolute bottom-1.5 right-1.5 h-8 w-8 rounded-xl bg-avanti-500 hover:bg-avanti-600 p-0 flex items-center justify-center">
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <Send className="h-4 w-4 text-white" />}
           </Button>
         </div>
       </div>
-    </Card>
-  );
+    </Card>;
 }
-
 export default FloatingChatPanel;
