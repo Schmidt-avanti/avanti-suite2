@@ -103,7 +103,7 @@ const Dashboard: React.FC = () => {
                   className="flex flex-col bg-white p-3 rounded-lg hover:bg-avanti-50 cursor-pointer shadow-sm"
                   onClick={() => handleNotificationClick(notification)}
                 >
-                  <div className="text-sm text-avanti-900">{notification.content || notification.message}</div>
+                  <div className="text-sm text-avanti-900">{notification.message}</div>
                   <div className="text-xs text-avanti-600 mt-1">
                     {notification.created_at && formatDistanceToNow(new Date(notification.created_at), { 
                       addSuffix: true,
