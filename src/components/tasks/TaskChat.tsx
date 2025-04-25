@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2 } from "lucide-react";
@@ -64,7 +63,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           content: msg.content,
           created_at: msg.created_at
         }));
-
         setMessages(typedMessages);
       }
     } catch (error: any) {
@@ -157,7 +155,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                     key={idx}
                     variant="outline"
                     onClick={() => handleButtonClick(option)}
-                    className="rounded-full text-sm px-4 py-1 hover:bg-blue-100"
+                    className="rounded text-sm px-4 py-1 hover:bg-blue-100"
                   >
                     {option}
                   </Button>
@@ -171,10 +169,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           return (
             <div className="space-y-2">
               {parsed.chat_response.steps_block.map((step: string, index: number) => (
-                <div
-                  key={index}
-                  className="p-2 rounded bg-blue-50/50 border border-blue-100/50"
-                >
+                <div key={index} className="p-2 rounded bg-blue-50/50 border border-blue-100/50">
                   {step}
                 </div>
               ))}
@@ -182,7 +177,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           );
         }
 
-        return <p>{message.content}</p>;
+        return <p>{parsed.text || message.content}</p>;
       } catch (e) {
         return <p>{message.content}</p>;
       }
@@ -192,8 +187,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   };
 
   return (
-    <div
-      className="w-full h-full flex flex-col justify-between rounded-2xl bg-transparent p-6"
+    <div className="w-full h-full flex flex-col justify-between rounded-2xl bg-transparent p-6"
       style={{ boxSizing: 'border-box', minHeight: '400px', maxHeight: '600px' }}
       data-chat-panel
     >
@@ -215,12 +209,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                 className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
               >
                 <div className={`
-                  max-w-[80%] p-4 rounded-2xl
+                  max-w-[80%] p-4
                   ${message.role === "assistant"
                     ? "bg-blue-100 text-gray-900"
                     : "bg-gray-100 text-gray-900"
                   }
-                  shadow-sm
                   border border-blue-50/40
                 `}>
                   <div className="flex items-center gap-2 mb-1">
@@ -237,7 +230,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
             {isLoading && (
               <div className="flex items-start">
-                <div className="max-w-[80%] p-4 rounded-2xl bg-blue-100 shadow-sm border border-blue-50/40">
+                <div className="max-w-[80%] p-4 rounded bg-blue-100 shadow-sm border border-blue-50/40">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-sm">Ava</span>
                   </div>
@@ -253,10 +246,10 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         </ScrollArea>
       </div>
 
-      <div className="w-full mt-4 flex items-center bg-transparent rounded-2xl">
+      <div className="w-full mt-4 flex items-center">
         <form
           onSubmit={handleSubmit}
-          className="w-full flex gap-2 items-end border border-gray-200 p-3 bg-white rounded-2xl shadow-sm"
+          className="w-full flex gap-2 items-end border border-gray-200 p-3 bg-white rounded-md shadow-sm"
         >
           <Textarea
             value={inputValue}
@@ -270,7 +263,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           <Button
             type="submit"
             disabled={isLoading || !inputValue.trim()}
-            className="self-end ml-1 bg-blue-500 hover:bg-blue-600 text-white rounded-full h-11 w-11 flex items-center justify-center shadow transition-all"
+            className="bg-blue-500 hover:bg-blue-600 text-white rounded-md h-11 w-11 flex items-center justify-center shadow transition-all"
             tabIndex={0}
           >
             {isLoading ? (
