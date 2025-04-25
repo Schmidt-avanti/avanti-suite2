@@ -14,13 +14,13 @@ serve(async (req) => {
   }
 
   try {
-    const { task_id, subject, body } = await req.json();
+    const { task_id, recipient_email, subject, body } = await req.json();
 
-    if (!task_id || !body) {
-      throw new Error('Missing required fields: task_id and body are required');
+    if (!task_id || !body || !recipient_email) {
+      throw new Error('Missing required fields: task_id, recipient_email, and body are required');
     }
 
-    // Get task details to get recipient email
+    // Get task details and the original inbound email
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') || '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
@@ -28,7 +28,7 @@ serve(async (req) => {
 
     const { data: task, error: taskError } = await supabase
       .from('tasks')
-      .select('endkunde_email, title')
+      .select('*, inbound_emails!tasks_source_email_fkey(*)')
       .eq('id', task_id)
       .single();
 
@@ -37,11 +37,15 @@ serve(async (req) => {
       throw new Error('Could not find task');
     }
 
-    if (!task?.endkunde_email) {
-      throw new Error('No recipient email found for this task');
+    // Get the original sender email from inbound_emails
+    const originalEmail = task.source === 'email' ? task.inbound_emails?.from_email : null;
+    
+    if (!originalEmail) {
+      throw new Error('No sender email found for this task');
     }
 
-    console.log('Sending email to:', task.endkunde_email);
+    console.log('Using sender email:', originalEmail);
+    console.log('Sending email to:', recipient_email);
 
     // Get the SendGrid API key
     const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY');
@@ -49,11 +53,7 @@ serve(async (req) => {
       throw new Error('SENDGRID_API_KEY environment variable is not set');
     }
 
-    // Use a sender email that has been verified in SendGrid
-    // IMPORTANT: This email MUST be verified in your SendGrid account
-    const verifiedSenderEmail = "m.gawlich@ja-dialog.de"; 
     const senderName = "avanti-suite";
-    
     const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
     
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -64,9 +64,9 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         personalizations: [{
-          to: [{ email: task.endkunde_email }]
+          to: [{ email: recipient_email }]
         }],
-        from: { email: verifiedSenderEmail, name: senderName },
+        from: { email: originalEmail, name: senderName },
         subject: emailSubject,
         content: [{
           type: 'text/plain',
@@ -87,7 +87,7 @@ serve(async (req) => {
       .insert({
         task_id,
         role: 'user',
-        content: `Email gesendet: ${body}`,
+        content: `Email gesendet an ${recipient_email}: ${body}`,
       });
 
     if (historyError) {
