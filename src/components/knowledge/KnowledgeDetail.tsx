@@ -24,8 +24,8 @@ interface UseCase {
   steps?: string | null;
   created_at: string;
   chat_response?: {
-    title?: string;
     steps_block?: string[];
+    title?: string;
   } | null;
 }
 
@@ -139,6 +139,6 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
       </div>
     </div>
   );
-};
+}
 
 export default KnowledgeDetail;

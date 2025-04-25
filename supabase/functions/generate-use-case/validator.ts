@@ -6,12 +6,13 @@ const USE_CASE_TYPES = ['knowledge_request', 'forwarding_use_case', 'direct_use_
 
 // Schema for chat_response object
 const chatResponseSchema = z.object({
-  title: z.string().min(1),
-  info_block: z.string().min(1),
-  steps_block: z.string().min(1),
-  activities_block: z.string().min(1),
-  result_block: z.string().min(1),
-  tone: z.string().min(1),
+  steps_block: z.array(z.string()).min(1),
+  // Mache alle anderen Felder optional
+  title: z.string().optional(),
+  info_block: z.string().optional(),
+  activities_block: z.string().optional(),
+  result_block: z.string().optional(),
+  tone: z.string().optional(),
 });
 
 // Schema for process_map steps
