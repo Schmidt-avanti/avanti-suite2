@@ -155,6 +155,31 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     }
   };
 
+  const renderMessage = (message: Message) => {
+    if (message.role === "assistant") {
+      try {
+        const parsed = JSON.parse(message.content);
+        if (parsed.steps_block && Array.isArray(parsed.steps_block)) {
+          return (
+            <div className="space-y-2">
+              {parsed.steps_block.map((step: string, index: number) => (
+                <div 
+                  key={index}
+                  className="p-2 rounded bg-blue-50/50 border border-blue-100/50"
+                >
+                  {step}
+                </div>
+              ))}
+            </div>
+          );
+        }
+      } catch (e) {
+        return message.content;
+      }
+    }
+    return message.content;
+  };
+
   return (
     <div
       className="
@@ -211,7 +236,9 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                       {message.role === "assistant" ? "Ava" : "Du"}
                     </span>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <div className="text-sm whitespace-pre-wrap">
+                    {renderMessage(message)}
+                  </div>
                 </div>
               </div>
             ))}
