@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
@@ -159,6 +160,24 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     if (message.role === "assistant") {
       try {
         const parsed = JSON.parse(message.content);
+        
+        // Check for steps_block format (newest format)
+        if (parsed.chat_response && parsed.chat_response.steps_block && Array.isArray(parsed.chat_response.steps_block)) {
+          return (
+            <div className="space-y-2">
+              {parsed.chat_response.steps_block.map((step: string, index: number) => (
+                <div 
+                  key={index}
+                  className="p-2 rounded bg-blue-50/50 border border-blue-100/50"
+                >
+                  {step}
+                </div>
+              ))}
+            </div>
+          );
+        }
+        
+        // Legacy format: direct steps_block
         if (parsed.steps_block && Array.isArray(parsed.steps_block)) {
           return (
             <div className="space-y-2">

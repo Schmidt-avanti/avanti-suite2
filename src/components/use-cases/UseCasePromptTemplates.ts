@@ -81,4 +81,3 @@ Format der Antwort (strikt einhalten):
     "tone": "freundlich-direkt"
   }
 }`;
-

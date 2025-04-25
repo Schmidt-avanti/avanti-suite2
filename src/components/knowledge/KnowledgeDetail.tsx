@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,9 @@ interface UseCase {
   expected_result?: string | null;
   steps?: string | null;
   created_at: string;
+  chat_response?: {
+    steps_block?: string[];
+  } | null;
 }
 
 const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) => {
@@ -91,23 +95,43 @@ const KnowledgeDetail: React.FC<KnowledgeDetailProps> = ({ id, type, onBack }) =
           />
         ) : (
           <div className="space-y-6">
-            {(item as UseCase).information_needed && (
+            {/* If we have chat_response with steps_block, render them in a more conversational way */}
+            {(item as UseCase).chat_response?.steps_block?.length > 0 ? (
               <div>
-                <h3 className="text-lg font-medium mb-2">Benötigte Informationen</h3>
-                <p className="whitespace-pre-wrap">{(item as UseCase).information_needed}</p>
+                <h3 className="text-lg font-medium mb-4">Dialogschritte</h3>
+                <div className="space-y-3">
+                  {(item as UseCase).chat_response.steps_block.map((step, index) => (
+                    <div 
+                      key={index} 
+                      className="p-3 rounded-lg bg-blue-50 border border-blue-100"
+                    >
+                      {step}
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
-            {(item as UseCase).expected_result && (
-              <div>
-                <h3 className="text-lg font-medium mb-2">Erwartetes Ergebnis</h3>
-                <p className="whitespace-pre-wrap">{(item as UseCase).expected_result}</p>
-              </div>
-            )}
-            {(item as UseCase).steps && (
-              <div>
-                <h3 className="text-lg font-medium mb-2">Schritte</h3>
-                <p className="whitespace-pre-wrap">{(item as UseCase).steps}</p>
-              </div>
+            ) : (
+              <>
+                {/* Fall back to the old format if chat_response is not available */}
+                {(item as UseCase).information_needed && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Benötigte Informationen</h3>
+                    <p className="whitespace-pre-wrap">{(item as UseCase).information_needed}</p>
+                  </div>
+                )}
+                {(item as UseCase).expected_result && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Erwartetes Ergebnis</h3>
+                    <p className="whitespace-pre-wrap">{(item as UseCase).expected_result}</p>
+                  </div>
+                )}
+                {(item as UseCase).steps && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Schritte</h3>
+                    <p className="whitespace-pre-wrap">{(item as UseCase).steps}</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

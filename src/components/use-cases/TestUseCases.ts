@@ -8,7 +8,6 @@ export const lostKeyUseCase = {
   expected_result: "Dokumentierter Schlüsselverlust, eingeleiteter Austauschprozess",
   chat_response: {
     title: "Verlust eines Wohnungsschlüssels",
-    info_block: "",
     steps_block: [
       "Können Sie mir bitte sagen, welchen Schlüssel Sie verloren haben?",
       "Ich erkläre Ihnen nun die nächsten Schritte.",
@@ -17,8 +16,6 @@ export const lostKeyUseCase = {
       "Bitte beachten Sie, dass unter Umständen Kosten entstehen können.",
       "Ich leite den Vorgang nun an den zuständigen Ansprechpartner weiter."
     ],
-    activities_block: "",
-    result_block: "",
     tone: "freundlich-direkt"
   },
   next_question: "Können Sie mir bitte sagen, welchen Schlüssel Sie verloren haben?"
