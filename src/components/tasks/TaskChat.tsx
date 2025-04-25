@@ -13,7 +13,6 @@ interface Message {
   role: "assistant" | "user";
   content: string;
   created_at: string;
-  options?: string[];
 }
 
 interface TaskChatProps {
@@ -61,10 +60,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       if (data) {
         const typedMessages: Message[] = data.map(msg => ({
           id: msg.id,
-          role: (msg.role === "assistant" || msg.role === "user") ? msg.role : "user",
+          role: msg.role,
           content: msg.content,
           created_at: msg.created_at
         }));
+
         setMessages(typedMessages);
       }
     } catch (error: any) {
@@ -107,20 +107,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
       setPreviousResponseId(data.response_id);
 
-      const responseText = data.response_text || data?.message || "";
-      const newMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: responseText,
-        created_at: new Date().toISOString()
-      };
-
-      if (data.button_options && Array.isArray(data.button_options)) {
-        newMessage.options = data.button_options;
-      }
-
-      setMessages(prev => [...prev, newMessage]);
-
+      fetchMessages();
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast.error('Fehler beim Senden der Nachricht', { description: error.message });
@@ -163,14 +150,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         if (parsed.text && Array.isArray(parsed.options)) {
           return (
             <div className="space-y-3">
-              <p>{parsed.text}</p>
+              <div className="text-sm font-semibold mb-2">{parsed.text}</div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {parsed.options.map((option: string, idx: number) => (
                   <Button
                     key={idx}
                     variant="outline"
                     onClick={() => handleButtonClick(option)}
-                    className="rounded-full text-sm px-4"
+                    className="rounded-full text-sm px-4 py-1 hover:bg-blue-100"
                   >
                     {option}
                   </Button>
@@ -195,27 +182,9 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           );
         }
 
-        return message.content;
+        return <p>{message.content}</p>;
       } catch (e) {
-        return (
-          <div>
-            <p>{message.content}</p>
-            {message.options && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {message.options.map((option: string, index: number) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    onClick={() => handleButtonClick(option)}
-                    className="rounded-full text-sm px-4"
-                  >
-                    {option}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-        );
+        return <p>{message.content}</p>;
       }
     }
 
