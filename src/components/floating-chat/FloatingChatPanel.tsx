@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader2, MessageSquare, Smile } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -119,17 +118,16 @@ export function FloatingChatPanel({
 
   return (
     <Card className="w-[380px] h-[500px] overflow-hidden flex flex-col rounded-[20px] shadow-xl border-none">
-      {/* Header with gradient */}
       <div className="relative">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-5 text-white rounded-t-[20px]">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 text-white rounded-t-[20px]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center">
                 <MessageSquare className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-medium">AVA</h3>
-                <p className="text-sm text-white/80">Immer für Dich da</p>
+                <h3 className="text-lg font-semibold">AVA</h3>
+                <p className="text-xs text-white/80">Immer für Dich da</p>
               </div>
             </div>
             <Button 
@@ -141,10 +139,6 @@ export function FloatingChatPanel({
               <X className="h-4 w-4" />
               <span className="sr-only">Schließen</span>
             </Button>
-          </div>
-          {/* Wave shape at the bottom of the header */}
-          <div className="absolute bottom-0 left-0 right-0 h-4 overflow-hidden">
-            <div className="absolute bottom-0 left-0 right-0 h-8 bg-white rounded-t-[50%]"></div>
           </div>
         </div>
       </div>
