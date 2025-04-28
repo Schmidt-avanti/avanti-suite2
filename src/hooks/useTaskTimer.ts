@@ -55,6 +55,13 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (taskId) {
       initializeTimer();
     }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
   }, [taskId]);
 
   // Cleanup orphaned sessions on initial load
@@ -126,7 +133,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
     try {
       console.log('Starting time tracking for task:', taskId);
-      console.log('Current accumulated time:', accumulatedTimeRef.current);
       
       const { data: existingSessions } = await supabase
         .from('task_times')
@@ -168,12 +174,18 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       
       setIsTracking(true);
 
+      // Start the interval timer immediately
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+
       timerRef.current = setInterval(() => {
         if (startTimeRef.current) {
           const currentSessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
           setElapsedTime(accumulatedTimeRef.current + currentSessionTime);
         }
       }, 1000);
+
     } catch (err) {
       console.error('Error starting task timer:', err);
       toast.error('Fehler beim Starten der Zeitmessung');
@@ -236,27 +248,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Effect for handling page unload/navigation events
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (isTracking && taskTimeEntryRef.current) {
-        localStorage.setItem(`task_timer_${taskId}_${taskTimeEntryRef.current}`, 
-          JSON.stringify({
-            entryId: taskTimeEntryRef.current,
-            endTime: new Date().toISOString(),
-            duration: elapsedTime - accumulatedTimeRef.current // Store only the current session time
-          })
-        );
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [isTracking, taskId, taskTimeEntryRef.current, elapsedTime]);
-
-  // Effect to start/stop tracking based on task view
+  // Effect for handling active state changes
   useEffect(() => {
     console.log(`Task timer effect triggered - isActive: ${isActive}, taskId: ${taskId}, isTracking: ${isTracking}`);
     
@@ -276,7 +268,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         stopTracking();
       }
     };
-  }, [isActive, taskId, isTracking]);
+  }, [isActive, taskId]);
 
   return {
     elapsedTime,
