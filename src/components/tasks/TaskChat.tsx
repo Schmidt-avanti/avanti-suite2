@@ -24,6 +24,17 @@ interface Message {
   };
 }
 
+// Define an interface for the raw data from Supabase
+interface RawMessage {
+  id: string;
+  task_id: string;
+  role: string;
+  content: string;
+  created_at: string;
+  created_by?: string;
+  metadata?: any;
+}
+
 interface TaskChatProps {
   taskId: string;
   useCaseId?: string;
@@ -73,7 +84,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
       if (error) throw error;
       
-      const transformedMessages: Message[] = (data || []).map(msg => ({
+      const transformedMessages: Message[] = (data || []).map((msg: RawMessage) => ({
         id: msg.id,
         role: msg.role === "assistant" ? "assistant" : "user",
         content: msg.content,
