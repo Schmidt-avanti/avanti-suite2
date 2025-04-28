@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,16 +18,15 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   const taskTimeEntryRef = useRef<string | null>(null);
   const accumulatedTimeRef = useRef<number>(0);
 
-  // Fetch accumulated time from previous sessions
+  // Fetch accumulated time from all users' sessions
   const fetchAccumulatedTime = async () => {
-    if (!user || !taskId) return 0;
+    if (!taskId) return 0;
 
     try {
       const { data, error } = await supabase
         .from('task_times')
         .select('duration_seconds')
         .eq('task_id', taskId)
-        .eq('user_id', user.id)
         .not('duration_seconds', 'is', null);
 
       if (error) {
@@ -35,7 +35,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       }
 
       const totalSeconds = data.reduce((sum, entry) => sum + (entry.duration_seconds || 0), 0);
-      console.log(`Fetched accumulated time for task ${taskId}: ${totalSeconds}s`);
+      console.log(`Fetched total accumulated time for task ${taskId}: ${totalSeconds}s across all users`);
       return totalSeconds;
     } catch (err) {
       console.error('Error calculating accumulated time:', err);
@@ -64,7 +64,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     };
   }, [taskId]);
 
-  // Cleanup orphaned sessions on initial load
+  // Cleanup orphaned sessions on initial load (only for current user)
   useEffect(() => {
     if (user && taskId) {
       cleanupOrphanedSessions();
@@ -76,6 +76,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (!user || !taskId) return;
 
     try {
+      // Only cleanup sessions for the current user
       const { data, error } = await supabase
         .from('task_times')
         .select('id, started_at')
