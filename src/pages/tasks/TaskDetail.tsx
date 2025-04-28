@@ -104,6 +104,11 @@ const TaskDetail = () => {
       if (taskData.source === 'email') {
         setReplyTo(extractEmail(taskData.endkunde_email || '') || '');
       }
+      
+      // Auto-assign task to current user if it's not assigned
+      if (user && !taskData.assigned_to && taskData.status !== 'completed') {
+        await handleAssignToMe();
+      }
 
     } catch (error: any) {
       toast({
@@ -284,6 +289,56 @@ const TaskDetail = () => {
     }
   };
 
+  // New function to handle "Assign to me" functionality
+  const handleAssignToMe = async () => {
+    if (!user || !id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ assigned_to: user.id })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Create a notification for system tracking
+      await supabase
+        .from('task_activities')
+        .insert({
+          task_id: id,
+          user_id: user.id,
+          action: 'assign',
+          status_from: task?.status || 'new',
+          status_to: task?.status || 'new'
+        });
+      
+      // Refresh task data
+      const { data: updatedAssignee } = await supabase
+        .from('profiles')
+        .select('id, "Full Name"')
+        .eq('id', user.id)
+        .single();
+      
+      setTask({
+        ...task,
+        assigned_to: user.id,
+        assignee: updatedAssignee
+      });
+      
+      toast({
+        title: "Aufgabe übernommen",
+        description: "Die Aufgabe wurde Ihnen erfolgreich zugewiesen.",
+      });
+    } catch (error) {
+      console.error("Error assigning task to self:", error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Aufgabe konnte nicht zugewiesen werden."
+      });
+    }
+  };
+
   const handleAssignTask = async (userId: string, note: string = "") => {
     try {
       // If forwarding, add a note in the task (or you could create a separate system for forwarding notes)
@@ -334,6 +389,9 @@ const TaskDetail = () => {
 
   // Determine whether current user can assign/forward
   const canAssignOrForward = user?.role === 'admin' || user?.id === task.assigned_to;
+  
+  // Check if task is not assigned
+  const isUnassigned = !task.assigned_to;
 
   return (
     <div className="max-w-screen-xl mx-auto w-full px-3 md:px-8 py-5">
@@ -360,7 +418,19 @@ const TaskDetail = () => {
             </div>
           )}
 
-          {/* Assign Button - only show if not assigned or if admin */}
+          {/* "Assign to me" button - only show if not assigned */}
+          {isUnassigned && user && (
+            <Button 
+              onClick={handleAssignToMe}
+              variant="secondary"
+              className="mr-2 bg-blue-100 text-blue-700 hover:bg-blue-200"
+            >
+              <UserCheck className="h-4 w-4 mr-2" />
+              Mir zuweisen
+            </Button>
+          )}
+
+          {/* Assign/Forward Button - only show if not assigned or if admin/current assignee */}
           {canAssignOrForward && (
             <>
               {!task.assigned_to ? (
@@ -423,6 +493,7 @@ const TaskDetail = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
+          {/* Task Details Card */}
           <div className="flex flex-col gap-5">
             <Card className="rounded-xl shadow-md border-none bg-white/85">
               <CardContent className="p-6 pb-3 space-y-2 break-words whitespace-pre-wrap">
@@ -481,6 +552,7 @@ const TaskDetail = () => {
             </Card>
           </div>
 
+          {/* Chat panel */}
           <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
             <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 mr-6 p-6">
               <CardHeader className="p-0 pb-2 flex flex-row items-center border-none">
