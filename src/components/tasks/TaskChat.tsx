@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,10 +35,12 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [initialMessageSent, setInitialMessageSent] = useState(false);
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
+    if (messages.length > 0 && scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollElement) {
-        scrollElement.scrollTop = scrollElement.scrollHeight;
+        setTimeout(() => {
+          scrollElement.scrollTop = scrollElement.scrollHeight;
+        }, 100);
       }
     }
   }, [messages]);
@@ -48,7 +49,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     if (initialMessages.length === 0) {
       fetchMessages();
       
-      // Only send the initial message once
       if (!initialMessageSent) {
         setInitialMessageSent(true);
         setTimeout(() => {
@@ -244,94 +244,91 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   };
 
   return (
-    <div className="w-full h-full flex flex-col justify-between rounded-2xl bg-transparent p-6"
+    <div 
+      className="w-full flex flex-col justify-between rounded-2xl bg-transparent"
       style={{ 
-        boxSizing: 'border-box', 
-        minHeight: '400px', 
-        maxHeight: isMobile ? '100vh' : '600px',
-        padding: isMobile ? '1rem' : '1.5rem' 
+        height: isMobile ? 'calc(100vh - 8rem)' : '600px',
+        maxHeight: isMobile ? 'calc(100vh - 8rem)' : '600px'
       }}
       data-chat-panel
     >
-      <div className="flex-1 flex flex-col min-h-0">
-        <ScrollArea
-          className="flex-1 pr-2 min-h-0 overflow-y-auto custom-scrollbar"
-          ref={scrollAreaRef}
-        >
-          <div className="space-y-4 pb-2">
-            {messages.length === 0 && !isLoading && (
-              <div className="flex items-center justify-center h-32 text-gray-400">
-                Starten Sie die Konversation...
-              </div>
-            )}
+      <ScrollArea
+        className="flex-1 pr-4 mb-4 relative"
+        ref={scrollAreaRef}
+      >
+        <div className="space-y-4 p-6">
+          {messages.length === 0 && !isLoading && (
+            <div className="flex items-center justify-center h-32 text-gray-400">
+              Starten Sie die Konversation...
+            </div>
+          )}
 
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
-              >
-                <div className={`
-                  ${isMobile ? 'max-w-[90%]' : 'max-w-[80%]'} p-4 rounded
-                  ${message.role === "assistant"
-                    ? "bg-blue-100 text-gray-900"
-                    : "bg-gray-100 text-gray-900"
-                  }
-                  border border-blue-50/40
-                `}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-sm">
-                      {message.role === "assistant" ? "Ava" : "Du"}
-                    </span>
-                  </div>
-                  <div className="text-sm">
-                    {renderMessage(message)}
-                  </div>
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
+            >
+              <div className={`
+                ${isMobile ? 'max-w-[90%]' : 'max-w-[80%]'} p-4 rounded
+                ${message.role === "assistant"
+                  ? "bg-blue-100 text-gray-900"
+                  : "bg-gray-100 text-gray-900"
+                }
+                border border-blue-50/40
+              `}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-sm">
+                    {message.role === "assistant" ? "Ava" : "Du"}
+                  </span>
+                </div>
+                <div className="text-sm">
+                  {renderMessage(message)}
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
 
-            {isLoading && (
-              <div className="flex items-start">
-                <div className="max-w-[80%] p-4 rounded bg-blue-100 shadow-sm border border-blue-50/40">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-sm">Ava</span>
-                  </div>
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
-                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
-                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
-                  </div>
+          {isLoading && (
+            <div className="flex items-start">
+              <div className="max-w-[80%] p-4 rounded bg-blue-100 shadow-sm border border-blue-50/40">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-sm">Ava</span>
+                </div>
+                <div className="flex space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {isRateLimited && !isLoading && (
-              <div className="flex items-start">
-                <div className="max-w-[80%] p-4 rounded bg-yellow-50 shadow-sm border border-yellow-200 text-amber-800">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="font-semibold text-sm">API-Dienst überlastet</span>
-                  </div>
-                  <p className="text-sm mb-3">
-                    Der API-Dienst ist derzeit überlastet. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.
-                  </p>
-                  <Button
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleRetry}
-                    className="text-xs"
-                  >
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                    Erneut versuchen
-                  </Button>
+          {isRateLimited && !isLoading && (
+            <div className="flex items-start">
+              <div className="max-w-[80%] p-4 rounded bg-yellow-50 shadow-sm border border-yellow-200 text-amber-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="font-semibold text-sm">API-Dienst überlastet</span>
                 </div>
+                <p className="text-sm mb-3">
+                  Der API-Dienst ist derzeit überlastet. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.
+                </p>
+                <Button
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleRetry}
+                  className="text-xs"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Erneut versuchen
+                </Button>
               </div>
-            )}
-          </div>
-        </ScrollArea>
-      </div>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
 
-      <div className="w-full mt-4 flex items-center">
+      <div className="w-full px-6 pb-6">
         <form
           onSubmit={handleSubmit}
           className="w-full flex gap-2 items-end border border-gray-200 p-3 bg-white rounded-md shadow-sm"
