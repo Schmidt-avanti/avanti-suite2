@@ -48,27 +48,25 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     setUserScrolled(true);
     
     const isScrolledToBottom = scrollHeight - scrollTop - clientHeight < 30;
-    
     setShouldAutoScroll(isScrolledToBottom);
     setShowScrollButton(!isScrolledToBottom);
   };
 
   const scrollToBottom = () => {
     if (!scrollAreaRef.current) return;
-    
     const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
     if (viewport) {
-      viewport.scrollTop = viewport.scrollHeight;
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
       setShouldAutoScroll(true);
       setShowScrollButton(false);
     }
   };
-  
+
   useEffect(() => {
-    if (shouldAutoScroll && messages.length > 0) {
-      setTimeout(scrollToBottom, 100); // Small delay to ensure content is rendered
+    if (shouldAutoScroll && messages.length > 0 && !userScrolled) {
+      setTimeout(scrollToBottom, 100);
     }
-  }, [messages, shouldAutoScroll]);
+  }, [messages, shouldAutoScroll, userScrolled]);
 
   useEffect(() => {
     if (!isLoading && messages.length > 0) {
@@ -356,18 +354,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
   return (
     <div 
-      className="w-full flex flex-col overflow-hidden rounded-2xl bg-transparent"
-      style={{ 
-        height: chatHeight,
-        maxHeight: chatHeight
-      }}
-      data-chat-panel
+      className="w-full h-full flex flex-col bg-white/95 rounded-2xl overflow-visible"
+      style={{ minHeight: chatHeight }}
     >
-      <div className="flex-grow overflow-hidden relative">
+      <div className="flex-1 relative">
         <ScrollArea
           ref={scrollAreaRef}
-          className="h-full pb-4 pr-4"
-          style={{ maxHeight: `calc(${chatHeight} - 70px)` }}
+          className="h-full relative"
+          style={{ maxHeight: `calc(${chatHeight} - 100px)` }}
           onScroll={handleScroll}
           type="always"
         >
