@@ -37,10 +37,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [initialMessageSent, setInitialMessageSent] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [lastScrollPosition, setLastScrollPosition] = useState(0);
-  const [scrollHeight, setScrollHeight] = useState(0);
 
-  // Track when user has scrolled up
+  // Handle scrolling detection
   const handleScroll = () => {
     if (!scrollAreaRef.current) return;
     
@@ -48,8 +46,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     if (!viewport) return;
     
     const { scrollHeight, scrollTop, clientHeight } = viewport;
-    setScrollHeight(scrollHeight);
-    setLastScrollPosition(scrollTop);
     
     // Consider "scrolled to bottom" if within 30px of the bottom
     const isScrolledToBottom = scrollHeight - scrollTop - clientHeight < 30;
@@ -109,6 +105,9 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         }
       });
       setSelectedOptions(newSelectedOptions);
+      
+      // Always scroll to bottom when initially loading messages
+      setTimeout(scrollToBottom, 200);
     }
   }, [initialMessages]);
 
