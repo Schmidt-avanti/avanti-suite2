@@ -43,8 +43,11 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     }
   };
 
-  // Initialize accumulated time on component mount
+  // Subscribe to task_times changes
   useEffect(() => {
+    if (!taskId) return;
+
+    // Initial fetch
     const initializeTimer = async () => {
       const accumulatedSeconds = await fetchAccumulatedTime();
       console.log(`Setting initial accumulated time: ${accumulatedSeconds}s`);
@@ -52,11 +55,34 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       setElapsedTime(accumulatedSeconds);
     };
 
-    if (taskId) {
-      initializeTimer();
-    }
+    initializeTimer();
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('task_timer_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'task_times',
+          filter: `task_id=eq.${taskId}`
+        },
+        async () => {
+          console.log('Task time update detected, refreshing accumulated time');
+          const updatedTime = await fetchAccumulatedTime();
+          accumulatedTimeRef.current = updatedTime;
+          
+          // If not tracking, update the display immediately
+          if (!isTracking) {
+            setElapsedTime(updatedTime);
+          }
+        }
+      )
+      .subscribe();
 
     return () => {
+      supabase.removeChannel(channel);
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -149,9 +175,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         taskTimeEntryRef.current = existingSessions[0].id;
         const startTime = new Date(existingSessions[0].started_at).getTime();
         startTimeRef.current = startTime;
-        
-        const currentSessionTime = Math.floor((Date.now() - startTime) / 1000);
-        setElapsedTime(accumulatedTimeRef.current + currentSessionTime);
       } else {
         console.log(`Starting new time tracking for task ${taskId}`);
         
@@ -170,7 +193,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         console.log(`Created task time entry: ${data.id}`);
         taskTimeEntryRef.current = data.id;
         startTimeRef.current = Date.now();
-        setElapsedTime(accumulatedTimeRef.current);
       }
       
       setIsTracking(true);
@@ -193,7 +215,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     }
   };
 
-  // Stop tracking time
+  // Stop tracking time with immediate accumulation update
   const stopTracking = async () => {
     console.log('Stopping tracking, isTracking:', isTracking, 'taskTimeEntryRef:', taskTimeEntryRef.current);
     
@@ -227,8 +249,10 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
           toast.error('Fehler beim Speichern der Bearbeitungszeit');
         } else {
           console.log(`Successfully updated time entry with duration: ${currentSessionTime}s`);
-          // Update accumulated time
-          accumulatedTimeRef.current += currentSessionTime;
+          // Fetch the new accumulated time immediately
+          const newAccumulatedTime = await fetchAccumulatedTime();
+          accumulatedTimeRef.current = newAccumulatedTime;
+          setElapsedTime(newAccumulatedTime);
         }
       }
 
