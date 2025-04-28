@@ -54,15 +54,15 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     handleRetry
   } = useTaskChatMessages(taskId, useCaseId, fetchMessages);
 
-  // Send initial message when component mounts
+  // Modifizierte Logik: Sende nur eine initiale Nachricht, wenn keine Nachrichten vorhanden sind
   useEffect(() => {
-    if (initialMessages.length === 0 && !initialMessageSent && taskId && taskId !== "undefined") {
+    if (initialMessages.length === 0 && messages.length === 0 && !initialMessageSent && taskId && taskId !== "undefined") {
       setInitialMessageSent(true);
       setTimeout(() => {
         sendMessage("", null, selectedOptions);
       }, 500);
     }
-  }, [taskId, initialMessageSent, initialMessages.length]);
+  }, [taskId, initialMessageSent, initialMessages.length, messages.length, sendMessage, selectedOptions, setInitialMessageSent]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

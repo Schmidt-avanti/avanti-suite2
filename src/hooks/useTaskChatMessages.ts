@@ -50,13 +50,13 @@ export const useTaskChatMessages = (
 
         if (messageError) throw messageError;
       } 
-      // For initial message (empty text, no button choice)
+      // Für die erste Nachricht eine benutzerfreundlichere Nachricht senden
       else if (!text && !buttonChoice) {
         const { error: messageError } = await supabase
           .from('task_messages')
           .insert({
             task_id: taskId,
-            content: "Start der Konversation",
+            content: "Wie kann ich Ihnen helfen?",
             role: 'user',
             created_by: user.id
           });

@@ -64,6 +64,11 @@ export const useTaskMessages = (taskId: string | null, initialMessages: Message[
           setHasNewMessages(true);
           prevMessagesLengthRef.current = typedMessages.length;
         }
+        
+        // Wenn es bereits Nachrichten gibt, setze initialMessageSent auf true
+        if (typedMessages.length > 0) {
+          setInitialMessageSent(true);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
@@ -78,13 +83,6 @@ export const useTaskMessages = (taskId: string | null, initialMessages: Message[
       // Only fetch messages if we have a valid taskId
       if (taskId && taskId !== "undefined") {
         fetchMessages();
-        
-        if (!initialMessageSent) {
-          setInitialMessageSent(true);
-          setTimeout(() => {
-            // This will be handled by the parent component
-          }, 500);
-        }
       }
     } else {
       const newSelectedOptions = new Set<string>();
@@ -101,6 +99,11 @@ export const useTaskMessages = (taskId: string | null, initialMessages: Message[
         }
       });
       setSelectedOptions(newSelectedOptions);
+      
+      // Wenn es bereits initialMessages gibt, setze initialMessageSent auf true
+      if (initialMessages.length > 0) {
+        setInitialMessageSent(true);
+      }
     }
   }, [initialMessages, taskId, fetchMessages]);
 

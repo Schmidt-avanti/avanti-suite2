@@ -119,19 +119,19 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Check if we already have messages for this task
+    // Prüfe die bestehenden Nachrichten
     const { data: existingMessages, error: messagesError } = await supabase
       .from('task_messages')
       .select('*')
       .eq('task_id', taskId)
       .order('created_at', { ascending: true });
     
-    // If there are already messages from both user and assistant, don't auto-send
+    // Wenn wir bereits eine Konversation haben, überprüfen wir nicht weiter, ob wir automatisch senden sollten
     if (existingMessages && existingMessages.length > 2) {
       const hasUserMessage = existingMessages.some(msg => msg.role === 'user');
       const hasAssistantMessage = existingMessages.some(msg => msg.role === 'assistant');
       
-      // If this is an empty message (auto-start) and we already have a conversation going
+      // Wenn dies eine leere Nachricht (auto-start) ist und wir bereits eine Konversation haben
       if (!message && !buttonChoice && hasUserMessage && hasAssistantMessage) {
         return new Response(
           JSON.stringify({
