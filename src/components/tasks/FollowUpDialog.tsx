@@ -33,14 +33,34 @@ export function FollowUpDialog({ open, onOpenChange, onSave }: FollowUpDialogPro
   const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, "0"));
 
   const handleSave = () => {
-    if (!date) return;
+    if (!date) {
+      console.error("Cannot create follow-up: No date selected");
+      return;
+    }
     
-    const followUpDate = new Date(date);
-    followUpDate.setHours(parseInt(hour), parseInt(minute), 0, 0);
-    
-    onSave(followUpDate);
-    onOpenChange(false);
+    try {
+      const followUpDate = new Date(date);
+      followUpDate.setHours(parseInt(hour), parseInt(minute), 0, 0);
+      
+      console.log("Creating follow-up with date:", followUpDate);
+      onSave(followUpDate);
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error creating follow-up date:", error);
+    }
   };
+
+  // Reset the form when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      // Set default values for new follow-up (next business day at 9:00)
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setDate(tomorrow);
+      setHour("9");
+      setMinute("00");
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

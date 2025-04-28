@@ -192,7 +192,7 @@ const TaskDetail = () => {
           newStatus === 'in_progress' ? 'In Bearbeitung' : 
           newStatus === 'followup' ? 'Wiedervorlage' : 'Neu'}" markiert.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error changing status:", error);
       toast({
         variant: "destructive",
@@ -204,34 +204,48 @@ const TaskDetail = () => {
 
   const handleFollowUp = async (followUpDate: Date) => {
     try {
+      console.log("Setting follow-up for task", id, "with date", followUpDate.toISOString());
+      
+      // First check if the task exists
+      if (!id) {
+        throw new Error("Keine Aufgaben-ID vorhanden");
+      }
+      
+      // Make the update to the database
       const { error } = await supabase
         .from('tasks')
         .update({ 
-          status: 'followup', 
+          status: 'followup' as TaskStatus, 
           follow_up_date: followUpDate.toISOString()
         })
         .eq('id', id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw new Error(`Datenbankfehler: ${error.message}`);
+      }
       
+      // Log the status change activity
       await logTaskStatusChange(id!, task.status as TaskStatus, 'followup');
       
+      // Update local state
       setTask({
         ...task,
         status: 'followup',
         follow_up_date: followUpDate.toISOString()
       });
       
+      // Show success message
       toast({
         title: "Wiedervorlage erstellt",
         description: `Die Aufgabe wurde für ${format(followUpDate, 'PPpp', { locale: de })} wiedervorgelegt.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error setting follow-up:", error);
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: "Wiedervorlage konnte nicht erstellt werden."
+        description: `Wiedervorlage konnte nicht erstellt werden: ${error.message}`
       });
     }
   };
