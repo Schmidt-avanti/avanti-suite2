@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +33,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const isMobile = useIsMobile();
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
+  const [initialMessageSent, setInitialMessageSent] = useState(false);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -45,9 +47,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   useEffect(() => {
     if (initialMessages.length === 0) {
       fetchMessages();
-      setTimeout(() => {
-        sendMessage("", null);
-      }, 500);
+      
+      // Only send the initial message once
+      if (!initialMessageSent) {
+        setInitialMessageSent(true);
+        setTimeout(() => {
+          sendMessage("", null);
+        }, 500);
+      }
     } else {
       const newSelectedOptions = new Set<string>();
       initialMessages.forEach(message => {

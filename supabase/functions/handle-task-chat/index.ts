@@ -57,7 +57,7 @@ serve(async (req) => {
   }
 
   try {
-    const { taskId, useCaseId, message, buttonChoice, selectedOptions = [] } = await req.json();
+    const { taskId, useCaseId, message, buttonChoice, previousResponseId, selectedOptions = [] } = await req.json();
 
     if (!taskId) {
       throw new Error('Task ID is required');
@@ -68,6 +68,29 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Check if we already have messages for this task
+    const { data: existingMessages, error: messagesError } = await supabase
+      .from('task_messages')
+      .select('*')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: true });
+    
+    // If there are already messages from both user and assistant, don't auto-send
+    if (existingMessages && existingMessages.length > 2) {
+      const hasUserMessage = existingMessages.some(msg => msg.role === 'user');
+      const hasAssistantMessage = existingMessages.some(msg => msg.role === 'assistant');
+      
+      // If this is an empty message (auto-start) and we already have a conversation going
+      if (!message && !buttonChoice && hasUserMessage && hasAssistantMessage) {
+        return new Response(
+          JSON.stringify({
+            message: "Chat already initialized, not sending automatic message"
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select('*, messages:task_messages(*)')
@@ -89,13 +112,13 @@ serve(async (req) => {
       useCase = fetchedUseCase;
     }
 
-    const { data: messages, error: messagesError } = await supabase
+    const { data: messages, error: messagesError2 } = await supabase
       .from('task_messages')
       .select('*')
       .eq('task_id', taskId)
       .order('created_at', { ascending: true });
 
-    if (messagesError) throw messagesError;
+    if (messagesError2) throw messagesError2;
 
     let conversationMessages = [];
     
