@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -85,6 +84,8 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (!user || isTracking) return;
 
     try {
+      console.log('Starting time tracking for task:', taskId);
+      
       // First check if there's any existing active session for this task
       const { data: existingSessions } = await supabase
         .from('task_times')
@@ -148,6 +149,8 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
   // Stop tracking time
   const stopTracking = async () => {
+    console.log('Stopping tracking, isTracking:', isTracking, 'taskTimeEntryRef:', taskTimeEntryRef.current);
+    
     if (!isTracking || !taskTimeEntryRef.current) return;
 
     try {
@@ -159,11 +162,11 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         timerRef.current = null;
       }
 
-      // Berechnete Dauer in Sekunden
+      // Calculate duration in seconds
       const seconds = elapsedTime > 0 ? elapsedTime : 
         (startTimeRef.current ? Math.floor((Date.now() - startTimeRef.current) / 1000) : 0);
       
-      // Nur speichern, wenn die Dauer größer als 0 ist
+      // Only save if duration is greater than 0
       if (seconds > 0) {
         const endTime = new Date().toISOString();
         
@@ -252,6 +255,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
     // Cleanup on unmount or when taskId changes
     return () => {
+      console.log('Timer effect cleanup triggered');
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }

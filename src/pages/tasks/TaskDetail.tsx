@@ -37,11 +37,19 @@ const TaskDetail = () => {
   const [sendError, setSendError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { formattedTime } = useTaskTimer({ taskId: id || '', isActive: true });
-  const { logTaskStatusChange } = useTaskActivity();
+  
+  const [isActive, setIsActive] = useState(true);
+  const { formattedTime } = useTaskTimer({ taskId: id || '', isActive });
 
   useEffect(() => {
     if (id) fetchTaskDetails();
+    
+    setIsActive(true);
+    
+    return () => {
+      console.log('TaskDetail unmounting, setting isActive to false');
+      setIsActive(false);
+    };
   }, [id]);
 
   const fetchTaskDetails = async () => {
@@ -150,7 +158,13 @@ const TaskDetail = () => {
     <div className="max-w-screen-xl mx-auto w-full px-3 md:px-8 py-5">
       <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-0">
         <div className="flex items-center px-6 pt-6 pb-3 border-b border-muted bg-gradient-to-r from-avanti-100 to-avanti-200 rounded-t-2xl">
-          <Button variant="ghost" onClick={() => navigate('/tasks')}>
+          <Button 
+            variant="ghost" 
+            onClick={() => {
+              setIsActive(false);
+              navigate('/tasks');
+            }}
+          >
             <ChevronLeft className="h-4 w-4 mr-2" />
             Zurück zur Übersicht
           </Button>
