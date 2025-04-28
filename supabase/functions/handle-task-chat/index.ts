@@ -51,6 +51,48 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3)
   throw lastError || new Error('Max retries exceeded');
 }
 
+// Format the assistant's response to ensure it's always valid JSON with text and options
+function formatAssistantResponse(content: string): string {
+  try {
+    // First, check if it's already valid JSON with text and options
+    const parsed = JSON.parse(content);
+    if (typeof parsed === 'object' && 'text' in parsed) {
+      return content; // Already formatted correctly
+    }
+  } catch (e) {
+    // Not valid JSON, continue to formatting
+  }
+
+  // Check for option patterns in the text
+  const optionsPattern = /\[(.*?)\]/g;
+  const matches = content.match(optionsPattern);
+  
+  if (matches && matches.length > 0) {
+    try {
+      // Extract options from the text
+      const optionsText = matches[0];
+      const optionsList = optionsText
+        .replace(/[\[\]"]/g, '')
+        .split(',')
+        .map(option => option.trim());
+      
+      // Format as JSON
+      return JSON.stringify({
+        text: content,
+        options: optionsList
+      });
+    } catch (e) {
+      console.error("Error formatting options:", e);
+    }
+  }
+  
+  // If no options found or processing failed, return simple JSON format
+  return JSON.stringify({
+    text: content,
+    options: []
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -195,13 +237,16 @@ serve(async (req) => {
     
     const assistantResponse = responseData.choices[0].message.content;
     
+    // Format the assistant's response to ensure it contains options if available
+    const formattedResponse = formatAssistantResponse(assistantResponse);
+    
     // Insert the assistant's response
     const { data: insertedMessage, error: insertError } = await supabase
       .from('task_messages')
       .insert({
         task_id: taskId,
         role: 'assistant',
-        content: assistantResponse
+        content: formattedResponse
       })
       .select('id')
       .single();
@@ -210,7 +255,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        response: assistantResponse,
+        response: formattedResponse,
         response_id: insertedMessage?.id
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
