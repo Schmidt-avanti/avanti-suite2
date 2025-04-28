@@ -45,9 +45,9 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     if (!viewport) return;
     
     const { scrollHeight, scrollTop, clientHeight } = viewport;
-    setUserScrolled(true);
+    const isScrolledToBottom = scrollHeight - scrollTop - clientHeight < 50;
     
-    const isScrolledToBottom = scrollHeight - scrollTop - clientHeight < 30;
+    setUserScrolled(true);
     setShouldAutoScroll(isScrolledToBottom);
     setShowScrollButton(!isScrolledToBottom);
   };
@@ -59,12 +59,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
       setShouldAutoScroll(true);
       setShowScrollButton(false);
+      setUserScrolled(false);
     }
   };
 
   useEffect(() => {
     if (shouldAutoScroll && messages.length > 0 && !userScrolled) {
-      setTimeout(scrollToBottom, 100);
+      const timer = setTimeout(scrollToBottom, 150);
+      return () => clearTimeout(timer);
     }
   }, [messages, shouldAutoScroll, userScrolled]);
 
@@ -357,11 +359,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       className="w-full h-full flex flex-col bg-white/95 rounded-2xl overflow-visible"
       style={{ minHeight: chatHeight }}
     >
-      <div className="flex-1 relative">
+      <div className="relative flex-1 overflow-hidden">
         <ScrollArea
           ref={scrollAreaRef}
-          className="h-full relative"
-          style={{ maxHeight: `calc(${chatHeight} - 100px)` }}
+          className="h-full pb-20"
+          style={{ height: isMobile ? 'calc(100vh - 16rem)' : '600px' }}
           onScroll={handleScroll}
           type="always"
         >
@@ -441,7 +443,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
         {showScrollButton && (
           <Button 
-            className="absolute bottom-4 right-4 rounded-full w-10 h-10 shadow-md bg-blue-500 hover:bg-blue-600 text-white z-10"
+            className="fixed bottom-28 right-8 rounded-full w-10 h-10 shadow-lg bg-blue-500 hover:bg-blue-600 text-white z-50"
             size="icon"
             onClick={scrollToBottom}
           >
@@ -450,7 +452,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         )}
       </div>
 
-      <div className="w-full px-6 pb-6 mt-auto">
+      <div className="sticky bottom-0 w-full px-6 pb-6 mt-auto bg-white/95 pt-4 border-t border-gray-100">
         <form
           onSubmit={handleSubmit}
           className="w-full flex gap-2 items-end border border-gray-200 p-3 bg-white rounded-md shadow-sm"
