@@ -45,8 +45,6 @@ const TaskDetail = () => {
   useEffect(() => {
     if (id) fetchTaskDetails();
     
-    setIsActive(true);
-    
     return () => {
       console.log('TaskDetail unmounting, setting isActive to false');
       setIsActive(false);
@@ -152,6 +150,12 @@ const TaskDetail = () => {
     }
   };
 
+  const handleBack = async () => {
+    setIsActive(false);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    navigate('/tasks');
+  };
+
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
   if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
 
@@ -161,10 +165,7 @@ const TaskDetail = () => {
         <div className="flex items-center px-6 pt-6 pb-3 border-b border-muted bg-gradient-to-r from-avanti-100 to-avanti-200 rounded-t-2xl">
           <Button 
             variant="ghost" 
-            onClick={() => {
-              setIsActive(false);
-              navigate('/tasks');
-            }}
+            onClick={handleBack}
           >
             <ChevronLeft className="h-4 w-4 mr-2" />
             Zurück zur Übersicht

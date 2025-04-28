@@ -86,7 +86,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     try {
       console.log('Starting time tracking for task:', taskId);
       
-      // First check if there's any existing active session for this task
       const { data: existingSessions } = await supabase
         .from('task_times')
         .select('id, started_at')
@@ -96,14 +95,12 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         .order('started_at', { ascending: false })
         .limit(1);
 
-      // If there's an existing session, use it instead of creating a new one
       if (existingSessions && existingSessions.length > 0) {
         console.log(`Resuming existing session for task ${taskId}: ${existingSessions[0].id}`);
         taskTimeEntryRef.current = existingSessions[0].id;
         const startTime = new Date(existingSessions[0].started_at).getTime();
         startTimeRef.current = startTime;
         
-        // Calculate elapsed time since the session was started
         const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
         setElapsedTime(currentElapsed);
       } else {
@@ -119,14 +116,9 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
           .select('id')
           .single();
 
-        if (error) {
-          console.error('Error creating task time entry:', error);
-          throw error;
-        }
+        if (error) throw error;
 
         console.log(`Created task time entry: ${data.id}`);
-        
-        // Store the entry ID for later updates
         taskTimeEntryRef.current = data.id;
         startTimeRef.current = Date.now();
         setElapsedTime(0);
@@ -134,7 +126,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       
       setIsTracking(true);
 
-      // Start timer
       timerRef.current = setInterval(() => {
         if (startTimeRef.current) {
           const currentElapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
@@ -154,25 +145,19 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (!isTracking || !taskTimeEntryRef.current) return;
 
     try {
-      console.log(`Stopping time tracking for task ${taskId}, entry ${taskTimeEntryRef.current}`);
-      
-      // Clear interval
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
 
-      // Calculate duration in seconds
       const seconds = elapsedTime > 0 ? elapsedTime : 
         (startTimeRef.current ? Math.floor((Date.now() - startTimeRef.current) / 1000) : 0);
       
-      // Only save if duration is greater than 0
       if (seconds > 0) {
         const endTime = new Date().toISOString();
         
         console.log(`Updating task time entry ${taskTimeEntryRef.current} with duration: ${seconds}s and end time: ${endTime}`);
         
-        // Update task time entry
         const { error } = await supabase
           .from('task_times')
           .update({
@@ -187,21 +172,8 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         } else {
           console.log(`Successfully updated time entry with duration: ${seconds}s`);
         }
-      } else {
-        console.warn(`Skipping update for task time entry ${taskTimeEntryRef.current} because duration is ${seconds}s`);
-        
-        // Clean up zero-duration sessions
-        const { error } = await supabase
-          .from('task_times')
-          .delete()
-          .eq('id', taskTimeEntryRef.current);
-          
-        if (error) {
-          console.error('Error deleting zero-duration entry:', error);
-        }
       }
 
-      // Reset states
       setIsTracking(false);
       setElapsedTime(0);
       startTimeRef.current = null;
@@ -247,23 +219,23 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   useEffect(() => {
     console.log(`Task timer effect triggered - isActive: ${isActive}, taskId: ${taskId}, isTracking: ${isTracking}`);
     
-    if (isActive && !isTracking) {
+    if (isActive && !isTracking && taskId) {
       startTracking();
     } else if (!isActive && isTracking) {
       stopTracking();
     }
 
-    // Cleanup on unmount or when taskId changes
     return () => {
       console.log('Timer effect cleanup triggered');
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
       if (isTracking) {
         stopTracking();
       }
     };
-  }, [isActive, taskId]);
+  }, [isActive, taskId, isTracking]);
 
   return {
     elapsedTime,
