@@ -94,3 +94,10 @@ export interface PaymentMethod {
   billing_zip?: string;
   billing_city?: string;
 }
+
+export interface Message {
+  id: string;
+  role: "assistant" | "user";
+  content: string;
+  created_at: string;
+}
