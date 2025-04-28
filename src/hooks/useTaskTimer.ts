@@ -18,23 +18,23 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   const taskTimeEntryRef = useRef<string | null>(null);
   const currentSessionTimeRef = useRef<number>(0);
 
-  // Fetch total time from the latest task_times entry
+  // Fetch total time from the task_times table
   const fetchAccumulatedTime = async () => {
     if (!taskId) return 0;
 
     try {
-      // Get the latest task_times entry to get the current accumulated total
-      const { data: latestEntry, error: latestError } = await supabase
+      // Get the maximum time_spent_task value from all sessions
+      const { data: maxTimeEntry, error: maxTimeError } = await supabase
         .from('task_times')
         .select('time_spent_task')
         .eq('task_id', taskId)
-        .order('started_at', { ascending: false })
+        .order('time_spent_task', { ascending: false })
         .limit(1);
 
-      if (latestError) throw latestError;
+      if (maxTimeError) throw maxTimeError;
 
-      // Get base total from the latest entry
-      const baseTotal = latestEntry?.[0]?.time_spent_task || 0;
+      // Get base total from the maximum entry
+      const baseTotal = maxTimeEntry?.[0]?.time_spent_task || 0;
 
       // Add current session time if tracking
       const totalSeconds = baseTotal + currentSessionTimeRef.current;
@@ -112,48 +112,32 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (!user || isTracking) return;
 
     try {
-      const { data: existingSessions } = await supabase
+      // Get the maximum time_spent_task value as starting point
+      const { data: maxTimeEntry } = await supabase
         .from('task_times')
-        .select('id, started_at')
+        .select('time_spent_task')
         .eq('task_id', taskId)
-        .eq('user_id', user.id)
-        .is('ended_at', null)
-        .order('started_at', { ascending: false })
+        .order('time_spent_task', { ascending: false })
         .limit(1);
 
-      if (existingSessions && existingSessions.length > 0) {
-        taskTimeEntryRef.current = existingSessions[0].id;
-        startTimeRef.current = new Date(existingSessions[0].started_at).getTime();
-        currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      } else {
-        // Get the latest time_spent_task value
-        const { data: latestTimeSpent } = await supabase
-          .from('task_times')
-          .select('time_spent_task')
-          .eq('task_id', taskId)
-          .order('started_at', { ascending: false })
-          .limit(1);
+      const lastTotal = maxTimeEntry?.[0]?.time_spent_task || 0;
 
-        const lastTotal = latestTimeSpent?.[0]?.time_spent_task || 0;
+      const { data, error } = await supabase
+        .from('task_times')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          started_at: new Date().toISOString(),
+          time_spent_task: lastTotal // Set initial time_spent_task to the global maximum
+        })
+        .select('id')
+        .single();
 
-        const { data, error } = await supabase
-          .from('task_times')
-          .insert({
-            task_id: taskId,
-            user_id: user.id,
-            started_at: new Date().toISOString(),
-            time_spent_task: lastTotal // Set the initial time_spent_task for the new session
-          })
-          .select('id')
-          .single();
+      if (error) throw error;
 
-        if (error) throw error;
-
-        taskTimeEntryRef.current = data.id;
-        startTimeRef.current = Date.now();
-        currentSessionTimeRef.current = 0;
-      }
-      
+      taskTimeEntryRef.current = data.id;
+      startTimeRef.current = Date.now();
+      currentSessionTimeRef.current = 0;
       setIsTracking(true);
       startLocalTimer();
 
@@ -185,7 +169,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
           throw error;
         }
 
-        // No need to manually update time_spent_task as the trigger will handle it
         currentSessionTimeRef.current = 0;
       }
 
