@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,7 +71,16 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages(data || []);
+      
+      const transformedMessages: Message[] = (data || []).map(msg => ({
+        id: msg.id,
+        role: msg.role === "assistant" ? "assistant" : "user",
+        content: msg.content,
+        created_at: msg.created_at,
+        metadata: msg.metadata
+      }));
+      
+      setMessages(transformedMessages);
     } catch (error: any) {
       console.error('Error fetching messages:', error);
       toast.error('Fehler beim Laden der Nachrichten');
@@ -134,12 +142,10 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
   const renderMessage = (message: Message) => {
     try {
-      // Try to parse as JSON first
       let parsedContent;
       try {
         parsedContent = JSON.parse(message.content);
       } catch {
-        // If not JSON, render as plain text with button extraction
         const buttonMatches = message.content.match(/\[(.*?)\]/g);
         return (
           <div className="space-y-3">
@@ -173,7 +179,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         );
       }
 
-      // If it was JSON, handle structured content
       return (
         <div className="space-y-3">
           <div className="whitespace-pre-wrap">{parsedContent.text}</div>
