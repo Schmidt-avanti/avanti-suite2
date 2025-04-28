@@ -13,15 +13,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Plus, Trash } from "lucide-react";
+import { Edit, Plus, Trash, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { UseCaseEditDialog } from "@/components/use-cases/UseCaseEditDialog";
 import { UpdateEmbeddingsButton } from "@/components/use-cases/UpdateEmbeddingsButton";
 import CreateKnowledgeArticleButton from "@/components/knowledge-articles/CreateKnowledgeArticleButton";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function UseCases() {
   const [open, setOpen] = React.useState(false);
   const [selectedUseCase, setSelectedUseCase] = React.useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [useCaseToDelete, setUseCaseToDelete] = React.useState(null);
+  const [hasRelatedArticles, setHasRelatedArticles] = React.useState(false);
   const queryClient = useQueryClient();
 
   const { data: useCases = [], isLoading } = useQuery({
@@ -36,17 +49,52 @@ export default function UseCases() {
     },
   });
 
+  const checkRelatedArticles = async (useCaseId) => {
+    const { data, error } = await supabase
+      .from("knowledge_articles")
+      .select("id")
+      .eq("use_case_id", useCaseId);
+
+    if (error) {
+      console.error("Error checking related articles:", error);
+      return false;
+    }
+    
+    return data && data.length > 0;
+  };
+
+  const handleDeleteClick = async (useCase) => {
+    setUseCaseToDelete(useCase);
+    
+    const hasArticles = await checkRelatedArticles(useCase.id);
+    setHasRelatedArticles(hasArticles);
+    setDeleteDialogOpen(true);
+  };
+
   const { mutateAsync: deleteUseCase } = useMutation({
     mutationFn: async (id: string) => {
+      // Wenn verknüpfte Artikel existieren, entferne zuerst diese Verknüpfungen
+      if (hasRelatedArticles) {
+        const { error: updateError } = await supabase
+          .from("knowledge_articles")
+          .update({ use_case_id: null })
+          .eq("use_case_id", id);
+        
+        if (updateError) throw updateError;
+      }
+
+      // Dann den Use Case löschen
       const { error } = await supabase.from("use_cases").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["use_cases"] });
       toast.success("Use Case erfolgreich gelöscht");
+      setDeleteDialogOpen(false);
     },
     onError: (error) => {
       toast.error(`Fehler: ${error.message}`);
+      setDeleteDialogOpen(false);
     },
   });
 
@@ -89,7 +137,7 @@ export default function UseCases() {
           ) : (
             useCases.map((useCase) => (
               <TableRow key={useCase.id}>
-                <TableCell>{useCase.title}</TableCell>
+                <TableCell className="max-w-[300px] truncate">{useCase.title}</TableCell>
                 <TableCell>{useCase.type}</TableCell>
                 <TableCell>
                   {useCase.knowledge_articles && useCase.knowledge_articles.length > 0 ? (
@@ -113,7 +161,7 @@ export default function UseCases() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => deleteUseCase(useCase.id)}
+                    onClick={() => handleDeleteClick(useCase)}
                   >
                     <Trash className="mr-2 h-4 w-4" />
                     Löschen
@@ -129,6 +177,39 @@ export default function UseCases() {
         onOpenChange={setOpen}
         useCase={selectedUseCase}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <AlertCircle className="text-red-500 mr-2 h-5 w-5" />
+              Use Case löschen
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {hasRelatedArticles ? (
+                <span>
+                  Dieser Use Case hat verknüpfte Wissensartikel. Beim Löschen bleiben die Artikel erhalten, 
+                  aber die Verknüpfung wird aufgehoben. Möchten Sie fortfahren?
+                </span>
+              ) : (
+                <span>
+                  Sind Sie sicher, dass Sie diesen Use Case löschen möchten? 
+                  Diese Aktion kann nicht rückgängig gemacht werden.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => useCaseToDelete && deleteUseCase(useCaseToDelete.id)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -32,9 +32,9 @@ const UseCaseChatAndPreview: React.FC<UseCaseChatAndPreviewProps> = ({
   onBack
 }) => {
   return (
-    <div className="flex flex-col space-y-8 max-w-full">
+    <div className="flex flex-col space-y-8 max-w-full overflow-hidden">
       {/* Chat Section - Full Width */}
-      <div className="w-full">
+      <div className="w-full overflow-hidden">
         <UseCaseChat
           messages={messages}
           chatInput={chatInput}
@@ -42,7 +42,7 @@ const UseCaseChatAndPreview: React.FC<UseCaseChatAndPreviewProps> = ({
           onSendMessage={onSendMessage}
           loading={loadingAI}
         />
-        <div className="mt-4">
+        <div className="mt-4 overflow-hidden">
           <UseCaseErrorDisplay error={error} rawResponse={rawResponse} />
         </div>
       </div>
@@ -64,7 +64,7 @@ const UseCaseChatAndPreview: React.FC<UseCaseChatAndPreviewProps> = ({
 
       {/* Preview Section - Placed at bottom */}
       {aiResponseJson && (
-        <div className="w-full mt-4 pb-16 overflow-hidden">
+        <div className="w-full mt-4 pb-16 overflow-auto">
           <h3 className="text-lg font-medium mb-4">Use Case Vorschau</h3>
           <UseCasePreview aiResponseJson={aiResponseJson} />
         </div>

@@ -18,8 +18,8 @@ const AppLayout: React.FC = () => {
           <Navbar />
           <main className="flex-1 overflow-auto">
             <div className={`px-8 py-6 w-full max-w-screen-2xl mx-auto ${isMobile ? 'px-3 py-4' : ''}`}>
-              <div className={`rounded-2xl bg-white border border-gray-100 shadow-sm ${isMobile ? 'p-3' : 'p-6'} min-h-[300px] overflow-hidden`}>
-                <div className="w-full max-w-full overflow-x-hidden">
+              <div className={`rounded-2xl bg-white border border-gray-100 shadow-sm ${isMobile ? 'p-3' : 'p-6'} min-h-[300px] max-h-full overflow-auto`}>
+                <div className="w-full max-w-full overflow-auto">
                   <Outlet />
                 </div>
               </div>
