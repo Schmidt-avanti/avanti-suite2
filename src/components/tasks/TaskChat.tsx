@@ -1,9 +1,8 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2, AlertTriangle } from "lucide-react";
+import { Send, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,7 +49,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         sendMessage("", null);
       }, 500);
     } else {
-      // Load previously selected options from messages
       const newSelectedOptions = new Set<string>();
       initialMessages.forEach(message => {
         if (message.role === 'user') {
@@ -87,7 +85,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         }));
         setMessages(typedMessages);
         
-        // Extract any button selections from the messages
         const newSelectedOptions = new Set<string>();
         typedMessages.forEach(message => {
           if (message.role === 'user') {
@@ -115,7 +112,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     setIsRateLimited(false);
 
     try {
-      // Add the button choice to selected options
       if (buttonChoice) {
         setSelectedOptions(prev => new Set([...prev, buttonChoice]));
       }
@@ -132,7 +128,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
         if (messageError) throw messageError;
       } else if (buttonChoice) {
-        // Insert button choice as user message
         const { error: buttonMessageError } = await supabase
           .from('task_messages')
           .insert({
@@ -157,7 +152,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       });
 
       if (error) {
-        // Check if it's a rate limit error
         if (error.message?.includes('rate limit')) {
           setIsRateLimited(true);
           throw new Error('Der API-Dienst ist derzeit überlastet. Bitte versuchen Sie es später erneut.');
@@ -187,7 +181,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     setRetryCount(prev => prev + 1);
     setTimeout(() => {
       sendMessage("", null);
-    }, retryCount * 2000); // Incremental backoff
+    }, retryCount * 2000);
   };
 
   const renderMessage = (message: Message) => {
@@ -201,7 +195,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             {parsedContent.options && parsedContent.options.length > 0 && (
               <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
                 {parsedContent.options.map((option: string, idx: number) => {
-                  // Don't show options that have already been selected
                   if (selectedOptions.has(option)) {
                     return null;
                   }
