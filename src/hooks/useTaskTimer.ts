@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +23,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (!taskId) return 0;
 
     try {
+      // Get the current maximum time_spent_task value
       const { data: maxTimeEntry, error: maxTimeError } = await supabase
         .from('task_times')
         .select('time_spent_task')
@@ -31,13 +33,15 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
       if (maxTimeError) throw maxTimeError;
 
-      // Get base total from the maximum entry and add current session time
-      const totalSeconds = (maxTimeEntry?.[0]?.time_spent_task || 0) + currentSessionTimeRef.current;
+      const maxAccumulatedTime = maxTimeEntry?.[0]?.time_spent_task || 0;
+      const totalSeconds = maxAccumulatedTime + currentSessionTimeRef.current;
       
       console.log('Time calculation:', {
-        maxAccumulatedTime: maxTimeEntry?.[0]?.time_spent_task || 0,
+        taskId,
+        maxAccumulatedTime,
         currentSession: currentSessionTimeRef.current,
-        total: totalSeconds
+        total: totalSeconds,
+        userId: user?.id
       });
 
       return totalSeconds;
@@ -149,9 +153,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
           })
           .eq('id', taskTimeEntryRef.current);
         
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         currentSessionTimeRef.current = 0;
       }
