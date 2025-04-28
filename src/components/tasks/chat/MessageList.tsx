@@ -20,6 +20,7 @@ export const MessageList = ({
   const renderMessage = (message: Message) => {
     if (message.role === "assistant") {
       try {
+        // First try parsing as JSON
         const parsedContent = JSON.parse(message.content);
         
         return (
@@ -47,6 +48,8 @@ export const MessageList = ({
           </div>
         );
       } catch (e) {
+        // If not valid JSON, display as plain text
+        console.log("Failed to parse message content as JSON:", e);
         return <div className="whitespace-pre-wrap">{message.content}</div>;
       }
     }

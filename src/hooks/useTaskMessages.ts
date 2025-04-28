@@ -27,22 +27,42 @@ export const useTaskMessages = (taskId: string, initialMessages: Message[] = [])
         }, 500);
       }
     } else {
-      const newSelectedOptions = new Set<string>();
-      initialMessages.forEach(message => {
-        if (message.role === 'user') {
-          try {
-            const options = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
-            if (options.includes(message.content)) {
-              newSelectedOptions.add(message.content);
-            }
-          } catch (e) {
-            // Not a button choice
-          }
-        }
-      });
-      setSelectedOptions(newSelectedOptions);
+      processMessagesForOptions(initialMessages);
     }
   }, [initialMessages]);
+
+  const processMessagesForOptions = (messagesToProcess: Message[]) => {
+    const newSelectedOptions = new Set<string>();
+    
+    // First, find all options from assistant messages
+    const allOptions: string[] = [];
+    messagesToProcess.forEach(message => {
+      if (message.role === 'assistant') {
+        try {
+          const parsedContent = JSON.parse(message.content);
+          if (parsedContent.options && Array.isArray(parsedContent.options)) {
+            parsedContent.options.forEach((option: string) => {
+              allOptions.push(option);
+            });
+          }
+        } catch (e) {
+          // Not parseable as JSON
+        }
+      }
+    });
+    
+    // Then check which options the user selected
+    messagesToProcess.forEach(message => {
+      if (message.role === 'user') {
+        const content = message.content;
+        if (allOptions.includes(content)) {
+          newSelectedOptions.add(content);
+        }
+      }
+    });
+    
+    setSelectedOptions(newSelectedOptions);
+  };
 
   const fetchMessages = async () => {
     try {
@@ -63,20 +83,7 @@ export const useTaskMessages = (taskId: string, initialMessages: Message[] = [])
         }));
         setMessages(typedMessages);
         
-        const newSelectedOptions = new Set<string>();
-        typedMessages.forEach(message => {
-          if (message.role === 'user') {
-            try {
-              const options = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
-              if (options.includes(message.content)) {
-                newSelectedOptions.add(message.content);
-              }
-            } catch (e) {
-              // Not a button choice
-            }
-          }
-        });
-        setSelectedOptions(newSelectedOptions);
+        processMessagesForOptions(typedMessages);
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
