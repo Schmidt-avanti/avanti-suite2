@@ -104,9 +104,9 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading = false
               className="cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <TableCell className="font-medium">{task.title}</TableCell>
-              <TableCell className="max-w-xs truncate">{task.status}</TableCell>
+              <TableCell><TaskStatusBadge status={task.status} /></TableCell>
               <TableCell>
-                <TaskStatusBadge status={task.source} />
+                {task.source && <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">{task.source}</span>}
               </TableCell>
               <TableCell>{task.customer?.name || '-'}</TableCell>
               <TableCell>
