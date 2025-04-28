@@ -222,7 +222,7 @@ export function FloatingChatPanel({
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ihre Frage..."
-            className="pr-16 resize-none min-h-[50px] max-h-[120px] text-sm border-gray-200 shadow-sm focus-visible:ring-blue-500"
+            className="pr-16 resize-none min-h-[50px] max-h-[120px] text-sm border-gray-200 shadow-sm focus-visible:ring-blue-500 px-4 py-3"
             rows={1}
             disabled={isLoading}
             iconRight={

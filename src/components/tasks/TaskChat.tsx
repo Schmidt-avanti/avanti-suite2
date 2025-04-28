@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Message {
   id: string;
@@ -35,6 +36,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
   const [initialMessageSent, setInitialMessageSent] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true);
   
   // New scrolling logic with Intersection Observer
   useEffect(() => {
@@ -63,16 +65,30 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      setAutoScroll(true);
     }
   };
 
-  // Auto-scroll when new messages arrive or after loading
+  // Auto-scroll when new messages arrive or after loading, but only if autoScroll is true
   useEffect(() => {
-    if (!isLoading && messages.length > 0) {
+    if (autoScroll && !isLoading && messages.length > 0) {
       const timer = setTimeout(scrollToBottom, 100);
       return () => clearTimeout(timer);
     }
-  }, [isLoading, messages.length]);
+  }, [isLoading, messages.length, autoScroll]);
+
+  // Handle manual scroll to disable auto-scrolling
+  const handleScroll = () => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      // If we're not near the bottom, disable auto-scroll
+      if (scrollHeight - scrollTop - clientHeight > 100) {
+        setAutoScroll(false);
+      } else {
+        setAutoScroll(true);
+      }
+    }
+  };
 
   useEffect(() => {
     if (initialMessages.length === 0) {
@@ -376,7 +392,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
   return (
     <div className="w-full h-full flex flex-col rounded-2xl relative bg-white">
-      {/* Chat messages container */}
+      {/* Chat messages container - Using ScrollArea for better scrolling behavior */}
       <div 
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-20"
@@ -384,6 +400,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           maxHeight: isMobile ? 'calc(100vh - 8rem)' : '600px',
           height: '100%'
         }}
+        onScroll={handleScroll}
       >
         {messages.length === 0 && !isLoading && (
           <div className="flex items-center justify-center h-32 text-gray-400">
@@ -473,15 +490,15 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       <div className="sticky bottom-0 w-full px-6 pb-6 pt-4 bg-white shadow-md border-t border-gray-100 z-20">
         <form
           onSubmit={handleSubmit}
-          className="w-full flex gap-2 items-end border border-gray-200 p-3 bg-white rounded-md shadow-sm"
+          className="w-full flex gap-2 items-end border border-gray-200 p-4 bg-white rounded-md shadow-sm"
         >
           <Textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ihre Nachricht..."
-            className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base pr-12"
-            style={{ fontSize: '1rem', padding: 0 }}
+            className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base px-2"
+            style={{ fontSize: '1rem', padding: '8px' }}
             disabled={isLoading}
           />
           <Button
