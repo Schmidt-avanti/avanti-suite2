@@ -16,15 +16,16 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const taskTimeEntryRef = useRef<string | null>(null);
-  const accumulatedTimeRef = useRef<number>(0);
-  const currentSessionTimeRef = useRef<number>(0); // Add the missing ref
+  const accumulatedTimeRef = useRef<number>(0); // Total time from all completed sessions
+  const activeSessionsTimeRef = useRef<number>(0); // Time from other users' active sessions
+  const currentSessionTimeRef = useRef<number>(0); // Current user's session time
 
-  // Fetch accumulated time from all users and calculate active sessions
+  // Fetch total time (completed + active) from all users
   const fetchAccumulatedTime = async () => {
     if (!taskId) return 0;
 
     try {
-      // First get completed sessions
+      // Get completed sessions from all users
       const { data: completedSessions, error: completedError } = await supabase
         .from('task_times')
         .select('duration_seconds')
@@ -33,34 +34,44 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
       if (completedError) throw completedError;
 
-      // Then get active sessions
+      // Get active sessions from all users except current user
       const { data: activeSessions, error: activeError } = await supabase
         .from('task_times')
-        .select('started_at')
+        .select('started_at, user_id')
         .eq('task_id', taskId)
-        .is('ended_at', null);
+        .is('ended_at', null)
+        .neq('user_id', user?.id); // Exclude current user's session
 
       if (activeError) throw activeError;
+
+      const now = Date.now();
 
       // Calculate total from completed sessions
       const completedTotal = completedSessions.reduce((sum, entry) => 
         sum + (entry.duration_seconds || 0), 0);
 
-      // Calculate total from active sessions
-      const now = Date.now();
+      // Calculate total from other users' active sessions
       const activeTotal = activeSessions.reduce((sum, entry) => {
         const startTime = new Date(entry.started_at).getTime();
         const sessionDuration = Math.floor((now - startTime) / 1000);
         return sum + sessionDuration;
       }, 0);
 
-      const totalSeconds = completedTotal + activeTotal;
-      console.log(`Total time (completed + active): ${completedTotal}s + ${activeTotal}s = ${totalSeconds}s`);
-      
+      accumulatedTimeRef.current = completedTotal;
+      activeSessionsTimeRef.current = activeTotal;
+
+      const totalSeconds = completedTotal + activeTotal + currentSessionTimeRef.current;
+      console.log(`Total time breakdown:`, {
+        completed: completedTotal,
+        otherActive: activeTotal,
+        currentSession: currentSessionTimeRef.current,
+        total: totalSeconds
+      });
+
       return totalSeconds;
     } catch (err) {
       console.error('Error calculating total time:', err);
-      return 0;
+      return accumulatedTimeRef.current + activeSessionsTimeRef.current + currentSessionTimeRef.current;
     }
   };
 
@@ -70,7 +81,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
     const initializeTimer = async () => {
       const totalSeconds = await fetchAccumulatedTime();
-      accumulatedTimeRef.current = totalSeconds;
       setElapsedTime(totalSeconds);
     };
 
@@ -89,7 +99,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         async () => {
           console.log('Detected change in task_times - refreshing total time');
           const updatedTime = await fetchAccumulatedTime();
-          accumulatedTimeRef.current = updatedTime;
           setElapsedTime(updatedTime);
         }
       )
@@ -107,8 +116,8 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     
     timerRef.current = setInterval(() => {
       if (startTimeRef.current) {
-        const sessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        setElapsedTime(accumulatedTimeRef.current + sessionTime);
+        currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        setElapsedTime(accumulatedTimeRef.current + activeSessionsTimeRef.current + currentSessionTimeRef.current);
       }
     }, 1000);
   };
@@ -137,6 +146,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       if (existingSessions && existingSessions.length > 0) {
         taskTimeEntryRef.current = existingSessions[0].id;
         startTimeRef.current = new Date(existingSessions[0].started_at).getTime();
+        currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
       } else {
         const { data, error } = await supabase
           .from('task_times')
@@ -152,10 +162,10 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
         taskTimeEntryRef.current = data.id;
         startTimeRef.current = Date.now();
+        currentSessionTimeRef.current = 0;
       }
       
       setIsTracking(true);
-      currentSessionTimeRef.current = 0;
       startLocalTimer();
 
     } catch (err) {
@@ -172,29 +182,31 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       stopLocalTimer();
 
       if (startTimeRef.current) {
-        const currentSessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        const finalSessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
 
         const { error } = await supabase
           .from('task_times')
           .update({
             ended_at: new Date().toISOString(),
-            duration_seconds: currentSessionTime
+            duration_seconds: finalSessionTime
           })
           .eq('id', taskTimeEntryRef.current);
         
         if (error) {
           throw error;
         }
+
+        // Update accumulated time and reset current session
+        accumulatedTimeRef.current += finalSessionTime;
+        currentSessionTimeRef.current = 0;
       }
 
       setIsTracking(false);
       startTimeRef.current = null;
-      currentSessionTimeRef.current = 0;
       taskTimeEntryRef.current = null;
 
-      // Update accumulated time immediately after stopping
+      // Update total time immediately after stopping
       const updatedTime = await fetchAccumulatedTime();
-      accumulatedTimeRef.current = updatedTime;
       setElapsedTime(updatedTime);
 
     } catch (err) {
