@@ -110,8 +110,19 @@ serve(async (req) => {
   try {
     const { taskId, useCaseId, message, buttonChoice, previousResponseId, selectedOptions = [] } = await req.json();
 
+    // Prüfen, ob tatsächlich eine Nachricht oder ein Button-Choice vorhanden ist
     if (!taskId) {
       throw new Error('Task ID is required');
+    }
+    
+    if (!message && !buttonChoice) {
+      console.log("No message or button choice provided, skipping automatic message creation");
+      return new Response(
+        JSON.stringify({
+          message: "No message content provided, not sending any automatic messages"
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
@@ -119,28 +130,13 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Prüfe die bestehenden Nachrichten
     const { data: existingMessages, error: messagesError } = await supabase
       .from('task_messages')
       .select('*')
       .eq('task_id', taskId)
       .order('created_at', { ascending: true });
     
-    // Wenn wir bereits eine Konversation haben, überprüfen wir nicht weiter, ob wir automatisch senden sollten
-    if (existingMessages && existingMessages.length > 2) {
-      const hasUserMessage = existingMessages.some(msg => msg.role === 'user');
-      const hasAssistantMessage = existingMessages.some(msg => msg.role === 'assistant');
-      
-      // Wenn dies eine leere Nachricht (auto-start) ist und wir bereits eine Konversation haben
-      if (!message && !buttonChoice && hasUserMessage && hasAssistantMessage) {
-        return new Response(
-          JSON.stringify({
-            message: "Chat already initialized, not sending automatic message"
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
+    if (messagesError) throw messagesError;
 
     const { data: task, error: taskError } = await supabase
       .from('tasks')

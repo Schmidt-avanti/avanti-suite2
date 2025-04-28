@@ -19,6 +19,13 @@ export const useTaskChatMessages = (
 
   const sendMessage = async (text: string, buttonChoice: string | null = null, selectedOptions: Set<string>) => {
     if (!user || !taskId || taskId === "undefined") return;
+    
+    // Wenn kein Text und kein ButtonChoice vorhanden ist, sende nichts
+    if (!text && !buttonChoice) {
+      console.log("No message content provided, skipping message send");
+      return;
+    }
+    
     setIsLoading(true);
     setIsRateLimited(false);
 
@@ -44,19 +51,6 @@ export const useTaskChatMessages = (
           .insert({
             task_id: taskId,
             content: text,
-            role: 'user',
-            created_by: user.id
-          });
-
-        if (messageError) throw messageError;
-      } 
-      // Für die erste Nachricht eine benutzerfreundlichere Nachricht senden
-      else if (!text && !buttonChoice) {
-        const { error: messageError } = await supabase
-          .from('task_messages')
-          .insert({
-            task_id: taskId,
-            content: "Wie kann ich Ihnen helfen?",
             role: 'user',
             created_by: user.id
           });
