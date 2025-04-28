@@ -105,7 +105,8 @@ serve(async (req) => {
         throw new Error('OpenAI API key not configured');
       }
 
-      const gptResponse = await fetch('https://api.openai.com/v1/responses', {
+      // Korrigierte Implementierung für die Responses API
+      const gptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,16 +114,17 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: "gpt-4.1",
-          input: {
-            role: "system",
-            content: "Du bist ein sachlicher, fachlicher Support-Assistent für avanti-suite, ein Tool für Aufgabenverwaltung und Kundenkommunikation. Antworte prägnant und hilfreich, ohne Smalltalk oder Emojis. Fokussiere dich auf rein sachliche Informationen. Wenn du die Antwort nicht kennst, sage das direkt ohne Ausschmückung."
-          },
           messages: [
+            {
+              role: "system",
+              content: "Du bist ein sachlicher, fachlicher Support-Assistent für avanti-suite, ein Tool für Aufgabenverwaltung und Kundenkommunikation. Antworte prägnant und hilfreich, ohne Smalltalk oder Emojis. Fokussiere dich auf rein sachliche Informationen. Wenn du die Antwort nicht kennst, sage das direkt ohne Ausschmückung."
+            },
             {
               role: "user",
               content: query
             }
           ],
+          temperature: 0.7
         })
       });
 
@@ -133,10 +135,10 @@ serve(async (req) => {
       }
 
       const gptData = await gptResponse.json();
-      if (gptData.content) {
+      if (gptData.choices && gptData.choices[0] && gptData.choices[0].message) {
         knowledgeResponse = {
           source: 'gpt',
-          content: gptData.content,
+          content: gptData.choices[0].message.content,
           confidence: 0.9  // Arbitrary confidence for GPT responses
         };
       } else {
