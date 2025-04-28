@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,26 +16,48 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   const startTimeRef = useRef<number | null>(null);
   const taskTimeEntryRef = useRef<string | null>(null);
   const accumulatedTimeRef = useRef<number>(0);
-  const currentSessionTimeRef = useRef<number>(0);
 
-  // Fetch accumulated time from all users' sessions
+  // Fetch accumulated time from all users and calculate active sessions
   const fetchAccumulatedTime = async () => {
     if (!taskId) return 0;
 
     try {
-      const { data, error } = await supabase
+      // First get completed sessions
+      const { data: completedSessions, error: completedError } = await supabase
         .from('task_times')
         .select('duration_seconds')
         .eq('task_id', taskId)
         .not('duration_seconds', 'is', null);
 
-      if (error) throw error;
+      if (completedError) throw completedError;
 
-      const totalSeconds = data.reduce((sum, entry) => sum + (entry.duration_seconds || 0), 0);
-      console.log(`Fetched total accumulated time for all users: ${totalSeconds}s`);
+      // Then get active sessions
+      const { data: activeSessions, error: activeError } = await supabase
+        .from('task_times')
+        .select('started_at')
+        .eq('task_id', taskId)
+        .is('ended_at', null);
+
+      if (activeError) throw activeError;
+
+      // Calculate total from completed sessions
+      const completedTotal = completedSessions.reduce((sum, entry) => 
+        sum + (entry.duration_seconds || 0), 0);
+
+      // Calculate total from active sessions
+      const now = Date.now();
+      const activeTotal = activeSessions.reduce((sum, entry) => {
+        const startTime = new Date(entry.started_at).getTime();
+        const sessionDuration = Math.floor((now - startTime) / 1000);
+        return sum + sessionDuration;
+      }, 0);
+
+      const totalSeconds = completedTotal + activeTotal;
+      console.log(`Total time (completed + active): ${completedTotal}s + ${activeTotal}s = ${totalSeconds}s`);
+      
       return totalSeconds;
     } catch (err) {
-      console.error('Error fetching accumulated time:', err);
+      console.error('Error calculating total time:', err);
       return 0;
     }
   };
@@ -46,9 +67,9 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (!taskId) return;
 
     const initializeTimer = async () => {
-      const accumulatedSeconds = await fetchAccumulatedTime();
-      accumulatedTimeRef.current = accumulatedSeconds;
-      updateElapsedTime();
+      const totalSeconds = await fetchAccumulatedTime();
+      accumulatedTimeRef.current = totalSeconds;
+      setElapsedTime(totalSeconds);
     };
 
     initializeTimer();
@@ -64,10 +85,10 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
           filter: `task_id=eq.${taskId}`
         },
         async () => {
-          console.log('Detected change in task_times table - refreshing accumulated time');
+          console.log('Detected change in task_times - refreshing total time');
           const updatedTime = await fetchAccumulatedTime();
           accumulatedTimeRef.current = updatedTime;
-          updateElapsedTime();
+          setElapsedTime(updatedTime);
         }
       )
       .subscribe();
@@ -78,14 +99,14 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     };
   }, [taskId]);
 
-  // Handle the interval timer separately from the subscription
+  // Handle the interval timer for the current user's session
   const startLocalTimer = () => {
-    stopLocalTimer(); // Clear any existing timer
+    stopLocalTimer();
     
     timerRef.current = setInterval(() => {
       if (startTimeRef.current) {
-        currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        updateElapsedTime();
+        const sessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        setElapsedTime(accumulatedTimeRef.current + sessionTime);
       }
     }, 1000);
   };
@@ -95,15 +116,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  };
-
-  const updateElapsedTime = () => {
-    const sessionTime = startTimeRef.current ? 
-      Math.floor((Date.now() - startTimeRef.current) / 1000) : 
-      0;
-    
-    // This now shows the total accumulated time from ALL users plus current session
-    setElapsedTime(accumulatedTimeRef.current + sessionTime);
   };
 
   // Start tracking time
@@ -181,7 +193,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       // Update accumulated time immediately after stopping
       const updatedTime = await fetchAccumulatedTime();
       accumulatedTimeRef.current = updatedTime;
-      updateElapsedTime();
+      setElapsedTime(updatedTime);
 
     } catch (err) {
       console.error('Error stopping task timer:', err);
@@ -211,60 +223,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       }
     };
   }, [isActive, taskId]);
-
-  // Cleanup orphaned sessions
-  const cleanupOrphanedSessions = async () => {
-    if (!user || !taskId) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('task_times')
-        .select('id, started_at')
-        .eq('task_id', taskId)
-        .eq('user_id', user.id)
-        .is('ended_at', null)
-        .order('started_at', { ascending: false })
-        .limit(1);
-
-      if (error) {
-        console.error('Error fetching orphaned sessions:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        console.log(`Found ${data.length} orphaned session(s) for task ${taskId}`);
-        
-        const oneHourAgo = new Date();
-        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-        
-        for (const session of data) {
-          const startedAt = new Date(session.started_at);
-          
-          if (data.indexOf(session) === 0 && startedAt > oneHourAgo) {
-            console.log(`Keeping recent session ${session.id} active`);
-            continue;
-          }
-          
-          const endTime = new Date(startedAt);
-          endTime.setMinutes(startedAt.getMinutes() + 30);
-          
-          const durationSeconds = Math.floor((endTime.getTime() - startedAt.getTime()) / 1000);
-          
-          console.log(`Auto-closing orphaned session ${session.id} with duration: ${durationSeconds}s`);
-          
-          await supabase
-            .from('task_times')
-            .update({
-              ended_at: endTime.toISOString(),
-              duration_seconds: durationSeconds
-            })
-            .eq('id', session.id);
-        }
-      }
-    } catch (err) {
-      console.error('Error cleaning up orphaned sessions:', err);
-    }
-  };
 
   return {
     elapsedTime,
