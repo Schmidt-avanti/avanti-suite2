@@ -40,12 +40,15 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Handling task chat request");
     const { 
       taskId, 
       useCaseId, 
       message, 
       buttonChoice 
     } = await req.json();
+
+    console.log("Request payload:", { taskId, useCaseId, message, buttonChoice });
 
     if (!taskId) {
       throw new Error('Task ID is required');
@@ -54,6 +57,16 @@ serve(async (req) => {
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    if (!openAIApiKey || !supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing environment variables:", {
+        hasOpenAI: !!openAIApiKey,
+        hasSupabaseUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey
+      });
+      throw new Error('Missing required environment variables');
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Get task and previous messages
@@ -63,20 +76,35 @@ serve(async (req) => {
       .eq('id', taskId)
       .maybeSingle();
 
-    if (taskError) throw taskError;
-    if (!task) throw new Error('Task not found');
+    if (taskError) {
+      console.error("Task fetch error:", taskError);
+      throw taskError;
+    }
+    
+    if (!task) {
+      console.error("Task not found:", taskId);
+      throw new Error('Task not found');
+    }
+
+    console.log("Task fetched successfully:", task.id);
 
     // Get use case if it exists
     let useCase: UseCase | null = null;
     if (useCaseId) {
+      console.log("Fetching use case:", useCaseId);
       const { data: fetchedUseCase, error: useCaseError } = await supabase
         .from('use_cases')
         .select('*')
         .eq('id', useCaseId)
         .maybeSingle();
         
-      if (useCaseError) throw useCaseError;
+      if (useCaseError) {
+        console.error("Use case fetch error:", useCaseError);
+        throw useCaseError;
+      }
+      
       useCase = fetchedUseCase;
+      console.log("Use case fetched:", useCase ? useCase.title : "Not found");
     }
 
     // Get previous messages and their metadata
@@ -86,7 +114,12 @@ serve(async (req) => {
       .eq('task_id', taskId)
       .order('created_at', { ascending: true });
 
-    if (messagesError) throw messagesError;
+    if (messagesError) {
+      console.error("Messages fetch error:", messagesError);
+      throw messagesError;
+    }
+
+    console.log(`Fetched ${messages.length} previous messages`);
 
     // Track use case progress through message metadata
     let currentStep = 0;
@@ -101,6 +134,7 @@ serve(async (req) => {
 
       // If a button was clicked, update progress
       if (buttonChoice) {
+        console.log("Button choice selected:", buttonChoice);
         completedSteps.push(buttonChoice);
         currentStep++;
       }
@@ -149,7 +183,16 @@ serve(async (req) => {
         role: "user",
         content: message
       });
+    } else if (messages.length === 0) {
+      // When starting a new conversation with no existing messages and no user input
+      conversationMessages.push({
+        role: "user",
+        content: "Hallo, ich brauche Hilfe bei dieser Aufgabe."
+      });
     }
+
+    console.log("Preparing to send request to OpenAI");
+    console.log("Conversation messages count:", conversationMessages.length);
 
     // Get AI response
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -166,6 +209,12 @@ serve(async (req) => {
       })
     });
 
+    if (!openAIResponse.ok) {
+      const errorText = await openAIResponse.text();
+      console.error("OpenAI API error:", openAIResponse.status, errorText);
+      throw new Error(`OpenAI API error: ${openAIResponse.status} - ${errorText}`);
+    }
+
     const responseData = await openAIResponse.json();
     
     if (!responseData || responseData.error) {
@@ -175,6 +224,7 @@ serve(async (req) => {
     
     // Extract the response text
     const assistantResponse = responseData.choices[0].message.content;
+    console.log("Received assistant response:", assistantResponse.substring(0, 100) + "...");
     
     // Save the assistant's response with metadata
     const metadata = useCase ? {
@@ -185,12 +235,19 @@ serve(async (req) => {
       }
     } : undefined;
 
-    await supabase.from('task_messages').insert({
+    const { error: insertError } = await supabase.from('task_messages').insert({
       task_id: taskId,
       role: 'assistant',
       content: assistantResponse,
       metadata
     });
+
+    if (insertError) {
+      console.error("Error inserting assistant message:", insertError);
+      throw insertError;
+    }
+
+    console.log("Assistant response saved successfully");
 
     return new Response(
       JSON.stringify({

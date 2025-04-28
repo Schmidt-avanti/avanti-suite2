@@ -68,8 +68,12 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   useEffect(() => {
     if (initialMessages.length === 0) {
       fetchMessages();
+      // Initiate a conversation after a short delay if there are no messages
       setTimeout(() => {
-        sendMessage("", null);
+        if (messages.length === 0) {
+          console.log("Starting initial conversation");
+          sendMessage("", null);
+        }
       }, 500);
     }
   }, []);
@@ -94,6 +98,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       }));
       
       setMessages(transformedMessages);
+      console.log("Fetched messages:", transformedMessages.length);
     } catch (error: any) {
       console.error('Error fetching messages:', error);
       toast.error('Fehler beim Laden der Nachrichten');
@@ -105,7 +110,9 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     setIsLoading(true);
 
     try {
+      // Only save user message if there's actual text content
       if (text && !buttonChoice) {
+        console.log("Saving user message:", text);
         const { error: messageError } = await supabase
           .from('task_messages')
           .insert({
@@ -117,6 +124,13 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
         if (messageError) throw messageError;
       }
+      
+      console.log("Invoking handle-task-chat function with:", {
+        taskId,
+        useCaseId,
+        message: text,
+        buttonChoice
+      });
 
       const { data, error } = await supabase.functions.invoke('handle-task-chat', {
         body: {
@@ -127,9 +141,19 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         }
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
+      }
+      
+      if (data?.error) {
+        console.error("Data contains error:", data.error);
+        throw new Error(data.error);
+      }
 
+      console.log("Edge function response:", data);
+      
+      // After successful edge function call, fetch updated messages
       await fetchMessages();
     } catch (error: any) {
       console.error('Error sending message:', error);
@@ -155,10 +179,12 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
   const renderMessage = (message: Message) => {
     try {
+      // First try parsing the message content as JSON
       let parsedContent;
       try {
         parsedContent = JSON.parse(message.content);
       } catch {
+        // If not JSON, check for button options in text format
         const buttonMatches = message.content.match(/\[(.*?)\]/g);
         return (
           <div className="space-y-3">
@@ -192,6 +218,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         );
       }
 
+      // If content was successfully parsed as JSON
       return (
         <div className="space-y-3">
           <div className="whitespace-pre-wrap">{parsedContent.text}</div>
@@ -213,6 +240,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         </div>
       );
     } catch (e) {
+      console.error("Error rendering message:", e);
       return <div className="whitespace-pre-wrap">{message.content}</div>;
     }
   };
