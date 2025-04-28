@@ -40,6 +40,7 @@ const TaskDetail = () => {
   
   const [isActive, setIsActive] = useState(true);
   const { formattedTime } = useTaskTimer({ taskId: id || '', isActive });
+  const { logTaskStatusChange } = useTaskActivity();
 
   useEffect(() => {
     if (id) fetchTaskDetails();
