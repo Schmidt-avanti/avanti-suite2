@@ -608,6 +608,7 @@ export type Database = {
           customer_id: string
           description: string
           endkunde_email: string | null
+          follow_up_date: string | null
           forwarded_to: string | null
           id: string
           match_confidence: number | null
@@ -627,6 +628,7 @@ export type Database = {
           customer_id: string
           description: string
           endkunde_email?: string | null
+          follow_up_date?: string | null
           forwarded_to?: string | null
           id?: string
           match_confidence?: number | null
@@ -646,6 +648,7 @@ export type Database = {
           customer_id?: string
           description?: string
           endkunde_email?: string | null
+          follow_up_date?: string | null
           forwarded_to?: string | null
           id?: string
           match_confidence?: number | null
