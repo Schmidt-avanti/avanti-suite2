@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,47 +35,51 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
   const [initialMessageSent, setInitialMessageSent] = useState(false);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [userScrolled, setUserScrolled] = useState(false);
 
-  const handleScroll = () => {
-    if (!scrollAreaRef.current) return;
-    
-    const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
-    if (!viewport) return;
-    
-    const { scrollHeight, scrollTop, clientHeight } = viewport;
-    const isScrolledToBottom = scrollHeight - scrollTop - clientHeight < 50;
-    
-    setUserScrolled(true);
-    setShouldAutoScroll(isScrolledToBottom);
-    setShowScrollButton(!isScrolledToBottom);
-  };
+  // Completely new approach to scroll handling
+  const scrollDetectorRef = useRef<HTMLDivElement>(null);
+  const scrollObserverRef = useRef<IntersectionObserver | null>(null);
 
   const scrollToBottom = () => {
-    if (!scrollAreaRef.current) return;
-    const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
-    if (viewport) {
-      viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-      setShouldAutoScroll(true);
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
       setShowScrollButton(false);
-      setUserScrolled(false);
     }
   };
 
+  // Set up intersection observer to detect when user is at bottom
   useEffect(() => {
-    if (shouldAutoScroll && messages.length > 0 && !userScrolled) {
-      const timer = setTimeout(scrollToBottom, 150);
-      return () => clearTimeout(timer);
+    const options = {
+      root: null,
+      rootMargin: '0px',
+      threshold: 0.5
+    };
+    
+    scrollObserverRef.current = new IntersectionObserver((entries) => {
+      const [entry] = entries;
+      setShowScrollButton(!entry.isIntersecting);
+    }, options);
+    
+    const scrollDetector = scrollDetectorRef.current;
+    if (scrollDetector) {
+      scrollObserverRef.current.observe(scrollDetector);
     }
-  }, [messages, shouldAutoScroll, userScrolled]);
+    
+    return () => {
+      if (scrollObserverRef.current && scrollDetector) {
+        scrollObserverRef.current.unobserve(scrollDetector);
+      }
+    };
+  }, []);
 
+  // Auto-scroll on new messages or after loading completes
   useEffect(() => {
     if (!isLoading && messages.length > 0) {
-      setTimeout(scrollToBottom, 150);
+      const timer = setTimeout(scrollToBottom, 100);
+      return () => clearTimeout(timer);
     }
-  }, [isLoading]);
+  }, [isLoading, messages.length]);
 
   useEffect(() => {
     if (initialMessages.length === 0) {
@@ -138,9 +143,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         });
         setSelectedOptions(newSelectedOptions);
         
-        if (!userScrolled) {
-          setTimeout(scrollToBottom, 200);
-        }
+        // Scroll after loading messages
+        setTimeout(scrollToBottom, 200);
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
@@ -204,7 +208,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       setRetryCount(0);
       setPreviousResponseId(data.response_id);
       await fetchMessages();
-      setShouldAutoScroll(true);
     } catch (error: any) {
       console.error('Error sending message:', error);
       
@@ -341,7 +344,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     e.preventDefault();
     if (inputValue.trim() && !isLoading) {
       sendMessage(inputValue);
-      setShouldAutoScroll(true);
     }
   };
 
@@ -355,95 +357,86 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const chatHeight = isMobile ? 'calc(100vh - 8rem)' : '600px';
 
   return (
-    <div 
-      className="w-full h-full flex flex-col bg-white/95 rounded-2xl overflow-visible"
-      style={{ minHeight: chatHeight }}
-    >
-      <div className="relative flex-1 overflow-hidden">
-        <ScrollArea
-          ref={scrollAreaRef}
-          className="h-full pb-20"
-          style={{ height: isMobile ? 'calc(100vh - 16rem)' : '600px' }}
-          onScroll={handleScroll}
-          type="always"
-        >
-          <div className="p-6 space-y-4">
-            {messages.length === 0 && !isLoading && (
-              <div className="flex items-center justify-center h-32 text-gray-400">
-                Starten Sie die Konversation...
-              </div>
-            )}
+    <div className="w-full h-full flex flex-col rounded-2xl">
+      <div className="flex-grow relative overflow-y-auto" style={{ height: chatHeight }}>
+        <div className="p-6 space-y-4 pb-20">
+          {messages.length === 0 && !isLoading && (
+            <div className="flex items-center justify-center h-32 text-gray-400">
+              Starten Sie die Konversation...
+            </div>
+          )}
 
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
-              >
-                <div className={`
-                  ${isMobile ? 'max-w-[90%]' : 'max-w-[80%]'} p-4 rounded
-                  ${message.role === "assistant"
-                    ? "bg-blue-100 text-gray-900"
-                    : "bg-gray-100 text-gray-900"
-                  }
-                  border border-blue-50/40
-                `}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-sm">
-                      {message.role === "assistant" ? "Ava" : "Du"}
-                    </span>
-                  </div>
-                  <div className="text-sm">
-                    {renderMessage(message)}
-                  </div>
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
+            >
+              <div className={`
+                ${isMobile ? 'max-w-[90%]' : 'max-w-[80%]'} p-4 rounded
+                ${message.role === "assistant"
+                  ? "bg-blue-100 text-gray-900"
+                  : "bg-gray-100 text-gray-900"
+                }
+                border border-blue-50/40
+              `}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-sm">
+                    {message.role === "assistant" ? "Ava" : "Du"}
+                  </span>
+                </div>
+                <div className="text-sm">
+                  {renderMessage(message)}
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
 
-            {isLoading && (
-              <div className="flex items-start">
-                <div className="max-w-[80%] p-4 rounded bg-blue-100 shadow-sm border border-blue-50/40">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-sm">Ava</span>
-                  </div>
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
-                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
-                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
-                  </div>
+          {isLoading && (
+            <div className="flex items-start">
+              <div className="max-w-[80%] p-4 rounded bg-blue-100 shadow-sm border border-blue-50/40">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-sm">Ava</span>
+                </div>
+                <div className="flex space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {isRateLimited && !isLoading && (
-              <div className="flex items-start">
-                <div className="max-w-[80%] p-4 rounded bg-yellow-50 shadow-sm border border-yellow-200 text-amber-800">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="font-semibold text-sm">API-Dienst überlastet</span>
-                  </div>
-                  <p className="text-sm mb-3">
-                    Der API-Dienst ist derzeit überlastet. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.
-                  </p>
-                  <Button
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleRetry}
-                    className="text-xs"
-                  >
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                    Erneut versuchen
-                  </Button>
+          {isRateLimited && !isLoading && (
+            <div className="flex items-start">
+              <div className="max-w-[80%] p-4 rounded bg-yellow-50 shadow-sm border border-yellow-200 text-amber-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="font-semibold text-sm">API-Dienst überlastet</span>
                 </div>
+                <p className="text-sm mb-3">
+                  Der API-Dienst ist derzeit überlastet. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.
+                </p>
+                <Button
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleRetry}
+                  className="text-xs"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Erneut versuchen
+                </Button>
               </div>
-            )}
-            
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
+            </div>
+          )}
+          
+          {/* Scroll detector at bottom */}
+          <div ref={scrollDetectorRef} className="h-4" />
+          <div ref={messagesEndRef} />
+        </div>
 
         {showScrollButton && (
           <Button 
-            className="fixed bottom-28 right-8 rounded-full w-10 h-10 shadow-lg bg-blue-500 hover:bg-blue-600 text-white z-50"
+            className="fixed bottom-28 right-8 rounded-full w-10 h-10 shadow-lg bg-blue-500 hover:bg-blue-600 text-white z-10"
             size="icon"
             onClick={scrollToBottom}
           >
@@ -452,7 +445,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         )}
       </div>
 
-      <div className="sticky bottom-0 w-full px-6 pb-6 mt-auto bg-white/95 pt-4 border-t border-gray-100">
+      <div className="sticky bottom-0 w-full px-6 pb-6 pt-4 bg-white shadow-md border-t border-gray-100">
         <form
           onSubmit={handleSubmit}
           className="w-full flex gap-2 items-end border border-gray-200 p-3 bg-white rounded-md shadow-sm"
