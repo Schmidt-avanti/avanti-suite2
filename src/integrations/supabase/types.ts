@@ -566,6 +566,7 @@ export type Database = {
           id: string
           started_at: string
           task_id: string
+          time_spent_task: number | null
           user_id: string
         }
         Insert: {
@@ -575,6 +576,7 @@ export type Database = {
           id?: string
           started_at?: string
           task_id: string
+          time_spent_task?: number | null
           user_id: string
         }
         Update: {
@@ -584,6 +586,7 @@ export type Database = {
           id?: string
           started_at?: string
           task_id?: string
+          time_spent_task?: number | null
           user_id?: string
         }
         Relationships: [

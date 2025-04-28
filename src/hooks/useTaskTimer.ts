@@ -16,54 +16,31 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const taskTimeEntryRef = useRef<string | null>(null);
-  const accumulatedTimeRef = useRef<number>(0); // Total time from all completed sessions
-  const activeSessionsTimeRef = useRef<number>(0); // Time from other users' active sessions
-  const currentSessionTimeRef = useRef<number>(0); // Current user's session time
+  const currentSessionTimeRef = useRef<number>(0);
 
-  // Fetch total time (completed + active) from all users
+  // Fetch total time from the latest task_times entry
   const fetchAccumulatedTime = async () => {
     if (!taskId) return 0;
 
     try {
-      // Get completed sessions from all users
-      const { data: completedSessions, error: completedError } = await supabase
+      // Get the latest task_times entry to get the current accumulated total
+      const { data: latestEntry, error: latestError } = await supabase
         .from('task_times')
-        .select('duration_seconds')
+        .select('time_spent_task')
         .eq('task_id', taskId)
-        .not('duration_seconds', 'is', null);
+        .order('started_at', { ascending: false })
+        .limit(1);
 
-      if (completedError) throw completedError;
+      if (latestError) throw latestError;
 
-      // Get active sessions from all users except current user
-      const { data: activeSessions, error: activeError } = await supabase
-        .from('task_times')
-        .select('started_at, user_id')
-        .eq('task_id', taskId)
-        .is('ended_at', null)
-        .neq('user_id', user?.id); // Exclude current user's session
+      // Get base total from the latest entry
+      const baseTotal = latestEntry?.[0]?.time_spent_task || 0;
 
-      if (activeError) throw activeError;
+      // Add current session time if tracking
+      const totalSeconds = baseTotal + currentSessionTimeRef.current;
 
-      const now = Date.now();
-
-      // Calculate total from completed sessions
-      const completedTotal = completedSessions.reduce((sum, entry) => 
-        sum + (entry.duration_seconds || 0), 0);
-
-      // Calculate total from other users' active sessions
-      const activeTotal = activeSessions.reduce((sum, entry) => {
-        const startTime = new Date(entry.started_at).getTime();
-        const sessionDuration = Math.floor((now - startTime) / 1000);
-        return sum + sessionDuration;
-      }, 0);
-
-      accumulatedTimeRef.current = completedTotal;
-      activeSessionsTimeRef.current = activeTotal;
-
-      const totalSeconds = completedTotal + activeTotal + currentSessionTimeRef.current;
-      console.log(`Total time breakdown:`, {
-        completed: completedTotal,
-        otherActive: activeTotal,
+      console.log('Total time breakdown:', {
+        baseTotal,
         currentSession: currentSessionTimeRef.current,
         total: totalSeconds
       });
@@ -71,7 +48,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       return totalSeconds;
     } catch (err) {
       console.error('Error calculating total time:', err);
-      return accumulatedTimeRef.current + activeSessionsTimeRef.current + currentSessionTimeRef.current;
+      return currentSessionTimeRef.current;
     }
   };
 
@@ -114,10 +91,11 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   const startLocalTimer = () => {
     stopLocalTimer();
     
-    timerRef.current = setInterval(() => {
+    timerRef.current = setInterval(async () => {
       if (startTimeRef.current) {
         currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        setElapsedTime(accumulatedTimeRef.current + activeSessionsTimeRef.current + currentSessionTimeRef.current);
+        const totalTime = await fetchAccumulatedTime();
+        setElapsedTime(totalTime);
       }
     }, 1000);
   };
@@ -148,12 +126,23 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         startTimeRef.current = new Date(existingSessions[0].started_at).getTime();
         currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
       } else {
+        // Get the latest time_spent_task value
+        const { data: latestTimeSpent } = await supabase
+          .from('task_times')
+          .select('time_spent_task')
+          .eq('task_id', taskId)
+          .order('started_at', { ascending: false })
+          .limit(1);
+
+        const lastTotal = latestTimeSpent?.[0]?.time_spent_task || 0;
+
         const { data, error } = await supabase
           .from('task_times')
           .insert({
             task_id: taskId,
             user_id: user.id,
             started_at: new Date().toISOString(),
+            time_spent_task: lastTotal // Set the initial time_spent_task for the new session
           })
           .select('id')
           .single();
@@ -196,8 +185,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
           throw error;
         }
 
-        // Update accumulated time and reset current session
-        accumulatedTimeRef.current += finalSessionTime;
+        // No need to manually update time_spent_task as the trigger will handle it
         currentSessionTimeRef.current = 0;
       }
 
