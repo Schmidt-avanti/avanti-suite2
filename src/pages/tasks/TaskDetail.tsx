@@ -283,7 +283,6 @@ const TaskDetail = () => {
     }
   };
 
-  // Function to handle "Assign to me" functionality
   const handleAssignToMe = async () => {
     if (!user || !id) return;
     
@@ -376,15 +375,12 @@ const TaskDetail = () => {
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
   if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
 
-  // Format the follow-up date if it exists
   const formattedFollowUpDate = task.follow_up_date 
     ? format(new Date(task.follow_up_date), 'PPpp', { locale: de })
     : null;
 
-  // Determine whether current user can assign/forward
   const canAssignOrForward = user?.role === 'admin' || user?.id === task.assigned_to;
   
-  // Check if task is not assigned
   const isUnassigned = !task.assigned_to;
 
   return (
@@ -412,7 +408,6 @@ const TaskDetail = () => {
             </div>
           )}
 
-          {/* "Assign to me" button - only show if not assigned */}
           {isUnassigned && user && (
             <Button 
               onClick={handleAssignToMe}
@@ -424,7 +419,6 @@ const TaskDetail = () => {
             </Button>
           )}
 
-          {/* Assign/Forward Button - only show if not assigned or if admin/current assignee */}
           {canAssignOrForward && (
             <>
               {!task.assigned_to ? (
@@ -449,7 +443,6 @@ const TaskDetail = () => {
             </>
           )}
 
-          {/* Task Action Buttons */}
           {task.status !== 'followup' && task.status !== 'completed' && (
             <Button 
               onClick={() => setFollowUpDialogOpen(true)}
@@ -487,7 +480,6 @@ const TaskDetail = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
-          {/* Task Details Card */}
           <div className="flex flex-col gap-5">
             <Card className="rounded-xl shadow-md border-none bg-white/85">
               <CardContent className="p-6 pb-3 space-y-2 break-words whitespace-pre-wrap">
@@ -546,7 +538,6 @@ const TaskDetail = () => {
             </Card>
           </div>
 
-          {/* Chat panel */}
           <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
             <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 mr-6 p-6">
               <CardHeader className="p-0 pb-2 flex flex-row items-center border-none">
@@ -614,7 +605,6 @@ const TaskDetail = () => {
         </div>
       </div>
 
-      {/* Task Status Dialogs */}
       <FollowUpDialog
         open={followUpDialogOpen}
         onOpenChange={setFollowUpDialogOpen}
