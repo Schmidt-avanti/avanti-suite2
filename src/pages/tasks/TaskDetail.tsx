@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -103,11 +102,6 @@ const TaskDetail = () => {
       setTask(enrichedTask);
       if (taskData.source === 'email') {
         setReplyTo(extractEmail(taskData.endkunde_email || '') || '');
-      }
-      
-      // Auto-assign task to current user if it's not assigned
-      if (user && !taskData.assigned_to && taskData.status !== 'completed') {
-        await handleAssignToMe();
       }
 
     } catch (error: any) {
@@ -289,7 +283,7 @@ const TaskDetail = () => {
     }
   };
 
-  // New function to handle "Assign to me" functionality
+  // Function to handle "Assign to me" functionality
   const handleAssignToMe = async () => {
     if (!user || !id) return;
     

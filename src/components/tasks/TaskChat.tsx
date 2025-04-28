@@ -117,13 +117,16 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
   useEffect(() => {
     if (initialMessages.length === 0) {
-      fetchMessages();
-      
-      if (!initialMessageSent) {
-        setInitialMessageSent(true);
-        setTimeout(() => {
-          sendMessage("", null);
-        }, 500);
+      // Only fetch messages if we have a valid taskId
+      if (taskId && taskId !== "undefined") {
+        fetchMessages();
+        
+        if (!initialMessageSent) {
+          setInitialMessageSent(true);
+          setTimeout(() => {
+            sendMessage("", null);
+          }, 500);
+        }
       }
     } else {
       const newSelectedOptions = new Set<string>();
@@ -141,9 +144,15 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       });
       setSelectedOptions(newSelectedOptions);
     }
-  }, [initialMessages]);
+  }, [initialMessages, taskId]);
 
   const fetchMessages = async () => {
+    // Validate taskId before making the database call
+    if (!taskId || taskId === "undefined") {
+      console.error("Invalid taskId provided to fetchMessages:", taskId);
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('task_messages')
@@ -190,7 +199,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   };
 
   const sendMessage = async (text: string, buttonChoice: string | null = null) => {
-    if (!user) return;
+    if (!user || !taskId || taskId === "undefined") return;
     setIsLoading(true);
     setIsRateLimited(false);
 
@@ -253,7 +262,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       const { data, error } = await supabase.functions.invoke('handle-task-chat', {
         body: {
           taskId,
-          useCaseId,
+          useCaseId: useCaseId || null,
           message: text,
           buttonChoice,
           previousResponseId,

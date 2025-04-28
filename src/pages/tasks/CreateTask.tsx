@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -80,6 +81,7 @@ const CreateTask = () => {
           description: values.description,
           title: values.description.split('\n')[0].slice(0, 100) || 'Neue Aufgabe',
           created_by: user.id,
+          assigned_to: user.id, // Assign to the current user who created the task
           customer_id: values.customerId,
           matched_use_case_id: matchResult?.matched_use_case_id || null,
           match_confidence: matchResult?.confidence || null,
@@ -92,6 +94,17 @@ const CreateTask = () => {
         .single();
 
       if (taskError) throw taskError;
+
+      // Create an activity log entry for the assignment
+      await supabase
+        .from('task_activities')
+        .insert({
+          task_id: task.id,
+          user_id: user.id,
+          action: 'assign',
+          status_from: 'new',
+          status_to: 'new'
+        });
 
       const { error: messageError } = await supabase
         .from('task_messages')
@@ -109,8 +122,8 @@ const CreateTask = () => {
       toast({
         title: "Aufgabe erstellt",
         description: matchResult?.matched_use_case_id
-          ? "Aufgabe mit Use Case erstellt."
-          : "Aufgabe ohne Use Case erstellt – KVP benachrichtigt.",
+          ? "Aufgabe mit Use Case erstellt und Ihnen zugewiesen."
+          : "Aufgabe ohne Use Case erstellt und Ihnen zugewiesen – KVP benachrichtigt.",
       });
 
       navigate(`/tasks/${task.id}`);
