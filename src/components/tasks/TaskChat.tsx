@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,7 +78,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         role: msg.role === "assistant" ? "assistant" : "user",
         content: msg.content,
         created_at: msg.created_at,
-        metadata: msg.metadata
+        // Only include metadata if it exists in the database record
+        ...(msg.metadata && { metadata: msg.metadata })
       }));
       
       setMessages(transformedMessages);
