@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTaskMessages, Message } from '@/hooks/useTaskMessages';
@@ -71,7 +71,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   };
 
   return (
-    <div className="w-full h-full flex flex-col rounded-2xl relative bg-white">
+    <div className="w-full h-full flex flex-col rounded-2xl relative bg-white overflow-hidden">
       {/* Chat messages container */}
       <div 
         ref={chatContainerRef}

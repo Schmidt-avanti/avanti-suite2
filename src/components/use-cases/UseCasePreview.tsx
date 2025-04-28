@@ -18,7 +18,7 @@ const UseCasePreview = ({ aiResponseJson }: UseCasePreviewProps) => {
         {Object.entries(obj).map(([key, value]) => (
           <div key={key}>
             <div className="font-medium text-sm text-gray-500">{key.replace(/_/g, ' ')}</div>
-            <div className="mt-1">{String(value)}</div>
+            <div className="mt-1 break-words">{String(value)}</div>
           </div>
         ))}
       </div>
@@ -36,7 +36,7 @@ const UseCasePreview = ({ aiResponseJson }: UseCasePreviewProps) => {
             {Object.entries(item).map(([key, value]) => (
               <div key={key} className="mb-1">
                 <span className="font-medium text-sm text-gray-500">{key.replace(/_/g, ' ')}: </span>
-                <span>{String(value)}</span>
+                <span className="break-words">{String(value)}</span>
               </div>
             ))}
           </div>
@@ -60,17 +60,17 @@ const UseCasePreview = ({ aiResponseJson }: UseCasePreviewProps) => {
   ];
 
   return (
-    <Card className="rounded-2xl shadow-md">
+    <Card className="rounded-2xl shadow-md overflow-hidden">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg">Use Case Vorschau</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 overflow-x-auto">
         {/* Einfache Textfelder */}
         {simpleFields.map((field) => (
           field.value && (
             <div key={field.label} className="border-b pb-3">
               <div className="font-medium text-sm text-gray-500">{field.label}</div>
-              <div className="mt-1">{field.value}</div>
+              <div className="mt-1 break-words">{field.value}</div>
             </div>
           )
         ))}

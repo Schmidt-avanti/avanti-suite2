@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -107,18 +108,18 @@
   }
   
   p {
-    @apply text-base leading-relaxed;
+    @apply text-base leading-relaxed break-words;
   }
 }
 
 /* Base Layout Classes */
 @layer components {
   .content-container {
-    @apply min-w-[960px] max-w-[1200px] w-full mx-auto px-8;
+    @apply max-w-[1200px] w-full mx-auto px-8 overflow-hidden;
   }
   
   .card-container {
-    @apply bg-white rounded-xl border border-gray-100 shadow-sm p-6;
+    @apply bg-white rounded-xl border border-gray-100 shadow-sm p-6 overflow-hidden;
   }
   
   .section-spacing {
@@ -146,6 +147,16 @@
 
 .dashboard-container {
   @apply content-container py-8;
+}
+
+/* Überflau-Management */
+.text-wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.break-all-words {
+  word-break: break-all;
 }
 
 /* Einheitliches Icon styling */
