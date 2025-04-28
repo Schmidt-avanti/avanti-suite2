@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTaskMessages } from "@/hooks/useTaskMessages";
-import { MessageList } from "./chat/MessageList";
+import { ChatPanel } from "./chat/ChatPanel";
+import { ChatScrollArea } from "./chat/ChatScrollArea";
 import { ChatInput } from "./chat/ChatInput";
 import type { Message } from '@/types';
 
@@ -54,26 +54,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   };
 
   return (
-    <div 
-      className="w-full flex flex-col overflow-hidden rounded-2xl bg-transparent h-[600px]"
-      data-chat-panel
-    >
-      <div className="flex-grow overflow-hidden relative">
-        <ScrollArea
-          className="h-full pb-4 pr-4"
-          style={{ maxHeight: 'calc(600px - 70px)' }}
-        >
-          <div className="p-6">
-            <MessageList
-              messages={messages}
-              selectedOptions={selectedOptions}
-              isLoading={isLoading}
-              onOptionClick={handleOptionClick}
-              messagesEndRef={messagesEndRef}
-            />
-          </div>
-        </ScrollArea>
-      </div>
+    <ChatPanel>
+      <ChatScrollArea 
+        messages={messages}
+        selectedOptions={selectedOptions}
+        isLoading={isLoading}
+        onOptionClick={handleOptionClick}
+        messagesEndRef={messagesEndRef}
+      />
 
       <div className="w-full px-6 pb-6 mt-auto">
         <ChatInput
@@ -84,6 +72,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           onKeyDown={handleKeyDown}
         />
       </div>
-    </div>
+    </ChatPanel>
   );
 }
