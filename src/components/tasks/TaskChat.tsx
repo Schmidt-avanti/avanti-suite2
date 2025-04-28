@@ -1,6 +1,5 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2, AlertTriangle, RefreshCw, ArrowDown } from "lucide-react";
@@ -29,51 +28,45 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
   const [initialMessageSent, setInitialMessageSent] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
-
-  // Completely new approach to scroll handling
-  const scrollDetectorRef = useRef<HTMLDivElement>(null);
-  const scrollObserverRef = useRef<IntersectionObserver | null>(null);
-
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-      setShowScrollButton(false);
-    }
-  };
-
-  // Set up intersection observer to detect when user is at bottom
+  
+  // New scrolling logic with Intersection Observer
   useEffect(() => {
-    const options = {
-      root: null,
-      rootMargin: '0px',
-      threshold: 0.5
-    };
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowScrollButton(!entry.isIntersecting);
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0
+      }
+    );
     
-    scrollObserverRef.current = new IntersectionObserver((entries) => {
-      const [entry] = entries;
-      setShowScrollButton(!entry.isIntersecting);
-    }, options);
-    
-    const scrollDetector = scrollDetectorRef.current;
-    if (scrollDetector) {
-      scrollObserverRef.current.observe(scrollDetector);
+    if (messagesEndRef.current) {
+      observer.observe(messagesEndRef.current);
     }
     
     return () => {
-      if (scrollObserverRef.current && scrollDetector) {
-        scrollObserverRef.current.unobserve(scrollDetector);
+      if (messagesEndRef.current) {
+        observer.unobserve(messagesEndRef.current);
       }
     };
   }, []);
 
-  // Auto-scroll on new messages or after loading completes
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Auto-scroll when new messages arrive or after loading
   useEffect(() => {
     if (!isLoading && messages.length > 0) {
       const timer = setTimeout(scrollToBottom, 100);
@@ -354,98 +347,103 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     }
   };
 
-  const chatHeight = isMobile ? 'calc(100vh - 8rem)' : '600px';
-
   return (
-    <div className="w-full h-full flex flex-col rounded-2xl">
-      <div className="flex-grow relative overflow-y-auto" style={{ height: chatHeight }}>
-        <div className="p-6 space-y-4 pb-20">
-          {messages.length === 0 && !isLoading && (
-            <div className="flex items-center justify-center h-32 text-gray-400">
-              Starten Sie die Konversation...
-            </div>
-          )}
-
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
-            >
-              <div className={`
-                ${isMobile ? 'max-w-[90%]' : 'max-w-[80%]'} p-4 rounded
-                ${message.role === "assistant"
-                  ? "bg-blue-100 text-gray-900"
-                  : "bg-gray-100 text-gray-900"
-                }
-                border border-blue-50/40
-              `}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-sm">
-                    {message.role === "assistant" ? "Ava" : "Du"}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  {renderMessage(message)}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {isLoading && (
-            <div className="flex items-start">
-              <div className="max-w-[80%] p-4 rounded bg-blue-100 shadow-sm border border-blue-50/40">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-sm">Ava</span>
-                </div>
-                <div className="flex space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {isRateLimited && !isLoading && (
-            <div className="flex items-start">
-              <div className="max-w-[80%] p-4 rounded bg-yellow-50 shadow-sm border border-yellow-200 text-amber-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className="font-semibold text-sm">API-Dienst überlastet</span>
-                </div>
-                <p className="text-sm mb-3">
-                  Der API-Dienst ist derzeit überlastet. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.
-                </p>
-                <Button
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleRetry}
-                  className="text-xs"
-                >
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                  Erneut versuchen
-                </Button>
-              </div>
-            </div>
-          )}
-          
-          {/* Scroll detector at bottom */}
-          <div ref={scrollDetectorRef} className="h-4" />
-          <div ref={messagesEndRef} />
-        </div>
-
-        {showScrollButton && (
-          <Button 
-            className="fixed bottom-28 right-8 rounded-full w-10 h-10 shadow-lg bg-blue-500 hover:bg-blue-600 text-white z-10"
-            size="icon"
-            onClick={scrollToBottom}
-          >
-            <ArrowDown className="h-4 w-4" />
-          </Button>
+    <div className="w-full h-full flex flex-col rounded-2xl relative bg-white">
+      {/* Chat messages container */}
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-20"
+        style={{ 
+          maxHeight: isMobile ? 'calc(100vh - 8rem)' : '600px',
+          height: '100%'
+        }}
+      >
+        {messages.length === 0 && !isLoading && (
+          <div className="flex items-center justify-center h-32 text-gray-400">
+            Starten Sie die Konversation...
+          </div>
         )}
+
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex flex-col mb-4 ${message.role === "assistant" ? "items-start" : "items-end"}`}
+          >
+            <div className={`
+              ${isMobile ? 'max-w-[90%]' : 'max-w-[80%]'} p-4 rounded
+              ${message.role === "assistant"
+                ? "bg-blue-100 text-gray-900"
+                : "bg-gray-100 text-gray-900"
+              }
+              border border-blue-50/40
+            `}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-sm">
+                  {message.role === "assistant" ? "Ava" : "Du"}
+                </span>
+              </div>
+              <div className="text-sm">
+                {renderMessage(message)}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {isLoading && (
+          <div className="flex items-start mb-4">
+            <div className="max-w-[80%] p-4 rounded bg-blue-100 shadow-sm border border-blue-50/40">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-sm">Ava</span>
+              </div>
+              <div className="flex space-x-2">
+                <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
+                <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
+                <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isRateLimited && !isLoading && (
+          <div className="flex items-start mb-4">
+            <div className="max-w-[80%] p-4 rounded bg-yellow-50 shadow-sm border border-yellow-200 text-amber-800">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="font-semibold text-sm">API-Dienst überlastet</span>
+              </div>
+              <p className="text-sm mb-3">
+                Der API-Dienst ist derzeit überlastet. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.
+              </p>
+              <Button
+                variant="outline" 
+                size="sm"
+                onClick={handleRetry}
+                className="text-xs"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Erneut versuchen
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {/* Hidden div for intersection observer */}
+        <div ref={messagesEndRef} className="h-1" />
       </div>
 
-      <div className="sticky bottom-0 w-full px-6 pb-6 pt-4 bg-white shadow-md border-t border-gray-100">
+      {/* Scroll to bottom button */}
+      {showScrollButton && (
+        <Button 
+          className="absolute bottom-28 right-8 rounded-full w-10 h-10 shadow-lg bg-blue-500 hover:bg-blue-600 text-white z-10"
+          size="icon"
+          onClick={scrollToBottom}
+        >
+          <ArrowDown className="h-4 w-4" />
+        </Button>
+      )}
+
+      {/* Message input area */}
+      <div className="sticky bottom-0 w-full px-6 pb-6 pt-4 bg-white shadow-md border-t border-gray-100 z-20">
         <form
           onSubmit={handleSubmit}
           className="w-full flex gap-2 items-end border border-gray-200 p-3 bg-white rounded-md shadow-sm"

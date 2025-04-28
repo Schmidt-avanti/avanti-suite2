@@ -1,9 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader2, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -29,7 +29,8 @@ export function FloatingChatPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [useGPTFallback, setUseGPTFallback] = useState(false);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
 
@@ -40,13 +41,10 @@ export function FloatingChatPanel({
   }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      const scrollArea = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollArea) {
-        scrollArea.scrollTop = scrollArea.scrollHeight;
-      }
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [messages, isLoading]);
 
   const handleSend = async (retryQuery?: string) => {
     const queryText = retryQuery || input.trim();
@@ -147,7 +145,10 @@ export function FloatingChatPanel({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 px-5 pt-6 pb-2 bg-white" ref={scrollRef}>
+      <div 
+        className="flex-1 overflow-y-auto px-5 pt-6 pb-2 bg-white"
+        ref={chatContainerRef}
+      >
         <div className="space-y-4">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center text-center p-6">
@@ -197,8 +198,9 @@ export function FloatingChatPanel({
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="p-4 bg-white border-t border-gray-100">
         <div className="flex items-center space-x-2 mb-3">
