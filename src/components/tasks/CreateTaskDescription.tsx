@@ -43,7 +43,10 @@ export function CreateTaskDescription({
         className="min-h-[110px] max-h-[320px] w-full pl-4 pr-14 py-4 rounded-lg bg-muted/40 border border-muted shadow-inner focus-visible:ring-2 focus-visible:ring-primary/60 focus:border-primary transition-all placeholder:text-[16px] placeholder:text-muted-foreground font-normal text-base resize-y"
         disabled={isMatching}
         onKeyDown={(e) => {
-          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleSubmit();
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit();
+          }
         }}
       />
       {/* Senden-Button als Icon unten rechts */}

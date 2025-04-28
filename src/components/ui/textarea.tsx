@@ -14,6 +14,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         <textarea
           className={cn(
             "flex w-full border border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 transition-all resize-none",
+            // Add padding to prevent text being cut off by icon
+            iconRight ? "pr-12" : "pr-4",
             className
           )}
           ref={ref}

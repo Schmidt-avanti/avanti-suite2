@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -15,12 +16,22 @@ import {
   Check,
   Send,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  Calendar,
+  XCircle,
+  UserPlus,
+  Forward
 } from "lucide-react";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 import { useTaskTimer } from '@/hooks/useTaskTimer';
 import { useTaskActivity } from '@/hooks/useTaskActivity';
 import type { TaskStatus } from '@/types';
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
+import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
+import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
+import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 const extractEmail = (input: string): string | null => {
   const match = input?.match(/<(.+?)>/);
@@ -37,6 +48,13 @@ const TaskDetail = () => {
   const [sendError, setSendError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Task status dialogs
+  const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
+  const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
+  const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
+  const [forwardTaskDialogOpen, setForwardTaskDialogOpen] = useState(false);
   
   const [isActive, setIsActive] = useState(true);
   const { formattedTime } = useTaskTimer({ taskId: id || '', isActive });
@@ -156,13 +174,157 @@ const TaskDetail = () => {
     navigate('/tasks');
   };
 
+  const handleStatusChange = async (newStatus: TaskStatus) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      await logTaskStatusChange(id!, task.status as TaskStatus, newStatus);
+      
+      setTask({ ...task, status: newStatus });
+      toast({
+        title: "Status geändert",
+        description: `Die Aufgabe wurde als "${newStatus === 'completed' ? 'Abgeschlossen' : 
+          newStatus === 'in_progress' ? 'In Bearbeitung' : 
+          newStatus === 'followup' ? 'Wiedervorlage' : 'Neu'}" markiert.`,
+      });
+    } catch (error) {
+      console.error("Error changing status:", error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Status konnte nicht geändert werden."
+      });
+    }
+  };
+
+  const handleFollowUp = async (followUpDate: Date) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'followup', 
+          follow_up_date: followUpDate.toISOString()
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      await logTaskStatusChange(id!, task.status as TaskStatus, 'followup');
+      
+      setTask({
+        ...task,
+        status: 'followup',
+        follow_up_date: followUpDate.toISOString()
+      });
+      
+      toast({
+        title: "Wiedervorlage erstellt",
+        description: `Die Aufgabe wurde für ${format(followUpDate, 'PPpp', { locale: de })} wiedervorgelegt.`,
+      });
+    } catch (error) {
+      console.error("Error setting follow-up:", error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Wiedervorlage konnte nicht erstellt werden."
+      });
+    }
+  };
+
+  const handleCloseWithoutAva = async (comment: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'completed',
+          closing_comment: comment
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      await logTaskStatusChange(id!, task.status as TaskStatus, 'completed');
+      
+      setTask({
+        ...task,
+        status: 'completed',
+        closing_comment: comment
+      });
+      
+      toast({
+        title: "Aufgabe abgeschlossen",
+        description: "Die Aufgabe wurde erfolgreich abgeschlossen und dokumentiert.",
+      });
+    } catch (error) {
+      console.error("Error closing task:", error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Aufgabe konnte nicht abgeschlossen werden."
+      });
+    }
+  };
+
+  const handleAssignTask = async (userId: string, note: string = "") => {
+    try {
+      // If forwarding, add a note in the task (or you could create a separate system for forwarding notes)
+      let updateData: any = { assigned_to: userId };
+      
+      const { error } = await supabase
+        .from('tasks')
+        .update(updateData)
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Create a notification for the assignee
+      if (userId) {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: userId,
+            message: `Aufgabe "${task.title}" wurde Ihnen ${task.assigned_to ? 'weitergeleitet' : 'zugewiesen'}.${note ? ' Notiz: ' + note : ''}`,
+            task_id: id
+          });
+      }
+      
+      // Refresh task data
+      fetchTaskDetails();
+      
+      toast({
+        title: task.assigned_to ? "Aufgabe weitergeleitet" : "Aufgabe zugewiesen",
+        description: "Die Aufgabe wurde erfolgreich zugewiesen.",
+      });
+    } catch (error) {
+      console.error("Error assigning task:", error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Aufgabe konnte nicht zugewiesen werden."
+      });
+    }
+  };
+
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
   if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
+
+  // Format the follow-up date if it exists
+  const formattedFollowUpDate = task.follow_up_date 
+    ? format(new Date(task.follow_up_date), 'PPpp', { locale: de })
+    : null;
+
+  // Determine whether current user can assign/forward
+  const canAssignOrForward = user?.role === 'admin' || user?.id === task.assigned_to;
 
   return (
     <div className="max-w-screen-xl mx-auto w-full px-3 md:px-8 py-5">
       <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-0">
-        <div className="flex items-center px-6 pt-6 pb-3 border-b border-muted bg-gradient-to-r from-avanti-100 to-avanti-200 rounded-t-2xl">
+        <div className="flex flex-wrap items-center px-6 pt-6 pb-3 border-b bg-gradient-to-r from-avanti-100 to-avanti-200 rounded-t-2xl gap-2">
           <Button 
             variant="ghost" 
             onClick={handleBack}
@@ -171,26 +333,70 @@ const TaskDetail = () => {
             Zurück zur Übersicht
           </Button>
           <div className="flex-1" />
+          
           <div className="text-sm font-medium bg-white/20 rounded-full px-4 py-1 flex items-center mr-4">
             <Clock className="h-4 w-4 mr-2" />
             {formattedTime}
           </div>
+          
+          {task.status === 'followup' && formattedFollowUpDate && (
+            <div className="text-sm font-medium bg-purple-100 text-purple-800 rounded-full px-4 py-1 flex items-center mr-4">
+              <Calendar className="h-4 w-4 mr-2" />
+              {formattedFollowUpDate}
+            </div>
+          )}
+
+          {/* Assign Button - only show if not assigned or if admin */}
+          {canAssignOrForward && (
+            <>
+              {!task.assigned_to ? (
+                <Button 
+                  onClick={() => setAssignTaskDialogOpen(true)}
+                  variant="secondary"
+                  className="mr-2 bg-white/80 hover:bg-white"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Zuweisen
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => setForwardTaskDialogOpen(true)}
+                  variant="secondary"
+                  className="mr-2 bg-white/80 hover:bg-white"
+                >
+                  <Forward className="h-4 w-4 mr-2" />
+                  Weiterleiten
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* Task Action Buttons */}
+          {task.status !== 'followup' && task.status !== 'completed' && (
+            <Button 
+              onClick={() => setFollowUpDialogOpen(true)}
+              variant="secondary"
+              className="mr-2 bg-purple-100 text-purple-700 hover:bg-purple-200"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Wiedervorlage
+            </Button>
+          )}
+
           {task.status !== 'completed' && (
             <Button 
-              onClick={async () => {
-                const { error } = await supabase
-                  .from('tasks')
-                  .update({ status: 'completed' })
-                  .eq('id', id);
-                if (!error) {
-                  await logTaskStatusChange(id, task.status as TaskStatus, 'completed' as TaskStatus);
-                  setTask({ ...task, status: 'completed' });
-                  toast({
-                    title: "Aufgabe abgeschlossen",
-                    description: "Die Aufgabe wurde erfolgreich abgeschlossen.",
-                  });
-                }
-              }}
+              onClick={() => setCloseTaskDialogOpen(true)}
+              variant="secondary"
+              className="mr-2 bg-slate-100 text-slate-700 hover:bg-slate-200"
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Beenden ohne Ava
+            </Button>
+          )}
+          
+          {task.status !== 'completed' && (
+            <Button 
+              onClick={() => handleStatusChange('completed')}
               variant="secondary"
               className="mr-4 bg-green-100 text-green-700 hover:bg-green-200"
             >
@@ -198,6 +404,7 @@ const TaskDetail = () => {
               Aufgabe abschließen
             </Button>
           )}
+          
           <TaskStatusBadge status={task.status || 'new'} />
         </div>
 
@@ -243,7 +450,19 @@ const TaskDetail = () => {
                   <UserCheck className="h-4 w-4" />
                   <span className="font-medium">Zugewiesen an</span>
                 </div>
-                <div className="ml-6">{task.assignee?.["Full Name"] || 'Nicht zugewiesen'}</div>
+                <div className="ml-6">
+                  {task.assignee?.["Full Name"] || <span className="text-gray-400">Nicht zugewiesen</span>}
+                </div>
+                
+                {task.closing_comment && (
+                  <>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+                      <XCircle className="h-4 w-4" />
+                      <span className="font-medium">Abschlussdokumentation</span>
+                    </div>
+                    <div className="ml-6 text-gray-700">{task.closing_comment}</div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -314,6 +533,34 @@ const TaskDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Task Status Dialogs */}
+      <FollowUpDialog
+        open={followUpDialogOpen}
+        onOpenChange={setFollowUpDialogOpen}
+        onSave={handleFollowUp}
+      />
+
+      <CloseTaskDialog
+        open={closeTaskDialogOpen}
+        onOpenChange={setCloseTaskDialogOpen}
+        onClose={handleCloseWithoutAva}
+      />
+
+      <AssignTaskDialog
+        open={assignTaskDialogOpen}
+        onOpenChange={setAssignTaskDialogOpen}
+        onAssign={handleAssignTask}
+        currentAssignee={task.assigned_to}
+      />
+
+      <AssignTaskDialog
+        open={forwardTaskDialogOpen}
+        onOpenChange={setForwardTaskDialogOpen}
+        onAssign={handleAssignTask}
+        currentAssignee={task.assigned_to}
+        isForwarding={true}
+      />
     </div>
   );
 };

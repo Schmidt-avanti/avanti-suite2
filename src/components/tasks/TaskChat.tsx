@@ -151,32 +151,59 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     setIsRateLimited(false);
 
     try {
+      // If there's a button choice, add it to selected options and create a user message
       if (buttonChoice) {
         setSelectedOptions(prev => new Set([...prev, buttonChoice]));
-      }
-
-      if ((text && !buttonChoice) || (!text && !buttonChoice)) {
-        const { error: messageError } = await supabase
-          .from('task_messages')
-          .insert({
-            task_id: taskId,
-            content: text || "Start der Konversation",
-            role: 'user',
-            created_by: user.id
-          });
-
-        if (messageError) throw messageError;
-      } else if (buttonChoice) {
-        const { error: buttonMessageError } = await supabase
+        
+        // Always insert a user message for button choices
+        const { data: userMessageData, error: userMessageError } = await supabase
           .from('task_messages')
           .insert({
             task_id: taskId,
             content: buttonChoice,
             role: 'user',
             created_by: user.id
+          })
+          .select();
+        
+        if (userMessageError) throw userMessageError;
+        
+        // Add the button choice to local messages immediately for UI update
+        if (userMessageData && userMessageData.length > 0) {
+          const newMessage = {
+            id: userMessageData[0].id,
+            role: 'user' as const,
+            content: buttonChoice,
+            created_at: userMessageData[0].created_at
+          };
+          setMessages(prev => [...prev, newMessage]);
+        }
+      } 
+      // Add user text message if provided
+      else if (text) {
+        const { error: messageError } = await supabase
+          .from('task_messages')
+          .insert({
+            task_id: taskId,
+            content: text,
+            role: 'user',
+            created_by: user.id
           });
 
-        if (buttonMessageError) throw buttonMessageError;
+        if (messageError) throw messageError;
+      } 
+      // For initial message (empty text, no button choice)
+      else if (!text && !buttonChoice) {
+        const { error: messageError } = await supabase
+          .from('task_messages')
+          .insert({
+            task_id: taskId,
+            content: "Start der Konversation",
+            role: 'user',
+            created_by: user.id
+          });
+
+        if (messageError) throw messageError;
       }
 
       const { data, error } = await supabase.functions.invoke('handle-task-chat', {
@@ -453,7 +480,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ihre Nachricht..."
-            className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base"
+            className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base pr-12"
             style={{ fontSize: '1rem', padding: 0 }}
             disabled={isLoading}
           />

@@ -225,19 +225,21 @@ export function FloatingChatPanel({
             className="pr-16 resize-none min-h-[50px] max-h-[120px] text-sm border-gray-200 shadow-sm focus-visible:ring-blue-500"
             rows={1}
             disabled={isLoading}
+            iconRight={
+              <Button
+                onClick={() => handleSend()}
+                disabled={!input.trim() || isLoading}
+                className="absolute bottom-1.5 right-1.5 h-10 w-10 rounded-full bg-blue-500 hover:bg-blue-600 p-0 flex items-center justify-center shadow-md"
+                aria-label="Senden"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                ) : (
+                  <Send className="h-5 w-5 text-white" />
+                )}
+              </Button>
+            }
           />
-          <Button
-            onClick={() => handleSend()}
-            disabled={!input.trim() || isLoading}
-            className="absolute bottom-1.5 right-1.5 h-10 w-10 rounded-full bg-blue-500 hover:bg-blue-600 p-0 flex items-center justify-center shadow-md"
-            aria-label="Senden"
-          >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin text-white" />
-            ) : (
-              <Send className="h-5 w-5 text-white" />
-            )}
-          </Button>
         </div>
       </div>
     </Card>

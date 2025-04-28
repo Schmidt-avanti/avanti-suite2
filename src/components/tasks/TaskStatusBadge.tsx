@@ -10,7 +10,7 @@ export const TaskStatusBadge = ({ status }: TaskStatusBadgeProps) => {
     switch (status) {
       case 'new': return 'Neu';
       case 'in_progress': return 'In Bearbeitung';
-      case 'followup': return 'Auf Wiedervorlage';
+      case 'followup': return 'Wiedervorlage';
       case 'completed': return 'Abgeschlossen';
       default: return status;
     }
