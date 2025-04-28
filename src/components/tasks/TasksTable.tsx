@@ -90,8 +90,8 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading = false
         <TableHeader>
           <TableRow>
             <TableHead>Titel</TableHead>
-            <TableHead>Beschreibung</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Quelle</TableHead>
             <TableHead>Kunde</TableHead>
             <TableHead>Erstellt am</TableHead>
           </TableRow>
@@ -104,9 +104,9 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading = false
               className="cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <TableCell className="font-medium">{task.title}</TableCell>
-              <TableCell className="max-w-xs truncate">{task.description}</TableCell>
+              <TableCell className="max-w-xs truncate">{task.status}</TableCell>
               <TableCell>
-                <TaskStatusBadge status={task.status} />
+                <TaskStatusBadge status={task.source} />
               </TableCell>
               <TableCell>{task.customer?.name || '-'}</TableCell>
               <TableCell>
