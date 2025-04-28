@@ -108,21 +108,35 @@ serve(async (req) => {
   }
 
   try {
-    const { taskId, useCaseId, message, buttonChoice, previousResponseId, selectedOptions = [] } = await req.json();
+    const { 
+      taskId, 
+      useCaseId, 
+      message, 
+      buttonChoice, 
+      previousResponseId, 
+      selectedOptions = [],
+      isAutoInitialization = false 
+    } = await req.json();
+
+    console.log("Request received:", { 
+      taskId, 
+      useCaseId, 
+      message: message ? "provided" : "empty", 
+      buttonChoice,
+      isAutoInitialization 
+    });
 
     // Prüfen, ob eine Task-ID vorhanden ist
     if (!taskId) {
       throw new Error('Task ID is required');
     }
-    
-    // Feststellen, ob es sich um eine automatische Initiierung handelt
-    const isAutoInitialization = (!message && !buttonChoice);
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Prüfen, ob es bereits Nachrichten gibt
     const { data: existingMessages, error: messagesError } = await supabase
       .from('task_messages')
       .select('*')
@@ -131,17 +145,7 @@ serve(async (req) => {
     
     if (messagesError) throw messagesError;
 
-    // Wenn es bereits Nachrichten gibt und es sich um eine automatische Initiierung handelt, dann nichts tun
-    if (existingMessages && existingMessages.length > 0 && isAutoInitialization) {
-      console.log("Task already has messages, skipping auto-initialization");
-      return new Response(
-        JSON.stringify({
-          message: "Task already has messages, no auto-initialization needed"
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
+    // Task-Daten abrufen
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select('*, messages:task_messages(*)')
@@ -151,6 +155,19 @@ serve(async (req) => {
     if (taskError) throw taskError;
     if (!task) throw new Error('Task not found');
 
+    // Wenn es bereits Nachrichten gibt und es sich um eine automatische Initiierung handelt, dann nichts tun
+    const hasExistingMessages = existingMessages && existingMessages.length > 0;
+    if (hasExistingMessages && isAutoInitialization) {
+      console.log("Task already has messages, skipping auto-initialization");
+      return new Response(
+        JSON.stringify({
+          message: "Task already has messages, no auto-initialization needed"
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use Case abrufen, wenn vorhanden
     let useCase = null;
     if (useCaseId) {
       const { data: fetchedUseCase, error: useCaseError } = await supabase
@@ -163,6 +180,7 @@ serve(async (req) => {
       useCase = fetchedUseCase;
     }
 
+    // Nachrichten abrufen
     const { data: messages, error: messagesError2 } = await supabase
       .from('task_messages')
       .select('*')
@@ -186,8 +204,10 @@ serve(async (req) => {
       
       // Bei automatischer Initiierung oder wenn noch keine Optionen ausgewählt wurden
       if (isAutoInitialization || selectedOptions.length === 0) {
-        systemPrompt += `\n\nBegrüße den Nutzer und stelle die erste Frage. Bei "Schlüssel verloren" biete folgende Optionen an:
-        ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"]`;
+        systemPrompt += `\n\nBegrüße den Nutzer freundlich mit Namen wenn bekannt, stelle dich kurz vor und beginne sofort mit der ersten Frage zum Use Case. Bei "Schlüssel verloren" biete folgende Optionen an:
+        ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"]
+        
+        Bei "Bestellung stornieren" frage zuerst nach der Bestellnummer oder einem anderen eindeutigen Identifikator.`;
       }
       
       if (selectedOptions.includes("Hausschlüssel")) {
@@ -216,11 +236,11 @@ serve(async (req) => {
       });
     }
 
-    // Bei automatischer Initiierung eine leere oder generische Benutzernachricht erstellen
-    if (isAutoInitialization) {
+    // Bei automatischer Initiierung eine Anweisung für GPT erstellen
+    if (isAutoInitialization || (!message && !buttonChoice && messages.length === 0)) {
       conversationMessages.push({
         role: "system",
-        content: "Der Chat wurde automatisch initiiert. Bitte begrüße den Nutzer und stelle die erste Frage basierend auf dem Use Case."
+        content: `Der Chat wurde automatisch initiiert. Begrüße den Nutzer freundlich und stelle die erste Frage basierend auf dem Use Case "${useCase?.title || 'Unbekannt'}". Die Aufgabe betrifft: "${task.description || 'Keine Beschreibung'}". Falls der Kunde einen Namen hat, nutze diesen in der Begrüßung.`
       });
     }
     
@@ -238,7 +258,7 @@ serve(async (req) => {
     }
 
     // Call OpenAI using the responses API with retry mechanism
-    console.log("Calling OpenAI with messages:", JSON.stringify(conversationMessages));
+    console.log("Calling OpenAI with message count:", conversationMessages.length);
     
     const responseData = await fetchWithRetry('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -259,7 +279,7 @@ serve(async (req) => {
     // Format the assistant's response to ensure it contains options if available
     const formattedResponse = formatAssistantResponse(assistantResponse);
     
-    console.log("Formatted assistant response:", formattedResponse);
+    console.log("Assistant response generated successfully");
     
     // Insert the assistant's response
     const { data: insertedMessage, error: insertError } = await supabase

@@ -18,11 +18,24 @@ export const useTaskChatMessages = (
   const { user } = useAuth();
 
   const sendMessage = async (text: string, buttonChoice: string | null = null, selectedOptions: Set<string>) => {
-    if (!user || !taskId || taskId === "undefined") return;
+    // Validate taskId
+    if (!user || !taskId || taskId === "undefined") {
+      console.error("Invalid taskId or user", { taskId, userId: user?.id });
+      return;
+    }
     
-    // Wenn kein Text und kein ButtonChoice vorhanden ist, sende nichts
-    if (!text && !buttonChoice) {
-      console.log("No message content provided, skipping message send");
+    // Bei automatischer Initialisierung mit leerem Text und ohne ButtonChoice 
+    // oder bei normaler Nachrichteneingabe fortfahren
+    const isAutoInitialization = text === "" && !buttonChoice && useCaseId;
+    
+    if (!text && !buttonChoice && !isAutoInitialization) {
+      console.log("No message content provided and not auto-initialization, skipping message send");
+      return;
+    }
+    
+    // Bereits laufende Anfrage verhindern
+    if (isLoading) {
+      console.log("Already sending a message, skipping");
       return;
     }
     
@@ -30,33 +43,44 @@ export const useTaskChatMessages = (
     setIsRateLimited(false);
 
     try {
-      // If there's a button choice, create a user message for it
-      if (buttonChoice) {
-        const { data: userMessageData, error: userMessageError } = await supabase
-          .from('task_messages')
-          .insert({
-            task_id: taskId,
-            content: buttonChoice,
-            role: 'user',
-            created_by: user.id
-          })
-          .select();
-        
-        if (userMessageError) throw userMessageError;
-      } 
-      // Add user text message if provided
-      else if (text) {
-        const { error: messageError } = await supabase
-          .from('task_messages')
-          .insert({
-            task_id: taskId,
-            content: text,
-            role: 'user',
-            created_by: user.id
-          });
+      // Only create user message if it's not an auto-initialization
+      if (!isAutoInitialization) {
+        // If there's a button choice, create a user message for it
+        if (buttonChoice) {
+          const { data: userMessageData, error: userMessageError } = await supabase
+            .from('task_messages')
+            .insert({
+              task_id: taskId,
+              content: buttonChoice,
+              role: 'user',
+              created_by: user.id
+            })
+            .select();
+          
+          if (userMessageError) throw userMessageError;
+        } 
+        // Add user text message if provided
+        else if (text) {
+          const { error: messageError } = await supabase
+            .from('task_messages')
+            .insert({
+              task_id: taskId,
+              content: text,
+              role: 'user',
+              created_by: user.id
+            });
 
-        if (messageError) throw messageError;
+          if (messageError) throw messageError;
+        }
       }
+
+      console.log("Calling handle-task-chat function with:", {
+        taskId,
+        useCaseId,
+        message: text,
+        buttonChoice,
+        isAutoInitialization
+      });
 
       const { data, error } = await supabase.functions.invoke('handle-task-chat', {
         body: {
@@ -65,11 +89,13 @@ export const useTaskChatMessages = (
           message: text,
           buttonChoice,
           previousResponseId,
-          selectedOptions: Array.from(selectedOptions)
+          selectedOptions: Array.from(selectedOptions),
+          isAutoInitialization: isAutoInitialization
         }
       });
 
       if (error) {
+        console.error("Error from handle-task-chat function:", error);
         if (error.message?.includes('rate limit')) {
           setIsRateLimited(true);
           throw new Error('Der API-Dienst ist derzeit überlastet. Bitte versuchen Sie es später erneut.');

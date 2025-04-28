@@ -9,6 +9,7 @@ import { TaskChatMessage } from './TaskChatMessage';
 import { TaskChatInput } from './TaskChatInput';
 import { TaskChatStatus } from './TaskChatStatus';
 import { TaskChatScrollButton } from './TaskChatScrollButton';
+import { toast } from 'sonner';
 
 interface TaskChatProps {
   taskId: string;
@@ -56,16 +57,30 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
   // Automatische Nachricht senden, wenn ein Use-Case zugeordnet ist und noch keine Nachrichten vorhanden sind
   useEffect(() => {
-    // Nur eine automatische Nachricht senden, wenn:
-    // 1. Eine Use-Case-ID vorhanden ist
-    // 2. Keine Nachrichten vorhanden sind
-    // 3. Die initiale Nachricht noch nicht gesendet wurde
-    // 4. Nicht bereits lädt
-    if (useCaseId && messages.length === 0 && !initialMessageSent && !isLoading) {
-      console.log("Auto-starting chat for task with use case:", useCaseId);
-      sendMessage("", null, new Set<string>());
-      setInitialMessageSent(true);
-    }
+    const initializeChat = async () => {
+      // Nur eine automatische Nachricht senden, wenn:
+      // 1. Eine Use-Case-ID vorhanden ist
+      // 2. Keine Nachrichten vorhanden sind
+      // 3. Die initiale Nachricht noch nicht gesendet wurde
+      // 4. Nicht bereits lädt
+      if (useCaseId && messages.length === 0 && !initialMessageSent && !isLoading) {
+        console.log("Auto-starting chat for task with use case:", useCaseId);
+        try {
+          await sendMessage("", null, new Set<string>());
+          setInitialMessageSent(true);
+        } catch (error) {
+          console.error("Failed to auto-start chat:", error);
+          toast.error("Chat konnte nicht automatisch gestartet werden. Bitte versuchen Sie es später erneut.");
+        }
+      }
+    };
+
+    // Warten, bis die Komponente vollständig geladen ist
+    const timer = setTimeout(() => {
+      initializeChat();
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [useCaseId, messages.length, sendMessage, initialMessageSent, isLoading, setInitialMessageSent]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -96,7 +111,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       >
         {messages.length === 0 && !isLoading && (
           <div className="flex items-center justify-center h-32 text-gray-400">
-            Starten Sie die Konversation...
+            {useCaseId ? "Starte Chat..." : "Starten Sie die Konversation..."}
           </div>
         )}
 
