@@ -40,12 +40,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   
   // New scrolling logic with Intersection Observer
   useEffect(() => {
+    if (!chatContainerRef.current) return;
+    
     const observer = new IntersectionObserver(
       ([entry]) => {
         setShowScrollButton(!entry.isIntersecting);
       },
       {
-        root: null,
+        root: chatContainerRef.current,
         rootMargin: '0px',
         threshold: 0
       }
@@ -60,7 +62,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         observer.unobserve(messagesEndRef.current);
       }
     };
-  }, []);
+  }, [messages.length]);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -78,7 +80,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   }, [isLoading, messages.length, autoScroll]);
 
   // Handle manual scroll to disable auto-scrolling
-  const handleScroll = () => {
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (chatContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
       // If we're not near the bottom, disable auto-scroll
@@ -486,7 +488,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         </Button>
       )}
 
-      {/* Message input area */}
+      {/* Message input area - Added more padding */}
       <div className="sticky bottom-0 w-full px-6 pb-6 pt-4 bg-white shadow-md border-t border-gray-100 z-20">
         <form
           onSubmit={handleSubmit}
@@ -497,8 +499,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ihre Nachricht..."
-            className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base px-2"
-            style={{ fontSize: '1rem', padding: '8px' }}
+            className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base px-3 py-2"
+            style={{ fontSize: '1rem', padding: '12px' }}
             disabled={isLoading}
           />
           <Button
