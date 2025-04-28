@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +17,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   const startTimeRef = useRef<number | null>(null);
   const taskTimeEntryRef = useRef<string | null>(null);
   const accumulatedTimeRef = useRef<number>(0);
+  const currentSessionTimeRef = useRef<number>(0); // Add the missing ref
 
   // Fetch accumulated time from all users and calculate active sessions
   const fetchAccumulatedTime = async () => {
