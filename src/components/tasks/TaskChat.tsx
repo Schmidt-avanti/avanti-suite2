@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTaskMessages, Message } from '@/hooks/useTaskMessages';
@@ -54,7 +54,19 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     handleRetry
   } = useTaskChatMessages(taskId, useCaseId, fetchMessages);
 
-  // Entferne den useEffect-Hook, der die automatische Nachricht sendet
+  // Automatische Nachricht senden, wenn ein Use-Case zugeordnet ist und noch keine Nachrichten vorhanden sind
+  useEffect(() => {
+    // Nur eine automatische Nachricht senden, wenn:
+    // 1. Eine Use-Case-ID vorhanden ist
+    // 2. Keine Nachrichten vorhanden sind
+    // 3. Die initiale Nachricht noch nicht gesendet wurde
+    // 4. Nicht bereits lädt
+    if (useCaseId && messages.length === 0 && !initialMessageSent && !isLoading) {
+      console.log("Auto-starting chat for task with use case:", useCaseId);
+      sendMessage("", null, new Set<string>());
+      setInitialMessageSent(true);
+    }
+  }, [useCaseId, messages.length, sendMessage, initialMessageSent, isLoading, setInitialMessageSent]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

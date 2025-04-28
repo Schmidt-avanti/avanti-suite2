@@ -110,20 +110,13 @@ serve(async (req) => {
   try {
     const { taskId, useCaseId, message, buttonChoice, previousResponseId, selectedOptions = [] } = await req.json();
 
-    // Prüfen, ob tatsächlich eine Nachricht oder ein Button-Choice vorhanden ist
+    // Prüfen, ob eine Task-ID vorhanden ist
     if (!taskId) {
       throw new Error('Task ID is required');
     }
     
-    if (!message && !buttonChoice) {
-      console.log("No message or button choice provided, skipping automatic message creation");
-      return new Response(
-        JSON.stringify({
-          message: "No message content provided, not sending any automatic messages"
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Feststellen, ob es sich um eine automatische Initiierung handelt
+    const isAutoInitialization = (!message && !buttonChoice);
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -137,6 +130,17 @@ serve(async (req) => {
       .order('created_at', { ascending: true });
     
     if (messagesError) throw messagesError;
+
+    // Wenn es bereits Nachrichten gibt und es sich um eine automatische Initiierung handelt, dann nichts tun
+    if (existingMessages && existingMessages.length > 0 && isAutoInitialization) {
+      console.log("Task already has messages, skipping auto-initialization");
+      return new Response(
+        JSON.stringify({
+          message: "Task already has messages, no auto-initialization needed"
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { data: task, error: taskError } = await supabase
       .from('tasks')
@@ -180,9 +184,9 @@ serve(async (req) => {
       Schritte: ${useCase.steps || 'Keine spezifischen Schritte definiert'}
       ${useCase.process_map ? `\nFolge diesen Prozessschritten:\n${JSON.stringify(useCase.process_map, null, 2)}` : ''}`;
       
-      // Only show the option buttons if none have been selected yet
-      if (selectedOptions.length === 0) {
-        systemPrompt += `\n\nBei der ersten Frage des Nutzers biete folgende Optionen an:
+      // Bei automatischer Initiierung oder wenn noch keine Optionen ausgewählt wurden
+      if (isAutoInitialization || selectedOptions.length === 0) {
+        systemPrompt += `\n\nBegrüße den Nutzer und stelle die erste Frage. Bei "Schlüssel verloren" biete folgende Optionen an:
         ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"]`;
       }
       
@@ -204,6 +208,7 @@ serve(async (req) => {
       content: systemPrompt
     });
 
+    // Füge vorhandene Nachrichten hinzu
     for (const msg of messages) {
       conversationMessages.push({
         role: msg.role,
@@ -211,14 +216,21 @@ serve(async (req) => {
       });
     }
 
+    // Bei automatischer Initiierung eine leere oder generische Benutzernachricht erstellen
+    if (isAutoInitialization) {
+      conversationMessages.push({
+        role: "system",
+        content: "Der Chat wurde automatisch initiiert. Bitte begrüße den Nutzer und stelle die erste Frage basierend auf dem Use Case."
+      });
+    }
+    
+    // Füge die Button-Auswahl oder die Nachricht hinzu, wenn vorhanden
     if (buttonChoice) {
       conversationMessages.push({
         role: "user",
         content: buttonChoice
       });
-    }
-
-    if (message) {
+    } else if (message) {
       conversationMessages.push({
         role: "user",
         content: message
@@ -226,6 +238,8 @@ serve(async (req) => {
     }
 
     // Call OpenAI using the responses API with retry mechanism
+    console.log("Calling OpenAI with messages:", JSON.stringify(conversationMessages));
+    
     const responseData = await fetchWithRetry('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -244,6 +258,8 @@ serve(async (req) => {
     
     // Format the assistant's response to ensure it contains options if available
     const formattedResponse = formatAssistantResponse(assistantResponse);
+    
+    console.log("Formatted assistant response:", formattedResponse);
     
     // Insert the assistant's response
     const { data: insertedMessage, error: insertError } = await supabase
