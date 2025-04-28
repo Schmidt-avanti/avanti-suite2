@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
@@ -8,47 +7,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface TaskMessage {
-  id: string;
-  task_id: string;
-  role: 'assistant' | 'user';
-  content: string;
-  created_at: string;
-  metadata?: {
-    step?: number;
-    selection?: string;
-    use_case_progress?: {
-      current_step: number;
-      total_steps: number;
-      completed_steps: string[];
-    };
-  };
-}
-
-interface UseCase {
-  id: string;
-  title: string;
-  type: string;
-  steps: string[];
-  information_needed?: string;
-  expected_result?: string;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("Handling task chat request");
     const { 
       taskId, 
       useCaseId, 
       message, 
+      previousResponseId,
       buttonChoice 
     } = await req.json();
-
-    console.log("Request payload:", { taskId, useCaseId, message, buttonChoice });
 
     if (!taskId) {
       throw new Error('Task ID is required');
@@ -57,114 +28,75 @@ serve(async (req) => {
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    if (!openAIApiKey || !supabaseUrl || !supabaseServiceKey) {
-      console.error("Missing environment variables:", {
-        hasOpenAI: !!openAIApiKey,
-        hasSupabaseUrl: !!supabaseUrl,
-        hasServiceKey: !!supabaseServiceKey
-      });
-      throw new Error('Missing required environment variables');
-    }
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get task and previous messages
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select('*, messages:task_messages(*)')
       .eq('id', taskId)
       .maybeSingle();
 
-    if (taskError) {
-      console.error("Task fetch error:", taskError);
-      throw taskError;
-    }
-    
-    if (!task) {
-      console.error("Task not found:", taskId);
-      throw new Error('Task not found');
-    }
+    if (taskError) throw taskError;
+    if (!task) throw new Error('Task not found');
 
-    console.log("Task fetched successfully:", task.id);
-
-    // Get use case if it exists
-    let useCase: UseCase | null = null;
+    let useCase = null;
     if (useCaseId) {
-      console.log("Fetching use case:", useCaseId);
       const { data: fetchedUseCase, error: useCaseError } = await supabase
         .from('use_cases')
         .select('*')
         .eq('id', useCaseId)
         .maybeSingle();
         
-      if (useCaseError) {
-        console.error("Use case fetch error:", useCaseError);
-        throw useCaseError;
-      }
-      
+      if (useCaseError) throw useCaseError;
       useCase = fetchedUseCase;
-      console.log("Use case fetched:", useCase ? useCase.title : "Not found");
     }
 
-    // Get previous messages and their metadata
     const { data: messages, error: messagesError } = await supabase
       .from('task_messages')
       .select('*')
       .eq('task_id', taskId)
       .order('created_at', { ascending: true });
 
-    if (messagesError) {
-      console.error("Messages fetch error:", messagesError);
-      throw messagesError;
-    }
+    if (messagesError) throw messagesError;
 
-    console.log(`Fetched ${messages.length} previous messages`);
-
-    // Track use case progress through message metadata
-    let currentStep = 0;
-    let completedSteps: string[] = [];
-
-    if (useCase && messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage.metadata?.use_case_progress) {
-        currentStep = lastMessage.metadata.use_case_progress.current_step;
-        completedSteps = lastMessage.metadata.use_case_progress.completed_steps;
-      }
-
-      // If a button was clicked, update progress
-      if (buttonChoice) {
-        console.log("Button choice selected:", buttonChoice);
-        completedSteps.push(buttonChoice);
-        currentStep++;
-      }
-    }
-
-    let systemPrompt = `Du bist Ava, ein hilfreicher Assistent bei avanti-suite, der Nutzern bei ihren Aufgaben hilft.`;
+    let conversationMessages = [];
     
-    if (useCase) {
-      systemPrompt += `\n\nDu bekommst einen Use Case mit allen relevanten Informationen zu einem Prozess oder einer Aufgabe.
-      Deine Aufgabe ist es, den Nutzer durch diesen Prozess zu führen und ihm zu helfen, die Aufgabe erfolgreich abzuschließen.
-      
-      Use Case Details:
-      Titel: ${useCase.title}
-      Typ: ${useCase.type}
-      Benötigte Informationen: ${useCase.information_needed || 'Keine spezifischen Informationen benötigt'}
-      Schritte: ${useCase.steps ? JSON.stringify(useCase.steps) : 'Keine spezifischen Schritte definiert'}
-      
-      Aktueller Fortschritt:
-      - Schritt: ${currentStep + 1} von ${useCase.steps?.length || 0}
-      - Abgeschlossene Schritte: ${completedSteps.join(', ')}
-      
-      Gib dem Nutzer immer mehrere konkrete Optionen zur Auswahl, damit er weiß wie er fortfahren kann.`;
-    }
-
-    let conversationMessages = [{
+    conversationMessages.push({
       role: "system",
-      content: systemPrompt
-    }];
+      content: `Du bist Ava, ein hilfreicher Assistent bei avanti-suite, der Nutzern bei ihren Aufgaben hilft.
+      
+${useCase ? `
+Du bekommst einen Use Case mit allen relevanten Informationen zu einem Prozess oder einer Aufgabe.
+Deine Aufgabe ist es, den Nutzer durch diesen Prozess zu führen und ihm zu helfen, die Aufgabe erfolgreich abzuschließen.
 
-    // Add previous messages to conversation context
+Use Case Details:
+Titel: ${useCase.title}
+Typ: ${useCase.type}
+Benötigte Informationen: ${useCase.information_needed || 'Keine spezifischen Informationen benötigt'}
+Schritte: ${useCase.steps || 'Keine spezifischen Schritte definiert'}
+Erwartetes Ergebnis: ${useCase.expected_result || 'Kein spezifisches Ergebnis definiert'}
+${useCase.process_map ? `\nFolge diesen Prozessschritten:\n${JSON.stringify(useCase.process_map, null, 2)}` : ''}
+` : `
+Da kein passender Use Case gefunden wurde, ist deine Aufgabe:
+1. Stelle relevante Fragen, um das Problem besser zu verstehen
+2. Sammle wichtige Informationen
+3. Sobald du genug Informationen hast oder keine passende Lösung findest, informiere den Nutzer, dass sein Anliegen an einen Teamleiter weitergeleitet wird.
+4. Gib KEINE konkreten Handlungsempfehlungen oder Lösungsvorschläge.
+`}
+
+Halte deine Antworten freundlich, präzise und auf den Punkt. Verwende einfache Sprache und vermeide Fachjargon.
+
+WICHTIG: 
+- Formatiere deine Antworten als REINES JSON ohne Markdown.
+- Wenn du Optionen anbietest, verwende dieses Format:
+{
+  "text": "Deine Frage an den Nutzer",
+  "options": ["Option 1", "Option 2"]
+}
+
+Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoice" Parameter.`
+    });
+
     for (const msg of messages) {
       conversationMessages.push({
         role: msg.role,
@@ -172,29 +104,25 @@ serve(async (req) => {
       });
     }
 
-    // Add the current message or button choice
-    if (buttonChoice) {
-      conversationMessages.push({
-        role: "user",
-        content: `Ich habe folgende Option gewählt: ${buttonChoice}`
-      });
-    } else if (message) {
-      conversationMessages.push({
-        role: "user",
-        content: message
-      });
-    } else if (messages.length === 0) {
-      // When starting a new conversation with no existing messages and no user input
-      conversationMessages.push({
-        role: "user",
-        content: "Hallo, ich brauche Hilfe bei dieser Aufgabe."
-      });
+    if (!useCase && messages.length >= 6) {
+      // After 3 exchanges (6 messages including both user and assistant),
+      // forward to team leader if no use case matches
+      await supabase
+        .from('tasks')
+        .update({ forwarded_to: 'team_leader' })
+        .eq('id', taskId);
+
+      return new Response(
+        JSON.stringify({
+          response: JSON.stringify({
+            text: "Ich habe jetzt genug Informationen gesammelt. Da ich keine direkte Lösung für dein spezifisches Problem habe, leite ich dein Anliegen an einen Teamleiter weiter. Der Teamleiter wird sich zeitnah mit einer passenden Lösung bei dir melden. Vielen Dank für deine Geduld!",
+            options: []
+          })
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log("Preparing to send request to OpenAI");
-    console.log("Conversation messages count:", conversationMessages.length);
-
-    // Get AI response
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -209,50 +137,75 @@ serve(async (req) => {
       })
     });
 
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error("OpenAI API error:", openAIResponse.status, errorText);
-      throw new Error(`OpenAI API error: ${openAIResponse.status} - ${errorText}`);
-    }
-
     const responseData = await openAIResponse.json();
     
-    if (!responseData || responseData.error) {
-      console.error('Invalid analysis response:', responseData);
-      throw new Error('Invalid AI response');
+    if (openAIResponse.status !== 200) {
+      console.error('OpenAI API error:', responseData);
+      throw new Error(`OpenAI API error: ${responseData.error?.message || 'Unknown error'}`);
+    }
+
+    const assistantResponse = responseData.choices[0].message.content;
+    
+    // Properly format the response to ensure consistent JSON structure
+    let cleanedResponse = assistantResponse.replace(/```json\n?|\n?```/g, '').trim();
+    let formattedResponse = cleanedResponse;
+    let buttonOptions = [];
+    
+    try {
+      // First try: attempt to parse as JSON directly
+      try {
+        const jsonContent = JSON.parse(cleanedResponse);
+        
+        // If it parsed successfully but doesn't have the expected structure, add it
+        if (!jsonContent.text && typeof cleanedResponse === 'string' && !cleanedResponse.includes('"options"')) {
+          formattedResponse = JSON.stringify({ 
+            "text": cleanedResponse,
+            "options": [] 
+          });
+        }
+        
+        // Extract button options if they exist
+        if (jsonContent.options && Array.isArray(jsonContent.options)) {
+          buttonOptions = jsonContent.options;
+        }
+      } catch (e) {
+        // Second try: If it's not JSON, assume it's plain text and format it
+        if (!cleanedResponse.includes('"text"') && !cleanedResponse.includes('"options"')) {
+          formattedResponse = JSON.stringify({ 
+            "text": cleanedResponse,
+            "options": [] 
+          });
+        } else {
+          // Third try: It might be malformatted JSON with options
+          const jsonMatch = cleanedResponse.match(/\{[\s\S]*?"options"[\s\S]*?\}/);
+          if (jsonMatch) {
+            try {
+              const jsonData = JSON.parse(jsonMatch[0]);
+              if (jsonData.options && Array.isArray(jsonData.options)) {
+                buttonOptions = jsonData.options;
+                formattedResponse = JSON.stringify(jsonData);
+              }
+            } catch (e) {
+              console.log('Failed to extract button options:', e);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Error formatting response:', e);
     }
     
-    // Extract the response text
-    const assistantResponse = responseData.choices[0].message.content;
-    console.log("Received assistant response:", assistantResponse.substring(0, 100) + "...");
-    
-    // Save the assistant's response with metadata
-    const metadata = useCase ? {
-      use_case_progress: {
-        current_step: currentStep,
-        total_steps: useCase.steps?.length || 0,
-        completed_steps: completedSteps
-      }
-    } : undefined;
-
-    const { error: insertError } = await supabase.from('task_messages').insert({
+    // Save the assistant's response to the database
+    await supabase.from('task_messages').insert({
       task_id: taskId,
       role: 'assistant',
-      content: assistantResponse,
-      metadata
+      content: formattedResponse
     });
-
-    if (insertError) {
-      console.error("Error inserting assistant message:", insertError);
-      throw insertError;
-    }
-
-    console.log("Assistant response saved successfully");
 
     return new Response(
       JSON.stringify({
-        response: assistantResponse,
-        metadata
+        response: formattedResponse,
+        button_options: buttonOptions
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -12,7 +12,7 @@ import {
 import { TaskStatusBadge } from './TaskStatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import type { Task, TaskStatus } from '@/types';
+import type { Task } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
@@ -104,12 +104,9 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading = false
               className="cursor-pointer hover:bg-gray-50 transition-colors"
             >
               <TableCell className="font-medium">{task.title}</TableCell>
-              <TableCell className="max-w-xs truncate">
-                <TaskStatusBadge status={task.status} />
-              </TableCell>
+              <TableCell className="max-w-xs truncate">{task.status}</TableCell>
               <TableCell>
-                {/* Cast 'source' to TaskStatus or ensure it's a valid value */}
-                {task.source && <TaskStatusBadge status={task.source as TaskStatus} />}
+                <TaskStatusBadge status={task.source} />
               </TableCell>
               <TableCell>{task.customer?.name || '-'}</TableCell>
               <TableCell>
