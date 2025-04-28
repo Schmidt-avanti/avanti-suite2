@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,7 +33,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       if (error) throw error;
 
       const totalSeconds = data.reduce((sum, entry) => sum + (entry.duration_seconds || 0), 0);
-      console.log(`Fetched accumulated time: ${totalSeconds}s`);
+      console.log(`Fetched total accumulated time for all users: ${totalSeconds}s`);
       return totalSeconds;
     } catch (err) {
       console.error('Error fetching accumulated time:', err);
@@ -63,6 +64,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
           filter: `task_id=eq.${taskId}`
         },
         async () => {
+          console.log('Detected change in task_times table - refreshing accumulated time');
           const updatedTime = await fetchAccumulatedTime();
           accumulatedTimeRef.current = updatedTime;
           updateElapsedTime();
@@ -100,6 +102,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       Math.floor((Date.now() - startTimeRef.current) / 1000) : 
       0;
     
+    // This now shows the total accumulated time from ALL users plus current session
     setElapsedTime(accumulatedTimeRef.current + sessionTime);
   };
 
