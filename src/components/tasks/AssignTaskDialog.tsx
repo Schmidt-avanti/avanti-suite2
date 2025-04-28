@@ -24,6 +24,22 @@ interface AssignTaskDialogProps {
   isForwarding?: boolean;
 }
 
+// Create an interface that matches the actual shape of data from the database
+interface ProfileWithRole {
+  id: string;
+  "Full Name": string;
+  role: string;
+}
+
+// Interface for the users state which matches what we're actually storing
+interface UserDisplay {
+  id: string;
+  fullName: string;
+  role: string;
+  email?: string;
+  createdAt?: string;
+}
+
 export function AssignTaskDialog({ 
   open, 
   onOpenChange, 
@@ -31,7 +47,7 @@ export function AssignTaskDialog({
   currentAssignee, 
   isForwarding = false 
 }: AssignTaskDialogProps) {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [note, setNote] = useState("");
@@ -57,12 +73,16 @@ export function AssignTaskDialog({
 
       if (error) throw error;
 
+      // Transform the data to match the UserDisplay interface
       setUsers(
-        data?.map(user => ({
+        (data as ProfileWithRole[] || []).map(user => ({
           id: user.id,
           fullName: user["Full Name"],
-          role: user.role
-        })) || []
+          role: user.role,
+          // Adding placeholder values to satisfy the User type
+          email: "",
+          createdAt: ""
+        }))
       );
     } catch (err) {
       console.error("Error fetching users:", err);

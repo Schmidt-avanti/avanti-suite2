@@ -1,3 +1,4 @@
+
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -34,11 +35,17 @@ export interface Task {
     id: string;
     "Full Name": string;
   };
+  assignee?: {
+    id: string;
+    "Full Name": string;
+  };
+  follow_up_date?: string;
+  closing_comment?: string;
   attachments?: any[];
-  endkunde_email?: string; // Added missing field
-  from_email?: string;     // Added missing field
-  description?: string;    // Added missing field
-  matched_use_case_id?: string; // Added missing field
+  endkunde_email?: string; 
+  from_email?: string;     
+  description?: string;    
+  matched_use_case_id?: string;
 }
 
 // Add missing types that are causing errors
@@ -54,6 +61,7 @@ export interface User {
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
+  fullName?: string; // Add this property to fix the error
 }
 
 export interface Customer {
