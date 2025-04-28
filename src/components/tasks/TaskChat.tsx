@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,21 +30,25 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
   const [initialMessageSent, setInitialMessageSent] = useState(false);
 
+  // Scroll to bottom whenever messages change
   useEffect(() => {
-    if (messages.length > 0 && scrollAreaRef.current) {
-      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollElement) {
-        setTimeout(() => {
-          scrollElement.scrollTop = scrollElement.scrollHeight;
-        }, 100);
-      }
+    scrollToBottom();
+  }, [messages, isLoading]);
+
+  // More robust scroll to bottom function
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 100);
     }
-  }, [messages]);
+  };
 
   useEffect(() => {
     if (initialMessages.length === 0) {
@@ -243,92 +248,100 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     }
   };
 
+  // Calculate fixed heights for the chat container and scroll area
+  const chatHeight = isMobile ? 'calc(100vh - 8rem)' : '600px';
+
   return (
     <div 
-      className="w-full flex flex-col justify-between rounded-2xl bg-transparent"
+      className="w-full flex flex-col overflow-hidden rounded-2xl bg-transparent"
       style={{ 
-        height: isMobile ? 'calc(100vh - 8rem)' : '600px',
-        maxHeight: isMobile ? 'calc(100vh - 8rem)' : '600px'
+        height: chatHeight,
+        maxHeight: chatHeight
       }}
       data-chat-panel
     >
-      <ScrollArea
-        className="flex-1 pr-4 mb-4 relative"
-        ref={scrollAreaRef}
-      >
-        <div className="space-y-4 p-6">
-          {messages.length === 0 && !isLoading && (
-            <div className="flex items-center justify-center h-32 text-gray-400">
-              Starten Sie die Konversation...
-            </div>
-          )}
+      <div className="flex-grow overflow-hidden relative">
+        <ScrollArea
+          className="h-full pb-4 pr-4"
+          style={{ maxHeight: `calc(${chatHeight} - 70px)` }}
+        >
+          <div className="p-6 space-y-4">
+            {messages.length === 0 && !isLoading && (
+              <div className="flex items-center justify-center h-32 text-gray-400">
+                Starten Sie die Konversation...
+              </div>
+            )}
 
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
-            >
-              <div className={`
-                ${isMobile ? 'max-w-[90%]' : 'max-w-[80%]'} p-4 rounded
-                ${message.role === "assistant"
-                  ? "bg-blue-100 text-gray-900"
-                  : "bg-gray-100 text-gray-900"
-                }
-                border border-blue-50/40
-              `}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-sm">
-                    {message.role === "assistant" ? "Ava" : "Du"}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  {renderMessage(message)}
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"}`}
+              >
+                <div className={`
+                  ${isMobile ? 'max-w-[90%]' : 'max-w-[80%]'} p-4 rounded
+                  ${message.role === "assistant"
+                    ? "bg-blue-100 text-gray-900"
+                    : "bg-gray-100 text-gray-900"
+                  }
+                  border border-blue-50/40
+                `}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-sm">
+                      {message.role === "assistant" ? "Ava" : "Du"}
+                    </span>
+                  </div>
+                  <div className="text-sm">
+                    {renderMessage(message)}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {isLoading && (
-            <div className="flex items-start">
-              <div className="max-w-[80%] p-4 rounded bg-blue-100 shadow-sm border border-blue-50/40">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-sm">Ava</span>
-                </div>
-                <div className="flex space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
+            {isLoading && (
+              <div className="flex items-start">
+                <div className="max-w-[80%] p-4 rounded bg-blue-100 shadow-sm border border-blue-50/40">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-sm">Ava</span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></div>
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {isRateLimited && !isLoading && (
-            <div className="flex items-start">
-              <div className="max-w-[80%] p-4 rounded bg-yellow-50 shadow-sm border border-yellow-200 text-amber-800">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className="font-semibold text-sm">API-Dienst überlastet</span>
+            {isRateLimited && !isLoading && (
+              <div className="flex items-start">
+                <div className="max-w-[80%] p-4 rounded bg-yellow-50 shadow-sm border border-yellow-200 text-amber-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="font-semibold text-sm">API-Dienst überlastet</span>
+                  </div>
+                  <p className="text-sm mb-3">
+                    Der API-Dienst ist derzeit überlastet. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.
+                  </p>
+                  <Button
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleRetry}
+                    className="text-xs"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Erneut versuchen
+                  </Button>
                 </div>
-                <p className="text-sm mb-3">
-                  Der API-Dienst ist derzeit überlastet. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.
-                </p>
-                <Button
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleRetry}
-                  className="text-xs"
-                >
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                  Erneut versuchen
-                </Button>
               </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            )}
+            
+            {/* This empty div is used as a reference for scrolling to the bottom */}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+      </div>
 
-      <div className="w-full px-6 pb-6">
+      <div className="w-full px-6 pb-6 mt-auto">
         <form
           onSubmit={handleSubmit}
           className="w-full flex gap-2 items-end border border-gray-200 p-3 bg-white rounded-md shadow-sm"
