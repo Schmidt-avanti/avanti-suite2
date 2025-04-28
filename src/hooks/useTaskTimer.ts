@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,7 +22,6 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (!taskId) return 0;
 
     try {
-      // Get the maximum time_spent_task value from all sessions
       const { data: maxTimeEntry, error: maxTimeError } = await supabase
         .from('task_times')
         .select('time_spent_task')
@@ -33,14 +31,11 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
       if (maxTimeError) throw maxTimeError;
 
-      // Get base total from the maximum entry
-      const baseTotal = maxTimeEntry?.[0]?.time_spent_task || 0;
-
-      // Add current session time if tracking
-      const totalSeconds = baseTotal + currentSessionTimeRef.current;
-
-      console.log('Total time breakdown:', {
-        baseTotal,
+      // Get base total from the maximum entry and add current session time
+      const totalSeconds = (maxTimeEntry?.[0]?.time_spent_task || 0) + currentSessionTimeRef.current;
+      
+      console.log('Time calculation:', {
+        maxAccumulatedTime: maxTimeEntry?.[0]?.time_spent_task || 0,
         currentSession: currentSessionTimeRef.current,
         total: totalSeconds
       });
@@ -112,23 +107,12 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     if (!user || isTracking) return;
 
     try {
-      // Get the maximum time_spent_task value as starting point
-      const { data: maxTimeEntry } = await supabase
-        .from('task_times')
-        .select('time_spent_task')
-        .eq('task_id', taskId)
-        .order('time_spent_task', { ascending: false })
-        .limit(1);
-
-      const lastTotal = maxTimeEntry?.[0]?.time_spent_task || 0;
-
       const { data, error } = await supabase
         .from('task_times')
         .insert({
           task_id: taskId,
           user_id: user.id,
           started_at: new Date().toISOString(),
-          time_spent_task: lastTotal // Set initial time_spent_task to the global maximum
         })
         .select('id')
         .single();
