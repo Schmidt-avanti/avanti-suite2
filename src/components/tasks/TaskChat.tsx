@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,8 +36,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [initialMessageSent, setInitialMessageSent] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [userScrolled, setUserScrolled] = useState(false);
 
-  // Handle scrolling detection
   const handleScroll = () => {
     if (!scrollAreaRef.current) return;
     
@@ -46,15 +45,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     if (!viewport) return;
     
     const { scrollHeight, scrollTop, clientHeight } = viewport;
+    setUserScrolled(true);
     
-    // Consider "scrolled to bottom" if within 30px of the bottom
     const isScrolledToBottom = scrollHeight - scrollTop - clientHeight < 30;
     
     setShouldAutoScroll(isScrolledToBottom);
     setShowScrollButton(!isScrolledToBottom);
   };
 
-  // Scroll to bottom function
   const scrollToBottom = () => {
     if (!scrollAreaRef.current) return;
     
@@ -66,14 +64,12 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     }
   };
   
-  // Scroll to bottom only when new messages arrive or when explicitly requested
   useEffect(() => {
     if (shouldAutoScroll && messages.length > 0) {
       setTimeout(scrollToBottom, 100); // Small delay to ensure content is rendered
     }
   }, [messages, shouldAutoScroll]);
 
-  // Force scroll to bottom when loading completes
   useEffect(() => {
     if (!isLoading && messages.length > 0) {
       setTimeout(scrollToBottom, 150);
@@ -105,9 +101,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         }
       });
       setSelectedOptions(newSelectedOptions);
-      
-      // Always scroll to bottom when initially loading messages
-      setTimeout(scrollToBottom, 200);
     }
   }, [initialMessages]);
 
@@ -145,8 +138,9 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         });
         setSelectedOptions(newSelectedOptions);
         
-        // Always scroll to bottom when initially fetching messages
-        setTimeout(scrollToBottom, 200);
+        if (!userScrolled) {
+          setTimeout(scrollToBottom, 200);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
@@ -210,7 +204,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       setRetryCount(0);
       setPreviousResponseId(data.response_id);
       await fetchMessages();
-      // Enable auto-scroll when a new message is sent
       setShouldAutoScroll(true);
     } catch (error: any) {
       console.error('Error sending message:', error);
@@ -266,7 +259,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           </div>
         );
       } catch (e) {
-        // If parsing fails, check for options in a text-based format
         const content = message.content;
         const text = content;
         const optionsMatch = content.match(/\[(.*?)\]/);
@@ -308,7 +300,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             return <div className="whitespace-pre-wrap">{content}</div>;
           }
         } else {
-          // Last fallback - look for lists that might contain options
           const listMatch = content.match(/(?:\d+\.\s+(.*?)(?:\n|$))+/g);
           if (listMatch && content.toLowerCase().includes('schlüssel')) {
             const defaultOptions = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
@@ -350,6 +341,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     e.preventDefault();
     if (inputValue.trim() && !isLoading) {
       sendMessage(inputValue);
+      setShouldAutoScroll(true);
     }
   };
 
@@ -360,7 +352,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     }
   };
 
-  // Calculate fixed heights for the chat container and scroll area
   const chatHeight = isMobile ? 'calc(100vh - 8rem)' : '600px';
 
   return (
@@ -378,6 +369,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           className="h-full pb-4 pr-4"
           style={{ maxHeight: `calc(${chatHeight} - 70px)` }}
           onScroll={handleScroll}
+          type="always"
         >
           <div className="p-6 space-y-4">
             {messages.length === 0 && !isLoading && (
@@ -449,12 +441,10 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
               </div>
             )}
             
-            {/* This empty div is used as a reference for scrolling to the bottom */}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
-        {/* Scroll to bottom button */}
         {showScrollButton && (
           <Button 
             className="absolute bottom-4 right-4 rounded-full w-10 h-10 shadow-md bg-blue-500 hover:bg-blue-600 text-white z-10"
