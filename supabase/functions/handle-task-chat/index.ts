@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
@@ -6,6 +7,32 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+interface TaskMessage {
+  id: string;
+  task_id: string;
+  role: 'assistant' | 'user';
+  content: string;
+  created_at: string;
+  metadata?: {
+    step?: number;
+    selection?: string;
+    use_case_progress?: {
+      current_step: number;
+      total_steps: number;
+      completed_steps: string[];
+    };
+  };
+}
+
+interface UseCase {
+  id: string;
+  title: string;
+  type: string;
+  steps: string[];
+  information_needed?: string;
+  expected_result?: string;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -17,7 +44,6 @@ serve(async (req) => {
       taskId, 
       useCaseId, 
       message, 
-      previousResponseId,
       buttonChoice 
     } = await req.json();
 
@@ -30,6 +56,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Get task and previous messages
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select('*, messages:task_messages(*)')
@@ -39,7 +66,8 @@ serve(async (req) => {
     if (taskError) throw taskError;
     if (!task) throw new Error('Task not found');
 
-    let useCase = null;
+    // Get use case if it exists
+    let useCase: UseCase | null = null;
     if (useCaseId) {
       const { data: fetchedUseCase, error: useCaseError } = await supabase
         .from('use_cases')
@@ -51,6 +79,7 @@ serve(async (req) => {
       useCase = fetchedUseCase;
     }
 
+    // Get previous messages and their metadata
     const { data: messages, error: messagesError } = await supabase
       .from('task_messages')
       .select('*')
@@ -59,44 +88,49 @@ serve(async (req) => {
 
     if (messagesError) throw messagesError;
 
-    let conversationMessages = [];
+    // Track use case progress through message metadata
+    let currentStep = 0;
+    let completedSteps: string[] = [];
+
+    if (useCase && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.metadata?.use_case_progress) {
+        currentStep = lastMessage.metadata.use_case_progress.current_step;
+        completedSteps = lastMessage.metadata.use_case_progress.completed_steps;
+      }
+
+      // If a button was clicked, update progress
+      if (buttonChoice) {
+        completedSteps.push(buttonChoice);
+        currentStep++;
+      }
+    }
+
+    let systemPrompt = `Du bist Ava, ein hilfreicher Assistent bei avanti-suite, der Nutzern bei ihren Aufgaben hilft.`;
     
-    conversationMessages.push({
-      role: "system",
-      content: `Du bist Ava, ein hilfreicher Assistent bei avanti-suite, der Nutzern bei ihren Aufgaben hilft.
+    if (useCase) {
+      systemPrompt += `\n\nDu bekommst einen Use Case mit allen relevanten Informationen zu einem Prozess oder einer Aufgabe.
+      Deine Aufgabe ist es, den Nutzer durch diesen Prozess zu führen und ihm zu helfen, die Aufgabe erfolgreich abzuschließen.
       
-${useCase ? `
-Du bekommst einen Use Case mit allen relevanten Informationen zu einem Prozess oder einer Aufgabe.
-Deine Aufgabe ist es, den Nutzer durch diesen Prozess zu führen und ihm zu helfen, die Aufgabe erfolgreich abzuschließen.
+      Use Case Details:
+      Titel: ${useCase.title}
+      Typ: ${useCase.type}
+      Benötigte Informationen: ${useCase.information_needed || 'Keine spezifischen Informationen benötigt'}
+      Schritte: ${useCase.steps ? JSON.stringify(useCase.steps) : 'Keine spezifischen Schritte definiert'}
+      
+      Aktueller Fortschritt:
+      - Schritt: ${currentStep + 1} von ${useCase.steps?.length || 0}
+      - Abgeschlossene Schritte: ${completedSteps.join(', ')}
+      
+      Gib dem Nutzer immer mehrere konkrete Optionen zur Auswahl, damit er weiß wie er fortfahren kann.`;
+    }
 
-Use Case Details:
-Titel: ${useCase.title}
-Typ: ${useCase.type}
-Benötigte Informationen: ${useCase.information_needed || 'Keine spezifischen Informationen benötigt'}
-Schritte: ${useCase.steps || 'Keine spezifischen Schritte definiert'}
-Erwartetes Ergebnis: ${useCase.expected_result || 'Kein spezifisches Ergebnis definiert'}
-${useCase.process_map ? `\nFolge diesen Prozessschritten:\n${JSON.stringify(useCase.process_map, null, 2)}` : ''}
-` : `
-Da kein passender Use Case gefunden wurde, ist deine Aufgabe:
-1. Stelle relevante Fragen, um das Problem besser zu verstehen
-2. Sammle wichtige Informationen
-3. Sobald du genug Informationen hast oder keine passende Lösung findest, informiere den Nutzer, dass sein Anliegen an einen Teamleiter weitergeleitet wird.
-4. Gib KEINE konkreten Handlungsempfehlungen oder Lösungsvorschläge.
-`}
+    let conversationMessages = [{
+      role: "system",
+      content: systemPrompt
+    }];
 
-Halte deine Antworten freundlich, präzise und auf den Punkt. Verwende einfache Sprache und vermeide Fachjargon.
-
-WICHTIG: 
-- Formatiere deine Antworten als REINES JSON ohne Markdown.
-- Wenn du Optionen anbietest, verwende dieses Format:
-{
-  "text": "Deine Frage an den Nutzer",
-  "options": ["Option 1", "Option 2"]
-}
-
-Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoice" Parameter.`
-    });
-
+    // Add previous messages to conversation context
     for (const msg of messages) {
       conversationMessages.push({
         role: msg.role,
@@ -104,25 +138,20 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
       });
     }
 
-    if (!useCase && messages.length >= 6) {
-      // After 3 exchanges (6 messages including both user and assistant),
-      // forward to team leader if no use case matches
-      await supabase
-        .from('tasks')
-        .update({ forwarded_to: 'team_leader' })
-        .eq('id', taskId);
-
-      return new Response(
-        JSON.stringify({
-          response: JSON.stringify({
-            text: "Ich habe jetzt genug Informationen gesammelt. Da ich keine direkte Lösung für dein spezifisches Problem habe, leite ich dein Anliegen an einen Teamleiter weiter. Der Teamleiter wird sich zeitnah mit einer passenden Lösung bei dir melden. Vielen Dank für deine Geduld!",
-            options: []
-          })
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Add the current message or button choice
+    if (buttonChoice) {
+      conversationMessages.push({
+        role: "user",
+        content: `Ich habe folgende Option gewählt: ${buttonChoice}`
+      });
+    } else if (message) {
+      conversationMessages.push({
+        role: "user",
+        content: message
+      });
     }
 
+    // Get AI response
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -139,73 +168,34 @@ Wenn der Nutzer über Buttons antwortet, bekommst du seine Wahl als "buttonChoic
 
     const responseData = await openAIResponse.json();
     
-    if (openAIResponse.status !== 200) {
-      console.error('OpenAI API error:', responseData);
-      throw new Error(`OpenAI API error: ${responseData.error?.message || 'Unknown error'}`);
+    if (!responseData || responseData.error) {
+      console.error('Invalid analysis response:', responseData);
+      throw new Error('Invalid AI response');
     }
-
+    
+    // Extract the response text
     const assistantResponse = responseData.choices[0].message.content;
     
-    // Properly format the response to ensure consistent JSON structure
-    let cleanedResponse = assistantResponse.replace(/```json\n?|\n?```/g, '').trim();
-    let formattedResponse = cleanedResponse;
-    let buttonOptions = [];
-    
-    try {
-      // First try: attempt to parse as JSON directly
-      try {
-        const jsonContent = JSON.parse(cleanedResponse);
-        
-        // If it parsed successfully but doesn't have the expected structure, add it
-        if (!jsonContent.text && typeof cleanedResponse === 'string' && !cleanedResponse.includes('"options"')) {
-          formattedResponse = JSON.stringify({ 
-            "text": cleanedResponse,
-            "options": [] 
-          });
-        }
-        
-        // Extract button options if they exist
-        if (jsonContent.options && Array.isArray(jsonContent.options)) {
-          buttonOptions = jsonContent.options;
-        }
-      } catch (e) {
-        // Second try: If it's not JSON, assume it's plain text and format it
-        if (!cleanedResponse.includes('"text"') && !cleanedResponse.includes('"options"')) {
-          formattedResponse = JSON.stringify({ 
-            "text": cleanedResponse,
-            "options": [] 
-          });
-        } else {
-          // Third try: It might be malformatted JSON with options
-          const jsonMatch = cleanedResponse.match(/\{[\s\S]*?"options"[\s\S]*?\}/);
-          if (jsonMatch) {
-            try {
-              const jsonData = JSON.parse(jsonMatch[0]);
-              if (jsonData.options && Array.isArray(jsonData.options)) {
-                buttonOptions = jsonData.options;
-                formattedResponse = JSON.stringify(jsonData);
-              }
-            } catch (e) {
-              console.log('Failed to extract button options:', e);
-            }
-          }
-        }
+    // Save the assistant's response with metadata
+    const metadata = useCase ? {
+      use_case_progress: {
+        current_step: currentStep,
+        total_steps: useCase.steps?.length || 0,
+        completed_steps: completedSteps
       }
-    } catch (e) {
-      console.log('Error formatting response:', e);
-    }
-    
-    // Save the assistant's response to the database
+    } : undefined;
+
     await supabase.from('task_messages').insert({
       task_id: taskId,
       role: 'assistant',
-      content: formattedResponse
+      content: assistantResponse,
+      metadata
     });
 
     return new Response(
       JSON.stringify({
-        response: formattedResponse,
-        button_options: buttonOptions
+        response: assistantResponse,
+        metadata
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

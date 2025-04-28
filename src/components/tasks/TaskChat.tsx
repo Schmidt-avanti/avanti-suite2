@@ -15,6 +15,13 @@ interface Message {
   role: "assistant" | "user";
   content: string;
   created_at: string;
+  metadata?: {
+    use_case_progress?: {
+      current_step: number;
+      total_steps: number;
+      completed_steps: string[];
+    };
+  };
 }
 
 interface TaskChatProps {
@@ -25,18 +32,24 @@ interface TaskChatProps {
 
 export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [inputValue, setInputValue] = useState('');
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
   const { user } = useAuth();
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollElement) {
-        scrollElement.scrollTop = scrollElement.scrollHeight;
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      const scrollArea = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollArea) {
+        scrollArea.scrollTop = scrollArea.scrollHeight;
       }
     }
   }, [messages]);
@@ -59,19 +72,10 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-
-      if (data) {
-        const typedMessages: Message[] = data.map(msg => ({
-          id: msg.id,
-          role: msg.role as "assistant" | "user",
-          content: msg.content,
-          created_at: msg.created_at
-        }));
-        setMessages(typedMessages);
-      }
+      setMessages(data || []);
     } catch (error: any) {
       console.error('Error fetching messages:', error);
-      toast.error('Fehler beim Laden der Nachrichten', { description: error.message });
+      toast.error('Fehler beim Laden der Nachrichten');
     }
   };
 
@@ -80,12 +84,12 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     setIsLoading(true);
 
     try {
-      if ((text && !buttonChoice) || (!text && !buttonChoice)) {
+      if (text && !buttonChoice) {
         const { error: messageError } = await supabase
           .from('task_messages')
           .insert({
             task_id: taskId,
-            content: text || "Start der Konversation",
+            content: text,
             role: 'user',
             created_by: user.id
           });
@@ -98,113 +102,27 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           taskId,
           useCaseId,
           message: text,
-          buttonChoice,
-          previousResponseId
+          buttonChoice
         }
       });
 
       if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-      setPreviousResponseId(data.response_id);
-      fetchMessages();
+      await fetchMessages();
     } catch (error: any) {
       console.error('Error sending message:', error);
-      toast.error('Fehler beim Senden der Nachricht', { description: error.message });
+      toast.error('Fehler beim Senden der Nachricht');
     } finally {
       setIsLoading(false);
-      setInputValue('');
+      setInput('');
     }
   };
 
-  const handleForward = async () => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ forwarded_to: 'team_leader' })
-        .eq('id', taskId);
-
-      if (error) throw error;
-
-      toast.success("Aufgabe weitergeleitet", {
-        description: "Die Aufgabe wurde erfolgreich an einen Teamleiter weitergeleitet."
-      });
-    } catch (error: any) {
-      toast.error("Fehler", {
-        description: error.message
-      });
-    }
-  };
-
-  const renderMessage = (message: Message) => {
-    if (message.role === "assistant") {
-      try {
-        let parsedContent;
-        
-        try {
-          parsedContent = JSON.parse(message.content);
-        } catch (e) {
-          return <div className="whitespace-pre-wrap">{message.content}</div>;
-        }
-        
-        if (parsedContent.text) {
-          return (
-            <div className="space-y-3">
-              <div className="text-sm whitespace-pre-wrap">{parsedContent.text}</div>
-              {parsedContent.options && parsedContent.options.length > 0 ? (
-                <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
-                  {parsedContent.options.map((option: string, idx: number) => (
-                    <Button
-                      key={idx}
-                      variant="outline"
-                      onClick={() => handleButtonClick(option)}
-                      className="rounded text-sm px-4 py-1 hover:bg-blue-100"
-                      size={isMobile ? "sm" : "default"}
-                    >
-                      {option}
-                    </Button>
-                  ))}
-                </div>
-              ) : (
-                !useCaseId && (
-                  <Button
-                    onClick={handleForward}
-                    variant="secondary"
-                    className="mt-4 bg-blue-100 text-blue-700 hover:bg-blue-200"
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    An Teamleiter weiterleiten
-                  </Button>
-                )
-              )}
-            </div>
-          );
-        }
-
-        if (parsedContent.chat_response?.steps_block && Array.isArray(parsedContent.chat_response.steps_block)) {
-          return (
-            <div className="space-y-2">
-              {parsedContent.chat_response.steps_block.map((step: string, index: number) => (
-                <div key={index} className="p-2 rounded bg-blue-50/50 border border-blue-100/50">
-                  {step}
-                </div>
-              ))}
-            </div>
-          );
-        }
-
-        return <div className="whitespace-pre-wrap">{message.content}</div>;
-      } catch (e) {
-        return <div className="whitespace-pre-wrap">{message.content}</div>;
-      }
-    }
-
-    return <div className="whitespace-pre-wrap">{message.content}</div>;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim() && !isLoading) {
-      sendMessage(inputValue);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (input.trim()) sendMessage(input);
     }
   };
 
@@ -214,10 +132,70 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
+  const renderMessage = (message: Message) => {
+    try {
+      // Try to parse as JSON first
+      let parsedContent;
+      try {
+        parsedContent = JSON.parse(message.content);
+      } catch {
+        // If not JSON, render as plain text with button extraction
+        const buttonMatches = message.content.match(/\[(.*?)\]/g);
+        return (
+          <div className="space-y-3">
+            <div className="whitespace-pre-wrap">
+              {message.content.replace(/\[(.*?)\]/g, '')}
+            </div>
+            {buttonMatches && (
+              <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
+                {buttonMatches.map((match, idx) => {
+                  const option = match.replace(/[\[\]]/g, '');
+                  return (
+                    <Button
+                      key={idx}
+                      variant="outline"
+                      onClick={() => handleButtonClick(option)}
+                      className="rounded text-sm px-4 py-1 hover:bg-blue-100"
+                      size={isMobile ? "sm" : "default"}
+                    >
+                      {option}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
+            {message.metadata?.use_case_progress && (
+              <div className="mt-4 text-xs text-gray-500">
+                Fortschritt: Schritt {message.metadata.use_case_progress.current_step + 1} von {message.metadata.use_case_progress.total_steps}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // If it was JSON, handle structured content
+      return (
+        <div className="space-y-3">
+          <div className="whitespace-pre-wrap">{parsedContent.text}</div>
+          {parsedContent.options && (
+            <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
+              {parsedContent.options.map((option: string, idx: number) => (
+                <Button
+                  key={idx}
+                  variant="outline"
+                  onClick={() => handleButtonClick(option)}
+                  className="rounded text-sm px-4 py-1 hover:bg-blue-100"
+                  size={isMobile ? "sm" : "default"}
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    } catch (e) {
+      return <div className="whitespace-pre-wrap">{message.content}</div>;
     }
   };
 
@@ -234,7 +212,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       <div className="flex-1 flex flex-col min-h-0">
         <ScrollArea
           className="flex-1 pr-2 min-h-0 overflow-y-auto custom-scrollbar"
-          ref={scrollAreaRef}
+          ref={scrollRef}
         >
           <div className="space-y-4 pb-2">
             {messages.length === 0 && !isLoading && (
@@ -286,33 +264,31 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         </ScrollArea>
       </div>
 
-      <div className="w-full mt-4 flex items-center">
-        <form
-          onSubmit={handleSubmit}
-          className="w-full flex gap-2 items-end border border-gray-200 p-3 bg-white rounded-md shadow-sm"
-        >
+      <div className="mt-4">
+        <div className="relative">
           <Textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ihre Nachricht..."
-            className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base"
-            style={{ fontSize: '1rem', padding: 0 }}
+            className="pr-16 resize-none min-h-[50px] max-h-[120px] text-sm border-gray-200 shadow-sm focus-visible:ring-blue-500"
+            rows={1}
             disabled={isLoading}
           />
           <Button
-            type="submit"
-            disabled={isLoading || !inputValue.trim()}
-            className="bg-blue-500 hover:bg-blue-600 text-white rounded-md h-11 w-11 flex items-center justify-center shadow transition-all"
-            tabIndex={0}
+            onClick={() => input.trim() && sendMessage(input)}
+            disabled={!input.trim() || isLoading}
+            className="absolute bottom-1.5 right-1.5 h-10 w-10 rounded-full bg-blue-500 hover:bg-blue-600 p-0 flex items-center justify-center shadow-md"
+            aria-label="Senden"
           >
             {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin text-white" />
             ) : (
-              <Send className="h-5 w-5" />
+              <Send className="h-5 w-5 text-white" />
             )}
           </Button>
-        </form>
+        </div>
       </div>
     </div>
   );
