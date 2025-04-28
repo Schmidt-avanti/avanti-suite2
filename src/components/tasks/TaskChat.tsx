@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +26,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -110,6 +112,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const sendMessage = async (text: string, buttonChoice: string | null = null) => {
     if (!user) return;
     setIsLoading(true);
+    setIsRateLimited(false);
 
     try {
       // Add the button choice to selected options
@@ -153,17 +156,38 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a rate limit error
+        if (error.message?.includes('rate limit')) {
+          setIsRateLimited(true);
+          throw new Error('Der API-Dienst ist derzeit überlastet. Bitte versuchen Sie es später erneut.');
+        }
+        throw error;
+      }
 
+      setRetryCount(0);
       setPreviousResponseId(data.response_id);
       fetchMessages();
     } catch (error: any) {
       console.error('Error sending message:', error);
-      toast.error('Fehler beim Senden der Nachricht');
+      
+      if (error.message?.includes('rate limit') || error.message?.includes('überlastet')) {
+        setIsRateLimited(true);
+        toast.error('API-Dienst überlastet. Bitte warten Sie einen Moment.');
+      } else {
+        toast.error('Fehler beim Senden der Nachricht');
+      }
     } finally {
       setIsLoading(false);
       setInputValue('');
     }
+  };
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    setTimeout(() => {
+      sendMessage("", null);
+    }, retryCount * 2000); // Incremental backoff
   };
 
   const renderMessage = (message: Message) => {
@@ -277,6 +301,29 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
                     <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-75"></div>
                     <div className="w-2 h-2 rounded-full bg-blue-400 animate-bounce delay-150"></div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {isRateLimited && !isLoading && (
+              <div className="flex items-start">
+                <div className="max-w-[80%] p-4 rounded bg-yellow-50 shadow-sm border border-yellow-200 text-amber-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="font-semibold text-sm">API-Dienst überlastet</span>
+                  </div>
+                  <p className="text-sm mb-3">
+                    Der API-Dienst ist derzeit überlastet. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.
+                  </p>
+                  <Button
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleRetry}
+                    className="text-xs"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Erneut versuchen
+                  </Button>
                 </div>
               </div>
             )}

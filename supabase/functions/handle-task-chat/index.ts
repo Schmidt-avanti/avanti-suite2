@@ -8,6 +8,49 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to implement exponential backoff
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3) {
+  let retries = 0;
+  let lastError;
+
+  while (retries < maxRetries) {
+    try {
+      const response = await fetch(url, options);
+      const data = await response.json();
+      
+      // If we hit rate limits, wait and retry
+      if (response.status === 429) {
+        const retryAfterStr = data?.error?.message?.match(/try again in (\d+\.\d+)s/i)?.[1];
+        const retryAfter = retryAfterStr ? parseFloat(retryAfterStr) * 1000 : (2 ** retries) * 1000;
+        console.log(`Rate limited. Retrying after ${retryAfter}ms`);
+        await new Promise(resolve => setTimeout(resolve, retryAfter));
+        retries++;
+        continue;
+      }
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${data.error?.message || JSON.stringify(data)}`);
+      }
+      
+      return data;
+    } catch (error) {
+      lastError = error;
+      // Only retry on rate limit errors
+      if (error.message?.includes('rate limit')) {
+        const retryAfterStr = error.message.match(/try again in (\d+\.\d+)s/i)?.[1];
+        const retryAfter = retryAfterStr ? parseFloat(retryAfterStr) * 1000 : (2 ** retries) * 1000;
+        console.log(`Rate limited. Retrying after ${retryAfter}ms`);
+        await new Promise(resolve => setTimeout(resolve, retryAfter));
+        retries++;
+      } else {
+        throw error; // Don't retry other errors
+      }
+    }
+  }
+
+  throw lastError || new Error('Max retries exceeded');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -112,8 +155,8 @@ serve(async (req) => {
       });
     }
 
-    // Call OpenAI using the responses API
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call OpenAI using the responses API with retry mechanism
+    const responseData = await fetchWithRetry('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -126,14 +169,7 @@ serve(async (req) => {
         max_tokens: 1500
       })
     });
-
-    const responseData = await openAIResponse.json();
     
-    if (openAIResponse.status !== 200) {
-      console.error('OpenAI API error:', responseData);
-      throw new Error(`OpenAI API error: ${responseData.error?.message || 'Unknown error'}`);
-    }
-
     const assistantResponse = responseData.choices[0].message.content;
     
     // Insert the assistant's response
@@ -160,7 +196,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in handle-task-chat function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        is_rate_limit: error.message?.includes('rate limit')
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
