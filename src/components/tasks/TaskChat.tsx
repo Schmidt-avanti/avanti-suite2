@@ -38,18 +38,30 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
   
-  // New scrolling logic with Intersection Observer
+  // Track if new messages have been added
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  // Track the previous message count to detect new messages
+  const prevMessagesLengthRef = useRef(messages.length);
+  
+  // Set up intersection observer to detect when bottom of chat is visible
   useEffect(() => {
     if (!chatContainerRef.current) return;
     
     const observer = new IntersectionObserver(
       ([entry]) => {
+        // Only update the scroll button visibility
         setShowScrollButton(!entry.isIntersecting);
+        
+        // If we can see the bottom and there are new messages, enable auto-scroll
+        if (entry.isIntersecting && hasNewMessages) {
+          setAutoScroll(true);
+          setHasNewMessages(false);
+        }
       },
       {
         root: chatContainerRef.current,
         rootMargin: '0px',
-        threshold: 0
+        threshold: 0.1 // Detect when element is 10% visible
       }
     );
     
@@ -62,33 +74,44 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         observer.unobserve(messagesEndRef.current);
       }
     };
+  }, [hasNewMessages]);
+
+  // Detect new messages by comparing current and previous message counts
+  useEffect(() => {
+    if (messages.length > prevMessagesLengthRef.current) {
+      setHasNewMessages(true);
+      prevMessagesLengthRef.current = messages.length;
+    }
   }, [messages.length]);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
       setAutoScroll(true);
+      setHasNewMessages(false);
     }
   };
 
   // Auto-scroll when new messages arrive or after loading, but only if autoScroll is true
   useEffect(() => {
-    if (autoScroll && !isLoading && messages.length > 0) {
+    if ((autoScroll && !isLoading && hasNewMessages) || 
+        (autoScroll && !isLoading && messages.length > 0 && messages.length !== prevMessagesLengthRef.current)) {
       const timer = setTimeout(scrollToBottom, 100);
       return () => clearTimeout(timer);
     }
-  }, [isLoading, messages.length, autoScroll]);
+  }, [isLoading, messages.length, autoScroll, hasNewMessages]);
 
   // Handle manual scroll to disable auto-scrolling
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (chatContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-      // If we're not near the bottom, disable auto-scroll
-      if (scrollHeight - scrollTop - clientHeight > 100) {
-        setAutoScroll(false);
-      } else {
-        setAutoScroll(true);
-      }
+    if (!chatContainerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    
+    // Only disable auto-scroll if we're scrolling up (away from the bottom)
+    // Use a larger threshold to avoid flickering
+    if (distanceFromBottom > 150) {
+      setAutoScroll(false);
     }
   };
 
@@ -154,8 +177,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         });
         setSelectedOptions(newSelectedOptions);
         
-        // Scroll after loading messages
-        setTimeout(scrollToBottom, 200);
+        // Set hasNewMessages to true when fetching messages
+        if (typedMessages.length > prevMessagesLengthRef.current) {
+          setHasNewMessages(true);
+          prevMessagesLengthRef.current = typedMessages.length;
+        }
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
@@ -246,6 +272,10 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       setRetryCount(0);
       setPreviousResponseId(data.response_id);
       await fetchMessages();
+      
+      // Explicitly set hasNewMessages to true and enable auto-scroll after sending
+      setHasNewMessages(true);
+      setAutoScroll(true);
     } catch (error: any) {
       console.error('Error sending message:', error);
       
@@ -382,6 +412,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     e.preventDefault();
     if (inputValue.trim() && !isLoading) {
       sendMessage(inputValue);
+      // Enable auto-scroll when user sends a message
+      setAutoScroll(true);
     }
   };
 
@@ -394,7 +426,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
   return (
     <div className="w-full h-full flex flex-col rounded-2xl relative bg-white">
-      {/* Chat messages container - Using ScrollArea for better scrolling behavior */}
+      {/* Chat messages container */}
       <div 
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-20"
