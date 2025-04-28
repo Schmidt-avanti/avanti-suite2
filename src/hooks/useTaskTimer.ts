@@ -17,6 +17,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   const startTimeRef = useRef<number | null>(null);
   const taskTimeEntryRef = useRef<string | null>(null);
   const accumulatedTimeRef = useRef<number>(0);
+  const currentSessionTimeRef = useRef<number>(0);
 
   // Fetch accumulated time from all users' sessions
   const fetchAccumulatedTime = async () => {
@@ -47,12 +48,13 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   useEffect(() => {
     if (!taskId) return;
 
-    // Initial fetch
+    // Initial fetch to set the base accumulated time
     const initializeTimer = async () => {
       const accumulatedSeconds = await fetchAccumulatedTime();
       console.log(`Setting initial accumulated time: ${accumulatedSeconds}s`);
       accumulatedTimeRef.current = accumulatedSeconds;
-      setElapsedTime(accumulatedSeconds);
+      currentSessionTimeRef.current = 0;
+      updateDisplayTime();
     };
 
     initializeTimer();
@@ -68,15 +70,16 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
           table: 'task_times',
           filter: `task_id=eq.${taskId}`
         },
-        async () => {
-          console.log('Task time update detected, refreshing accumulated time');
+        async (payload) => {
+          console.log('Task time update detected:', payload);
+          // Always refresh the accumulated time when any changes occur
           const updatedTime = await fetchAccumulatedTime();
+          
+          // Store the updated accumulated time
           accumulatedTimeRef.current = updatedTime;
           
-          // If not tracking, update the display immediately
-          if (!isTracking) {
-            setElapsedTime(updatedTime);
-          }
+          // Update the display time based on tracking state
+          updateDisplayTime();
         }
       )
       .subscribe();
@@ -89,6 +92,18 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       }
     };
   }, [taskId]);
+
+  // Helper function to update the displayed time based on current state
+  const updateDisplayTime = () => {
+    if (isTracking && startTimeRef.current) {
+      // If tracking, display accumulated time + current session time
+      currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      setElapsedTime(accumulatedTimeRef.current + currentSessionTimeRef.current);
+    } else {
+      // If not tracking, display just the accumulated time
+      setElapsedTime(accumulatedTimeRef.current);
+    }
+  };
 
   // Cleanup orphaned sessions on initial load (only for current user)
   useEffect(() => {
@@ -196,16 +211,17 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
       }
       
       setIsTracking(true);
+      currentSessionTimeRef.current = 0;
 
-      // Start the interval timer immediately
+      // Start the interval timer for this session's time
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
 
       timerRef.current = setInterval(() => {
         if (startTimeRef.current) {
-          const currentSessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
-          setElapsedTime(accumulatedTimeRef.current + currentSessionTime);
+          currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
+          updateDisplayTime();
         }
       }, 1000);
 
@@ -215,7 +231,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     }
   };
 
-  // Stop tracking time with immediate accumulation update
+  // Stop tracking time with immediate updates for all users
   const stopTracking = async () => {
     console.log('Stopping tracking, isTracking:', isTracking, 'taskTimeEntryRef:', taskTimeEntryRef.current);
     
@@ -249,16 +265,20 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
           toast.error('Fehler beim Speichern der Bearbeitungszeit');
         } else {
           console.log(`Successfully updated time entry with duration: ${currentSessionTime}s`);
-          // Fetch the new accumulated time immediately
-          const newAccumulatedTime = await fetchAccumulatedTime();
-          accumulatedTimeRef.current = newAccumulatedTime;
-          setElapsedTime(newAccumulatedTime);
+          // We'll get the latest accumulated time in real-time through the subscription
         }
       }
 
       setIsTracking(false);
       startTimeRef.current = null;
+      currentSessionTimeRef.current = 0;
       taskTimeEntryRef.current = null;
+      
+      // Force an immediate time update
+      const updatedTime = await fetchAccumulatedTime();
+      accumulatedTimeRef.current = updatedTime;
+      updateDisplayTime();
+      
     } catch (err) {
       console.error('Error stopping task timer:', err);
       toast.error('Fehler beim Stoppen der Zeitmessung');
