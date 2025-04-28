@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { taskId, useCaseId, message, buttonChoice } = await req.json();
+    const { taskId, useCaseId, message, buttonChoice, selectedOptions = [] } = await req.json();
 
     if (!taskId) {
       throw new Error('Task ID is required');
@@ -56,28 +56,39 @@ serve(async (req) => {
 
     let conversationMessages = [];
     
+    // Create a system message with information about already selected options
+    let systemPrompt = `Du bist Ava, ein hilfreicher Assistent bei avanti-suite.`;
+    
+    if (useCase) {
+      systemPrompt += `\n\nFolge diesem Use Case für die Aufgabe:
+      Titel: ${useCase.title}
+      Typ: ${useCase.type}
+      Benötigte Informationen: ${useCase.information_needed || 'Keine spezifischen Informationen benötigt'}
+      Schritte: ${useCase.steps || 'Keine spezifischen Schritte definiert'}
+      ${useCase.process_map ? `\nFolge diesen Prozessschritten:\n${JSON.stringify(useCase.process_map, null, 2)}` : ''}`;
+      
+      // Only show the option buttons if none have been selected yet
+      if (selectedOptions.length === 0) {
+        systemPrompt += `\n\nBei der ersten Frage des Nutzers biete folgende Optionen an:
+        ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"]`;
+      }
+      
+      if (selectedOptions.includes("Hausschlüssel")) {
+        systemPrompt += `\n\nDer Nutzer hat "Hausschlüssel" gewählt. Frage nach der Anzahl der Schlüssel.`;
+      } else if (selectedOptions.includes("Wohnungsschlüssel")) {
+        systemPrompt += `\n\nDer Nutzer hat "Wohnungsschlüssel" gewählt. Frage nach der Wohnungsnummer.`;
+      } else if (selectedOptions.includes("Briefkastenschlüssel")) {
+        systemPrompt += `\n\nDer Nutzer hat "Briefkastenschlüssel" gewählt. Frage nach der Briefkastennummer.`;
+      }
+      
+      systemPrompt += `\n\nFormatiere deine Antworten als JSON mit text und options Eigenschaften.`;
+    } else {
+      systemPrompt += '\n\nKeine Use Case Information verfügbar.';
+    }
+    
     conversationMessages.push({
       role: "system",
-      content: `Du bist Ava, ein hilfreicher Assistent bei avanti-suite.
-      
-${useCase ? `
-Folge diesem Use Case für die Aufgabe:
-Titel: ${useCase.title}
-Typ: ${useCase.type}
-Benötigte Informationen: ${useCase.information_needed || 'Keine spezifischen Informationen benötigt'}
-Schritte: ${useCase.steps || 'Keine spezifischen Schritte definiert'}
-${useCase.process_map ? `\nFolge diesen Prozessschritten:\n${JSON.stringify(useCase.process_map, null, 2)}` : ''}
-
-Bei der ersten Frage des Nutzers biete folgende Optionen an:
-["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"]
-
-Nach der Auswahl:
-- Wenn "Hausschlüssel" gewählt wurde, frage nach der Anzahl der Schlüssel
-- Wenn "Wohnungsschlüssel" gewählt wurde, frage nach der Wohnungsnummer
-- Wenn "Briefkastenschlüssel" gewählt wurde, frage nach der Briefkastennummer
-
-Formatiere deine Antworten als JSON mit text und options Eigenschaften.
-` : 'Keine Use Case Information verfügbar.'}`
+      content: systemPrompt
     });
 
     for (const msg of messages) {
@@ -101,6 +112,7 @@ Formatiere deine Antworten als JSON mit text und options Eigenschaften.
       });
     }
 
+    // Call OpenAI using the responses API
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -124,15 +136,23 @@ Formatiere deine Antworten als JSON mit text und options Eigenschaften.
 
     const assistantResponse = responseData.choices[0].message.content;
     
-    await supabase.from('task_messages').insert({
-      task_id: taskId,
-      role: 'assistant',
-      content: assistantResponse
-    });
+    // Insert the assistant's response
+    const { data: insertedMessage, error: insertError } = await supabase
+      .from('task_messages')
+      .insert({
+        task_id: taskId,
+        role: 'assistant',
+        content: assistantResponse
+      })
+      .select('id')
+      .single();
+      
+    if (insertError) throw insertError;
 
     return new Response(
       JSON.stringify({
-        response: assistantResponse
+        response: assistantResponse,
+        response_id: insertedMessage?.id
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

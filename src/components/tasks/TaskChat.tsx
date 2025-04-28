@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +30,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -45,8 +47,24 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       setTimeout(() => {
         sendMessage("", null);
       }, 500);
+    } else {
+      // Load previously selected options from messages
+      const newSelectedOptions = new Set<string>();
+      initialMessages.forEach(message => {
+        if (message.role === 'user') {
+          try {
+            const options = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
+            if (options.includes(message.content)) {
+              newSelectedOptions.add(message.content);
+            }
+          } catch (e) {
+            // Not a button choice
+          }
+        }
+      });
+      setSelectedOptions(newSelectedOptions);
     }
-  }, []);
+  }, [initialMessages]);
 
   const fetchMessages = async () => {
     try {
@@ -66,6 +84,22 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           created_at: msg.created_at
         }));
         setMessages(typedMessages);
+        
+        // Extract any button selections from the messages
+        const newSelectedOptions = new Set<string>();
+        typedMessages.forEach(message => {
+          if (message.role === 'user') {
+            try {
+              const options = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
+              if (options.includes(message.content)) {
+                newSelectedOptions.add(message.content);
+              }
+            } catch (e) {
+              // Not a button choice
+            }
+          }
+        });
+        setSelectedOptions(newSelectedOptions);
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
@@ -78,6 +112,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     setIsLoading(true);
 
     try {
+      // Add the button choice to selected options
+      if (buttonChoice) {
+        setSelectedOptions(prev => new Set([...prev, buttonChoice]));
+      }
+
       if ((text && !buttonChoice) || (!text && !buttonChoice)) {
         const { error: messageError } = await supabase
           .from('task_messages')
@@ -89,6 +128,18 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           });
 
         if (messageError) throw messageError;
+      } else if (buttonChoice) {
+        // Insert button choice as user message
+        const { error: buttonMessageError } = await supabase
+          .from('task_messages')
+          .insert({
+            task_id: taskId,
+            content: buttonChoice,
+            role: 'user',
+            created_by: user.id
+          });
+
+        if (buttonMessageError) throw buttonMessageError;
       }
 
       const { data, error } = await supabase.functions.invoke('handle-task-chat', {
@@ -97,7 +148,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           useCaseId,
           message: text,
           buttonChoice,
-          previousResponseId
+          previousResponseId,
+          selectedOptions: Array.from(selectedOptions)
         }
       });
 
@@ -124,17 +176,24 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             <div className="text-sm whitespace-pre-wrap">{parsedContent.text}</div>
             {parsedContent.options && parsedContent.options.length > 0 && (
               <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
-                {parsedContent.options.map((option: string, idx: number) => (
-                  <Button
-                    key={idx}
-                    variant="outline"
-                    onClick={() => sendMessage("", option)}
-                    className="rounded text-sm px-4 py-1 hover:bg-blue-100"
-                    size={isMobile ? "sm" : "default"}
-                  >
-                    {option}
-                  </Button>
-                ))}
+                {parsedContent.options.map((option: string, idx: number) => {
+                  // Don't show options that have already been selected
+                  if (selectedOptions.has(option)) {
+                    return null;
+                  }
+                  
+                  return (
+                    <Button
+                      key={idx}
+                      variant="outline"
+                      onClick={() => sendMessage("", option)}
+                      className="rounded text-sm px-4 py-1 hover:bg-blue-100"
+                      size={isMobile ? "sm" : "default"}
+                    >
+                      {option}
+                    </Button>
+                  );
+                })}
               </div>
             )}
           </div>
