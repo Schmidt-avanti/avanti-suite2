@@ -48,9 +48,78 @@ export const MessageList = ({
           </div>
         );
       } catch (e) {
-        // If not valid JSON, display as plain text
-        console.log("Failed to parse message content as JSON:", e);
-        return <div className="whitespace-pre-wrap">{message.content}</div>;
+        // If not valid JSON, check if it might contain options in the text
+        // We'll parse text content for common option patterns
+        const content = message.content;
+        const messageText = content;
+        
+        // Look for options like ["Option1", "Option2", "Option3"] in the text
+        const optionsMatch = content.match(/\[(.*?)\]/);
+        
+        if (optionsMatch) {
+          try {
+            const optionsString = `[${optionsMatch[1]}]`;
+            const options = JSON.parse(optionsString.replace(/'/g, '"'));
+            
+            return (
+              <div className="space-y-3">
+                <div className="text-sm whitespace-pre-wrap">{messageText}</div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {options.map((option: string, idx: number) => {
+                    if (selectedOptions.has(option)) {
+                      return null;
+                    }
+                    
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => onOptionClick(option)}
+                        className="rounded text-sm px-4 py-1 border border-gray-200 hover:bg-blue-100 transition-colors"
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          } catch (e) {
+            // If options parsing fails, just show the text
+            console.log("Failed to parse options from text:", e);
+          }
+        }
+        
+        // As a backup, hardcode the default options for "Schlüssel verloren" use case
+        if (content.toLowerCase().includes("schlüssel") || 
+            content.toLowerCase().includes("schlussel")) {
+          const defaultOptions = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
+          
+          return (
+            <div className="space-y-3">
+              <div className="text-sm whitespace-pre-wrap">{messageText}</div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {defaultOptions.map((option: string, idx: number) => {
+                  if (selectedOptions.has(option)) {
+                    return null;
+                  }
+                  
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => onOptionClick(option)}
+                      className="rounded text-sm px-4 py-1 border border-gray-200 hover:bg-blue-100 transition-colors"
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
+        
+        // Default case: just display the content as text
+        return <div className="whitespace-pre-wrap">{content}</div>;
       }
     }
     return <div className="whitespace-pre-wrap">{message.content}</div>;

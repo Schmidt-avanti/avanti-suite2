@@ -51,6 +51,41 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3)
   throw lastError || new Error('Max retries exceeded');
 }
 
+// Helper function to format the assistant response
+function formatAssistantResponse(response: string, useCase: any, selectedOptions: string[]): string {
+  // Try to parse the response as JSON first (in case it's already in the correct format)
+  try {
+    const parsedResponse = JSON.parse(response);
+    if (parsedResponse.text && parsedResponse.options) {
+      return response; // Already in the correct format
+    }
+  } catch (e) {
+    // Not JSON, continue with formatting
+  }
+  
+  // Default options for the schlüssel verloren use case
+  let options: string[] = [];
+  
+  // Check if we're in the initial state of the Schlüssel verloren use case
+  if (useCase && useCase.title?.toLowerCase().includes('schlüssel') && selectedOptions.length === 0) {
+    options = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
+  } else if (selectedOptions.includes("Hausschlüssel")) {
+    options = ["1 Schlüssel", "2 Schlüssel", "3 oder mehr Schlüssel"];
+  } else if (selectedOptions.includes("Wohnungsschlüssel")) {
+    options = ["Mietwohnung", "Eigentumswohnung"];
+  } else if (selectedOptions.includes("Briefkastenschlüssel")) {
+    options = ["Ich kenne die Briefkastennummer", "Ich weiß nicht welche Nummer mein Briefkasten hat"];
+  }
+
+  // Create a formatted response
+  const formattedResponse = {
+    text: response,
+    options: options
+  };
+
+  return JSON.stringify(formattedResponse);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -193,7 +228,10 @@ serve(async (req) => {
       })
     });
     
-    const assistantResponse = responseData.choices[0].message.content;
+    let assistantResponse = responseData.choices[0].message.content;
+    
+    // Format the response to include options if necessary
+    assistantResponse = formatAssistantResponse(assistantResponse, useCase, selectedOptions);
     
     // Insert the assistant's response
     const { data: insertedMessage, error: insertError } = await supabase
