@@ -1,10 +1,8 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
-import { Loader2 } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,10 +25,10 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
   const { user } = useAuth();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -71,7 +69,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
-      toast.error('Fehler beim Laden der Nachrichten', { description: error.message });
+      toast.error('Fehler beim Laden der Nachrichten');
     }
   };
 
@@ -109,95 +107,42 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       fetchMessages();
     } catch (error: any) {
       console.error('Error sending message:', error);
-      toast.error('Fehler beim Senden der Nachricht', { description: error.message });
+      toast.error('Fehler beim Senden der Nachricht');
     } finally {
       setIsLoading(false);
       setInputValue('');
     }
   };
 
-  const handleForward = async () => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ forwarded_to: 'team_leader' })
-        .eq('id', taskId);
-
-      if (error) throw error;
-
-      toast.success("Aufgabe weitergeleitet", {
-        description: "Die Aufgabe wurde erfolgreich an einen Teamleiter weitergeleitet."
-      });
-    } catch (error: any) {
-      toast.error("Fehler", {
-        description: error.message
-      });
-    }
-  };
-
   const renderMessage = (message: Message) => {
     if (message.role === "assistant") {
       try {
-        let parsedContent;
+        const parsedContent = JSON.parse(message.content);
         
-        try {
-          parsedContent = JSON.parse(message.content);
-        } catch (e) {
-          return <div className="whitespace-pre-wrap">{message.content}</div>;
-        }
-        
-        if (parsedContent.text) {
-          return (
-            <div className="space-y-3">
-              <div className="text-sm whitespace-pre-wrap">{parsedContent.text}</div>
-              {parsedContent.options && parsedContent.options.length > 0 ? (
-                <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
-                  {parsedContent.options.map((option: string, idx: number) => (
-                    <Button
-                      key={idx}
-                      variant="outline"
-                      onClick={() => handleButtonClick(option)}
-                      className="rounded text-sm px-4 py-1 hover:bg-blue-100"
-                      size={isMobile ? "sm" : "default"}
-                    >
-                      {option}
-                    </Button>
-                  ))}
-                </div>
-              ) : (
-                !useCaseId && (
+        return (
+          <div className="space-y-3">
+            <div className="text-sm whitespace-pre-wrap">{parsedContent.text}</div>
+            {parsedContent.options && parsedContent.options.length > 0 && (
+              <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
+                {parsedContent.options.map((option: string, idx: number) => (
                   <Button
-                    onClick={handleForward}
-                    variant="secondary"
-                    className="mt-4 bg-blue-100 text-blue-700 hover:bg-blue-200"
+                    key={idx}
+                    variant="outline"
+                    onClick={() => sendMessage("", option)}
+                    className="rounded text-sm px-4 py-1 hover:bg-blue-100"
+                    size={isMobile ? "sm" : "default"}
                   >
-                    <Send className="h-4 w-4 mr-2" />
-                    An Teamleiter weiterleiten
+                    {option}
                   </Button>
-                )
-              )}
-            </div>
-          );
-        }
-
-        if (parsedContent.chat_response?.steps_block && Array.isArray(parsedContent.chat_response.steps_block)) {
-          return (
-            <div className="space-y-2">
-              {parsedContent.chat_response.steps_block.map((step: string, index: number) => (
-                <div key={index} className="p-2 rounded bg-blue-50/50 border border-blue-100/50">
-                  {step}
-                </div>
-              ))}
-            </div>
-          );
-        }
-
-        return <div className="whitespace-pre-wrap">{message.content}</div>;
+                ))}
+              </div>
+            )}
+          </div>
+        );
       } catch (e) {
         return <div className="whitespace-pre-wrap">{message.content}</div>;
       }
     }
-
     return <div className="whitespace-pre-wrap">{message.content}</div>;
   };
 
@@ -205,12 +150,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     e.preventDefault();
     if (inputValue.trim() && !isLoading) {
       sendMessage(inputValue);
-    }
-  };
-
-  const handleButtonClick = (option: string) => {
-    if (!isLoading) {
-      sendMessage("", option);
     }
   };
 
