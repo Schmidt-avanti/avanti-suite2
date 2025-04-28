@@ -37,31 +37,52 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const [initialMessageSent, setInitialMessageSent] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [lastScrollPosition, setLastScrollPosition] = useState(0);
+  const [scrollHeight, setScrollHeight] = useState(0);
 
   // Track when user has scrolled up
   const handleScroll = () => {
     if (!scrollAreaRef.current) return;
     
-    const { scrollHeight, scrollTop, clientHeight } = scrollAreaRef.current;
+    const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
+    if (!viewport) return;
+    
+    const { scrollHeight, scrollTop, clientHeight } = viewport;
+    setScrollHeight(scrollHeight);
+    setLastScrollPosition(scrollTop);
+    
+    // Consider "scrolled to bottom" if within 30px of the bottom
     const isScrolledToBottom = scrollHeight - scrollTop - clientHeight < 30;
     
     setShouldAutoScroll(isScrolledToBottom);
     setShowScrollButton(!isScrolledToBottom);
   };
 
-  // Scroll to bottom only when new messages arrive or when explicitly requested
-  useEffect(() => {
-    if (shouldAutoScroll) {
-      scrollToBottom();
-    }
-  }, [messages, isLoading]);
-
   // Scroll to bottom function
   const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (!scrollAreaRef.current) return;
+    
+    const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement;
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight;
+      setShouldAutoScroll(true);
+      setShowScrollButton(false);
     }
   };
+  
+  // Scroll to bottom only when new messages arrive or when explicitly requested
+  useEffect(() => {
+    if (shouldAutoScroll && messages.length > 0) {
+      setTimeout(scrollToBottom, 100); // Small delay to ensure content is rendered
+    }
+  }, [messages, shouldAutoScroll]);
+
+  // Force scroll to bottom when loading completes
+  useEffect(() => {
+    if (!isLoading && messages.length > 0) {
+      setTimeout(scrollToBottom, 150);
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     if (initialMessages.length === 0) {
@@ -124,6 +145,9 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           }
         });
         setSelectedOptions(newSelectedOptions);
+        
+        // Always scroll to bottom when initially fetching messages
+        setTimeout(scrollToBottom, 200);
       }
     } catch (error: any) {
       console.error('Error fetching messages:', error);
@@ -186,7 +210,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
 
       setRetryCount(0);
       setPreviousResponseId(data.response_id);
-      fetchMessages();
+      await fetchMessages();
       // Enable auto-scroll when a new message is sent
       setShouldAutoScroll(true);
     } catch (error: any) {
@@ -285,6 +309,37 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
             return <div className="whitespace-pre-wrap">{content}</div>;
           }
         } else {
+          // Last fallback - look for lists that might contain options
+          const listMatch = content.match(/(?:\d+\.\s+(.*?)(?:\n|$))+/g);
+          if (listMatch && content.toLowerCase().includes('schlüssel')) {
+            const defaultOptions = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
+            
+            return (
+              <div className="space-y-3">
+                <div className="text-sm whitespace-pre-wrap">{content}</div>
+                <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
+                  {defaultOptions.map((option: string, idx: number) => {
+                    if (selectedOptions.has(option)) {
+                      return null;
+                    }
+                    
+                    return (
+                      <Button
+                        key={idx}
+                        variant="outline"
+                        onClick={() => sendMessage("", option)}
+                        className="rounded text-sm px-4 py-1 hover:bg-blue-100"
+                        size={isMobile ? "sm" : "default"}
+                      >
+                        {option}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }
+          
           return <div className="whitespace-pre-wrap">{content}</div>;
         }
       }
@@ -403,12 +458,9 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         {/* Scroll to bottom button */}
         {showScrollButton && (
           <Button 
-            className="absolute bottom-4 right-4 rounded-full w-10 h-10 shadow-md bg-blue-500 hover:bg-blue-600 text-white"
+            className="absolute bottom-4 right-4 rounded-full w-10 h-10 shadow-md bg-blue-500 hover:bg-blue-600 text-white z-10"
             size="icon"
-            onClick={() => {
-              scrollToBottom();
-              setShouldAutoScroll(true);
-            }}
+            onClick={scrollToBottom}
           >
             <ArrowDown className="h-4 w-4" />
           </Button>

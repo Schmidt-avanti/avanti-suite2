@@ -86,6 +86,15 @@ function formatAssistantResponse(content: string): string {
     }
   }
   
+  // For the specific "Schlüssel verloren" case, add default options
+  if (content.toLowerCase().includes('schlüssel') && 
+      (content.toLowerCase().includes('verloren') || content.toLowerCase().includes('art von schlüssel'))) {
+    return JSON.stringify({
+      text: content,
+      options: ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"]
+    });
+  }
+  
   // If no options found or processing failed, return simple JSON format
   return JSON.stringify({
     text: content,
