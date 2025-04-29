@@ -50,9 +50,14 @@ const CreateTask = () => {
       let matchResult = null;
 
       try {
+        // Pass both description and customerId to the match-use-case function
         const result = await supabase.functions.invoke('match-use-case', {
-          body: { description: values.description },
+          body: { 
+            description: values.description,
+            customerId: values.customerId 
+          },
         });
+        
         if (result.error) throw result.error;
         matchResult = result.data;
       } catch (matchError) {

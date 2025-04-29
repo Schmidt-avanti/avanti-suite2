@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { description } = await req.json();
+    const { description, customerId } = await req.json();
 
     if (!description) {
       throw new Error('Description is required');
@@ -26,6 +26,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     console.log('Generating embedding for description:', description.substring(0, 100) + '...');
+    console.log('Customer ID:', customerId || 'Not provided');
 
     // 1. Generate embedding for the task description
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
@@ -50,7 +51,8 @@ serve(async (req) => {
       .rpc('match_similar_use_cases', {
         query_embedding: embedding,
         match_threshold: 0.5,
-        match_count: 3
+        match_count: 3,
+        customer_id_param: customerId || null // Pass the customer ID parameter
       });
 
     if (searchError) throw searchError;

@@ -1154,11 +1154,18 @@ export type Database = {
         Returns: string
       }
       match_similar_use_cases: {
-        Args: {
-          query_embedding: string
-          match_threshold: number
-          match_count: number
-        }
+        Args:
+          | {
+              query_embedding: string
+              match_threshold: number
+              match_count: number
+            }
+          | {
+              query_embedding: string
+              match_threshold: number
+              match_count: number
+              customer_id_param?: string
+            }
         Returns: {
           id: string
           title: string
