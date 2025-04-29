@@ -18,13 +18,17 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
   const [isChecking, setIsChecking] = useState(false);
   const [correctedText, setCorrectedText] = useState(text);
 
-  // Simple German typo dictionary
+  // Enhanced German typo dictionary with more common errors
   const typoDict: Record<string, string[]> = {
+    // Newsletter variants
     'newletter': ['newsletter'],
-    'newsltter': ['newsletter'],
     'newsleter': ['newsletter'],
     'newslettr': ['newsletter'],
+    'newsltter': ['newsletter'],
     'newsltr': ['newsletter'],
+    'newslaetter': ['newsletter'],
+    
+    // Common German words
     'anmeldung': ['anmeldung'],
     'anmeldng': ['anmeldung'],
     'kundentermin': ['kundentermin'],
@@ -37,6 +41,47 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     'updaten': ['aktualisieren', 'updaten'],
     'websete': ['webseite'],
     'webseit': ['webseite'],
+    'websit': ['website', 'webseite'],
+    
+    // Common business terms
+    'kundne': ['kunde', 'kunden'],
+    'kundn': ['kunde', 'kunden'],
+    'ineressent': ['interessent'],
+    'inressent': ['interessent'],
+    'beratng': ['beratung'],
+    'trmin': ['termin'],
+    'informaton': ['information'],
+    'informaton': ['information'],
+    'telefonnumer': ['telefonnummer'],
+    'telfon': ['telefon'],
+    'rechnng': ['rechnung'],
+    'recnung': ['rechnung'],
+    'produkt': ['produkt'],
+    'prodkt': ['produkt'],
+    'angbot': ['angebot'],
+    'anfrag': ['anfrage'],
+    'bestwert': ['bestwert'],
+    'bestätigng': ['bestätigung'],
+    
+    // Formal German
+    'sehr gehrt': ['sehr geehrte'],
+    'velen dank': ['vielen dank'],
+    'freundlche': ['freundliche'],
+    'mit freundlchen': ['mit freundlichen'],
+    'gruessen': ['grüßen'],
+    'grussen': ['grüßen'],
+    
+    // Common errors
+    'nich': ['nicht'],
+    'nict': ['nicht'],
+    'bitt': ['bitte'],
+    'mochte': ['möchte'],
+    'moechte': ['möchte'],
+    'fur': ['für'],
+    'konnen': ['können'],
+    'koennen': ['können'],
+    'zuruck': ['zurück'],
+    'zurueck': ['zurück'],
   };
 
   useEffect(() => {
