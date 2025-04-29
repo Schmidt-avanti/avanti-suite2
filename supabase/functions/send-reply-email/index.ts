@@ -44,19 +44,14 @@ serve(async (req) => {
       throw new Error('Could not find task');
     }
 
-    // Try to get the original sender email from either the relationship or the direct field
+    // Get the customer name for the sender
+    const customerName = task.customer?.name || "avanti-suite";
     const originalEmail = task.source === 'email' 
       ? (task.inbound_email?.from_email || task.endkunde_email)
       : null;
-
-    if (!originalEmail) {
-      throw new Error('No sender email found for this task');
-    }
-
-    // Get the customer name for the sender
-    const customerName = task.customer?.name || "avanti-suite";
-    
-    console.log('Sender: ', customerName, ' <', originalEmail, '>');
+      
+    console.log('Original from email:', originalEmail);
+    console.log('Customer name:', customerName);
     console.log('Sending email to:', recipient_email);
 
     // Get the SendGrid API key
@@ -65,8 +60,15 @@ serve(async (req) => {
       throw new Error('SENDGRID_API_KEY environment variable is not set');
     }
 
-    // Custom subject or use task title as fallback
+    // IMPORTANT: Use a verified sender email from SendGrid
+    const verifiedSenderEmail = Deno.env.get('SENDGRID_VERIFIED_SENDER') || 'noreply@avanti-suite.de';
+    console.log('Using verified sender email:', verifiedSenderEmail);
+    
+    // Use task title in subject or fallback
     const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
+    
+    // Add reply-to header with customer information
+    const replyToEmail = originalEmail || verifiedSenderEmail;
     
     // Send the email using SendGrid
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -79,7 +81,14 @@ serve(async (req) => {
         personalizations: [{
           to: [{ email: recipient_email }]
         }],
-        from: { email: originalEmail, name: customerName },
+        from: { 
+          email: verifiedSenderEmail,
+          name: customerName 
+        },
+        reply_to: {
+          email: replyToEmail,
+          name: customerName
+        },
         subject: emailSubject,
         content: [{
           type: 'text/plain',
@@ -93,6 +102,9 @@ serve(async (req) => {
       console.error('SendGrid error:', errorText);
       throw new Error(`Failed to send email: ${errorText}`);
     }
+
+    const responseData = await response.json();
+    console.log('SendGrid response:', responseData);
 
     // Update task history with sent email
     const { error: historyError } = await supabase

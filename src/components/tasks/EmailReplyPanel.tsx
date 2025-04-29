@@ -58,11 +58,16 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       
     } catch (error: any) {
       console.error('Email sending error:', error);
-      setSendError(error.message || 'Fehler beim E-Mail Versand');
+      const errorMessage = error.message || 'Fehler beim E-Mail Versand';
+      setSendError(
+        errorMessage.includes('verified Sender Identity') 
+          ? 'Der Absender ist nicht verifiziert. Bitte kontaktieren Sie den Administrator, um die SendGrid-Konfiguration zu überprüfen.'
+          : errorMessage
+      );
       toast({
         variant: 'destructive',
         title: 'Fehler beim Senden',
-        description: error.message || 'Fehler beim E-Mail Versand',
+        description: 'E-Mail konnte nicht gesendet werden. Details finden Sie im Formular.',
       });
     } finally {
       setIsSending(false);
@@ -95,7 +100,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
               <p className="mt-1">{sendError}</p>
               <p className="mt-2 text-xs">
                 Bitte stellen Sie sicher, dass die E-Mail-Adresse korrekt ist und dass in der SendGrid-Konfiguration 
-                die Absender-E-Mail verifiziert wurde.
+                die Absender-E-Mail verifiziert wurde. Ein Administrator kann dies in der Supabase-Konsole prüfen.
               </p>
             </div>
           </div>
