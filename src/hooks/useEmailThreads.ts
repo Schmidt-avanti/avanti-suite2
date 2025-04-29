@@ -26,7 +26,22 @@ export const useEmailThreads = (taskId: string | null) => {
           
         if (error) throw error;
         
-        setThreads(data || []);
+        // Type validation and casting
+        if (data) {
+          const typedThreads = data.map(thread => {
+            // Ensure direction is either "inbound" or "outbound"
+            const direction = thread.direction === 'inbound' ? 'inbound' : 'outbound';
+            
+            return {
+              ...thread,
+              direction
+            } as EmailThread;
+          });
+          
+          setThreads(typedThreads);
+        } else {
+          setThreads([]);
+        }
       } catch (error: any) {
         console.error('Error fetching email threads:', error);
         toast({
