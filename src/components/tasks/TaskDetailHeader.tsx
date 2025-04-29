@@ -41,6 +41,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   handleStatusChange
 }) => {
   const isEmailTask = task.source === 'email';
+  const isCompleted = task.status === 'completed';
   
   return (
     <div className="bg-blue-50 p-4 rounded-t-xl flex flex-col gap-2">
@@ -65,7 +66,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
         </div>
         
         {/* Right section with forward button */}
-        {canAssignOrForward && (
+        {canAssignOrForward && !isCompleted && (
           <Button
             variant="outline"
             className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
@@ -79,37 +80,43 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
       
       {/* Action buttons row */}
       <div className="flex flex-wrap gap-2 mt-1">
-        {/* Follow up button */}
-        <Button 
-          variant="outline" 
-          className="bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200"
-          onClick={() => setFollowUpDialogOpen(true)}
-        >
-          <Calendar className="h-4 w-4 mr-2" />
-          Wiedervorlage
-        </Button>
+        {/* Follow up button - hide for completed tasks */}
+        {!isCompleted && (
+          <Button 
+            variant="outline" 
+            className="bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200"
+            onClick={() => setFollowUpDialogOpen(true)}
+          >
+            <Calendar className="h-4 w-4 mr-2" />
+            Wiedervorlage
+          </Button>
+        )}
         
-        {/* Beenden ohne Ava button - Opens the dialog */}
-        <Button 
-          variant="outline" 
-          className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
-          onClick={() => setCloseTaskDialogOpen(true)}
-        >
-          <X className="h-4 w-4 mr-2" />
-          Beenden ohne Ava
-        </Button>
+        {/* Beenden ohne Ava button - hide for completed tasks */}
+        {!isCompleted && (
+          <Button 
+            variant="outline" 
+            className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
+            onClick={() => setCloseTaskDialogOpen(true)}
+          >
+            <X className="h-4 w-4 mr-2" />
+            Beenden ohne Ava
+          </Button>
+        )}
         
-        {/* Aufgabe abschließen button - Now directly marks task as completed */}
-        <Button 
-          variant="outline" 
-          className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
-          onClick={() => handleStatusChange('completed' as TaskStatus)}
-        >
-          <CheckCircle className="h-4 w-4 mr-2" />
-          Aufgabe abschließen
-        </Button>
+        {/* Aufgabe abschließen button - hide for completed tasks */}
+        {!isCompleted && (
+          <Button 
+            variant="outline" 
+            className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
+            onClick={() => handleStatusChange('completed' as TaskStatus)}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Aufgabe abschließen
+          </Button>
+        )}
         
-        {/* Email button - show for ALL tasks regardless of source */}
+        {/* Email button - show for ALL tasks */}
         <Button
           variant="outline"
           className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
@@ -119,8 +126,8 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           E-Mail an Kunde
         </Button>
         
-        {/* Assignment buttons - only show for email tasks */}
-        {isEmailTask && isUnassigned && user && (
+        {/* Assignment buttons - only show for email tasks and non-completed tasks */}
+        {isEmailTask && isUnassigned && user && !isCompleted && (
           <Button
             variant="outline"
             className="bg-white text-green-600 border-green-200 hover:bg-green-50"
@@ -131,8 +138,8 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           </Button>
         )}
         
-        {/* Assign button - only show for email tasks */}
-        {isEmailTask && canAssignOrForward && (
+        {/* Assign button - only show for email tasks and non-completed tasks */}
+        {isEmailTask && canAssignOrForward && !isCompleted && (
           <Button 
             variant="outline" 
             className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"

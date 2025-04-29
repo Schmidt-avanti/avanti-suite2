@@ -17,6 +17,7 @@ import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { useTaskMessages } from '@/hooks/useTaskMessages';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { toast } from '@/components/ui/use-toast';
+import { supabase } from "@/integrations/supabase/client";
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -50,6 +51,69 @@ const TaskDetail = () => {
   
   // Fetch email threads for this task
   const { threads: emailThreads } = useEmailThreads(id || null);
+
+  const findNextTask = async () => {
+    if (!user?.id) return null;
+    
+    try {
+      // Find next 'new' task assigned to this user
+      let query = supabase
+        .from('tasks')
+        .select('id')
+        .eq('status', 'new')
+        .eq('assigned_to', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1);
+        
+      const { data: newTasks, error: newTasksError } = await query;
+      
+      if (newTasksError) throw newTasksError;
+      
+      if (newTasks && newTasks.length > 0) {
+        return newTasks[0].id;
+      }
+      
+      // If no 'new' tasks, look for 'in_progress' tasks
+      const { data: inProgressTasks, error: inProgressTasksError } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('status', 'in_progress')
+        .eq('assigned_to', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1);
+        
+      if (inProgressTasksError) throw inProgressTasksError;
+      
+      if (inProgressTasks && inProgressTasks.length > 0) {
+        return inProgressTasks[0].id;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error finding next task:', error);
+      return null;
+    }
+  };
+
+  const handleTaskClose = async (comment: string) => {
+    await handleCloseWithoutAva(comment);
+    
+    // Find and navigate to next task
+    const nextTaskId = await findNextTask();
+    if (nextTaskId) {
+      setIsActive(false);
+      await new Promise(resolve => setTimeout(resolve, 100)); // Give time for timer to stop
+      navigate(`/tasks/${nextTaskId}`);
+      toast({
+        title: "Nächste Aufgabe",
+        description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
+      });
+    } else {
+      setIsActive(false);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      navigate('/tasks');
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -149,7 +213,7 @@ const TaskDetail = () => {
       <CloseTaskDialog
         open={closeTaskDialogOpen}
         onOpenChange={setCloseTaskDialogOpen}
-        onClose={handleCloseWithoutAva}
+        onClose={handleTaskClose}
       />
 
       <AssignTaskDialog
