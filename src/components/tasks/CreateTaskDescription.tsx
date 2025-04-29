@@ -73,8 +73,8 @@ export function CreateTaskDescription({
         </div>
       </div>
       
-      {/* Spell checking tool - clearly separated below the input area and send button */}
-      {!isMatching && description.trim().length > 0 && (
+      {/* Show spell checking tool whenever there is text, regardless of isMatching state */}
+      {description.trim().length > 0 && (
         <div className="mt-4 mb-2">
           <SpellChecker text={description} onCorrect={onDescriptionChange} />
         </div>

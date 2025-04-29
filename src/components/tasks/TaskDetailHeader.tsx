@@ -109,17 +109,15 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           Aufgabe abschließen
         </Button>
         
-        {/* Email buttons - only show for NON-email tasks */}
-        {!isEmailTask && (
-          <Button
-            variant="outline"
-            className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
-            onClick={() => setEmailToCustomerDialogOpen(true)}
-          >
-            <Mail className="h-4 w-4 mr-2" />
-            E-Mail an Kunde
-          </Button>
-        )}
+        {/* Email button - show for ALL tasks regardless of source */}
+        <Button
+          variant="outline"
+          className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
+          onClick={() => setEmailToCustomerDialogOpen(true)}
+        >
+          <Mail className="h-4 w-4 mr-2" />
+          E-Mail an Kunde
+        </Button>
         
         {/* Assignment buttons - only show for email tasks */}
         {isEmailTask && isUnassigned && user && (
