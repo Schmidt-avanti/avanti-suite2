@@ -83,7 +83,7 @@ export function KnowledgeArticlesList({ customerId, taskDescription, onOpenArtic
             className="w-full justify-start text-left bg-blue-50/50 hover:bg-blue-100/80 border-blue-100 px-3 py-2 h-auto"
             onClick={() => handleOpenArticle(articles[0])}
           >
-            {articles[0].title}
+            <span className="break-words whitespace-normal">{articles[0].title}</span>
           </Button>
         </CardContent>
       </Card>
