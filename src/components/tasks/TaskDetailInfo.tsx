@@ -8,6 +8,7 @@ import {
   UserCheck,
   XCircle,
 } from "lucide-react";
+import { KnowledgeArticlesList } from './KnowledgeArticlesList';
 
 interface TaskDetailInfoProps {
   task: any;
@@ -69,6 +70,12 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
               <div className="ml-6 text-gray-700">{task.closing_comment}</div>
             </>
           )}
+          
+          {/* Knowledge Articles Section */}
+          <KnowledgeArticlesList 
+            customerId={task.customer_id}
+            taskDescription={task.description}
+          />
         </CardContent>
       </Card>
     </div>
