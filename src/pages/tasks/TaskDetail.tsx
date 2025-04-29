@@ -12,7 +12,6 @@ import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
 import { EmailReplyPanel } from '@/components/tasks/EmailReplyPanel';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
-import { KnowledgeArticleManager } from '@/components/tasks/KnowledgeArticleManager';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -78,15 +77,7 @@ const TaskDetail = () => {
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
-          <div className="space-y-6">
-            <TaskDetailInfo task={task} />
-            
-            {/* Wissensartikel mit dem Aufgabenkontext anzeigen */}
-            <KnowledgeArticleManager 
-              customerId={task.customer_id} 
-              taskDescription={task.description} 
-            />
-          </div>
+          <TaskDetailInfo task={task} />
 
           <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
             <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 mr-6 p-6">
