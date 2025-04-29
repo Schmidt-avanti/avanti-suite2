@@ -52,6 +52,13 @@ export function CreateTaskDescription({
         }}
       />
       
+      {/* Spell checking tool in its own container with spacing from the send button */}
+      {!isMatching && description.length > 0 && (
+        <div className="mt-4 mb-8 pt-2">
+          <SpellChecker text={description} onCorrect={onDescriptionChange} />
+        </div>
+      )}
+      
       {/* Send button positioned at the bottom right of textarea */}
       <div className="absolute bottom-2 right-2 z-10">
         <Button
@@ -70,13 +77,6 @@ export function CreateTaskDescription({
           )}
         </Button>
       </div>
-      
-      {/* Spell checking tool in its own container with spacing from the send button */}
-      {!isMatching && description.length > 0 && (
-        <div className="mt-6 mb-2">
-          <SpellChecker text={description} onCorrect={onDescriptionChange} />
-        </div>
-      )}
     </div>
   );
 }

@@ -46,6 +46,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
         });
         
         setSuggestions(apiSuggestions);
+        console.log("Found suggestions:", apiSuggestions.length);
       } else {
         // If no spelling errors found
         console.log("No spelling errors found");
@@ -159,9 +160,9 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     return (
       <div className="mt-2 flex items-center">
         <Button 
-          variant="ghost" 
+          variant="outline" 
           size="sm" 
-          className="text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground"
+          className="text-xs flex items-center gap-1 border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
           onClick={checkSpelling}
           disabled={isChecking || !text.trim()}
         >
@@ -177,7 +178,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
   }
 
   return (
-    <div className="mt-2 space-y-2 mb-4">
+    <div className="mt-2 space-y-2 mb-4 bg-white border border-amber-200 rounded-md p-3">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium flex items-center gap-1 text-amber-600">
           <SpellCheck className="h-4 w-4" />
