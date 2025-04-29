@@ -37,46 +37,49 @@ export function CreateTaskDescription({
 
   return (
     <div className="relative">
-      {/* Textarea input */}
-      <Textarea
-        value={description}
-        onChange={(e) => onDescriptionChange(e.target.value)}
-        placeholder="Was soll erledigt werden?"
-        className="min-h-[110px] max-h-[320px] w-full pl-4 pr-14 py-4 rounded-lg bg-muted/40 border border-muted shadow-inner focus-visible:ring-2 focus-visible:ring-primary/60 focus:border-primary transition-all placeholder:text-[16px] placeholder:text-muted-foreground font-normal text-base resize-y"
-        disabled={isMatching}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSubmit();
-          }
-        }}
-      />
+      {/* Main input area container */}
+      <div className="relative mb-2">
+        {/* Textarea input */}
+        <Textarea
+          value={description}
+          onChange={(e) => onDescriptionChange(e.target.value)}
+          placeholder="Was soll erledigt werden?"
+          className="min-h-[110px] max-h-[320px] w-full pl-4 pr-14 py-4 rounded-lg bg-muted/40 border border-muted shadow-inner focus-visible:ring-2 focus-visible:ring-primary/60 focus:border-primary transition-all placeholder:text-[16px] placeholder:text-muted-foreground font-normal text-base resize-y"
+          disabled={isMatching}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+        />
+        
+        {/* Send button positioned at the bottom right of textarea */}
+        <div className="absolute bottom-2 right-2 z-10">
+          <Button
+            type="button"
+            variant="default"
+            size="icon"
+            onClick={handleSubmit}
+            disabled={isMatching || description.length < minLength}
+            className="rounded-full h-10 w-10 shadow-sm bg-gradient-to-tr from-[#4f8df9] to-[#007bff] hover:from-[#007bff] hover:to-[#4f8df9] text-white transition-all focus:ring-2 focus:ring-primary/30"
+            tabIndex={-1}
+          >
+            {isMatching ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : (
+              <Send className="h-6 w-6" />
+            )}
+          </Button>
+        </div>
+      </div>
       
-      {/* Spell checking tool in its own container with spacing from the send button */}
+      {/* Spell checking tool - clearly separated below the input area */}
       {!isMatching && description.length > 0 && (
-        <div className="mt-4 mb-8 pt-2">
+        <div className="mt-3">
           <SpellChecker text={description} onCorrect={onDescriptionChange} />
         </div>
       )}
-      
-      {/* Send button positioned at the bottom right of textarea */}
-      <div className="absolute bottom-2 right-2 z-10">
-        <Button
-          type="button"
-          variant="default"
-          size="icon"
-          onClick={handleSubmit}
-          disabled={isMatching || description.length < minLength}
-          className="rounded-full h-10 w-10 shadow-sm bg-gradient-to-tr from-[#4f8df9] to-[#007bff] hover:from-[#007bff] hover:to-[#4f8df9] text-white transition-all focus:ring-2 focus:ring-primary/30"
-          tabIndex={-1}
-        >
-          {isMatching ? (
-            <Loader2 className="h-6 w-6 animate-spin" />
-          ) : (
-            <Send className="h-6 w-6" />
-          )}
-        </Button>
-      </div>
     </div>
   );
 }

@@ -158,7 +158,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
 
   if (suggestions.length === 0) {
     return (
-      <div className="mt-2 flex items-center">
+      <div className="flex items-center">
         <Button 
           variant="outline" 
           size="sm" 
@@ -178,7 +178,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
   }
 
   return (
-    <div className="mt-2 space-y-2 mb-4 bg-white border border-amber-200 rounded-md p-3">
+    <div className="space-y-2 bg-white border border-amber-200 rounded-md p-3">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium flex items-center gap-1 text-amber-600">
           <SpellCheck className="h-4 w-4" />
@@ -199,7 +199,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
         </div>
       </div>
       
-      <div className="bg-amber-50 border border-amber-100 rounded-md p-2 space-y-2 text-sm">
+      <div className="bg-amber-50 border border-amber-100 rounded-md p-2 space-y-3 text-sm">
         {suggestions.map((item, i) => (
           <div key={i} className="flex items-center justify-between">
             <div className="flex-1 mr-2">
@@ -214,7 +214,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {item.suggestions.length > 1 && (
                 <Button
                   variant="ghost"

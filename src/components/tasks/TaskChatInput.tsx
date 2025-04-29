@@ -31,8 +31,8 @@ export const TaskChatInput: React.FC<TaskChatInputProps> = ({
         onSubmit={handleSubmit}
         className="w-full flex flex-col gap-2 border border-gray-200 p-4 bg-white rounded-md shadow-sm"
       >
-        {/* Input area and send button */}
-        <div className="flex items-end gap-2">
+        {/* Input area and send button container */}
+        <div className="relative mb-2">
           <Textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
@@ -42,23 +42,25 @@ export const TaskChatInput: React.FC<TaskChatInputProps> = ({
             style={{ fontSize: '1rem', padding: '12px' }}
             disabled={isLoading}
           />
-          <Button
-            type="submit"
-            disabled={isLoading || !inputValue.trim()}
-            className="bg-blue-500 hover:bg-blue-600 text-white rounded-md h-11 w-11 flex items-center justify-center shadow transition-all"
-            tabIndex={0}
-          >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </Button>
+          <div className="absolute bottom-2 right-2">
+            <Button
+              type="submit"
+              disabled={isLoading || !inputValue.trim()}
+              className="bg-blue-500 hover:bg-blue-600 text-white rounded-md h-11 w-11 flex items-center justify-center shadow transition-all"
+              tabIndex={0}
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
         </div>
         
-        {/* Spell checking tool */}
+        {/* Spell checking tool - clearly separated below input and send button */}
         {!isLoading && inputValue.length > 0 && (
-          <div className="mt-4 mb-2">
+          <div className="mt-2">
             <SpellChecker text={inputValue} onCorrect={setInputValue} />
           </div>
         )}
