@@ -1153,6 +1153,20 @@ export type Database = {
         Args: { email_address: string }
         Returns: string
       }
+      match_relevant_knowledge_articles: {
+        Args: {
+          query_embedding: string
+          match_threshold: number
+          match_count: number
+          customer_id_param: string
+        }
+        Returns: {
+          id: string
+          title: string
+          content: string
+          similarity: number
+        }[]
+      }
       match_similar_use_cases: {
         Args:
           | {

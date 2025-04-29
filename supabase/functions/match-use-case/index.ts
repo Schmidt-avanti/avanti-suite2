@@ -44,15 +44,63 @@ serve(async (req) => {
     const embeddingData = await embeddingResponse.json();
     const embedding = embeddingData.data[0].embedding;
 
-    // 2. Find similar use cases using our new database function
+    // 2. Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // 3. First check for matching knowledge articles
+    const { data: matchingKnowledgeArticles, error: kaError } = await supabase
+      .rpc('match_relevant_knowledge_articles', {
+        query_embedding: embedding,
+        match_threshold: 0.5,
+        match_count: 3,
+        customer_id_param: customerId || null
+      });
+
+    if (kaError) {
+      console.error('Error searching knowledge articles:', kaError);
+    }
+    
+    console.log('Found matching knowledge articles:', matchingKnowledgeArticles?.length || 0);
+    
+    // 4. If we have a knowledge article with a linked use case, use that
+    let matchedUseCaseFromKA = null;
+    if (matchingKnowledgeArticles && matchingKnowledgeArticles.length > 0) {
+      // Get the first (most similar) knowledge article
+      const topArticle = matchingKnowledgeArticles[0];
+      
+      // If article has similarity above 0.7 and has a linked use case, use that use case
+      if (topArticle.similarity > 0.7 && topArticle.use_case_id) {
+        const { data: linkedUseCase, error: ucError } = await supabase
+          .from('use_cases')
+          .select('id, title, type')
+          .eq('id', topArticle.use_case_id)
+          .single();
+          
+        if (!ucError && linkedUseCase) {
+          console.log('Found use case via knowledge article:', linkedUseCase.title);
+          matchedUseCaseFromKA = {
+            matched_use_case_id: linkedUseCase.id,
+            confidence: topArticle.similarity * 100, // Convert to percentage
+            reasoning: `Matched via knowledge article "${topArticle.title}" with ${(topArticle.similarity * 100).toFixed(1)}% similarity`
+          };
+        }
+      }
+    }
+    
+    // If we found a use case via knowledge article, return it directly
+    if (matchedUseCaseFromKA) {
+      return new Response(JSON.stringify(matchedUseCaseFromKA), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 5. Otherwise, continue with the original use case matching
     const { data: similarUseCases, error: searchError } = await supabase
       .rpc('match_similar_use_cases', {
         query_embedding: embedding,
         match_threshold: 0.5,
         match_count: 3,
-        customer_id_param: customerId || null // Pass the customer ID parameter
+        customer_id_param: customerId || null
       });
 
     if (searchError) throw searchError;
@@ -70,7 +118,7 @@ serve(async (req) => {
       });
     }
 
-    // 3. Use GPT to analyze matches
+    // 6. Use GPT to analyze matches
     const analysisResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
