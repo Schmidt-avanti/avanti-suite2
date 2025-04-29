@@ -60,14 +60,20 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     const initializeChat = async () => {
       // Nur eine automatische Nachricht senden, wenn:
       // 1. Eine Use-Case-ID vorhanden ist
-      // 2. Keine Nachrichten vorhanden sind
+      // 2. Keine Nachrichten vorhanden sind oder nur eine Benutzernachricht
       // 3. Die initiale Nachricht noch nicht gesendet wurde
       // 4. Nicht bereits lädt
-      if (useCaseId && messages.length === 0 && !initialMessageSent && !isLoading) {
-        console.log("Auto-starting chat for task with use case:", useCaseId);
+      const hasOnlyUserMessages = messages.length > 0 && !messages.some(msg => msg.role === 'assistant');
+      
+      if (useCaseId && (messages.length === 0 || hasOnlyUserMessages) && !initialMessageSent && !isLoading) {
+        console.log("Auto-starting chat for task with use case:", useCaseId, "Current messages:", messages.length);
         try {
+          // Warten, um sicherzustellen, dass der Task erstellt ist
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
           await sendMessage("", null, new Set<string>());
           setInitialMessageSent(true);
+          console.log("Initial message sent successfully");
         } catch (error) {
           console.error("Failed to auto-start chat:", error);
           toast.error("Chat konnte nicht automatisch gestartet werden. Bitte versuchen Sie es später erneut.");
@@ -75,13 +81,13 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       }
     };
 
-    // Warten, bis die Komponente vollständig geladen ist
+    // Nach kurzer Verzögerung ausführen, um sicherzustellen, dass die Komponente geladen ist
     const timer = setTimeout(() => {
       initializeChat();
-    }, 500);
+    }, 1000);
 
     return () => clearTimeout(timer);
-  }, [useCaseId, messages.length, sendMessage, initialMessageSent, isLoading, setInitialMessageSent]);
+  }, [useCaseId, messages, sendMessage, initialMessageSent, isLoading, setInitialMessageSent]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

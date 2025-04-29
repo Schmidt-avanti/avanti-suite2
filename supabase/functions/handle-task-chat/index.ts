@@ -148,7 +148,7 @@ serve(async (req) => {
     // Task-Daten abrufen
     const { data: task, error: taskError } = await supabase
       .from('tasks')
-      .select('*, messages:task_messages(*)')
+      .select('*, messages:task_messages(*), customer:customers(*)')
       .eq('id', taskId)
       .maybeSingle();
 
@@ -156,9 +156,10 @@ serve(async (req) => {
     if (!task) throw new Error('Task not found');
 
     // Wenn es bereits Nachrichten gibt und es sich um eine automatische Initiierung handelt, dann nichts tun
-    const hasExistingMessages = existingMessages && existingMessages.length > 0;
-    if (hasExistingMessages && isAutoInitialization) {
-      console.log("Task already has messages, skipping auto-initialization");
+    const hasAssistantMessages = existingMessages && existingMessages.some(msg => msg.role === 'assistant');
+    
+    if (hasAssistantMessages && isAutoInitialization) {
+      console.log("Task already has assistant messages, skipping auto-initialization");
       return new Response(
         JSON.stringify({
           message: "Task already has messages, no auto-initialization needed"
@@ -204,7 +205,9 @@ serve(async (req) => {
       
       // Bei automatischer Initiierung oder wenn noch keine Optionen ausgewählt wurden
       if (isAutoInitialization || selectedOptions.length === 0) {
-        systemPrompt += `\n\nBegrüße den Nutzer freundlich mit Namen wenn bekannt, stelle dich kurz vor und beginne sofort mit der ersten Frage zum Use Case. Bei "Schlüssel verloren" biete folgende Optionen an:
+        systemPrompt += `\n\nBegrüße den Nutzer freundlich mit Namen wenn bekannt, stelle dich kurz vor und beginne sofort mit der ersten Frage zum Use Case.
+        
+        Bei "Schlüssel verloren" biete folgende Optionen an:
         ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"]
         
         Bei "Bestellung stornieren" frage zuerst nach der Bestellnummer oder einem anderen eindeutigen Identifikator.`;
@@ -238,9 +241,11 @@ serve(async (req) => {
 
     // Bei automatischer Initiierung eine Anweisung für GPT erstellen
     if (isAutoInitialization || (!message && !buttonChoice && messages.length === 0)) {
+      const customerName = task.customer?.name || "der Kunde";
+      
       conversationMessages.push({
         role: "system",
-        content: `Der Chat wurde automatisch initiiert. Begrüße den Nutzer freundlich und stelle die erste Frage basierend auf dem Use Case "${useCase?.title || 'Unbekannt'}". Die Aufgabe betrifft: "${task.description || 'Keine Beschreibung'}". Falls der Kunde einen Namen hat, nutze diesen in der Begrüßung.`
+        content: `Der Chat wurde automatisch initiiert. Begrüße den Nutzer freundlich und stelle die erste Frage basierend auf dem Use Case "${useCase?.title || 'Unbekannt'}". Die Aufgabe betrifft: "${task.description || 'Keine Beschreibung'}". Der Kunde heißt ${customerName}.`
       });
     }
     

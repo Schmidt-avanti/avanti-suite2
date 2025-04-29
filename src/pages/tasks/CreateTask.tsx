@@ -117,6 +117,28 @@ const CreateTask = () => {
 
       if (messageError) throw messageError;
 
+      // Direkt eine initiale AI-Anfrage für den Task triggern,
+      // wenn ein Use Case erkannt wurde
+      if (matchResult?.matched_use_case_id) {
+        try {
+          console.log("Auto-initializing chat for new task with matched use case");
+          // Auto-Initiierung direkt nach Task-Erstellung
+          await supabase.functions.invoke('handle-task-chat', {
+            body: {
+              taskId: task.id,
+              useCaseId: matchResult.matched_use_case_id,
+              message: "",
+              buttonChoice: null,
+              isAutoInitialization: true
+            }
+          });
+          console.log("Chat auto-initialization completed");
+        } catch (chatError) {
+          console.error("Failed to auto-initialize chat:", chatError);
+          // Fehler beim Chat-Start beeinträchtigt nicht den Task-Erstellungsprozess
+        }
+      }
+
       await logTaskOpen(task.id);
 
       toast({
