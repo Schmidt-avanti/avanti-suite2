@@ -195,7 +195,11 @@ serve(async (req) => {
     // Create a system message with information about already selected options
     let systemPrompt = `Du bist die digitale Assistentin bei avanti-suite und hilfst bei Kundenanfragen.
 WICHTIG: Stell dich niemals persönlich mit Namen vor. Formuliere keine Sätze wie "Mein Name ist..." oder "Ich bin Ava...". 
-Beginne stattdessen sofort mit der Begrüßung und dem Thema.`;
+Beginne stattdessen sofort mit der Begrüßung und dem Thema.
+
+WICHTIG: Sprich den Kunden immer direkt an. Verwende "Sie" und "Ihre" für den Kunden, nicht "der Kunde" oder den Namen des Kunden in der dritten Person.
+Beispiel: Sage "Wie Ihre Bestellung versendet wird" und NICHT "wie die Bestellung von Herr/Frau X versendet wird".
+Nutze nur die direkte Anrede.`;
     
     if (useCase) {
       systemPrompt += `\n\nFolge diesem Use Case für die Aufgabe:
@@ -247,7 +251,7 @@ Beginne stattdessen sofort mit der Begrüßung und dem Thema.`;
       
       conversationMessages.push({
         role: "system",
-        content: `Der Chat wurde automatisch initiiert. Begrüße den Kunden freundlich, aber OHNE dich mit Namen vorzustellen. Stelle die erste Frage basierend auf dem Use Case "${useCase?.title || 'Unbekannt'}". Die Aufgabe betrifft: "${task.description || 'Keine Beschreibung'}". Der Kunde heißt ${customerName}.`
+        content: `Der Chat wurde automatisch initiiert. Begrüße den Kunden freundlich, aber OHNE dich mit Namen vorzustellen. Stelle die erste Frage basierend auf dem Use Case "${useCase?.title || 'Unbekannt'}". Die Aufgabe betrifft: "${task.description || 'Keine Beschreibung'}". Spreche den Kunden direkt an mit "Sie" und "Ihre", nicht als "${customerName}" in der dritten Person.`
       });
     }
     
