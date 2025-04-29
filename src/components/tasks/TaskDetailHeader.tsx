@@ -1,20 +1,19 @@
 
 import React from 'react';
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import {
-  ChevronLeft,
-  UserCheck,
-  Clock,
-  Calendar,
-  Check,
-  XCircle,
-  UserPlus,
-  Forward,
-  Mail
+import { 
+  ArrowLeft, Clock, CheckCircle, Calendar, Mail, 
+  UserPlus, Forward, X, MoreHorizontal 
 } from "lucide-react";
-import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { TaskStatusBadge } from './TaskStatusBadge';
+import { formatTimeElapsed } from '@/utils/timeUtils';
+import type { TaskStatus } from '@/types';
 
 interface TaskDetailHeaderProps {
   task: any;
@@ -29,7 +28,7 @@ interface TaskDetailHeaderProps {
   setFollowUpDialogOpen: (open: boolean) => void;
   setCloseTaskDialogOpen: (open: boolean) => void;
   setEmailToCustomerDialogOpen: (open: boolean) => void;
-  handleStatusChange: (status: string) => void;
+  handleStatusChange: (status: TaskStatus) => void;
 }
 
 export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
@@ -47,111 +46,111 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   setEmailToCustomerDialogOpen,
   handleStatusChange
 }) => {
-  const formattedFollowUpDate = task.follow_up_date 
-    ? format(new Date(task.follow_up_date), 'PPpp', { locale: de })
-    : null;
-
   return (
-    <div className="flex flex-wrap items-center px-6 pt-6 pb-3 border-b bg-gradient-to-r from-avanti-100 to-avanti-200 rounded-t-2xl gap-2">
-      <Button 
-        variant="ghost" 
-        onClick={handleBack}
-      >
-        <ChevronLeft className="h-4 w-4 mr-2" />
-        Zurück zur Übersicht
-      </Button>
-      <div className="flex-1" />
-      
-      <div className="text-sm font-medium bg-white/20 rounded-full px-4 py-1 flex items-center mr-4">
-        <Clock className="h-4 w-4 mr-2" />
-        {formattedTime}
-      </div>
-      
-      {task.status === 'followup' && formattedFollowUpDate && (
-        <div className="text-sm font-medium bg-purple-100 text-purple-800 rounded-full px-4 py-1 flex items-center mr-4">
-          <Calendar className="h-4 w-4 mr-2" />
-          {formattedFollowUpDate}
+    <div className="bg-gradient-to-r from-blue-900 to-blue-800 p-4 rounded-t-2xl text-white shadow-md">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button 
+            onClick={handleBack} 
+            variant="ghost" 
+            size="icon" 
+            className="text-white hover:bg-blue-700/50 h-9 w-9"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-semibold truncate">
+            {task.title || "Aufgabe ohne Titel"}
+          </h1>
+          <TaskStatusBadge status={task.status as TaskStatus} className="ml-2" />
         </div>
-      )}
 
-      {isUnassigned && user && (
-        <Button 
-          onClick={handleAssignToMe}
-          variant="secondary"
-          className="mr-2 bg-blue-100 text-blue-700 hover:bg-blue-200"
-        >
-          <UserCheck className="h-4 w-4 mr-2" />
-          Mir zuweisen
-        </Button>
-      )}
-
-      {canAssignOrForward && (
-        <>
-          {!task.assigned_to ? (
-            <Button 
-              onClick={() => setAssignTaskDialogOpen(true)}
-              variant="secondary"
-              className="mr-2 bg-white/80 hover:bg-white"
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center mr-4">
+            <Clock className="h-4 w-4 mr-1 opacity-80" />
+            <span className="text-sm font-medium">{formattedTime}</span>
+          </div>
+          
+          {/* Assignment and Actions Buttons */}
+          <div className="flex items-center space-x-2">
+            {/* Email to customer button - making sure it's always visible */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="bg-blue-700/50 hover:bg-blue-700 text-white"
+              onClick={() => setEmailToCustomerDialogOpen(true)}
             >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Zuweisen
+              <Mail className="h-4 w-4 mr-2" />
+              E-Mail an Kunde
             </Button>
-          ) : (
-            <Button 
-              onClick={() => setForwardTaskDialogOpen(true)}
-              variant="secondary"
-              className="mr-2 bg-white/80 hover:bg-white"
-            >
-              <Forward className="h-4 w-4 mr-2" />
-              Weiterleiten
-            </Button>
-          )}
-        </>
-      )}
-      
-      <Button 
-        onClick={() => setEmailToCustomerDialogOpen(true)}
-        variant="secondary"
-        className="mr-2 bg-blue-100 text-blue-700 hover:bg-blue-200"
-      >
-        <Mail className="h-4 w-4 mr-2" />
-        E-Mail an Kunde
-      </Button>
+            
+            {isUnassigned && user && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-blue-700/50 hover:bg-blue-700 text-white"
+                onClick={handleAssignToMe}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Mir zuweisen
+              </Button>
+            )}
+            
+            {canAssignOrForward && (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="bg-blue-700/50 hover:bg-blue-700 text-white"
+                  onClick={() => setAssignTaskDialogOpen(true)}
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Zuweisen
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="bg-blue-700/50 hover:bg-blue-700 text-white"
+                  onClick={() => setForwardTaskDialogOpen(true)}
+                >
+                  <Forward className="h-4 w-4 mr-2" />
+                  Weiterleiten
+                </Button>
+              </>
+            )}
 
-      {task.status !== 'followup' && task.status !== 'completed' && (
-        <Button 
-          onClick={() => setFollowUpDialogOpen(true)}
-          variant="secondary"
-          className="mr-2 bg-purple-100 text-purple-700 hover:bg-purple-200"
-        >
-          <Calendar className="h-4 w-4 mr-2" />
-          Wiedervorlage
-        </Button>
-      )}
-
-      {task.status !== 'completed' && (
-        <Button 
-          onClick={() => setCloseTaskDialogOpen(true)}
-          variant="secondary"
-          className="mr-2 bg-slate-100 text-slate-700 hover:bg-slate-200"
-        >
-          <XCircle className="h-4 w-4 mr-2" />
-          Beenden ohne Ava
-        </Button>
-      )}
-      
-      {task.status !== 'completed' && (
-        <Button 
-          onClick={() => handleStatusChange('completed')}
-          variant="secondary"
-          className="mr-4 bg-green-100 text-green-700 hover:bg-green-200"
-        >
-          <Check className="h-4 w-4 mr-2" />
-          Aufgabe abschließen
-        </Button>
-      )}
-      
-      <TaskStatusBadge status={task.status || 'new'} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="bg-blue-700/50 hover:bg-blue-700 text-white">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-white text-gray-800 shadow-md">
+                <DropdownMenuItem 
+                  className="hover:bg-blue-50 cursor-pointer"
+                  onClick={() => setFollowUpDialogOpen(true)}
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Wiedervorlage
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="hover:bg-blue-50 cursor-pointer"
+                  onClick={() => setCloseTaskDialogOpen(true)}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Abschließen
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="hover:bg-red-50 text-red-600 cursor-pointer"
+                  onClick={() => handleStatusChange('closed')}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Schließen ohne Ava
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
