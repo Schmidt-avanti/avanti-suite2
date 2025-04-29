@@ -1,19 +1,25 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { BookOpen } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { KnowledgeArticleModal } from '../knowledge-articles/KnowledgeArticleModal';
+
 export interface KnowledgeArticle {
   id: string;
   title: string;
   content: string;
+  use_case_id?: string; // Added use_case_id as optional property
+  similarity?: number;  // Added similarity as optional property
 }
+
 interface KnowledgeArticlesListProps {
   customerId?: string | null;
   taskDescription?: string;
   onOpenArticle?: (article: KnowledgeArticle) => void;
 }
+
 export function KnowledgeArticlesList({
   customerId,
   taskDescription,
@@ -23,6 +29,7 @@ export function KnowledgeArticlesList({
   const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     async function fetchRelevantArticles() {
       if (!customerId) return;
@@ -43,6 +50,7 @@ export function KnowledgeArticlesList({
     }
     fetchRelevantArticles();
   }, [customerId, taskDescription]);
+
   const handleOpenArticle = (article: KnowledgeArticle) => {
     if (onOpenArticle) {
       // If external handler is provided, use it
@@ -53,6 +61,7 @@ export function KnowledgeArticlesList({
       setIsModalOpen(true);
     }
   };
+
   if (isLoading) {
     return <div className="mt-3 text-sm text-muted-foreground">Lade Wissensartikel...</div>;
   }
