@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from '@/hooks/useTaskMessages';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskChatMessageProps {
   message: Message;
@@ -16,6 +17,7 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   onOptionSelect 
 }) => {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
 
   const renderMessageContent = () => {
     if (message.role === "assistant") {
@@ -141,7 +143,7 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
       `}>
         <div className="flex items-center gap-2 mb-1">
           <span className="font-semibold text-sm">
-            {message.role === "assistant" ? "Ava" : "Du"}
+            {message.role === "assistant" ? "Ava" : user?.name || user?.email || "Benutzer"}
           </span>
         </div>
         <div className="text-sm">
