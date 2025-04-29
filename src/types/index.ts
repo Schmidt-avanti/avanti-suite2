@@ -1,4 +1,3 @@
-
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -19,7 +18,7 @@ export interface TaskTimeSummary {
 }
 
 // Existing types (to fix build errors)
-export type TaskStatus = 'new' | 'in_progress' | 'followup' | 'completed';
+export type TaskStatus = 'new' | 'in_progress' | 'followup' | 'completed' | 'closed';
 
 export interface Task {
   id: string;

@@ -14,6 +14,7 @@ import {
 import { TaskStatusBadge } from './TaskStatusBadge';
 import { formatTimeElapsed } from '@/utils/timeUtils';
 import type { TaskStatus } from '@/types';
+import { cn } from "@/lib/utils";
 
 interface TaskDetailHeaderProps {
   task: any;

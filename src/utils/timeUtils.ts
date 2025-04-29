@@ -41,3 +41,14 @@ export function formatTimeHHMM(seconds: number): string {
   
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
+
+/**
+ * Formatiert die verstrichene Zeit seit einem bestimmten Zeitpunkt
+ */
+export function formatTimeElapsed(startTime: string | Date): string {
+  const start = startTime instanceof Date ? startTime : new Date(startTime);
+  const now = new Date();
+  
+  const elapsedSeconds = Math.floor((now.getTime() - start.getTime()) / 1000);
+  return formatDuration(elapsedSeconds);
+}
