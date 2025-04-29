@@ -1,17 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { BookOpen } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { KnowledgeArticleModal } from '../knowledge-articles/KnowledgeArticleModal';
-import { useToast } from '@/components/ui/use-toast';
 
 export interface KnowledgeArticle {
   id: string;
   title: string;
   content: string;
-  use_case_id?: string;
-  similarity?: number;
 }
 
 interface KnowledgeArticlesListProps {
@@ -25,7 +23,6 @@ export function KnowledgeArticlesList({
   taskDescription,
   onOpenArticle
 }: KnowledgeArticlesListProps) {
-  const { toast } = useToast();
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -33,84 +30,69 @@ export function KnowledgeArticlesList({
 
   useEffect(() => {
     async function fetchRelevantArticles() {
-      if (!customerId || !taskDescription) return;
+      if (!customerId) return;
       
       setIsLoading(true);
+      
       try {
-        console.log('Fetching relevant articles for customer:', customerId);
-        console.log('Task description:', taskDescription?.substring(0, 50) + '...');
-
-        // First generate embedding for the task description
-        const { data: embeddingData, error: embeddingError } = await supabase.functions.invoke('generate-task-embedding', {
-          body: { text: taskDescription }
-        });
+        // Generiere ein Embedding für die Aufgabenbeschreibung, wenn vorhanden
+        let relevantArticlesQuery;
         
-        if (embeddingError) {
-          console.error('Error generating embedding:', embeddingError);
-          return;
-        }
-        
-        // If no embedding was generated, fall back to basic customer ID filter
-        if (!embeddingData?.embedding) {
-          const { data: basicArticles, error: basicError } = await supabase
-            .from('knowledge_articles')
-            .select('id, title, content, use_case_id')
-            .eq('customer_id', customerId)
-            .eq('is_active', true)
-            .limit(1);
-            
-          if (basicError) throw basicError;
-          setArticles(basicArticles || []);
-          return;
-        }
-        
-        // Use the embedding to find similar knowledge articles
-        const { data: matchedArticles, error: matchError } = await supabase.rpc(
-          'match_relevant_knowledge_articles',
-          {
-            query_embedding: embeddingData.embedding,
-            match_threshold: 0.5,
-            match_count: 1,
-            customer_id_param: customerId
-          }
-        );
-        
-        if (matchError) {
-          console.error('Error matching knowledge articles:', matchError);
-          throw matchError;
-        }
-        
-        console.log('Found matching articles:', matchedArticles?.length || 0);
-        
-        if (matchedArticles && matchedArticles.length > 0) {
-          // Format the articles for display
-          // Add explicit type assertion to include use_case_id
-          const formattedArticles: KnowledgeArticle[] = matchedArticles.map(article => ({
-            id: article.id,
-            title: article.title,
-            content: article.content,
-            use_case_id: article.use_case_id, // This line was causing the error since it wasn't in the return type
-            similarity: article.similarity
-          }));
+        if (taskDescription && taskDescription.trim().length > 5) {
+          // Wenn eine Aufgabenbeschreibung vorhanden ist, verwenden wir eine semantische Suche
+          const { data: embeddingData } = await supabase.functions.invoke('generate-embeddings', {
+            body: { text: taskDescription }
+          });
           
-          setArticles(formattedArticles);
+          if (embeddingData?.embedding) {
+            // Wenn wir ein Embedding haben, führen wir eine Ähnlichkeitssuche durch
+            const { data, error } = await supabase
+              .rpc('match_relevant_knowledge_articles', {
+                query_embedding: embeddingData.embedding,
+                match_threshold: 0.5,
+                match_count: 3,
+                customer_id_param: customerId
+              });
+              
+            if (error) throw error;
+            setArticles(data || []);
+          } else {
+            // Fallback zur einfachen Abfrage, wenn kein Embedding generiert werden konnte
+            fallbackArticleQuery();
+          }
         } else {
-          setArticles([]);
+          // Wenn keine semantische Suche möglich ist, fallen wir auf die einfache Abfrage zurück
+          fallbackArticleQuery();
         }
       } catch (error) {
         console.error('Error fetching knowledge articles:', error);
-        toast({
-          variant: "destructive",
-          title: "Fehler beim Laden der Wissensartikel",
-          description: "Bitte versuchen Sie es später erneut."
-        });
+        // Bei Fehlern auch auf einfache Abfrage zurückfallen
+        fallbackArticleQuery();
       } finally {
         setIsLoading(false);
       }
     }
     
+    async function fallbackArticleQuery() {
+      try {
+        const { data, error } = await supabase
+          .from('knowledge_articles')
+          .select('id, title, content')
+          .eq('customer_id', customerId)
+          .eq('is_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(3);
+          
+        if (error) throw error;
+        setArticles(data || []);
+      } catch (e) {
+        console.error('Error in fallback query:', e);
+        setArticles([]);
+      }
+    }
+    
     fetchRelevantArticles();
-  }, [customerId, taskDescription, toast]);
+  }, [customerId, taskDescription]);
 
   const handleOpenArticle = (article: KnowledgeArticle) => {
     if (onOpenArticle) {
@@ -126,38 +108,37 @@ export function KnowledgeArticlesList({
   if (isLoading) {
     return <div className="mt-3 text-sm text-muted-foreground">Lade Wissensartikel...</div>;
   }
-  
+
   if (articles.length === 0) {
     return null; // Keine Artikel vorhanden, nichts anzeigen
   }
-  
-  return <>
+
+  return (
+    <>
       <Card className="rounded-xl shadow-md border-none bg-white/85">
         <CardContent className="p-6 pb-3">
           <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-blue-500" />
+            <BookOpen size={18} className="text-blue-500" />
             Relevante Wissensartikel
           </h2>
           
-          {articles.map(article => (
-            <Button 
-              key={article.id}
-              variant="outline" 
-              className="w-full justify-start text-left bg-blue-50/50 hover:bg-blue-100/80 border-blue-100 px-3 py-2 h-auto mb-2" 
-              onClick={() => handleOpenArticle(article)}
-            >
-              <span className="break-words whitespace-normal">{article.title}</span>
-              {article.similarity && (
-                <span className="ml-2 text-xs text-gray-500">
-                  ({Math.round(article.similarity * 100)}% Relevanz)
-                </span>
-              )}
-            </Button>
-          ))}
+          <div className="space-y-2">
+            {articles.map(article => (
+              <Button 
+                key={article.id}
+                variant="outline" 
+                className="w-full justify-start text-left bg-blue-50/50 hover:bg-blue-100/80 border-blue-100 px-3 py-2 h-auto" 
+                onClick={() => handleOpenArticle(article)}
+              >
+                <span className="break-words whitespace-normal">{article.title}</span>
+              </Button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
       {/* Only render modal if we're not using external handler */}
       {!onOpenArticle && <KnowledgeArticleModal open={isModalOpen} onClose={() => setIsModalOpen(false)} article={selectedArticle} />}
-    </>;
+    </>
+  );
 }

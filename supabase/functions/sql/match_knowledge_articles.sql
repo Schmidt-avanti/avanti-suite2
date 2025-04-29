@@ -1,5 +1,5 @@
 
--- Function to match similar knowledge articles using vector similarity
+-- Function to match relevant knowledge articles using vector similarity
 CREATE OR REPLACE FUNCTION public.match_relevant_knowledge_articles(
   query_embedding vector(1536),
   match_threshold float,
@@ -10,7 +10,6 @@ RETURNS TABLE (
   id uuid,
   title text,
   content text,
-  use_case_id uuid,
   similarity float
 )
 LANGUAGE plpgsql
@@ -22,7 +21,6 @@ BEGIN
     ka.id,
     ka.title,
     ka.content,
-    ka.use_case_id,
     1 - (ka.embedding <=> query_embedding) as similarity
   FROM public.knowledge_articles ka
   WHERE 

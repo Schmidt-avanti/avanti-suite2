@@ -21,23 +21,51 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Parse request to get IDs if provided
+    // Parse request to get use case IDs if provided
     let useCaseIds: string[] | undefined;
-    let knowledgeArticleIds: string[] | undefined;
-    let entityType = 'all'; // Default to processing both types
+    let articleIds: string[] | undefined;
+    let text: string | undefined;
     
     if (req.headers.get('content-type')?.includes('application/json')) {
       const requestData = await req.json();
       useCaseIds = requestData.useCaseIds;
-      knowledgeArticleIds = requestData.knowledgeArticleIds;
-      entityType = requestData.entityType || 'all';
+      articleIds = requestData.articleIds;
+      text = requestData.text;
     }
     
-    const processed = [];
-    let processedCount = 0;
+    // If text is provided, just return an embedding without storing it
+    if (text) {
+      console.log(`Generating embedding for text: ${text.substring(0, 100)}...`);
+      
+      const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          input: text,
+          model: 'text-embedding-3-small',
+        }),
+      });
+
+      if (!embeddingResponse.ok) {
+        const error = await embeddingResponse.text();
+        console.error(`OpenAI API error:`, error);
+        throw new Error(`OpenAI API error: ${error}`);
+      }
+
+      const { data: [{ embedding }] } = await embeddingResponse.json();
+      
+      return new Response(
+        JSON.stringify({ embedding, message: 'Embedding successfully generated' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
-    // Process Use Cases if requested
-    if (entityType === 'all' || entityType === 'use_cases') {
+    // Process use cases if specified
+    const processedUseCases = [];
+    if (useCaseIds !== undefined || articleIds === undefined) {
       console.log(`Starting embedding generation for use cases${useCaseIds ? ' with specific IDs' : ''}`);
       
       // Build query for use cases
@@ -106,41 +134,41 @@ serve(async (req) => {
             continue;
           }
 
-          processed.push({ type: 'use_case', id: useCase.id });
-          processedCount++;
+          processedUseCases.push(useCase.id);
           console.log(`Successfully updated use case ${useCase.id} with embedding`);
         }
       }
     }
     
-    // Process Knowledge Articles if requested
-    if (entityType === 'all' || entityType === 'knowledge_articles') {
-      console.log(`Starting embedding generation for knowledge articles${knowledgeArticleIds ? ' with specific IDs' : ''}`);
+    // Process knowledge articles if specified
+    const processedArticles = [];
+    if (articleIds !== undefined) {
+      console.log(`Starting embedding generation for knowledge articles${articleIds ? ' with specific IDs' : ''}`);
       
       // Build query for knowledge articles
-      let kaQuery = supabase
+      let articleQuery = supabase
         .from('knowledge_articles')
-        .select('id, title, content, customer_id')
+        .select('id, title, content')
         .eq('is_active', true);
       
-      // If specific IDs are provided, filter by those IDs
-      if (knowledgeArticleIds && knowledgeArticleIds.length > 0) {
-        kaQuery = kaQuery.in('id', knowledgeArticleIds);
+      // If specific article IDs are provided, filter by those IDs
+      if (articleIds && articleIds.length > 0) {
+        articleQuery = articleQuery.in('id', articleIds);
       } else {
         // Otherwise, only get articles without embeddings
-        kaQuery = kaQuery.is('embedding', null);
+        articleQuery = articleQuery.is('embedding', null);
       }
       
       // Execute the query
-      const { data: knowledgeArticles, error: kaFetchError } = await kaQuery;
+      const { data: articles, error: fetchArticleError } = await articleQuery;
 
-      if (kaFetchError) throw kaFetchError;
+      if (fetchArticleError) throw fetchArticleError;
 
-      console.log(`Found ${knowledgeArticles?.length || 0} knowledge articles to process`);
+      console.log(`Found ${articles?.length || 0} knowledge articles to process`);
 
       // Process each knowledge article
-      if (knowledgeArticles && knowledgeArticles.length > 0) {
-        for (const article of knowledgeArticles) {
+      if (articles && articles.length > 0) {
+        for (const article of articles) {
           // Combine relevant fields for embedding
           const textForEmbedding = [
             article.title,
@@ -164,7 +192,7 @@ serve(async (req) => {
 
           if (!embeddingResponse.ok) {
             const error = await embeddingResponse.text();
-            console.error(`OpenAI API error for knowledge article ${article.id}:`, error);
+            console.error(`OpenAI API error for article ${article.id}:`, error);
             continue;
           }
 
@@ -181,8 +209,7 @@ serve(async (req) => {
             continue;
           }
 
-          processed.push({ type: 'knowledge_article', id: article.id });
-          processedCount++;
+          processedArticles.push(article.id);
           console.log(`Successfully updated knowledge article ${article.id} with embedding`);
         }
       }
@@ -190,8 +217,9 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        message: `Successfully processed ${processedCount} items (${processed.filter(p => p.type === 'use_case').length} use cases, ${processed.filter(p => p.type === 'knowledge_article').length} knowledge articles)`,
-        processed 
+        message: `Processing complete. Processed ${processedUseCases.length} use cases and ${processedArticles.length} knowledge articles.`,
+        processedUseCases,
+        processedArticles 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
