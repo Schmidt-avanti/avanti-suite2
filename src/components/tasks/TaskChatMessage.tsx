@@ -143,7 +143,7 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
       `}>
         <div className="flex items-center gap-2 mb-1">
           <span className="font-semibold text-sm">
-            {message.role === "assistant" ? "Ava" : user?.name || user?.email || "Benutzer"}
+            {message.role === "assistant" ? "Ava" : user?.fullName || user?.email || "Benutzer"}
           </span>
         </div>
         <div className="text-sm">
