@@ -89,28 +89,28 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           Wiedervorlage
         </Button>
         
-        {/* Beenden ohne Ava button - Marks task as completed */}
+        {/* Beenden ohne Ava button - Now opens the dialog */}
         <Button 
           variant="outline" 
           className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
-          onClick={() => handleStatusChange('closed' as TaskStatus)}
+          onClick={() => setCloseTaskDialogOpen(true)}
         >
           <X className="h-4 w-4 mr-2" />
           Beenden ohne Ava
         </Button>
         
-        {/* Aufgabe abschließen button - Opens the dialog */}
+        {/* Aufgabe abschließen button - Now directly marks task as completed */}
         <Button 
           variant="outline" 
           className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
-          onClick={() => setCloseTaskDialogOpen(true)}
+          onClick={() => handleStatusChange('completed' as TaskStatus)}
         >
           <CheckCircle className="h-4 w-4 mr-2" />
           Aufgabe abschließen
         </Button>
         
-        {/* Email buttons - only show for email tasks */}
-        {isEmailTask && (
+        {/* Email buttons - only show for NON-email tasks */}
+        {!isEmailTask && (
           <Button
             variant="outline"
             className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
