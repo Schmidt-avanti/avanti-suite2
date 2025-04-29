@@ -37,9 +37,8 @@ export function CreateTaskDescription({
 
   return (
     <div className="relative">
-      {/* Main input area container */}
+      {/* Main input area container with send button */}
       <div className="relative mb-2">
-        {/* Textarea input */}
         <Textarea
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
@@ -74,9 +73,9 @@ export function CreateTaskDescription({
         </div>
       </div>
       
-      {/* Spell checking tool - clearly separated below the input area */}
+      {/* Spell checking tool - clearly separated below the input area and send button */}
       {!isMatching && description.length > 0 && (
-        <div className="mt-3">
+        <div className="mt-4 mb-2">
           <SpellChecker text={description} onCorrect={onDescriptionChange} />
         </div>
       )}

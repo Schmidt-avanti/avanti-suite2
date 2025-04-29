@@ -31,7 +31,7 @@ export const TaskChatInput: React.FC<TaskChatInputProps> = ({
         onSubmit={handleSubmit}
         className="w-full flex flex-col gap-2 border border-gray-200 p-4 bg-white rounded-md shadow-sm"
       >
-        {/* Input area and send button container */}
+        {/* Input area with send button */}
         <div className="relative mb-2">
           <Textarea
             value={inputValue}
@@ -60,7 +60,7 @@ export const TaskChatInput: React.FC<TaskChatInputProps> = ({
         
         {/* Spell checking tool - clearly separated below input and send button */}
         {!isLoading && inputValue.length > 0 && (
-          <div className="mt-2">
+          <div className="mt-4">
             <SpellChecker text={inputValue} onCorrect={setInputValue} />
           </div>
         )}

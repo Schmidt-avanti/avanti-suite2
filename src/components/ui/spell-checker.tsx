@@ -88,22 +88,8 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     const { original, suggestions, currentSuggestionIndex } = suggestionItem;
     const selectedSuggestion = suggestions[currentSuggestionIndex];
     
-    // Create a string with the current suggestion and alternatives in brackets
-    let replacementText = selectedSuggestion;
-    
-    // Add alternatives in brackets if there are more than one suggestion
-    if (suggestions.length > 1) {
-      const alternativesList = suggestions
-        .filter((_, idx) => idx !== currentSuggestionIndex)
-        .slice(0, 2) // Limit to 2 alternatives to avoid clutter
-        .join(", ");
-      
-      if (alternativesList) {
-        replacementText += ` (alt: ${alternativesList})`;
-      }
-    }
-    
-    const newText = text.replace(original, replacementText);
+    // Simply replace the word without adding alternatives
+    const newText = text.replace(original, selectedSuggestion);
     setCorrectedText(newText);
     onCorrect(newText);
     
@@ -134,21 +120,8 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     let newText = text;
     suggestions.forEach(suggestion => {
       const selectedSuggestion = suggestion.suggestions[suggestion.currentSuggestionIndex];
-      
-      // Add alternatives in brackets for each suggestion
-      let replacementText = selectedSuggestion;
-      if (suggestion.suggestions.length > 1) {
-        const alternativesList = suggestion.suggestions
-          .filter((_, idx) => idx !== suggestion.currentSuggestionIndex)
-          .slice(0, 2) // Limit to 2 alternatives to avoid clutter
-          .join(", ");
-        
-        if (alternativesList) {
-          replacementText += ` (alt: ${alternativesList})`;
-        }
-      }
-      
-      newText = newText.replace(suggestion.original, replacementText);
+      // Simply replace with selected suggestion, no alternatives
+      newText = newText.replace(suggestion.original, selectedSuggestion);
     });
     
     setCorrectedText(newText);
