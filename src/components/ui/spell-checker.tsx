@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Check, SpellCheck, X } from "lucide-react";
@@ -50,7 +49,6 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     'inressent': ['interessent'],
     'beratng': ['beratung'],
     'trmin': ['termin'],
-    'informaton': ['information'],
     'informaton': ['information'],
     'telefonnumer': ['telefonnummer'],
     'telfon': ['telefon'],
