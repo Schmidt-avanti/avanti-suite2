@@ -2,10 +2,11 @@
 import React, { useState } from 'react';
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2, AlertTriangle } from "lucide-react";
+import { Send, Loader2, AlertTriangle, Paperclip, X } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { SpellChecker } from '@/components/ui/spell-checker';
+import { v4 as uuidv4 } from "uuid";
 
 interface EmailReplyPanelProps {
   taskId: string;
@@ -17,6 +18,67 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
   const [replyBody, setReplyBody] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const fileList = Array.from(e.target.files);
+      setAttachments([...attachments, ...fileList]);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    const newAttachments = [...attachments];
+    newAttachments.splice(index, 1);
+    setAttachments(newAttachments);
+  };
+
+  const uploadAttachments = async (): Promise<string[]> => {
+    if (attachments.length === 0) return [];
+
+    const uploadedUrls: string[] = [];
+    let progressIncrement = 70 / attachments.length;
+
+    try {
+      for (let i = 0; i < attachments.length; i++) {
+        const file = attachments[i];
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${taskId}/${uuidv4()}.${fileExt}`;
+
+        setUploadProgress(Math.round(progressIncrement * i));
+
+        const { data, error } = await supabase.storage
+          .from("email-attachments")
+          .upload(fileName, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (error) {
+          console.error("Upload error:", error);
+          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from("email-attachments")
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push(urlData.publicUrl);
+      }
+
+      return uploadedUrls;
+    } catch (error: any) {
+      console.error("Error in uploadAttachments:", error);
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Hochladen der Anhänge",
+        description: error.message || "Unbekannter Fehler beim Hochladen",
+      });
+      return [];
+    }
+  };
 
   const handleSendEmail = async () => {
     if (!replyBody) {
@@ -31,15 +93,30 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
     try {
       setIsSending(true);
       setSendError(null);
+      setUploadProgress(0);
+      
+      // Upload attachments if any
+      let attachmentUrls: string[] = [];
+      if (attachments.length > 0) {
+        setUploadProgress(5);
+        console.log(`Uploading ${attachments.length} attachments...`);
+        attachmentUrls = await uploadAttachments();
+        console.log(`Uploaded ${attachmentUrls.length} attachments successfully:`, attachmentUrls);
+      }
+      
+      setUploadProgress(80);
       
       const { data, error } = await supabase.functions.invoke('send-reply-email', {
         body: {
           task_id: taskId,
           recipient_email: replyTo,
           subject: null, // Let the backend use the default subject based on task
-          body: replyBody
+          body: replyBody,
+          attachments: attachmentUrls
         }
       });
+
+      setUploadProgress(100);
 
       if (error) {
         throw new Error(error.message || 'Fehler beim E-Mail Versand');
@@ -55,6 +132,8 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       });
       
       setReplyBody('');
+      setAttachments([]);
+      setUploadProgress(0);
       
     } catch (error: any) {
       console.error('Email sending error:', error);
@@ -81,6 +160,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       });
     } finally {
       setIsSending(false);
+      setUploadProgress(0);
     }
   };
 
@@ -129,6 +209,71 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
         {replyBody.trim().length > 0 && (
           <div className="mb-4">
             <SpellChecker text={replyBody} onCorrect={setReplyBody} />
+          </div>
+        )}
+        
+        {/* File attachment section */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById("file-upload-reply")?.click()}
+              disabled={isSending}
+              className="flex items-center text-sm"
+            >
+              <Paperclip className="h-4 w-4 mr-2" />
+              Datei anhängen
+            </Button>
+            <input
+              id="file-upload-reply"
+              type="file"
+              multiple
+              onChange={handleFileChange}
+              className="hidden"
+              disabled={isSending}
+            />
+          </div>
+          
+          {attachments.length > 0 && (
+            <div className="space-y-2 bg-gray-50 p-3 rounded-md">
+              <p className="text-sm text-muted-foreground font-medium">
+                Anhänge ({attachments.length}):
+              </p>
+              <ul className="space-y-2">
+                {attachments.map((file, index) => (
+                  <li
+                    key={index}
+                    className="text-sm flex justify-between items-center bg-white p-2 rounded border border-gray-200"
+                  >
+                    <span className="truncate flex-1">{file.name}</span>
+                    <span className="text-gray-400 text-xs mr-3">
+                      ({Math.round(file.size / 1024)} KB)
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeAttachment(index)}
+                      disabled={isSending}
+                      className="h-6 w-6 p-0 rounded-full"
+                    >
+                      <X className="h-4 w-4 text-gray-500" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+        
+        {uploadProgress > 0 && (
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <div
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            ></div>
           </div>
         )}
         
