@@ -25,10 +25,10 @@ export const TaskChatInput: React.FC<TaskChatInputProps> = ({
   };
 
   return (
-    <div className="sticky bottom-0 w-full bg-white shadow-md border-t border-gray-100 z-20">
+    <div className="sticky bottom-0 w-full px-6 pb-6 pt-4 bg-white shadow-md border-t border-gray-100 z-20">
       <form
         onSubmit={handleSubmit}
-        className="w-full flex gap-2 items-end p-4 bg-white rounded-md"
+        className="w-full flex gap-2 items-end border border-gray-200 p-4 bg-white rounded-md shadow-sm"
       >
         <Textarea
           value={inputValue}

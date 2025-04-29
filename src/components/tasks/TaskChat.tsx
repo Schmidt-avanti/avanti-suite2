@@ -108,11 +108,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
       {/* Chat messages container */}
       <div 
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-6"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-20"
         style={{ 
-          maxHeight: isMobile ? 'calc(100vh - 8rem)' : '400px',
-          height: '400px',
-          overflowY: 'auto'
+          maxHeight: isMobile ? 'calc(100vh - 8rem)' : '400px',  // Reduzierte feste Höhe
+          height: '400px', // Feste Höhe für den Chat-Bereich
+          overflowY: 'auto' // Sicherstellen, dass Scrolling aktiviert ist
         }}
         onScroll={handleScroll}
       >
