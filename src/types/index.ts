@@ -17,6 +17,21 @@ export interface TaskTimeSummary {
   session_count: number;
 }
 
+// Adding email thread interface
+export interface EmailThread {
+  id: string;
+  task_id: string;
+  subject: string | null;
+  direction: 'inbound' | 'outbound';
+  sender: string;
+  recipient: string;
+  content: string;
+  attachments?: string[];
+  created_at: string;
+  thread_id?: string | null;
+  reply_to_id?: string | null;
+}
+
 // Existing types (to fix build errors)
 export type TaskStatus = 'new' | 'in_progress' | 'followup' | 'completed';
 

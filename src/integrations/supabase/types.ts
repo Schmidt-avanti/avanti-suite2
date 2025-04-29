@@ -148,6 +148,63 @@ export type Database = {
         }
         Relationships: []
       }
+      email_threads: {
+        Row: {
+          attachments: Json | null
+          content: string
+          created_at: string
+          direction: string
+          id: string
+          recipient: string
+          reply_to_id: string | null
+          sender: string
+          subject: string | null
+          task_id: string
+          thread_id: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          content: string
+          created_at?: string
+          direction: string
+          id?: string
+          recipient: string
+          reply_to_id?: string | null
+          sender: string
+          subject?: string | null
+          task_id: string
+          thread_id?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          content?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          recipient?: string
+          reply_to_id?: string | null
+          sender?: string
+          subject?: string | null
+          task_id?: string
+          thread_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_threads_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "email_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inbound_emails: {
         Row: {
           attachments: Json | null

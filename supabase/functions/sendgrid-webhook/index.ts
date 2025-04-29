@@ -102,6 +102,7 @@ serve(async (req) => {
         continue;
       }
       
+      // Store email in inbound_emails table
       const { data: emailData, error } = await supabase
         .from('inbound_emails')
         .insert({
@@ -128,7 +129,7 @@ serve(async (req) => {
       // Get the actual recipient email (the 'to' address)
       const toEmail = event.to;
       
-      // Use the match_email_to_customer database function to find the customer
+      // Match email to customer
       const { data: customerMatchResult } = await supabase.rpc('match_email_to_customer', { 
         email_address: toEmail 
       });
@@ -145,7 +146,8 @@ serve(async (req) => {
           
         const customerName = customerData?.name || 'Unknown';
         
-        const { error: taskError } = await supabase
+        // Create a new task for this email
+        const { data: taskData, error: taskError } = await supabase
           .from('tasks')
           .insert({
             title: event.subject || 'Email ohne Betreff',
@@ -156,13 +158,31 @@ serve(async (req) => {
             endkunde_email: senderEmail,
             attachments: attachments.length > 0 ? attachments : null,
             source_email_id: emailId
-          });
+          })
+          .select('id');
             
         if (taskError) {
           console.error('Error creating task from email:', taskError);
         } else {
           console.log(`Successfully created task from email for customer ${customerName} (${customerId})`);
           
+          // Create email thread record
+          const taskId = taskData[0].id;
+          
+          // Store as an email thread for conversation history
+          await supabase
+            .from('email_threads')
+            .insert({
+              task_id: taskId,
+              direction: 'inbound',
+              sender: senderEmail,
+              recipient: toEmail,
+              subject: event.subject || '',
+              content: event.text || event.html?.replace(/<[^>]+>/g, '') || '',
+              attachments: attachments.length > 0 ? attachments : null
+            });
+          
+          // Mark the email as processed
           await supabase
             .from('inbound_emails')
             .update({ processed: true })

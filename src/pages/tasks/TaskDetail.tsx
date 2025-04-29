@@ -12,8 +12,10 @@ import { TaskChat } from "@/components/tasks/TaskChat";
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
 import { EmailReplyPanel } from '@/components/tasks/EmailReplyPanel';
+import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { useTaskMessages } from '@/hooks/useTaskMessages';
+import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { toast } from '@/components/ui/use-toast';
 
 const TaskDetail = () => {
@@ -21,7 +23,7 @@ const TaskDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Task status dialogs - initialize EmailToCustomerDialog state
+  // Task status dialogs
   const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
   const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
   const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
@@ -43,8 +45,11 @@ const TaskDetail = () => {
     handleAssignTask
   } = useTaskDetail(id, user);
 
-  // Fetch task messages for email history
+  // Fetch task messages for chat history
   const { messages } = useTaskMessages(id || null);
+  
+  // Fetch email threads for this task
+  const { threads: emailThreads } = useEmailThreads(id || null);
 
   useEffect(() => {
     return () => {
@@ -64,11 +69,6 @@ const TaskDetail = () => {
       title: "E-Mail gesendet",
       description: `E-Mail wurde erfolgreich an ${emailDetails.recipient} gesendet.`,
     });
-    
-    // Optionally refresh task data after email is sent
-    if (id) {
-      // Could refresh task data here if needed
-    }
   };
 
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
@@ -97,10 +97,19 @@ const TaskDetail = () => {
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
-          <TaskDetailInfo task={task} />
+          <div className="flex flex-col space-y-6">
+            <TaskDetailInfo task={task} />
+            
+            {/* Email Thread History Component */}
+            {emailThreads && emailThreads.length > 0 && (
+              <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
+                <EmailThreadHistory threads={emailThreads} />
+              </div>
+            )}
+          </div>
 
           <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
-            <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 mr-6 p-6">
+            <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 p-6">
               {task.source === 'email' ? (
                 <EmailReplyPanel
                   taskId={task.id}
@@ -122,7 +131,6 @@ const TaskDetail = () => {
         </div>
       </div>
 
-      {/* Make sure EmailToCustomerDialog is being rendered */}
       <EmailToCustomerDialog
         open={emailToCustomerDialogOpen}
         onOpenChange={setEmailToCustomerDialogOpen}
