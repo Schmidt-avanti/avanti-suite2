@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Send } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { SpellChecker } from '@/components/ui/spell-checker';
 
 interface CreateTaskDescriptionProps {
   description: string;
@@ -49,6 +50,7 @@ export function CreateTaskDescription({
           }
         }}
       />
+      
       {/* Senden-Button als Icon unten rechts */}
       <div className="absolute bottom-2 right-2 z-10">
         <Button
@@ -67,6 +69,11 @@ export function CreateTaskDescription({
           )}
         </Button>
       </div>
+      
+      {/* Spell checking tool */}
+      {!isMatching && description.length > 0 && (
+        <SpellChecker text={description} onCorrect={onDescriptionChange} />
+      )}
     </div>
   );
 }
