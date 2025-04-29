@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, Loader2, Paperclip, Mail } from "lucide-react";
+import { AlertTriangle, Loader2, Paperclip, Mail, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { SpellChecker } from '@/components/ui/spell-checker';
@@ -44,22 +44,24 @@ export function EmailToCustomerDialog({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   
+  // Reset form when dialog opens/closes
+  useEffect(() => {
+    if (open) {
+      setRecipient(recipientEmail || "");
+      setSubject("");
+      setBody("");
+      setIncludeHistory(false);
+      setAttachments([]);
+      setError(null);
+      setUploadProgress(0);
+    }
+  }, [open, recipientEmail]);
+  
   const recipientMinLength = 5; // Basic validation for email (e.g., a@b.c)
   const subjectMinLength = 3;
   const bodyMinLength = 10;
 
-  const resetForm = () => {
-    setRecipient(recipientEmail || "");
-    setSubject("");
-    setBody("");
-    setIncludeHistory(false);
-    setAttachments([]);
-    setError(null);
-    setUploadProgress(0);
-  };
-
   const handleClose = () => {
-    resetForm();
     onOpenChange(false);
   };
 
@@ -76,22 +78,20 @@ export function EmailToCustomerDialog({
     setAttachments(newAttachments);
   };
 
-  const formatChatHistory = () => {
-    if (!taskMessages || taskMessages.length === 0) return "";
-    
-    let formattedHistory = "\n\n---------- Chat-Verlauf ----------\n\n";
-    taskMessages.forEach(message => {
-      const role = message.role === "assistant" ? "Ava" : "Kunde";
-      formattedHistory += `${role}: ${message.content}\n\n`;
-    });
-    
-    return formattedHistory;
+  const addChatHistoryToBody = () => {
+    if (includeHistory && taskMessages && taskMessages.length > 0) {
+      // Include placeholder that will be replaced by the edge function
+      // We handle the actual formatting on the server side
+      return `${body}\n\n---------- Chat-Verlauf ----------`;
+    }
+    return body;
   };
 
-  const uploadAttachments = async () => {
+  const uploadAttachments = async (): Promise<string[]> => {
     if (attachments.length === 0) return [];
     
     const uploadedUrls: string[] = [];
+    let progressIncrement = 70 / attachments.length;
     
     try {
       for (let i = 0; i < attachments.length; i++) {
@@ -99,13 +99,33 @@ export function EmailToCustomerDialog({
         const fileExt = file.name.split('.').pop();
         const fileName = `${taskId}/${uuidv4()}.${fileExt}`;
         
-        setUploadProgress(Math.round((i / attachments.length) * 50));
+        setUploadProgress(Math.round(progressIncrement * i));
+        
+        // Create email-attachments bucket if it doesn't exist
+        try {
+          const { data: bucketData, error: bucketError } = await supabase.storage
+            .getBucket('email-attachments');
+          
+          // If bucket doesn't exist, create it
+          if (bucketError && bucketError.message.includes('not found')) {
+            await supabase.storage
+              .createBucket('email-attachments', { public: true });
+          }
+        } catch (error) {
+          console.error('Error checking or creating bucket:', error);
+        }
         
         const { data, error } = await supabase.storage
           .from('email-attachments')
-          .upload(fileName, file);
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Upload error:', error);
+          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
+        }
         
         // Get public URL
         const { data: urlData } = supabase.storage
@@ -117,16 +137,20 @@ export function EmailToCustomerDialog({
       
       return uploadedUrls;
     } catch (error: any) {
+      console.error('Error in uploadAttachments:', error);
       toast({
         variant: "destructive",
         title: "Fehler beim Hochladen der Anhänge",
-        description: error.message,
+        description: error.message || 'Unbekannter Fehler beim Hochladen',
       });
       return [];
     }
   };
 
   const handleSend = async () => {
+    setError(null);
+    
+    // Validation
     if (!recipient || recipient.trim().length < recipientMinLength) {
       setError("Bitte geben Sie eine gültige E-Mail-Adresse ein.");
       return;
@@ -144,17 +168,20 @@ export function EmailToCustomerDialog({
 
     try {
       setIsSending(true);
-      setError(null);
       
-      // Upload any attachments
+      // Upload attachments first
+      setUploadProgress(5);
+      console.log(`Uploading ${attachments.length} attachments...`);
       const attachmentUrls = await uploadAttachments();
-      setUploadProgress(50);
+      console.log(`Uploaded ${attachmentUrls.length} attachments successfully:`, attachmentUrls);
+      
+      setUploadProgress(80);
       
       // Prepare the email body with optional chat history
-      let emailBody = body;
-      if (includeHistory) {
-        emailBody += formatChatHistory();
-      }
+      const emailBody = addChatHistoryToBody();
+      
+      console.log('Sending email with body length:', emailBody.length);
+      console.log('Attachment URLs:', attachmentUrls);
       
       // Send email via edge function
       const { data, error } = await supabase.functions.invoke('send-reply-email', {
@@ -170,6 +197,7 @@ export function EmailToCustomerDialog({
       setUploadProgress(100);
 
       if (error || data?.error) {
+        console.error('Error response from function:', error || data?.error);
         throw new Error(error?.message || data?.error || 'Fehler beim Senden der E-Mail');
       }
       
@@ -181,7 +209,7 @@ export function EmailToCustomerDialog({
       // Notify parent component
       onEmailSent({ recipient, subject });
       
-      // Close dialog and reset form
+      // Close dialog
       handleClose();
       
     } catch (error: any) {
@@ -289,21 +317,22 @@ export function EmailToCustomerDialog({
             </div>
             
             {attachments.length > 0 && (
-              <div className="mt-2 space-y-1">
-                <p className="text-sm text-muted-foreground">Dateien:</p>
-                <ul className="list-disc pl-5 space-y-1">
+              <div className="mt-3 space-y-2 bg-gray-50 p-3 rounded-md">
+                <p className="text-sm text-muted-foreground font-medium">Anhänge ({attachments.length}):</p>
+                <ul className="space-y-2">
                   {attachments.map((file, index) => (
-                    <li key={index} className="text-sm flex justify-between items-center">
-                      <span>{file.name} ({Math.round(file.size / 1024)} KB)</span>
+                    <li key={index} className="text-sm flex justify-between items-center bg-white p-2 rounded border border-gray-200">
+                      <span className="truncate flex-1">{file.name}</span>
+                      <span className="text-gray-400 text-xs mr-3">({Math.round(file.size / 1024)} KB)</span>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => removeAttachment(index)}
                         disabled={isSending}
-                        className="h-6 px-2 text-red-500 hover:text-red-700"
+                        className="h-6 w-6 p-0 rounded-full"
                       >
-                        ✕
+                        <X className="h-4 w-4 text-gray-500" />
                       </Button>
                     </li>
                   ))}
@@ -332,7 +361,10 @@ export function EmailToCustomerDialog({
         
         {uploadProgress > 0 && (
           <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-            <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${uploadProgress}%` }}></div>
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+              style={{ width: `${uploadProgress}%` }}
+            ></div>
           </div>
         )}
         

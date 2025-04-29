@@ -7,6 +7,88 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Formats a chat message for inclusion in an email.
+ * Handles different message formats (JSON or plain text).
+ */
+function formatChatMessage(message) {
+  if (!message || !message.content) return '';
+  
+  try {
+    // Try to parse the content as JSON
+    const parsedContent = JSON.parse(message.content);
+    // Return just the text part without the options
+    return parsedContent.text || message.content;
+  } catch (e) {
+    // Not valid JSON, return as is
+    return message.content;
+  }
+}
+
+/**
+ * Formats the chat history into a readable email format
+ */
+function formatChatHistory(messages) {
+  if (!messages || messages.length === 0) return '';
+  
+  let formattedHistory = '\n\n---------- Chat-Verlauf ----------\n\n';
+  
+  messages.forEach(message => {
+    const role = message.role === 'assistant' ? 'Ava' : 'Kunde';
+    // Format the content properly
+    const content = formatChatMessage(message);
+    formattedHistory += `${role}: ${content}\n\n`;
+  });
+  
+  return formattedHistory;
+}
+
+/**
+ * Processes attachments and returns an array of valid SendGrid attachment objects
+ */
+async function processAttachments(attachments) {
+  if (!attachments || attachments.length === 0) return [];
+  
+  const processedAttachments = await Promise.all(attachments.map(async (url) => {
+    try {
+      // Fetch the file from the URL
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Failed to fetch attachment: ${response.statusText}`);
+      
+      const buffer = await response.arrayBuffer();
+      const base64Content = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      
+      // Get filename from URL
+      const filename = url.split('/').pop() || 'attachment';
+      
+      // Determine content type based on file extension
+      let contentType = 'application/octet-stream'; // Default
+      const ext = filename.split('.').pop()?.toLowerCase();
+      if (ext === 'pdf') contentType = 'application/pdf';
+      else if (['jpg', 'jpeg'].includes(ext || '')) contentType = 'image/jpeg';
+      else if (ext === 'png') contentType = 'image/png';
+      else if (ext === 'gif') contentType = 'image/gif';
+      else if (ext === 'doc') contentType = 'application/msword';
+      else if (ext === 'docx') contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      else if (ext === 'xls') contentType = 'application/vnd.ms-excel';
+      else if (ext === 'xlsx') contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      
+      return {
+        content: base64Content,
+        filename,
+        type: contentType,
+        disposition: 'attachment'
+      };
+    } catch (error) {
+      console.error('Error processing attachment:', error);
+      return null;
+    }
+  }));
+  
+  // Filter out null attachments (failed to process)
+  return processedAttachments.filter(att => att !== null);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -92,6 +174,29 @@ serve(async (req) => {
     // Add reply-to header with customer original email
     const replyToEmail = originalEmail || fallbackSenderEmail;
     
+    // Fetch task messages if we need to include chat history
+    let taskMessages = [];
+    if (body.includes('Chat-Verlauf')) {
+      const { data: messages } = await supabase
+        .from('task_messages')
+        .select('*')
+        .eq('task_id', task_id)
+        .order('created_at', { ascending: true });
+      
+      taskMessages = messages || [];
+    }
+
+    // Process any attachments
+    const validAttachments = await processAttachments(attachments);
+    
+    // Prepare email content
+    let emailBody = body;
+    
+    // Replace chat history placeholder with properly formatted history if needed
+    if (body.includes('Chat-Verlauf') && taskMessages.length > 0) {
+      emailBody = body.replace(/---------- Chat-Verlauf ----------(\s|\S)*/, formatChatHistory(taskMessages));
+    }
+    
     // Prepare email request data
     const emailRequestData = {
       personalizations: [{
@@ -108,54 +213,11 @@ serve(async (req) => {
       subject: emailSubject,
       content: [{
         type: 'text/plain',
-        value: body
+        value: emailBody
       }]
     };
     
-    // Prepare attachment objects for SendGrid if attachments are provided and valid
-    let validAttachments = [];
-    if (attachments && attachments.length > 0) {
-      validAttachments = await Promise.all(attachments.map(async (url: string) => {
-        try {
-          // Fetch the file from the URL
-          const response = await fetch(url);
-          if (!response.ok) throw new Error(`Failed to fetch attachment: ${response.statusText}`);
-          
-          const buffer = await response.arrayBuffer();
-          const base64Content = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-          
-          // Get filename from URL
-          const filename = url.split('/').pop() || 'attachment';
-          
-          // Determine content type based on file extension
-          let contentType = 'application/octet-stream'; // Default
-          const ext = filename.split('.').pop()?.toLowerCase();
-          if (ext === 'pdf') contentType = 'application/pdf';
-          else if (['jpg', 'jpeg'].includes(ext || '')) contentType = 'image/jpeg';
-          else if (ext === 'png') contentType = 'image/png';
-          else if (ext === 'gif') contentType = 'image/gif';
-          else if (ext === 'doc') contentType = 'application/msword';
-          else if (ext === 'docx') contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-          else if (ext === 'xls') contentType = 'application/vnd.ms-excel';
-          else if (ext === 'xlsx') contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-          
-          return {
-            content: base64Content,
-            filename,
-            type: contentType,
-            disposition: 'attachment'
-          };
-        } catch (error) {
-          console.error('Error processing attachment:', error);
-          return null;
-        }
-      }));
-      
-      // Filter out any null attachments (failed to process)
-      validAttachments = validAttachments.filter(att => att !== null);
-    }
-    
-    // Only add the attachments field if we actually have valid attachments
+    // Only add attachments field if we have valid attachments
     if (validAttachments.length > 0) {
       emailRequestData.attachments = validAttachments;
     }

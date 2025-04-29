@@ -19,117 +19,52 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   const isMobile = useIsMobile();
   const { user } = useAuth();
 
-  const renderMessageContent = () => {
-    if (message.role === "assistant") {
-      try {
-        // Try to parse the content as JSON
-        const parsedContent = JSON.parse(message.content);
-        
-        return (
-          <div className="space-y-3">
-            <div className="text-sm whitespace-pre-wrap">{parsedContent.text}</div>
-            {parsedContent.options && parsedContent.options.length > 0 && (
-              <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
-                {parsedContent.options.map((option: string, idx: number) => {
-                  if (selectedOptions.has(option)) {
-                    return null;
-                  }
-                  
-                  return (
-                    <Button
-                      key={idx}
-                      variant="outline"
-                      onClick={() => onOptionSelect(option)}
-                      className="rounded text-sm px-4 py-1 hover:bg-blue-100"
-                      size={isMobile ? "sm" : "default"}
-                    >
-                      {option}
-                    </Button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      } catch (e) {
-        // Not valid JSON, try to extract options from text
-        const content = message.content;
-        const optionsMatch = content.match(/\[(.*?)\]/);
-        
-        if (optionsMatch) {
-          try {
-            const optionsText = optionsMatch[1];
-            const options = optionsText.split(',').map(o => 
-              o.trim().replace(/"/g, '').replace(/^\[|\]$/g, '')
-            );
-            
-            return (
-              <div className="space-y-3">
-                <div className="text-sm whitespace-pre-wrap">{content}</div>
-                {options.length > 0 && (
-                  <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
-                    {options.map((option: string, idx: number) => {
-                      if (selectedOptions.has(option)) {
-                        return null;
-                      }
-                      
-                      return (
-                        <Button
-                          key={idx}
-                          variant="outline"
-                          onClick={() => onOptionSelect(option)}
-                          className="rounded text-sm px-4 py-1 hover:bg-blue-100"
-                          size={isMobile ? "sm" : "default"}
-                        >
-                          {option}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          } catch (err) {
-            return <div className="whitespace-pre-wrap">{content}</div>;
-          }
-        } else {
-          // Check for key list patterns that might contain key options
-          const listMatch = content.match(/(?:\d+\.\s+(.*?)(?:\n|$))+/g);
-          if (listMatch && content.toLowerCase().includes('schlüssel')) {
-            const defaultOptions = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
-            
-            return (
-              <div className="space-y-3">
-                <div className="text-sm whitespace-pre-wrap">{content}</div>
-                <div className={`flex flex-wrap gap-2 mt-2 ${isMobile ? 'flex-col' : ''}`}>
-                  {defaultOptions.map((option: string, idx: number) => {
-                    if (selectedOptions.has(option)) {
-                      return null;
-                    }
-                    
-                    return (
-                      <Button
-                        key={idx}
-                        variant="outline"
-                        onClick={() => onOptionSelect(option)}
-                        className="rounded text-sm px-4 py-1 hover:bg-blue-100"
-                        size={isMobile ? "sm" : "default"}
-                      >
-                        {option}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          }
+  // Parse JSON content and extract text and options
+  const parseMessageContent = () => {
+    if (message.role !== "assistant") {
+      return { text: message.content, options: [] };
+    }
+    
+    try {
+      // Try to parse the content as JSON
+      const parsedContent = JSON.parse(message.content);
+      return { 
+        text: parsedContent.text || message.content, 
+        options: Array.isArray(parsedContent.options) ? parsedContent.options : [] 
+      };
+    } catch (e) {
+      // Not valid JSON, try to extract options from text
+      const content = message.content;
+      const optionsMatch = content.match(/\[(.*?)\]/);
+      
+      if (optionsMatch) {
+        try {
+          const optionsText = optionsMatch[1];
+          const options = optionsText.split(',').map(o => 
+            o.trim().replace(/"/g, '').replace(/^\[|\]$/g, '')
+          );
           
-          return <div className="whitespace-pre-wrap">{content}</div>;
+          return { text: content, options };
+        } catch (err) {
+          return { text: content, options: [] };
         }
+      } else {
+        // Check for key list patterns that might contain key options
+        const listMatch = content.match(/(?:\d+\.\s+(.*?)(?:\n|$))+/g);
+        if (listMatch && content.toLowerCase().includes('schlüssel')) {
+          const defaultOptions = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
+          return { text: content, options: defaultOptions };
+        }
+        
+        return { text: content, options: [] };
       }
     }
-    return <div className="whitespace-pre-wrap">{message.content}</div>;
   };
+
+  const { text, options } = parseMessageContent();
+  
+  // Filter out options that have already been selected
+  const availableOptions = options.filter(option => !selectedOptions.has(option));
 
   return (
     <div className={`flex flex-col mb-4 ${message.role === "assistant" ? "items-start" : "items-end"}`}>
@@ -146,9 +81,24 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
             {message.role === "assistant" ? "Ava" : user?.fullName || user?.email || "Benutzer"}
           </span>
         </div>
-        <div className="text-sm">
-          {renderMessageContent()}
+        <div className="text-sm whitespace-pre-wrap">
+          {text}
         </div>
+        {availableOptions.length > 0 && (
+          <div className={`flex flex-wrap gap-2 mt-3 ${isMobile ? 'flex-col' : ''}`}>
+            {availableOptions.map((option, idx) => (
+              <Button
+                key={idx}
+                variant="outline"
+                onClick={() => onOptionSelect(option)}
+                className="rounded text-sm px-4 py-1 hover:bg-blue-100"
+                size={isMobile ? "sm" : "default"}
+              >
+                {option}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
