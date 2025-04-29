@@ -28,7 +28,23 @@ serve(async (req) => {
     console.log('Generating embedding for description:', description.substring(0, 100) + '...');
     console.log('Customer ID:', customerId || 'Not provided');
 
-    // 1. Generate embedding for the task description
+    // Pre-process input with simple fuzzy matching for common cases
+    // This helps with minor misspellings and variations
+    let enhancedDescription = description;
+    
+    // For newsletter-related queries, enhance the description to improve matching
+    const newsletterKeywords = ['news letter', 'newsletter', 'news-letter', 'newsleter', 'newsltr', 'newslett'];
+    const hasNewsletterKeyword = newsletterKeywords.some(keyword => 
+      description.toLowerCase().includes(keyword)
+    );
+    
+    if (hasNewsletterKeyword) {
+      // Expand the description with common variations for better semantic matching
+      enhancedDescription = `${description} newsletter anmeldung newsletter registration`;
+      console.log('Enhanced description for newsletter-related query');
+    }
+
+    // 1. Generate embedding for the enhanced task description
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
@@ -36,7 +52,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        input: description,
+        input: enhancedDescription,
         model: 'text-embedding-3-small',
       }),
     });
@@ -50,7 +66,7 @@ serve(async (req) => {
     const { data: similarUseCases, error: searchError } = await supabase
       .rpc('match_similar_use_cases', {
         query_embedding: embedding,
-        match_threshold: 0.5,
+        match_threshold: 0.4, // Lowered threshold to catch more potential matches
         match_count: 3,
         customer_id_param: customerId || null // Pass the customer ID parameter
       });
@@ -58,6 +74,27 @@ serve(async (req) => {
     if (searchError) throw searchError;
 
     console.log('Found similar use cases:', similarUseCases?.length || 0);
+    
+    // If we have newsletter keywords but no matches, let's try to find newsletter-specific use cases
+    if (hasNewsletterKeyword && (!similarUseCases || similarUseCases.length === 0)) {
+      const { data: newsletterUseCases, error: newsletterError } = await supabase
+        .from('use_cases')
+        .select('id, title, type, information_needed, steps')
+        .ilike('title', '%newsletter%')
+        .eq('is_active', true)
+        .limit(1);
+        
+      if (!newsletterError && newsletterUseCases && newsletterUseCases.length > 0) {
+        console.log('Found newsletter use case by direct title search');
+        return new Response(JSON.stringify({
+          matched_use_case_id: newsletterUseCases[0].id,
+          confidence: 75,
+          reasoning: "Newsletter-bezogene Aufgabe durch direkte Titelübereinstimmung zugeordnet"
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // If no use cases found, return a default response
     if (!similarUseCases || similarUseCases.length === 0) {
@@ -91,6 +128,9 @@ serve(async (req) => {
         - Inhaltliche Übereinstimmung
         - Prozessähnlichkeit
         - Benötigte Informationen
+        
+        Behandle Variationen von Begriffen wie "Newsletter", "news letter" oder "newslett" als gleichwertig.
+        Sei besonders aufmerksam bei Newsletter-bezogenen Anfragen, da diese häufig vorkommen.
         
         Antworte im folgenden JSON-Format:
         {
@@ -159,6 +199,18 @@ serve(async (req) => {
     } catch (parseError) {
       console.error('Error parsing analysis result:', parseError);
       console.error('Raw response:', analysisData);
+      
+      // If we have newsletter keywords, default to the first use case for newsletter
+      if (hasNewsletterKeyword && similarUseCases.length > 0) {
+        console.log('Defaulting to first use case due to newsletter keywords');
+        return new Response(JSON.stringify({
+          matched_use_case_id: similarUseCases[0].id,
+          confidence: 65,
+          reasoning: "Automatisch zugewiesen basierend auf Newsletter-bezogenen Schlüsselwörtern"
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       
       // Return a fallback response
       return new Response(JSON.stringify({

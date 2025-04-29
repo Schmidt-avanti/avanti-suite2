@@ -73,7 +73,7 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
         </CardContent>
       </Card>
       
-      {/* Knowledge Articles Section - Now in its own card */}
+      {/* Knowledge Articles Section - Now passing the task description */}
       <KnowledgeArticlesList 
         customerId={task.customer_id}
         taskDescription={task.description}
