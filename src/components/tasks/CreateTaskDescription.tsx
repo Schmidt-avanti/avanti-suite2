@@ -37,6 +37,7 @@ export function CreateTaskDescription({
 
   return (
     <div className="relative">
+      {/* Textarea input */}
       <Textarea
         value={description}
         onChange={(e) => onDescriptionChange(e.target.value)}
@@ -51,7 +52,7 @@ export function CreateTaskDescription({
         }}
       />
       
-      {/* Senden-Button als Icon unten rechts */}
+      {/* Send button positioned at the bottom right of textarea */}
       <div className="absolute bottom-2 right-2 z-10">
         <Button
           type="button"
@@ -70,9 +71,9 @@ export function CreateTaskDescription({
         </Button>
       </div>
       
-      {/* Spell checking tool - added extra padding to avoid overlap with send button */}
+      {/* Spell checking tool in its own container with spacing from the send button */}
       {!isMatching && description.length > 0 && (
-        <div className="pt-4">
+        <div className="mt-6 mb-2">
           <SpellChecker text={description} onCorrect={onDescriptionChange} />
         </div>
       )}

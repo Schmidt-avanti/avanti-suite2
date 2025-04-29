@@ -87,7 +87,22 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     const { original, suggestions, currentSuggestionIndex } = suggestionItem;
     const selectedSuggestion = suggestions[currentSuggestionIndex];
     
-    const newText = text.replace(original, selectedSuggestion);
+    // Create a string with the current suggestion and alternatives in brackets
+    let replacementText = selectedSuggestion;
+    
+    // Add alternatives in brackets if there are more than one suggestion
+    if (suggestions.length > 1) {
+      const alternativesList = suggestions
+        .filter((_, idx) => idx !== currentSuggestionIndex)
+        .slice(0, 2) // Limit to 2 alternatives to avoid clutter
+        .join(", ");
+      
+      if (alternativesList) {
+        replacementText += ` (alt: ${alternativesList})`;
+      }
+    }
+    
+    const newText = text.replace(original, replacementText);
     setCorrectedText(newText);
     onCorrect(newText);
     
@@ -118,7 +133,21 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     let newText = text;
     suggestions.forEach(suggestion => {
       const selectedSuggestion = suggestion.suggestions[suggestion.currentSuggestionIndex];
-      newText = newText.replace(suggestion.original, selectedSuggestion);
+      
+      // Add alternatives in brackets for each suggestion
+      let replacementText = selectedSuggestion;
+      if (suggestion.suggestions.length > 1) {
+        const alternativesList = suggestion.suggestions
+          .filter((_, idx) => idx !== suggestion.currentSuggestionIndex)
+          .slice(0, 2) // Limit to 2 alternatives to avoid clutter
+          .join(", ");
+        
+        if (alternativesList) {
+          replacementText += ` (alt: ${alternativesList})`;
+        }
+      }
+      
+      newText = newText.replace(suggestion.original, replacementText);
     });
     
     setCorrectedText(newText);
@@ -148,7 +177,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
   }
 
   return (
-    <div className="mt-2 space-y-2 mb-14">
+    <div className="mt-2 space-y-2 mb-4">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium flex items-center gap-1 text-amber-600">
           <SpellCheck className="h-4 w-4" />
@@ -169,7 +198,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
         </div>
       </div>
       
-      <div className="bg-amber-50 border border-amber-100 rounded-md p-2 space-y-2 text-sm mb-4">
+      <div className="bg-amber-50 border border-amber-100 rounded-md p-2 space-y-2 text-sm">
         {suggestions.map((item, i) => (
           <div key={i} className="flex items-center justify-between">
             <div className="flex-1 mr-2">
