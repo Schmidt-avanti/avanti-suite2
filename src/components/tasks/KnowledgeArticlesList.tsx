@@ -46,35 +46,48 @@ export function KnowledgeArticlesList({
           
           if (embeddingData?.embedding) {
             // Wenn wir ein Embedding haben, führen wir eine Ähnlichkeitssuche durch
-            relevantArticlesQuery = supabase
+            const { data, error } = await supabase
               .rpc('match_relevant_knowledge_articles', {
                 query_embedding: embeddingData.embedding,
                 match_threshold: 0.5,
                 match_count: 3,
                 customer_id_param: customerId
               });
+              
+            if (error) throw error;
+            setArticles(data || []);
+          } else {
+            // Fallback zur einfachen Abfrage, wenn kein Embedding generiert werden konnte
+            fallbackArticleQuery();
           }
+        } else {
+          // Wenn keine semantische Suche möglich ist, fallen wir auf die einfache Abfrage zurück
+          fallbackArticleQuery();
         }
-        
-        // Wenn keine semantische Suche möglich ist, fallen wir auf die einfache Abfrage zurück
-        if (!relevantArticlesQuery) {
-          relevantArticlesQuery = supabase
-            .from('knowledge_articles')
-            .select('id, title, content')
-            .eq('customer_id', customerId)
-            .eq('is_active', true)
-            .order('updated_at', { ascending: false })
-            .limit(3);
-        }
-        
-        const { data, error } = await relevantArticlesQuery;
-        
-        if (error) throw error;
-        setArticles(data || []);
       } catch (error) {
         console.error('Error fetching knowledge articles:', error);
+        // Bei Fehlern auch auf einfache Abfrage zurückfallen
+        fallbackArticleQuery();
       } finally {
         setIsLoading(false);
+      }
+    }
+    
+    async function fallbackArticleQuery() {
+      try {
+        const { data, error } = await supabase
+          .from('knowledge_articles')
+          .select('id, title, content')
+          .eq('customer_id', customerId)
+          .eq('is_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(3);
+          
+        if (error) throw error;
+        setArticles(data || []);
+      } catch (e) {
+        console.error('Error in fallback query:', e);
+        setArticles([]);
       }
     }
     
