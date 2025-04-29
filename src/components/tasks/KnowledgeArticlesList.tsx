@@ -1,22 +1,22 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { BookOpen } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { KnowledgeArticleModal } from '../knowledge-articles/KnowledgeArticleModal';
 
-interface KnowledgeArticlesListProps {
-  customerId?: string | null;
-  taskDescription?: string;
-}
-
-interface KnowledgeArticle {
+export interface KnowledgeArticle {
   id: string;
   title: string;
   content: string;
 }
 
-export function KnowledgeArticlesList({ customerId, taskDescription }: KnowledgeArticlesListProps) {
+interface KnowledgeArticlesListProps {
+  customerId?: string | null;
+  taskDescription?: string;
+  onOpenArticle?: (article: KnowledgeArticle) => void;
+}
+
+export function KnowledgeArticlesList({ customerId, taskDescription, onOpenArticle }: KnowledgeArticlesListProps) {
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -49,8 +49,14 @@ export function KnowledgeArticlesList({ customerId, taskDescription }: Knowledge
   }, [customerId]);
 
   const handleOpenArticle = (article: KnowledgeArticle) => {
-    setSelectedArticle(article);
-    setIsModalOpen(true);
+    if (onOpenArticle) {
+      // If external handler is provided, use it
+      onOpenArticle(article);
+    } else {
+      // Otherwise use internal modal state
+      setSelectedArticle(article);
+      setIsModalOpen(true);
+    }
   };
 
   if (isLoading) {
@@ -82,11 +88,14 @@ export function KnowledgeArticlesList({ customerId, taskDescription }: Knowledge
         </div>
       </div>
 
-      <KnowledgeArticleModal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        article={selectedArticle}
-      />
+      {/* Only render modal if we're not using external handler */}
+      {!onOpenArticle && (
+        <KnowledgeArticleModal
+          open={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          article={selectedArticle}
+        />
+      )}
     </>
   );
 }
