@@ -70,14 +70,14 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
               <div className="ml-6 text-gray-700">{task.closing_comment}</div>
             </>
           )}
-          
-          {/* Knowledge Articles Section */}
-          <KnowledgeArticlesList 
-            customerId={task.customer_id}
-            taskDescription={task.description}
-          />
         </CardContent>
       </Card>
+      
+      {/* Knowledge Articles Section - Now in its own card */}
+      <KnowledgeArticlesList 
+        customerId={task.customer_id}
+        taskDescription={task.description}
+      />
     </div>
   );
 };

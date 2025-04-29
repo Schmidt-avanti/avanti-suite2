@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { BookOpen } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { KnowledgeArticleModal } from '../knowledge-articles/KnowledgeArticleModal';
 
 export interface KnowledgeArticle {
@@ -69,21 +71,22 @@ export function KnowledgeArticlesList({ customerId, taskDescription, onOpenArtic
 
   return (
     <>
-      <div className="mt-4 space-y-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-          <BookOpen className="h-4 w-4" />
-          <span className="font-medium">Relevante Wissensartikel</span>
-        </div>
-        <div className="ml-6">
+      <Card className="rounded-xl shadow-md border-none bg-white/85">
+        <CardContent className="p-6 pb-3">
+          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Relevante Wissensartikel
+          </h2>
+          
           <Button
             variant="outline"
-            className="justify-start text-left bg-blue-50/50 hover:bg-blue-100/80 border-blue-100 px-3 py-2 h-auto"
+            className="w-full justify-start text-left bg-blue-50/50 hover:bg-blue-100/80 border-blue-100 px-3 py-2 h-auto"
             onClick={() => handleOpenArticle(articles[0])}
           >
-            <div className="truncate">{articles[0].title}</div>
+            {articles[0].title}
           </Button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Only render modal if we're not using external handler */}
       {!onOpenArticle && (
