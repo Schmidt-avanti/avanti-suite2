@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Check, SpellCheck, X } from "lucide-react";
+import { Check, SpellCheck, X, Loader2 } from "lucide-react";
 
 interface SpellCheckerProps {
   text: string;
@@ -17,7 +17,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
   const [isChecking, setIsChecking] = useState(false);
   const [correctedText, setCorrectedText] = useState(text);
 
-  // Enhanced German typo dictionary with more common errors
+  // Local dictionary for common German typos for quick checks
   const typoDict: Record<string, string[]> = {
     // Newsletter variants
     'newletter': ['newsletter'],
@@ -86,39 +86,95 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     setCorrectedText(text);
   }, [text]);
 
-  const checkSpelling = () => {
+  // Function to check for spelling errors using local dictionary and API
+  const checkSpelling = async () => {
     if (!text.trim()) return;
     
     setIsChecking(true);
-    const words = text.split(/\s+/);
-    const newSuggestions: {
-      original: string;
-      suggestions: string[];
-      startPos: number;
-      endPos: number;
-    }[] = [];
-
-    let currentPos = 0;
+    setSuggestions([]);
     
-    words.forEach(word => {
-      // Remove punctuation for checking
-      const cleanWord = word.toLowerCase().replace(/[.,!?;:()]/g, '');
-      const startPos = text.indexOf(word, currentPos);
-      const endPos = startPos + word.length;
-      currentPos = endPos;
+    try {
+      const words = text.split(/\s+/);
+      const newSuggestions: {
+        original: string;
+        suggestions: string[];
+        startPos: number;
+        endPos: number;
+      }[] = [];
 
-      if (cleanWord.length > 2 && typoDict[cleanWord]) {
-        newSuggestions.push({
-          original: word,
-          suggestions: typoDict[cleanWord],
-          startPos,
-          endPos
-        });
+      let currentPos = 0;
+      
+      // First check against our local dictionary for quick results
+      words.forEach(word => {
+        // Remove punctuation for checking
+        const cleanWord = word.toLowerCase().replace(/[.,!?;:()]/g, '');
+        const startPos = text.indexOf(word, currentPos);
+        const endPos = startPos + word.length;
+        currentPos = endPos;
+
+        if (cleanWord.length > 2 && typoDict[cleanWord]) {
+          newSuggestions.push({
+            original: word,
+            suggestions: typoDict[cleanWord],
+            startPos,
+            endPos
+          });
+        }
+      });
+      
+      // If we found some suggestions in our local dictionary, use those
+      if (newSuggestions.length > 0) {
+        setSuggestions(newSuggestions);
+        setIsChecking(false);
+        return;
       }
-    });
-
-    setSuggestions(newSuggestions);
-    setIsChecking(false);
+      
+      // Otherwise, use an API for more comprehensive checking
+      const response = await checkTextWithLanguageTool(text);
+      
+      if (response && response.matches && response.matches.length > 0) {
+        const apiSuggestions = response.matches.map(match => {
+          return {
+            original: text.substring(match.offset, match.offset + match.length),
+            suggestions: match.replacements.map(r => r.value),
+            startPos: match.offset,
+            endPos: match.offset + match.length
+          };
+        });
+        
+        setSuggestions(apiSuggestions);
+      }
+    } catch (error) {
+      console.error("Error checking spelling:", error);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+  
+  // Function to check text with LanguageTool API
+  const checkTextWithLanguageTool = async (text: string) => {
+    try {
+      const response = await fetch("https://api.languagetool.org/v2/check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          text: text,
+          language: "de-DE",
+          enabledOnly: "false"
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error("API request failed");
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error("LanguageTool API error:", error);
+      return null;
+    }
   };
 
   const applySuggestion = (original: string, suggestion: string) => {
@@ -155,7 +211,11 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
           onClick={checkSpelling}
           disabled={isChecking || !text.trim()}
         >
-          <SpellCheck className="h-3.5 w-3.5" />
+          {isChecking ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <SpellCheck className="h-3.5 w-3.5" />
+          )}
           <span>Rechtschreibung prüfen</span>
         </Button>
       </div>
