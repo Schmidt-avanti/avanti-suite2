@@ -193,7 +193,9 @@ serve(async (req) => {
     let conversationMessages = [];
     
     // Create a system message with information about already selected options
-    let systemPrompt = `Du bist Ava, ein hilfreicher Assistent bei avanti-suite.`;
+    let systemPrompt = `Du bist die digitale Assistentin bei avanti-suite und hilfst bei Kundenanfragen.
+WICHTIG: Stell dich niemals persönlich mit Namen vor. Formuliere keine Sätze wie "Mein Name ist..." oder "Ich bin Ava...". 
+Beginne stattdessen sofort mit der Begrüßung und dem Thema.`;
     
     if (useCase) {
       systemPrompt += `\n\nFolge diesem Use Case für die Aufgabe:
@@ -205,7 +207,7 @@ serve(async (req) => {
       
       // Bei automatischer Initiierung oder wenn noch keine Optionen ausgewählt wurden
       if (isAutoInitialization || selectedOptions.length === 0) {
-        systemPrompt += `\n\nBegrüße den Nutzer freundlich mit Namen wenn bekannt, stelle dich kurz vor und beginne sofort mit der ersten Frage zum Use Case.
+        systemPrompt += `\n\nBegrüße den Kunden freundlich, aber OHNE SELBSTVORSTELLUNG MIT NAMEN. Beginne mit einer kurzen Begrüßung und dann sofort mit der ersten Frage zum Use Case.
         
         Bei "Schlüssel verloren" biete folgende Optionen an:
         ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"]
@@ -214,11 +216,11 @@ serve(async (req) => {
       }
       
       if (selectedOptions.includes("Hausschlüssel")) {
-        systemPrompt += `\n\nDer Nutzer hat "Hausschlüssel" gewählt. Frage nach der Anzahl der Schlüssel.`;
+        systemPrompt += `\n\nDer Kunde hat "Hausschlüssel" gewählt. Frage nach der Anzahl der Schlüssel.`;
       } else if (selectedOptions.includes("Wohnungsschlüssel")) {
-        systemPrompt += `\n\nDer Nutzer hat "Wohnungsschlüssel" gewählt. Frage nach der Wohnungsnummer.`;
+        systemPrompt += `\n\nDer Kunde hat "Wohnungsschlüssel" gewählt. Frage nach der Wohnungsnummer.`;
       } else if (selectedOptions.includes("Briefkastenschlüssel")) {
-        systemPrompt += `\n\nDer Nutzer hat "Briefkastenschlüssel" gewählt. Frage nach der Briefkastennummer.`;
+        systemPrompt += `\n\nDer Kunde hat "Briefkastenschlüssel" gewählt. Frage nach der Briefkastennummer.`;
       }
       
       systemPrompt += `\n\nFormatiere deine Antworten als JSON mit text und options Eigenschaften.`;
@@ -245,7 +247,7 @@ serve(async (req) => {
       
       conversationMessages.push({
         role: "system",
-        content: `Der Chat wurde automatisch initiiert. Begrüße den Nutzer freundlich und stelle die erste Frage basierend auf dem Use Case "${useCase?.title || 'Unbekannt'}". Die Aufgabe betrifft: "${task.description || 'Keine Beschreibung'}". Der Kunde heißt ${customerName}.`
+        content: `Der Chat wurde automatisch initiiert. Begrüße den Kunden freundlich, aber OHNE dich mit Namen vorzustellen. Stelle die erste Frage basierend auf dem Use Case "${useCase?.title || 'Unbekannt'}". Die Aufgabe betrifft: "${task.description || 'Keine Beschreibung'}". Der Kunde heißt ${customerName}.`
       });
     }
     

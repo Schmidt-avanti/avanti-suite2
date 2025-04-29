@@ -66,6 +66,22 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   // Filter out options that have already been selected
   const availableOptions = options.filter(option => !selectedOptions.has(option));
 
+  // Für Assistentennachrichten, entferne JSON-artige Formatierung, wenn vorhanden
+  const cleanupText = (text: string) => {
+    if (message.role !== "assistant") return text;
+    
+    // Entferne JSON-Artefakte aus dem Text
+    return text
+      .replace(/^\s*{/, '') // Öffnende Klammer am Anfang entfernen
+      .replace(/}\s*$/, '') // Schließende Klammer am Ende entfernen
+      .replace(/"text"\s*:\s*"/, '') // "text": " entfernen
+      .replace(/"options"\s*:\s*\[.*?\]/, '') // "options": [...] entfernen
+      .replace(/",\s*$/, '') // ", am Ende entfernen
+      .trim();
+  };
+
+  const displayText = cleanupText(text);
+
   return (
     <div className={`flex flex-col mb-4 ${message.role === "assistant" ? "items-start" : "items-end"}`}>
       <div className={`
@@ -78,11 +94,11 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
       `}>
         <div className="flex items-center gap-2 mb-1">
           <span className="font-semibold text-sm">
-            {message.role === "assistant" ? "Ava" : user?.fullName || user?.email || "Benutzer"}
+            {message.role === "assistant" ? "Assistentin" : user?.fullName || user?.email || "Benutzer"}
           </span>
         </div>
         <div className="text-sm whitespace-pre-wrap">
-          {text}
+          {displayText}
         </div>
         {availableOptions.length > 0 && (
           <div className={`flex flex-wrap gap-2 mt-3 ${isMobile ? 'flex-col' : ''}`}>
