@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Check, SpellCheck, X, Loader2 } from "lucide-react";
+import { Check, SpellCheck, X, Loader2, RefreshCw } from "lucide-react";
 
 interface SpellCheckerProps {
   text: string;
@@ -14,6 +14,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     suggestions: string[];
     startPos: number;
     endPos: number;
+    currentSuggestionIndex: number;
   }[]>([]);
   const [isChecking, setIsChecking] = useState(false);
   const [correctedText, setCorrectedText] = useState(text);
@@ -39,7 +40,8 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
             original: text.substring(match.offset, match.offset + match.length),
             suggestions: match.replacements.map(r => r.value),
             startPos: match.offset,
-            endPos: match.offset + match.length
+            endPos: match.offset + match.length,
+            currentSuggestionIndex: 0 // Start with the first suggestion
           };
         });
         
@@ -81,23 +83,42 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     }
   };
 
-  const applySuggestion = (original: string, suggestion: string) => {
-    const newText = text.replace(original, suggestion);
+  const applySuggestion = (suggestionItem: typeof suggestions[0]) => {
+    const { original, suggestions, currentSuggestionIndex } = suggestionItem;
+    const selectedSuggestion = suggestions[currentSuggestionIndex];
+    
+    const newText = text.replace(original, selectedSuggestion);
     setCorrectedText(newText);
     onCorrect(newText);
     
     // Remove the applied suggestion
-    setSuggestions(suggestions.filter(s => s.original !== original));
+    setSuggestions(prev => prev.filter(s => s.original !== original));
   };
 
   const ignoreSuggestion = (original: string) => {
     setSuggestions(suggestions.filter(s => s.original !== original));
   };
 
+  const cycleNextSuggestion = (index: number) => {
+    setSuggestions(prev => {
+      const updated = [...prev];
+      const item = updated[index];
+      
+      if (item) {
+        // Move to next suggestion or cycle back to first
+        const nextIndex = (item.currentSuggestionIndex + 1) % item.suggestions.length;
+        updated[index] = { ...item, currentSuggestionIndex: nextIndex };
+      }
+      
+      return updated;
+    });
+  };
+
   const applyAllSuggestions = () => {
     let newText = text;
     suggestions.forEach(suggestion => {
-      newText = newText.replace(suggestion.original, suggestion.suggestions[0]);
+      const selectedSuggestion = suggestion.suggestions[suggestion.currentSuggestionIndex];
+      newText = newText.replace(suggestion.original, selectedSuggestion);
     });
     
     setCorrectedText(newText);
@@ -127,7 +148,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
   }
 
   return (
-    <div className="mt-2 space-y-2">
+    <div className="mt-2 space-y-2 mb-14">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium flex items-center gap-1 text-amber-600">
           <SpellCheck className="h-4 w-4" />
@@ -154,19 +175,32 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
             <div className="flex-1 mr-2">
               <span className="text-amber-800 line-through">{item.original}</span>
               <span className="mx-2 text-gray-500">→</span>
-              <span className="font-medium">{item.suggestions[0]}</span>
+              <span className="font-medium">
+                {item.suggestions[item.currentSuggestionIndex]}
+              </span>
               {item.suggestions.length > 1 && (
                 <span className="text-xs text-gray-500 ml-1">
-                  ({item.suggestions.slice(1).join(', ')})
+                  ({item.currentSuggestionIndex + 1}/{item.suggestions.length})
                 </span>
               )}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
+              {item.suggestions.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  onClick={() => cycleNextSuggestion(i)}
+                  title="Weitere Vorschläge"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 size="sm" 
                 className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                onClick={() => applySuggestion(item.original, item.suggestions[0])}
+                onClick={() => applySuggestion(item)}
                 title="Vorschlag übernehmen"
               >
                 <Check className="h-4 w-4" />
