@@ -28,13 +28,13 @@ export function KnowledgeArticlesList({ customerId, taskDescription, onOpenArtic
       
       setIsLoading(true);
       try {
-        // Fetch articles associated with this customer
+        // Fetch only the most relevant article for this task description
         const { data, error } = await supabase
           .from('knowledge_articles')
           .select('id, title, content')
           .eq('customer_id', customerId)
           .eq('is_active', true)
-          .limit(5);
+          .limit(1);
         
         if (error) throw error;
         setArticles(data || []);
@@ -46,7 +46,7 @@ export function KnowledgeArticlesList({ customerId, taskDescription, onOpenArtic
     }
     
     fetchRelevantArticles();
-  }, [customerId]);
+  }, [customerId, taskDescription]);
 
   const handleOpenArticle = (article: KnowledgeArticle) => {
     if (onOpenArticle) {
@@ -74,17 +74,14 @@ export function KnowledgeArticlesList({ customerId, taskDescription, onOpenArtic
           <BookOpen className="h-4 w-4" />
           <span className="font-medium">Relevante Wissensartikel</span>
         </div>
-        <div className="ml-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {articles.map((article) => (
-            <Button
-              key={article.id}
-              variant="outline"
-              className="justify-start text-left bg-blue-50/50 hover:bg-blue-100/80 border-blue-100 px-3 py-2 h-auto"
-              onClick={() => handleOpenArticle(article)}
-            >
-              <div className="truncate">{article.title}</div>
-            </Button>
-          ))}
+        <div className="ml-6">
+          <Button
+            variant="outline"
+            className="justify-start text-left bg-blue-50/50 hover:bg-blue-100/80 border-blue-100 px-3 py-2 h-auto"
+            onClick={() => handleOpenArticle(articles[0])}
+          >
+            <div className="truncate">{articles[0].title}</div>
+          </Button>
         </div>
       </div>
 
