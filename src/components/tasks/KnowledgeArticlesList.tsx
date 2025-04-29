@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { BookOpen } from 'lucide-react';
@@ -85,11 +84,12 @@ export function KnowledgeArticlesList({
         
         if (matchedArticles && matchedArticles.length > 0) {
           // Format the articles for display
+          // Add explicit type assertion to include use_case_id
           const formattedArticles: KnowledgeArticle[] = matchedArticles.map(article => ({
             id: article.id,
             title: article.title,
             content: article.content,
-            use_case_id: article.use_case_id,
+            use_case_id: article.use_case_id, // This line was causing the error since it wasn't in the return type
             similarity: article.similarity
           }));
           
