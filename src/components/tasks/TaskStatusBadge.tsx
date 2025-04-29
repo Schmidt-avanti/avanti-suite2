@@ -14,7 +14,7 @@ export const TaskStatusBadge = ({ status, className }: TaskStatusBadgeProps) => 
       case 'in_progress': return 'In Bearbeitung';
       case 'followup': return 'Wiedervorlage';
       case 'completed': return 'Abgeschlossen';
-      case 'closed': return 'Geschlossen';
+      case 'closed': return 'Beendet'; // Changed from "Geschlossen" to "Beendet"
       default: return status;
     }
   };

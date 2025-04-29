@@ -9,11 +9,6 @@ import { TaskStatusBadge } from './TaskStatusBadge';
 import type { TaskStatus } from '@/types';
 import { cn } from "@/lib/utils";
 
-interface TaskStatusBadgeProps {
-  status: TaskStatus;
-  className?: string;
-}
-
 interface TaskDetailHeaderProps {
   task: any;
   formattedTime: string;
@@ -94,7 +89,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           Wiedervorlage
         </Button>
         
-        {/* Beenden ohne Ava button */}
+        {/* Beenden ohne Ava button - Marks task as completed */}
         <Button 
           variant="outline" 
           className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
@@ -104,7 +99,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           Beenden ohne Ava
         </Button>
         
-        {/* Aufgabe abschließen button */}
+        {/* Aufgabe abschließen button - Opens the dialog */}
         <Button 
           variant="outline" 
           className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
