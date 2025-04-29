@@ -100,14 +100,23 @@ serve(async (req) => {
     
     // Add attachments if provided
     if (attachments && attachments.length > 0) {
-      const processedAttachments = await Promise.all(attachments.map(async (url: string) => {
+      const processedAttachments = [];
+      
+      for (let i = 0; i < attachments.length; i++) {
         try {
+          const url = attachments[i];
+          console.log(`Processing attachment: ${url}`);
+          
           // Fetch the file from the URL
           const response = await fetch(url);
-          if (!response.ok) throw new Error(`Failed to fetch attachment: ${response.statusText}`);
+          if (!response.ok) {
+            console.error(`Failed to fetch attachment: ${response.statusText}`);
+            continue;
+          }
           
-          const buffer = await response.arrayBuffer();
-          const base64Content = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+          const arrayBuffer = await response.arrayBuffer();
+          // Convert ArrayBuffer to Base64 string
+          const base64Content = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
           
           // Get filename from URL
           const filename = url.split('/').pop() || 'attachment';
@@ -120,20 +129,24 @@ serve(async (req) => {
           else if (ext === 'png') contentType = 'image/png';
           // Add more file types as needed
           
-          return {
+          processedAttachments.push({
             content: base64Content,
             filename,
             type: contentType,
             disposition: 'attachment'
-          };
+          });
+          
+          console.log(`Successfully processed attachment: ${filename}`);
         } catch (error) {
           console.error('Error processing attachment:', error);
-          return null;
+          // Continue with other attachments
         }
-      }));
+      }
       
-      // Filter out null attachments (failed to process)
-      emailRequestData.attachments = processedAttachments.filter(att => att !== null);
+      // Only add attachments if we successfully processed any
+      if (processedAttachments.length > 0) {
+        emailRequestData.attachments = processedAttachments;
+      }
     }
     
     // Send the email using SendGrid
