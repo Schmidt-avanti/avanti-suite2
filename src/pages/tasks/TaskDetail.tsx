@@ -7,11 +7,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
 import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
 import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
+import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog';
 import { TaskChat } from "@/components/tasks/TaskChat";
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
 import { EmailReplyPanel } from '@/components/tasks/EmailReplyPanel';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
+import { useTaskMessages } from '@/hooks/useTaskMessages';
+import { toast } from '@/components/ui/use-toast';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +26,7 @@ const TaskDetail = () => {
   const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
   const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
   const [forwardTaskDialogOpen, setForwardTaskDialogOpen] = useState(false);
+  const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
   
   const [isActive, setIsActive] = useState(true);
   const { formattedTime } = useTaskTimer({ taskId: id || '', isActive });
@@ -39,6 +43,9 @@ const TaskDetail = () => {
     handleAssignTask
   } = useTaskDetail(id, user);
 
+  // Fetch task messages for email history
+  const { messages } = useTaskMessages(id || null);
+
   useEffect(() => {
     return () => {
       console.log('TaskDetail unmounting, setting isActive to false');
@@ -50,6 +57,18 @@ const TaskDetail = () => {
     setIsActive(false);
     await new Promise(resolve => setTimeout(resolve, 100));
     navigate('/tasks');
+  };
+
+  const handleEmailSent = (emailDetails: { recipient: string, subject: string }) => {
+    toast({
+      title: "E-Mail gesendet",
+      description: `E-Mail wurde erfolgreich an ${emailDetails.recipient} gesendet.`,
+    });
+    
+    // Optionally refresh task data after email is sent
+    if (id) {
+      // Could refresh task data here if needed
+    }
   };
 
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
@@ -73,6 +92,7 @@ const TaskDetail = () => {
           setForwardTaskDialogOpen={setForwardTaskDialogOpen}
           setFollowUpDialogOpen={setFollowUpDialogOpen}
           setCloseTaskDialogOpen={setCloseTaskDialogOpen}
+          setEmailToCustomerDialogOpen={setEmailToCustomerDialogOpen}
           handleStatusChange={handleStatusChange}
         />
 
@@ -127,6 +147,15 @@ const TaskDetail = () => {
         onAssign={handleAssignTask}
         currentAssignee={task.assigned_to}
         isForwarding={true}
+      />
+
+      <EmailToCustomerDialog
+        open={emailToCustomerDialogOpen}
+        onOpenChange={setEmailToCustomerDialogOpen}
+        taskId={task.id}
+        recipientEmail={task.customer?.email || task.endkunde_email}
+        taskMessages={messages}
+        onEmailSent={handleEmailSent}
       />
     </div>
   );

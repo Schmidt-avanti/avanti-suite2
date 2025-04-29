@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { task_id, recipient_email, subject, body } = await req.json();
+    const { task_id, recipient_email, subject, body, attachments } = await req.json();
 
     if (!task_id || !body || !recipient_email) {
       throw new Error('Missing required fields: task_id, recipient_email, and body are required');
@@ -92,6 +92,47 @@ serve(async (req) => {
     // Add reply-to header with customer original email
     const replyToEmail = originalEmail || fallbackSenderEmail;
     
+    // Prepare attachment objects for SendGrid if attachments are provided
+    const attachmentObjects = attachments && attachments.length > 0 ? 
+      await Promise.all(attachments.map(async (url: string) => {
+        try {
+          // Fetch the file from the URL
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`Failed to fetch attachment: ${response.statusText}`);
+          
+          const buffer = await response.arrayBuffer();
+          const base64Content = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+          
+          // Get filename from URL
+          const filename = url.split('/').pop() || 'attachment';
+          
+          // Determine content type based on file extension
+          let contentType = 'application/octet-stream'; // Default
+          const ext = filename.split('.').pop()?.toLowerCase();
+          if (ext === 'pdf') contentType = 'application/pdf';
+          else if (['jpg', 'jpeg'].includes(ext || '')) contentType = 'image/jpeg';
+          else if (ext === 'png') contentType = 'image/png';
+          else if (ext === 'gif') contentType = 'image/gif';
+          else if (ext === 'doc') contentType = 'application/msword';
+          else if (ext === 'docx') contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          else if (ext === 'xls') contentType = 'application/vnd.ms-excel';
+          else if (ext === 'xlsx') contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          
+          return {
+            content: base64Content,
+            filename,
+            type: contentType,
+            disposition: 'attachment'
+          };
+        } catch (error) {
+          console.error('Error processing attachment:', error);
+          return null;
+        }
+      })) : [];
+    
+    // Filter out any null attachments (failed to process)
+    const validAttachments = attachmentObjects.filter(att => att !== null);
+    
     // Send the email using SendGrid
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
@@ -115,7 +156,8 @@ serve(async (req) => {
         content: [{
           type: 'text/plain',
           value: body
-        }]
+        }],
+        attachments: validAttachments
       })
     });
 
@@ -134,7 +176,7 @@ serve(async (req) => {
       .insert({
         task_id,
         role: 'user',
-        content: `Email gesendet an ${recipient_email}: ${body}`,
+        content: `Email gesendet an ${recipient_email}: ${subject ? `Betreff: ${subject} - ` : ''}${body.substring(0, 100)}${body.length > 100 ? '...' : ''}`,
       });
 
     if (historyError) {

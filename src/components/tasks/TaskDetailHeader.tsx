@@ -11,7 +11,8 @@ import {
   Check,
   XCircle,
   UserPlus,
-  Forward
+  Forward,
+  Mail
 } from "lucide-react";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 
@@ -27,6 +28,7 @@ interface TaskDetailHeaderProps {
   setForwardTaskDialogOpen: (open: boolean) => void;
   setFollowUpDialogOpen: (open: boolean) => void;
   setCloseTaskDialogOpen: (open: boolean) => void;
+  setEmailToCustomerDialogOpen: (open: boolean) => void;
   handleStatusChange: (status: string) => void;
 }
 
@@ -42,6 +44,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   setForwardTaskDialogOpen,
   setFollowUpDialogOpen,
   setCloseTaskDialogOpen,
+  setEmailToCustomerDialogOpen,
   handleStatusChange
 }) => {
   const formattedFollowUpDate = task.follow_up_date 
@@ -105,6 +108,15 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           )}
         </>
       )}
+      
+      <Button 
+        onClick={() => setEmailToCustomerDialogOpen(true)}
+        variant="secondary"
+        className="mr-2 bg-blue-100 text-blue-700 hover:bg-blue-200"
+      >
+        <Mail className="h-4 w-4 mr-2" />
+        E-Mail an Kunde
+      </Button>
 
       {task.status !== 'followup' && task.status !== 'completed' && (
         <Button 
