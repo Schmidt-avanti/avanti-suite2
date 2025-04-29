@@ -92,9 +92,30 @@ serve(async (req) => {
     // Add reply-to header with customer original email
     const replyToEmail = originalEmail || fallbackSenderEmail;
     
-    // Prepare attachment objects for SendGrid if attachments are provided
-    const attachmentObjects = attachments && attachments.length > 0 ? 
-      await Promise.all(attachments.map(async (url: string) => {
+    // Prepare email request data
+    const emailRequestData = {
+      personalizations: [{
+        to: [{ email: recipient_email }]
+      }],
+      from: { 
+        email: senderEmail,
+        name: customerName 
+      },
+      reply_to: {
+        email: replyToEmail,
+        name: customerName
+      },
+      subject: emailSubject,
+      content: [{
+        type: 'text/plain',
+        value: body
+      }]
+    };
+    
+    // Prepare attachment objects for SendGrid if attachments are provided and valid
+    let validAttachments = [];
+    if (attachments && attachments.length > 0) {
+      validAttachments = await Promise.all(attachments.map(async (url: string) => {
         try {
           // Fetch the file from the URL
           const response = await fetch(url);
@@ -128,10 +149,16 @@ serve(async (req) => {
           console.error('Error processing attachment:', error);
           return null;
         }
-      })) : [];
+      }));
+      
+      // Filter out any null attachments (failed to process)
+      validAttachments = validAttachments.filter(att => att !== null);
+    }
     
-    // Filter out any null attachments (failed to process)
-    const validAttachments = attachmentObjects.filter(att => att !== null);
+    // Only add the attachments field if we actually have valid attachments
+    if (validAttachments.length > 0) {
+      emailRequestData.attachments = validAttachments;
+    }
     
     // Send the email using SendGrid
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -140,25 +167,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${sendgridApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        personalizations: [{
-          to: [{ email: recipient_email }]
-        }],
-        from: { 
-          email: senderEmail,
-          name: customerName 
-        },
-        reply_to: {
-          email: replyToEmail,
-          name: customerName
-        },
-        subject: emailSubject,
-        content: [{
-          type: 'text/plain',
-          value: body
-        }],
-        attachments: validAttachments
-      })
+      body: JSON.stringify(emailRequestData)
     });
 
     if (!response.ok) {
