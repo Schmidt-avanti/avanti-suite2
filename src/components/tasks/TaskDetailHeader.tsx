@@ -73,7 +73,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           
           {/* Assignment and Actions Buttons */}
           <div className="flex items-center space-x-2">
-            {/* Email to customer button - making sure it's always visible */}
+            {/* Email to customer button - making it ALWAYS visible */}
             <Button
               variant="ghost"
               size="sm"

@@ -21,7 +21,7 @@ const TaskDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Task status dialogs
+  // Task status dialogs - initialize EmailToCustomerDialog state
   const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
   const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
   const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
@@ -122,6 +122,16 @@ const TaskDetail = () => {
         </div>
       </div>
 
+      {/* Make sure EmailToCustomerDialog is being rendered */}
+      <EmailToCustomerDialog
+        open={emailToCustomerDialogOpen}
+        onOpenChange={setEmailToCustomerDialogOpen}
+        taskId={task.id}
+        recipientEmail={task.customer?.email || task.endkunde_email}
+        taskMessages={messages}
+        onEmailSent={handleEmailSent}
+      />
+
       <FollowUpDialog
         open={followUpDialogOpen}
         onOpenChange={setFollowUpDialogOpen}
@@ -147,15 +157,6 @@ const TaskDetail = () => {
         onAssign={handleAssignTask}
         currentAssignee={task.assigned_to}
         isForwarding={true}
-      />
-
-      <EmailToCustomerDialog
-        open={emailToCustomerDialogOpen}
-        onOpenChange={setEmailToCustomerDialogOpen}
-        taskId={task.id}
-        recipientEmail={task.customer?.email || task.endkunde_email}
-        taskMessages={messages}
-        onEmailSent={handleEmailSent}
       />
     </div>
   );

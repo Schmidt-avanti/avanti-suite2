@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -285,7 +284,7 @@ export function EmailToCustomerDialog({
               disabled={isSending}
             />
             
-            {/* Spell checking tool - only display when there's text to check */}
+            {/* ALWAYS show spell checking tool when there's text to check */}
             {body.trim().length > 0 && (
               <div className="mt-2">
                 <SpellChecker text={body} onCorrect={setBody} />

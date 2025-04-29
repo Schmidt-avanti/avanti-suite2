@@ -125,7 +125,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
           disabled={isSending}
         />
         
-        {/* Spell checking tool - only display when there's text to check */}
+        {/* Always show spell checking tool when there's text */}
         {replyBody.trim().length > 0 && (
           <div className="mb-4">
             <SpellChecker text={replyBody} onCorrect={setReplyBody} />
