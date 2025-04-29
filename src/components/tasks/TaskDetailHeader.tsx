@@ -45,47 +45,92 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   setEmailToCustomerDialogOpen,
   handleStatusChange
 }) => {
+  const isEmailTask = task.source === 'email';
+  
   return (
-    <div className="bg-white border-b border-gray-200 p-4 rounded-t-2xl shadow-sm flex flex-col gap-2">
+    <div className="bg-blue-50 p-4 rounded-t-xl flex flex-col gap-2">
       <div className="flex items-center justify-between">
         {/* Left section with back button, status and timer */}
-        <div className="flex items-center space-x-4">
-          <Button 
-            onClick={handleBack} 
-            variant="ghost" 
-            size="icon" 
-            className="text-gray-600 hover:bg-gray-100 h-9 w-9"
+        <div className="flex items-center">
+          <Button
+            onClick={handleBack}
+            variant="ghost"
+            className="text-gray-600 hover:bg-gray-100 mr-2"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5 mr-1" />
+            Zurück zur Übersicht
           </Button>
-          <TaskStatusBadge status={task.status as TaskStatus} className="ml-2" />
           
-          <div className="flex items-center ml-4 text-gray-500">
+          <div className="flex items-center text-gray-500 ml-4">
             <Clock className="h-4 w-4 mr-1" />
             <span className="text-sm font-medium">{formattedTime}</span>
           </div>
+          
+          <TaskStatusBadge status={task.status as TaskStatus} className="ml-4" />
         </div>
-      </div>
-      
-      {/* Action buttons row - all visible at once */}
-      <div className="flex flex-wrap gap-2 mt-1">
-        {/* Email to customer button - always visible */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-blue-600 border-blue-200 hover:bg-blue-50"
-          onClick={() => setEmailToCustomerDialogOpen(true)}
-        >
-          <Mail className="h-4 w-4 mr-2" />
-          E-Mail an Kunde
-        </Button>
         
-        {/* Assign to me button - conditional */}
-        {isUnassigned && user && (
+        {/* Right section with forward button */}
+        {canAssignOrForward && (
           <Button
             variant="outline"
-            size="sm"
-            className="text-green-600 border-green-200 hover:bg-green-50"
+            className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
+            onClick={() => setForwardTaskDialogOpen(true)}
+          >
+            <Forward className="h-4 w-4 mr-2" />
+            Weiterleiten
+          </Button>
+        )}
+      </div>
+      
+      {/* Action buttons row */}
+      <div className="flex flex-wrap gap-2 mt-1">
+        {/* Follow up button */}
+        <Button 
+          variant="outline" 
+          className="bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200"
+          onClick={() => setFollowUpDialogOpen(true)}
+        >
+          <Calendar className="h-4 w-4 mr-2" />
+          Wiedervorlage
+        </Button>
+        
+        {/* Beenden ohne Ava button */}
+        <Button 
+          variant="outline" 
+          className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
+          onClick={() => handleStatusChange('closed' as TaskStatus)}
+        >
+          <X className="h-4 w-4 mr-2" />
+          Beenden ohne Ava
+        </Button>
+        
+        {/* Aufgabe abschließen button */}
+        <Button 
+          variant="outline" 
+          className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
+          onClick={() => setCloseTaskDialogOpen(true)}
+        >
+          <CheckCircle className="h-4 w-4 mr-2" />
+          Aufgabe abschließen
+        </Button>
+        
+        {/* Email buttons - only show for email tasks */}
+        {isEmailTask && (
+          <Button
+            variant="outline"
+            className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
+            onClick={() => setEmailToCustomerDialogOpen(true)}
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            E-Mail an Kunde
+          </Button>
+        )}
+        
+        {/* Assignment buttons - only show for email tasks */}
+        {isEmailTask && isUnassigned && user && (
+          <Button
+            variant="outline"
+            className="bg-white text-green-600 border-green-200 hover:bg-green-50"
             onClick={handleAssignToMe}
           >
             <UserPlus className="h-4 w-4 mr-2" />
@@ -93,62 +138,17 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           </Button>
         )}
         
-        {/* Assign and Forward buttons - conditional */}
-        {canAssignOrForward && (
-          <>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="text-blue-600 border-blue-200 hover:bg-blue-50"
-              onClick={() => setAssignTaskDialogOpen(true)}
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Zuweisen
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="text-purple-600 border-purple-200 hover:bg-purple-50"
-              onClick={() => setForwardTaskDialogOpen(true)}
-            >
-              <Forward className="h-4 w-4 mr-2" />
-              Weiterleiten
-            </Button>
-          </>
+        {/* Assign button - only show for email tasks */}
+        {isEmailTask && canAssignOrForward && (
+          <Button 
+            variant="outline" 
+            className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
+            onClick={() => setAssignTaskDialogOpen(true)}
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Zuweisen
+          </Button>
         )}
-        
-        {/* Follow up button */}
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="text-amber-600 border-amber-200 hover:bg-amber-50"
-          onClick={() => setFollowUpDialogOpen(true)}
-        >
-          <Calendar className="h-4 w-4 mr-2" />
-          Wiedervorlage
-        </Button>
-        
-        {/* Close with Ava button */}
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="text-green-600 border-green-200 hover:bg-green-50"
-          onClick={() => setCloseTaskDialogOpen(true)}
-        >
-          <CheckCircle className="h-4 w-4 mr-2" />
-          Abschließen
-        </Button>
-        
-        {/* Close without Ava button */}
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="text-red-600 border-red-200 hover:bg-red-50"
-          onClick={() => handleStatusChange('closed' as TaskStatus)}
-        >
-          <X className="h-4 w-4 mr-2" />
-          Schließen ohne Ava
-        </Button>
       </div>
     </div>
   );
