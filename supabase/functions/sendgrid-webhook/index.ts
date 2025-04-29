@@ -130,7 +130,7 @@ serve(async (req) => {
       
       // Use the match_email_to_customer database function to find the customer
       const { data: customerMatchResult } = await supabase.rpc('match_email_to_customer', { 
-        email_address: senderEmail 
+        email_address: toEmail 
       });
       
       const customerId = customerMatchResult;
@@ -169,7 +169,7 @@ serve(async (req) => {
             .eq('id', emailId);
         }
       } else {
-        console.warn(`Could not create task: No matching customer found for email ${senderEmail}`);
+        console.warn(`Could not create task: No matching customer found for email ${toEmail}`);
       }
     }
 
