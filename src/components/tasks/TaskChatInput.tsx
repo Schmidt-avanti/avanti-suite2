@@ -59,7 +59,7 @@ export const TaskChatInput: React.FC<TaskChatInputProps> = ({
         </div>
         
         {/* Spell checking tool - clearly separated below input and send button */}
-        {!isLoading && inputValue.length > 0 && (
+        {!isLoading && inputValue.trim().length > 0 && (
           <div className="mt-4">
             <SpellChecker text={inputValue} onCorrect={setInputValue} />
           </div>
