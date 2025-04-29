@@ -98,28 +98,36 @@ serve(async (req) => {
       };
     }
     
-    // Add attachments if provided
+    // Add attachments if provided - FIXED IMPLEMENTATION
     if (attachments && attachments.length > 0) {
       const processedAttachments = [];
       
-      for (let i = 0; i < attachments.length; i++) {
+      for (const url of attachments) {
         try {
-          const url = attachments[i];
           console.log(`Processing attachment: ${url}`);
+          
+          // Get filename from URL first to use in error messages
+          const filename = url.split('/').pop() || 'attachment';
           
           // Fetch the file from the URL
           const response = await fetch(url);
           if (!response.ok) {
-            console.error(`Failed to fetch attachment: ${response.statusText}`);
+            console.error(`Failed to fetch attachment ${filename}: ${response.statusText}`);
             continue;
           }
           
+          // Use a safer approach to convert to Base64
           const arrayBuffer = await response.arrayBuffer();
-          // Convert ArrayBuffer to Base64 string
-          const base64Content = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          const bytes = new Uint8Array(arrayBuffer);
           
-          // Get filename from URL
-          const filename = url.split('/').pop() || 'attachment';
+          // Convert to Base64 manually in chunks to avoid stack overflow
+          let binary = '';
+          const chunkSize = 10240; // Process in ~10KB chunks
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.slice(i, Math.min(i + chunkSize, bytes.length));
+            binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+          }
+          const base64Content = btoa(binary);
           
           // Determine content type based on file extension
           let contentType = 'application/octet-stream'; // Default
@@ -138,14 +146,14 @@ serve(async (req) => {
           
           console.log(`Successfully processed attachment: ${filename}`);
         } catch (error) {
-          console.error('Error processing attachment:', error);
-          // Continue with other attachments
+          console.error('Error processing attachment:', error.message);
         }
       }
       
       // Only add attachments if we successfully processed any
       if (processedAttachments.length > 0) {
         emailRequestData.attachments = processedAttachments;
+        console.log(`Added ${processedAttachments.length} attachments to email`);
       }
     }
     
