@@ -70,9 +70,11 @@ export function CreateTaskDescription({
         </Button>
       </div>
       
-      {/* Spell checking tool */}
+      {/* Spell checking tool - added extra padding to avoid overlap with send button */}
       {!isMatching && description.length > 0 && (
-        <SpellChecker text={description} onCorrect={onDescriptionChange} />
+        <div className="pt-4 pb-10">
+          <SpellChecker text={description} onCorrect={onDescriptionChange} />
+        </div>
       )}
     </div>
   );

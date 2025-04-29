@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Check, SpellCheck, X, Loader2 } from "lucide-react";
@@ -17,76 +18,11 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
   const [isChecking, setIsChecking] = useState(false);
   const [correctedText, setCorrectedText] = useState(text);
 
-  // Local dictionary for common German typos for quick checks
-  const typoDict: Record<string, string[]> = {
-    // Newsletter variants
-    'newletter': ['newsletter'],
-    'newsleter': ['newsletter'],
-    'newslettr': ['newsletter'],
-    'newsltter': ['newsletter'],
-    'newsltr': ['newsletter'],
-    'newslaetter': ['newsletter'],
-    
-    // Common German words
-    'anmeldung': ['anmeldung'],
-    'anmeldng': ['anmeldung'],
-    'kundentermin': ['kundentermin'],
-    'termin': ['termin'],
-    'terminvereinbarng': ['terminvereinbarung'],
-    'terminvereinbarung': ['terminvereinbarung'],
-    'problm': ['problem'],
-    'aufgbe': ['aufgabe'],
-    'aktualisiren': ['aktualisieren'],
-    'updaten': ['aktualisieren', 'updaten'],
-    'websete': ['webseite'],
-    'webseit': ['webseite'],
-    'websit': ['website', 'webseite'],
-    
-    // Common business terms
-    'kundne': ['kunde', 'kunden'],
-    'kundn': ['kunde', 'kunden'],
-    'ineressent': ['interessent'],
-    'inressent': ['interessent'],
-    'beratng': ['beratung'],
-    'trmin': ['termin'],
-    'informaton': ['information'],
-    'telefonnumer': ['telefonnummer'],
-    'telfon': ['telefon'],
-    'rechnng': ['rechnung'],
-    'recnung': ['rechnung'],
-    'produkt': ['produkt'],
-    'prodkt': ['produkt'],
-    'angbot': ['angebot'],
-    'anfrag': ['anfrage'],
-    'bestwert': ['bestwert'],
-    'bestätigng': ['bestätigung'],
-    
-    // Formal German
-    'sehr gehrt': ['sehr geehrte'],
-    'velen dank': ['vielen dank'],
-    'freundlche': ['freundliche'],
-    'mit freundlchen': ['mit freundlichen'],
-    'gruessen': ['grüßen'],
-    'grussen': ['grüßen'],
-    
-    // Common errors
-    'nich': ['nicht'],
-    'nict': ['nicht'],
-    'bitt': ['bitte'],
-    'mochte': ['möchte'],
-    'moechte': ['möchte'],
-    'fur': ['für'],
-    'konnen': ['können'],
-    'koennen': ['können'],
-    'zuruck': ['zurück'],
-    'zurueck': ['zurück'],
-  };
-
   useEffect(() => {
     setCorrectedText(text);
   }, [text]);
 
-  // Function to check for spelling errors using local dictionary and API
+  // Function to check for spelling errors using LanguageTool API
   const checkSpelling = async () => {
     if (!text.trim()) return;
     
@@ -94,42 +30,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
     setSuggestions([]);
     
     try {
-      const words = text.split(/\s+/);
-      const newSuggestions: {
-        original: string;
-        suggestions: string[];
-        startPos: number;
-        endPos: number;
-      }[] = [];
-
-      let currentPos = 0;
-      
-      // First check against our local dictionary for quick results
-      words.forEach(word => {
-        // Remove punctuation for checking
-        const cleanWord = word.toLowerCase().replace(/[.,!?;:()]/g, '');
-        const startPos = text.indexOf(word, currentPos);
-        const endPos = startPos + word.length;
-        currentPos = endPos;
-
-        if (cleanWord.length > 2 && typoDict[cleanWord]) {
-          newSuggestions.push({
-            original: word,
-            suggestions: typoDict[cleanWord],
-            startPos,
-            endPos
-          });
-        }
-      });
-      
-      // If we found some suggestions in our local dictionary, use those
-      if (newSuggestions.length > 0) {
-        setSuggestions(newSuggestions);
-        setIsChecking(false);
-        return;
-      }
-      
-      // Otherwise, use an API for more comprehensive checking
+      // Use LanguageTool API for comprehensive checking
       const response = await checkTextWithLanguageTool(text);
       
       if (response && response.matches && response.matches.length > 0) {
@@ -143,6 +44,9 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
         });
         
         setSuggestions(apiSuggestions);
+      } else {
+        // If no spelling errors found
+        console.log("No spelling errors found");
       }
     } catch (error) {
       console.error("Error checking spelling:", error);
@@ -244,10 +148,10 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
         </div>
       </div>
       
-      <div className="bg-amber-50 border border-amber-100 rounded-md p-2 space-y-2 text-sm">
+      <div className="bg-amber-50 border border-amber-100 rounded-md p-2 space-y-2 text-sm mb-4">
         {suggestions.map((item, i) => (
           <div key={i} className="flex items-center justify-between">
-            <div>
+            <div className="flex-1 mr-2">
               <span className="text-amber-800 line-through">{item.original}</span>
               <span className="mx-2 text-gray-500">→</span>
               <span className="font-medium">{item.suggestions[0]}</span>
@@ -257,7 +161,7 @@ export function SpellChecker({ text, onCorrect }: SpellCheckerProps) {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <Button 
                 variant="ghost" 
                 size="sm" 
