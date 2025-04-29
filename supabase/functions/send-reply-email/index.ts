@@ -44,7 +44,7 @@ serve(async (req) => {
       throw new Error('Could not find task');
     }
 
-    // Get the customer name for the sender
+    // Get the customer name for sender display and formatting
     const customerName = task.customer?.name || "avanti-suite";
     const originalEmail = task.source === 'email' 
       ? (task.inbound_email?.from_email || task.endkunde_email)
@@ -60,15 +60,37 @@ serve(async (req) => {
       throw new Error('SENDGRID_API_KEY environment variable is not set');
     }
 
-    // IMPORTANT: Use a verified sender email from SendGrid
-    const verifiedSenderEmail = Deno.env.get('SENDGRID_VERIFIED_SENDER') || 'noreply@avanti-suite.de';
-    console.log('Using verified sender email:', verifiedSenderEmail);
+    // Get the verified domain or fallback to a default
+    const verifiedDomain = Deno.env.get('SENDGRID_VERIFIED_DOMAIN') || 'inbox.avanti.cx';
+    
+    // Create a safe sender name by removing special characters and spaces
+    // This will be used as the local part of the email address
+    let safeSenderName = customerName
+      .toLowerCase()
+      .replace(/[^\w.-]/g, '-') // Replace any non-word chars with hyphens
+      .replace(/--+/g, '-')     // Replace multiple hyphens with single hyphen
+      .substring(0, 30);        // Limit length
+    
+    if (!safeSenderName || safeSenderName.length < 2) {
+      safeSenderName = 'customer';
+    }
+    
+    // Create a dynamic sender email from the verified domain
+    const dynamicSenderEmail = `${safeSenderName}@${verifiedDomain}`;
+    
+    // Fallback to a static verified sender if needed
+    const fallbackSenderEmail = Deno.env.get('SENDGRID_VERIFIED_SENDER') || `noreply@${verifiedDomain}`;
+    
+    // Use the dynamic sender if domain is verified, otherwise use fallback
+    const senderEmail = dynamicSenderEmail;
+    
+    console.log('Using sender email:', senderEmail);
     
     // Use task title in subject or fallback
     const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
     
-    // Add reply-to header with customer information
-    const replyToEmail = originalEmail || verifiedSenderEmail;
+    // Add reply-to header with customer original email
+    const replyToEmail = originalEmail || fallbackSenderEmail;
     
     // Send the email using SendGrid
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -82,7 +104,7 @@ serve(async (req) => {
           to: [{ email: recipient_email }]
         }],
         from: { 
-          email: verifiedSenderEmail,
+          email: senderEmail,
           name: customerName 
         },
         reply_to: {
@@ -103,8 +125,8 @@ serve(async (req) => {
       throw new Error(`Failed to send email: ${errorText}`);
     }
 
-    const responseData = await response.json();
-    console.log('SendGrid response:', responseData);
+    // Log success response
+    console.log('SendGrid response status:', response.status);
 
     // Update task history with sent email
     const { error: historyError } = await supabase

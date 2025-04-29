@@ -59,11 +59,21 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
     } catch (error: any) {
       console.error('Email sending error:', error);
       const errorMessage = error.message || 'Fehler beim E-Mail Versand';
-      setSendError(
-        errorMessage.includes('verified Sender Identity') 
-          ? 'Der Absender ist nicht verifiziert. Bitte kontaktieren Sie den Administrator, um die SendGrid-Konfiguration zu überprüfen.'
-          : errorMessage
-      );
+      
+      // More specific error handling
+      let userErrorMessage = errorMessage;
+      
+      // Check for common SendGrid errors
+      if (errorMessage.includes('verified Sender Identity') || errorMessage.includes('does not match a verified')) {
+        userErrorMessage = 'Der Domain des Absenders ist nicht verifiziert. Bitte kontaktieren Sie den Administrator, um die SendGrid-Domain-Verifizierung zu überprüfen.';
+      } else if (errorMessage.includes('rate limit')) {
+        userErrorMessage = 'SendGrid Ratelimit erreicht. Bitte versuchen Sie es später erneut.';
+      } else if (errorMessage.includes('blocked')) {
+        userErrorMessage = 'Der Empfänger hat E-Mails von dieser Domain blockiert.';
+      }
+      
+      setSendError(userErrorMessage);
+      
       toast({
         variant: 'destructive',
         title: 'Fehler beim Senden',
@@ -100,7 +110,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
               <p className="mt-1">{sendError}</p>
               <p className="mt-2 text-xs">
                 Bitte stellen Sie sicher, dass die E-Mail-Adresse korrekt ist und dass in der SendGrid-Konfiguration 
-                die Absender-E-Mail verifiziert wurde. Ein Administrator kann dies in der Supabase-Konsole prüfen.
+                die Domain (inbox.avanti.cx) korrekt verifiziert wurde. Ein Administrator kann dies in den SendGrid-Einstellungen prüfen.
               </p>
             </div>
           </div>
