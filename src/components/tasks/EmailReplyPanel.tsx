@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Send, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { SpellChecker } from '@/components/ui/spell-checker';
 
 interface EmailReplyPanelProps {
   taskId: string;
@@ -35,7 +36,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
         body: {
           task_id: taskId,
           recipient_email: replyTo,
-          subject: `Re: ${replyTo || 'Ihre Anfrage'}`,
+          subject: null, // Let the backend use the default subject based on task
           body: replyBody
         }
       });
@@ -108,6 +109,13 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
           className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 mb-4 bg-white"
           disabled={isSending}
         />
+        
+        {/* Spell checking tool - only display when there's text to check */}
+        {replyBody.trim().length > 0 && (
+          <div className="mb-4">
+            <SpellChecker text={replyBody} onCorrect={setReplyBody} />
+          </div>
+        )}
         
         <Button
           className="w-fit bg-blue-600 hover:bg-blue-700 text-white self-start"

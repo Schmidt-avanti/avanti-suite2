@@ -20,16 +20,17 @@ serve(async (req) => {
       throw new Error('Missing required fields: task_id, recipient_email, and body are required');
     }
 
-    // Get task details including both relationship and direct email field
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') || '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     );
 
+    // Get task details with customer information
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select(`
         *,
+        customer:customers(name, email),
         inbound_email:source_email_id (
           from_email,
           subject
@@ -52,7 +53,10 @@ serve(async (req) => {
       throw new Error('No sender email found for this task');
     }
 
-    console.log('Using sender email:', originalEmail);
+    // Get the customer name for the sender
+    const customerName = task.customer?.name || "avanti-suite";
+    
+    console.log('Sender: ', customerName, ' <', originalEmail, '>');
     console.log('Sending email to:', recipient_email);
 
     // Get the SendGrid API key
@@ -61,9 +65,10 @@ serve(async (req) => {
       throw new Error('SENDGRID_API_KEY environment variable is not set');
     }
 
-    const senderName = "avanti-suite";
+    // Custom subject or use task title as fallback
     const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
     
+    // Send the email using SendGrid
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
       headers: {
@@ -74,7 +79,7 @@ serve(async (req) => {
         personalizations: [{
           to: [{ email: recipient_email }]
         }],
-        from: { email: originalEmail, name: senderName },
+        from: { email: originalEmail, name: customerName },
         subject: emailSubject,
         content: [{
           type: 'text/plain',
