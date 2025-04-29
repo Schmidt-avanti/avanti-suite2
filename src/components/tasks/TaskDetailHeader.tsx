@@ -89,7 +89,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           Wiedervorlage
         </Button>
         
-        {/* Beenden ohne Ava button - Now opens the dialog */}
+        {/* Beenden ohne Ava button - Opens the dialog */}
         <Button 
           variant="outline" 
           className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"

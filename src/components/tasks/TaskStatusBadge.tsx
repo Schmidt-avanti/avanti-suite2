@@ -14,7 +14,7 @@ export const TaskStatusBadge = ({ status, className }: TaskStatusBadgeProps) => 
       case 'in_progress': return 'In Bearbeitung';
       case 'followup': return 'Wiedervorlage';
       case 'completed': return 'Abgeschlossen';
-      case 'closed': return 'Beendet'; // Changed from "Geschlossen" to "Beendet"
+      // Removed 'closed' status option
       default: return status;
     }
   };
@@ -25,7 +25,7 @@ export const TaskStatusBadge = ({ status, className }: TaskStatusBadgeProps) => 
       case 'in_progress': return 'bg-yellow-100 text-yellow-800';
       case 'followup': return 'bg-purple-100 text-purple-800';
       case 'completed': return 'bg-green-100 text-green-800';
-      case 'closed': return 'bg-gray-100 text-gray-800';
+      // Removed 'closed' status style
       default: return 'bg-gray-100 text-gray-800';
     }
   };
