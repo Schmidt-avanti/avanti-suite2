@@ -16,6 +16,11 @@ import { formatTimeElapsed } from '@/utils/timeUtils';
 import type { TaskStatus } from '@/types';
 import { cn } from "@/lib/utils";
 
+interface TaskStatusBadgeProps {
+  status: TaskStatus;
+  className?: string;
+}
+
 interface TaskDetailHeaderProps {
   task: any;
   formattedTime: string;
@@ -59,9 +64,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-semibold truncate">
-            {task.title || "Aufgabe ohne Titel"}
-          </h1>
+          {/* Removed the task title here to avoid hiding buttons */}
           <TaskStatusBadge status={task.status as TaskStatus} className="ml-2" />
         </div>
 
@@ -142,7 +145,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   className="hover:bg-red-50 text-red-600 cursor-pointer"
-                  onClick={() => handleStatusChange('closed')}
+                  onClick={() => handleStatusChange('closed' as TaskStatus)}
                 >
                   <X className="h-4 w-4 mr-2" />
                   Schließen ohne Ava
