@@ -8,14 +8,10 @@ import {
   UserCheck,
   XCircle,
   Hash,
-  Home,
-  Phone,
-  Mail,
-  MapPin
+  Home
 } from "lucide-react";
 import { KnowledgeArticlesList } from './KnowledgeArticlesList';
 import { supabase } from '@/integrations/supabase/client';
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 interface TaskDetailInfoProps {
   task: any;
@@ -45,30 +41,29 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
       
       setIsLoading(true);
       try {
+        // Explicitly type the query response
+        type EndkundeResponse = {
+          id: string;
+          nachname: string;
+          vorname: string | null;
+          adresse: string;
+          wohnung: string | null;
+          gebaeude: string | null;
+          lage: string | null;
+          postleitzahl: string;
+          ort: string;
+          email: string | null;
+          telefon: string | null;
+        };
+        
         const { data, error } = await supabase
           .from('endkunden')
           .select('*')
           .eq('id', task.endkunde_id)
-          .single();
+          .single() as { data: EndkundeResponse, error: any };
           
         if (error) throw error;
-        
-        // Create endkunde object with all required fields, providing null for missing ones
-        const endkundeData: Endkunde = {
-          id: data.id,
-          nachname: data.Nachname,
-          vorname: data.Vorname,
-          adresse: data.Adresse,
-          postleitzahl: data.Postleitzahl,
-          ort: data.Ort,
-          wohnung: data.Wohnung,
-          gebaeude: data.Gebäude,
-          lage: data.Lage,
-          email: null, // This field doesn't exist in the database
-          telefon: null // This field doesn't exist in the database
-        };
-        
-        setEndkunde(endkundeData);
+        setEndkunde(data as Endkunde);
       } catch (err) {
         console.error('Error fetching endkunde:', err);
       } finally {
@@ -111,76 +106,39 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
             </div>
           )}
 
-          {/* Endkunde Card with Popover */}
+          {/* Endkunde information if available */}
           {endkunde && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <div className="mt-5 bg-blue-50 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors">
-                  <div className="flex items-center gap-2 text-blue-800 mb-2">
-                    <Home className="h-5 w-5" />
-                    <span className="font-medium">Endkunde Informationen</span>
-                  </div>
-                  <div className="space-y-2 ml-1">
-                    <div className="flex items-center">
-                      <User2 className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0" />
-                      <div>
-                        <span className="font-semibold">{endkunde.nachname}</span>
-                        {endkunde.vorname && <span>, {endkunde.vorname}</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-start">
-                      <MapPin className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
-                      <div>
-                        {endkunde.adresse}<br />
-                        {endkunde.postleitzahl} {endkunde.ort}
-                      </div>
-                    </div>
-                  </div>
+            <>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+                <Home className="h-4 w-4" />
+                <span className="font-medium">Endkunde</span>
+              </div>
+              <div className="ml-6 space-y-1">
+                <div>
+                  <span className="font-medium">{endkunde.nachname}</span>
+                  {endkunde.vorname && <span> {endkunde.vorname}</span>}
                 </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-4 bg-white rounded-lg shadow-lg border border-blue-100">
-                <div className="space-y-3">
-                  <div className="flex items-center border-b border-blue-100 pb-2">
-                    <User2 className="h-5 w-5 text-blue-700 mr-2" />
-                    <div className="text-lg font-semibold">{endkunde.nachname}{endkunde.vorname ? `, ${endkunde.vorname}` : ''}</div>
+                <div>{endkunde.adresse}</div>
+                <div>{endkunde.postleitzahl} {endkunde.ort}</div>
+                {(endkunde.wohnung || endkunde.gebaeude || endkunde.lage) && (
+                  <div className="text-gray-600">
+                    {endkunde.gebaeude && <span>Gebäude: {endkunde.gebaeude} • </span>}
+                    {endkunde.wohnung && <span>Wohnung: {endkunde.wohnung} • </span>}
+                    {endkunde.lage && <span>Lage: {endkunde.lage}</span>}
                   </div>
-                  
-                  <div className="flex items-start">
-                    <MapPin className="h-5 w-5 text-blue-700 mr-2 flex-shrink-0 mt-0.5" />
-                    <div className="flex flex-col">
-                      <div className="font-medium">Adresse</div>
-                      <div>{endkunde.adresse}</div>
-                      <div>{endkunde.postleitzahl} {endkunde.ort}</div>
-                    </div>
+                )}
+                {(endkunde.email || endkunde.telefon) && (
+                  <div className="text-gray-600">
+                    {endkunde.email && (
+                      <div>Email: <a href={`mailto:${endkunde.email}`} className="text-blue-600 hover:underline">
+                        {endkunde.email}
+                      </a></div>
+                    )}
+                    {endkunde.telefon && <div>Tel: {endkunde.telefon}</div>}
                   </div>
-                  
-                  {(endkunde.gebaeude || endkunde.wohnung || endkunde.lage) && (
-                    <div className="flex items-start">
-                      <Home className="h-5 w-5 text-blue-700 mr-2 flex-shrink-0 mt-0.5" />
-                      <div className="flex flex-col">
-                        <div className="font-medium">Details</div>
-                        {endkunde.gebaeude && <div>Gebäude: {endkunde.gebaeude}</div>}
-                        {endkunde.wohnung && <div>Wohnung: {endkunde.wohnung}</div>}
-                        {endkunde.lage && <div>Lage: {endkunde.lage}</div>}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Email from the task since it's not in endkunden table */}
-                  {task.endkunde_email && (
-                    <div className="flex items-center">
-                      <Mail className="h-5 w-5 text-blue-700 mr-2 flex-shrink-0" />
-                      <div className="flex flex-col">
-                        <div className="font-medium">Kontakt</div>
-                        <a href={`mailto:${task.endkunde_email}`} className="text-blue-600 hover:underline">
-                          {task.endkunde_email}
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
+                )}
+              </div>
+            </>
           )}
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
@@ -219,7 +177,7 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
         </CardContent>
       </Card>
       
-      {/* Knowledge Articles Section */}
+      {/* Knowledge Articles Section - Now passing the task description */}
       <KnowledgeArticlesList 
         customerId={task.customer_id}
         taskDescription={task.description}

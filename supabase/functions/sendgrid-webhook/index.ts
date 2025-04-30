@@ -74,8 +74,6 @@ serve(async (req) => {
         html: await getValue('html'),
         to: await getValue('to'),
         headers: await getValue('headers'),
-        references: await getValue('references'),
-        in_reply_to: await getValue('in_reply_to'),
         sg_message_id: await getValue('sg_message_id') || `manual-${Date.now()}`
       };
       
@@ -131,202 +129,12 @@ serve(async (req) => {
       // Get the actual recipient email (the 'to' address)
       const toEmail = event.to;
       
-      // IMPROVED REPLY DETECTION
-      // Step 1: Check for task ID in subject [XX000000]
-      const taskIdMatch = event.subject?.match(/\[(.*?)\]/);
-      const taskReadableId = taskIdMatch ? taskIdMatch[1].trim() : null;
+      // Match email to customer
+      const { data: customerMatchResult } = await supabase.rpc('match_email_to_customer', { 
+        email_address: toEmail 
+      });
       
-      // Step 2: Check for references/in-reply-to headers that indicate a reply
-      const inReplyTo = event.in_reply_to || '';
-      const references = event.references || '';
-      const rawHeaders = event.headers || '';
-      
-      console.log(`Processing email - Subject: "${event.subject}", To: ${toEmail}`);
-      console.log(`Reply detection - taskReadableId: ${taskReadableId}, inReplyTo: ${!!inReplyTo}, references: ${!!references}`);
-      
-      // Check if this is a reply to an existing task using various methods
-      let existingTaskId = null;
-      let relatedTask = null;
-      
-      // Method 1: Task ID in subject
-      if (taskReadableId) {
-        console.log(`Looking for task with readable_id: ${taskReadableId}`);
-        const { data: taskData } = await supabase
-          .from('tasks')
-          .select('id, customer_id, title')
-          .eq('readable_id', taskReadableId)
-          .maybeSingle();
-          
-        if (taskData) {
-          existingTaskId = taskData.id;
-          relatedTask = taskData;
-          console.log(`Found existing task by readable_id: ${taskReadableId} (ID: ${existingTaskId})`);
-        }
-      }
-      
-      // Method 2: Look for message ID in email_threads if we have In-Reply-To header
-      if (!existingTaskId && (inReplyTo || references)) {
-        // Extract message-id from headers (could be in References or In-Reply-To)
-        let possibleMessageIds = [];
-        
-        if (inReplyTo) {
-          possibleMessageIds.push(inReplyTo.trim());
-        }
-        
-        if (references) {
-          // References can contain multiple IDs separated by spaces
-          const refIds = references.split(/\s+/).map(id => id.trim()).filter(id => id);
-          possibleMessageIds = [...possibleMessageIds, ...refIds];
-        }
-        
-        // Also try to extract from raw headers as a fallback
-        if (rawHeaders) {
-          const refMatch = rawHeaders.match(/References:\s*([^\n]+)/i);
-          const replyMatch = rawHeaders.match(/In-Reply-To:\s*([^\n]+)/i);
-          
-          if (refMatch && refMatch[1]) {
-            const extractedRefs = refMatch[1].split(/\s+/).map(id => id.trim()).filter(id => id);
-            possibleMessageIds = [...possibleMessageIds, ...extractedRefs];
-          }
-          
-          if (replyMatch && replyMatch[1]) {
-            possibleMessageIds.push(replyMatch[1].trim());
-          }
-        }
-        
-        if (possibleMessageIds.length > 0) {
-          console.log(`Looking for related task using ${possibleMessageIds.length} message IDs`);
-          
-          // Search for any message ID in the email_threads table
-          for (const msgId of possibleMessageIds) {
-            // Clean the message ID (sometimes they come with < > brackets)
-            const cleanMsgId = msgId.replace(/[<>]/g, '');
-            
-            if (!cleanMsgId) continue;
-            
-            // Try to find a task that has a thread entry with this message ID
-            const { data: threadData } = await supabase
-              .from('email_threads')
-              .select('task_id')
-              .eq('thread_id', cleanMsgId)
-              .maybeSingle();
-              
-            if (threadData?.task_id) {
-              existingTaskId = threadData.task_id;
-              
-              // Get task details
-              const { data: foundTask } = await supabase
-                .from('tasks')
-                .select('id, customer_id, title, readable_id')
-                .eq('id', existingTaskId)
-                .maybeSingle();
-                
-              if (foundTask) {
-                relatedTask = foundTask;
-                console.log(`Found existing task by message ID reference: ${cleanMsgId} (Task ID: ${existingTaskId}, readable_id: ${foundTask.readable_id})`);
-                break; // Found a match, no need to check other message IDs
-              }
-            }
-          }
-        }
-      }
-      
-      // Method 3: Check recipient avanti email domain to link to existing tasks
-      if (!existingTaskId && toEmail && toEmail.includes('@inbox.avanti.cx')) {
-        console.log(`Looking for customer with avanti_email: ${toEmail}`);
-        
-        // If it's an avanti email address being used as recipient,
-        // try to find the customer by their avanti_email
-        const { data: customerByAvanti } = await supabase
-          .from('customers')
-          .select('id, name')
-          .ilike('avanti_email', toEmail)
-          .maybeSingle();
-          
-        if (customerByAvanti) {
-          // Check if there's a recent task for this customer that this could be a reply to
-          const { data: recentTasks } = await supabase
-            .from('tasks')
-            .select('id, customer_id, title, readable_id')
-            .eq('customer_id', customerByAvanti.id)
-            .eq('source', 'email')
-            .order('created_at', { ascending: false })
-            .limit(1);
-            
-          if (recentTasks && recentTasks.length > 0) {
-            existingTaskId = recentTasks[0].id;
-            relatedTask = recentTasks[0];
-            console.log(`Found recent task for customer ${customerByAvanti.name} with avanti_email ${toEmail}: ${recentTasks[0].readable_id} (${existingTaskId})`);
-          }
-        }
-      }
-      
-      // If we found a related task, add this email as a thread entry
-      if (existingTaskId && relatedTask) {
-        console.log(`Adding email as thread to existing task ${relatedTask.readable_id} (${existingTaskId})`);
-        
-        // Add this email as a thread entry to the existing task
-        const { data: threadData, error: threadError } = await supabase
-          .from('email_threads')
-          .insert({
-            task_id: existingTaskId,
-            direction: 'inbound',
-            sender: senderEmail,
-            recipient: toEmail,
-            subject: event.subject || '',
-            content: event.text || event.html?.replace(/<[^>]+>/g, '') || '',
-            attachments: attachments.length > 0 ? attachments : null,
-            thread_id: event.sg_message_id // Store message ID for future reference
-          });
-          
-        if (threadError) {
-          console.error('Error creating email thread:', threadError);
-        } else {
-          console.log(`Successfully added email to task ${relatedTask.readable_id} (${existingTaskId}) as email thread`);
-        }
-        
-        // Mark the email as processed
-        await supabase
-          .from('inbound_emails')
-          .update({ processed: true })
-          .eq('id', emailId);
-          
-        // Continue to next email since we've added this to an existing task
-        continue;
-      }
-      
-      // If we couldn't match to an existing task, create a new one
-      console.log(`No existing task found for this email, attempting to create new task`);
-      
-      // Try to match the email to a customer to create a new task
-      let customerId = null;
-      
-      // First check if recipient is an avanti email
-      if (toEmail && toEmail.toLowerCase().includes('@inbox.avanti.cx')) {
-        // Try to find the customer by their avanti_email
-        const { data: customerByAvanti } = await supabase
-          .from('customers')
-          .select('id, name')
-          .ilike('avanti_email', toEmail)
-          .maybeSingle();
-          
-        if (customerByAvanti) {
-          customerId = customerByAvanti.id;
-          console.log(`Found customer by avanti_email: ${customerByAvanti.name} (${customerId})`);
-        }
-      }
-      
-      // If we couldn't find by avanti_email, try to match the sender email
-      if (!customerId) {
-        const { data: customerMatchResult } = await supabase.rpc('match_email_to_customer', { 
-          email_address: senderEmail 
-        });
-        
-        customerId = customerMatchResult;
-        if (customerId) {
-          console.log(`Found customer by match_email_to_customer function: ${customerId}`);
-        }
-      }
+      const customerId = customerMatchResult;
       
       if (customerId) {
         // First look up customer name for better logging
@@ -351,12 +159,12 @@ serve(async (req) => {
             attachments: attachments.length > 0 ? attachments : null,
             source_email_id: emailId
           })
-          .select('id, readable_id');
+          .select('id');
             
         if (taskError) {
           console.error('Error creating task from email:', taskError);
         } else {
-          console.log(`Successfully created task ${taskData[0].readable_id} from email for customer ${customerName} (${customerId})`);
+          console.log(`Successfully created task from email for customer ${customerName} (${customerId})`);
           
           // Create email thread record
           const taskId = taskData[0].id;
@@ -371,8 +179,7 @@ serve(async (req) => {
               recipient: toEmail,
               subject: event.subject || '',
               content: event.text || event.html?.replace(/<[^>]+>/g, '') || '',
-              attachments: attachments.length > 0 ? attachments : null,
-              thread_id: event.sg_message_id // Store message ID for future reference
+              attachments: attachments.length > 0 ? attachments : null
             });
           
           // Mark the email as processed
@@ -382,7 +189,7 @@ serve(async (req) => {
             .eq('id', emailId);
         }
       } else {
-        console.warn(`Could not create task: No matching customer found for email ${senderEmail} to ${toEmail}`);
+        console.warn(`Could not create task: No matching customer found for email ${toEmail}`);
       }
     }
 

@@ -3,17 +3,15 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowDownLeft, ArrowUpRight, Paperclip, Reply } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Paperclip } from "lucide-react";
 import { EmailThread } from "@/types";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
 
 interface EmailThreadHistoryProps {
   threads: EmailThread[];
-  onReplyClick?: (thread: EmailThread) => void;
 }
 
-export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads, onReplyClick }) => {
+export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads }) => {
   if (!threads || threads.length === 0) {
     return (
       <Card className="bg-white rounded-lg shadow-sm p-4 mb-4">
@@ -24,21 +22,14 @@ export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads,
     );
   }
 
-  // Sort threads by creation date (newest first)
-  const sortedThreads = [...threads].sort((a, b) => 
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
-
-  console.log("Rendering email threads:", sortedThreads);
-
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium mb-2">E-Mail-Verlauf</h3>
       
       <div className="space-y-3">
-        {sortedThreads.map((thread, index) => (
+        {threads.map((thread, index) => (
           <Card key={thread.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between p-3 bg-gray-50 border-b border-gray-100">
+            <div className="flex items-center p-3 bg-gray-50 border-b border-gray-100">
               <div className="flex items-center">
                 {thread.direction === 'inbound' ? (
                   <ArrowDownLeft className="h-4 w-4 mr-2 text-blue-500" />
@@ -48,24 +39,11 @@ export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads,
                 <span className={`text-sm font-medium ${thread.direction === 'inbound' ? 'text-blue-600' : 'text-green-600'}`}>
                   {thread.direction === 'inbound' ? 'Eingehend' : 'Ausgehend'}
                 </span>
-                <span className="mx-2 text-gray-300">•</span>
-                <span className="text-sm text-gray-500">
-                  {formatDistanceToNow(new Date(thread.created_at), { addSuffix: true, locale: de })}
-                </span>
               </div>
-              
-              {/* Add Reply button for inbound threads */}
-              {thread.direction === 'inbound' && onReplyClick && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="flex items-center text-blue-600 hover:text-blue-800"
-                  onClick={() => onReplyClick(thread)}
-                >
-                  <Reply className="h-4 w-4 mr-1" />
-                  <span>Antworten</span>
-                </Button>
-              )}
+              <span className="mx-2 text-gray-300">•</span>
+              <span className="text-sm text-gray-500">
+                {formatDistanceToNow(new Date(thread.created_at), { addSuffix: true, locale: de })}
+              </span>
             </div>
             
             <CardContent className="p-4">
@@ -120,4 +98,4 @@ export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads,
       </div>
     </div>
   );
-};
+}

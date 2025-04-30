@@ -18,8 +18,6 @@ interface EndkundeOption {
   wohnung: string | null;
   gebaeude: string | null;
   lage: string | null;
-  postleitzahl: string | null;
-  ort: string | null;
 }
 
 interface EndkundeSelectorProps {
@@ -48,31 +46,47 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
       try {
         setIsLoading(true);
-        // Using column names individually to avoid special character parsing issues
+        // Explicitly type the query response to avoid deep instantiation
+        type EndkundenResponse = {
+          id: string;
+          nachname: string;
+          vorname: string | null;
+          adresse: string;
+          wohnung: string | null;
+          gebaeude: string | null;
+          lage: string | null;
+          postleitzahl: string;
+          ort: string;
+          email?: string | null;
+          telefon?: string | null;
+        };
+        
         const { data, error } = await supabase
           .from('endkunden')
-          .select('id, "Nachname", "Vorname", "Adresse", "Wohnung", "Gebäude", "Lage", "Postleitzahl", "Ort"')
-          .eq('customer_ID', customerId)
-          .order('Nachname', { ascending: true });
+          .select('id, nachname, vorname, adresse, wohnung, gebaeude, lage, postleitzahl, ort')
+          .eq('customer_id', customerId)
+          .eq('is_active', true)
+          .order('nachname', { ascending: true }) as { data: EndkundenResponse[], error: any };
 
         if (error) throw error;
 
+        // Transform the data into our expected format
         const formattedData = data.map(ek => {
-          // Create a simpler display name - just full name
-          const vorname = ek.Vorname ? `${ek.Vorname}` : '';
+          // Create a display name based on available fields
+          const vorname = ek.vorname ? ` ${ek.vorname}` : '';
+          const wohnung = ek.wohnung ? ` • Wohnung ${ek.wohnung}` : '';
+          const lage = ek.lage ? ` • ${ek.lage}` : '';
+          const gebaeude = ek.gebaeude ? ` • ${ek.gebaeude}` : '';
           
           return {
             id: ek.id,
-            nachname: ek.Nachname,
-            vorname: ek.Vorname,
-            adresse: ek.Adresse,
-            wohnung: ek.Wohnung,
-            gebaeude: ek.Gebäude,
-            lage: ek.Lage,
-            postleitzahl: ek.Postleitzahl,
-            ort: ek.Ort,
-            // Simple display format - just name and surname
-            display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
+            nachname: ek.nachname,
+            vorname: ek.vorname,
+            adresse: ek.adresse,
+            wohnung: ek.wohnung,
+            gebaeude: ek.gebaeude,
+            lage: ek.lage,
+            display: `${ek.nachname}${vorname}, ${ek.adresse}${wohnung}${gebaeude}${lage}`
           };
         });
 
@@ -93,8 +107,26 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       return;
     }
     
-    // Since email field doesn't exist in endkunden table, we'll just pass null for the email
-    onChange(endkundeId, null);
+    // Find the selected endkunde email to pass back
+    try {
+      // Explicitly type the query response
+      type EmailResponse = { email: string | null };
+      
+      const { data, error } = await supabase
+        .from('endkunden')
+        .select('email')
+        .eq('id', endkundeId)
+        .single() as { data: EmailResponse | null, error: any };
+      
+      if (!error && data) {
+        onChange(endkundeId, data.email);
+      } else {
+        onChange(endkundeId, null);
+      }
+    } catch (err) {
+      console.error('Error fetching endkunde details:', err);
+      onChange(endkundeId, null);
+    }
   };
 
   return (

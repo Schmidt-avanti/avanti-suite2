@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { task_id, recipient_email, subject, body, attachments, reply_to_thread_id } = await req.json();
+    const { task_id, recipient_email, subject, body, attachments } = await req.json();
 
     if (!task_id || !body || !recipient_email) {
       throw new Error('Missing required fields: task_id, recipient_email, and body are required');
@@ -25,12 +25,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     );
 
-    // Get task details with customer information - Now explicitly query for avanti_email
+    // Get task details with customer information
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select(`
         *,
-        customer:customers(name, email, avanti_email),
+        customer:customers(name, email),
         inbound_email:source_email_id (
           from_email,
           subject
@@ -53,77 +53,26 @@ serve(async (req) => {
     // Get the verified domain or fallback to a default
     const verifiedDomain = Deno.env.get('SENDGRID_VERIFIED_DOMAIN') || 'inbox.avanti.cx';
     
-    // Prioritize using the stored avanti_email if available
-    let senderEmail;
+    // Create a safe sender name by removing special characters and spaces
+    let safeSenderName = (task.customer?.name || 'support')
+      .toLowerCase()
+      .replace(/[^\w.-]/g, '-')
+      .replace(/--+/g, '-')
+      .substring(0, 30);
     
-    // Check if customer has avanti_email and use it
-    if (task.customer?.avanti_email) {
-      senderEmail = task.customer.avanti_email;
-      console.log(`Using stored avanti_email: ${senderEmail}`);
-    } else {
-      // Fall back to dynamic generation only if no avanti_email exists
-      // Create a safe sender name by removing special characters and spaces
-      let safeSenderName = (task.customer?.name || 'support')
-        .toLowerCase()
-        .replace(/[^\w.-]/g, '-')
-        .replace(/--+/g, '-')
-        .substring(0, 30);
-      
-      if (!safeSenderName || safeSenderName.length < 2) {
-        safeSenderName = 'support';
-      }
-      
-      // Create a dynamic sender email from the verified domain
-      senderEmail = `${safeSenderName}@${verifiedDomain}`;
-      console.log(`No avanti_email found, using generated email: ${senderEmail}`);
+    if (!safeSenderName || safeSenderName.length < 2) {
+      safeSenderName = 'support';
     }
     
-    // Get original thread if replying to a specific thread
-    let originalThreadData = null;
+    // Create a dynamic sender email from the verified domain
+    const senderEmail = `${safeSenderName}@${verifiedDomain}`;
     
-    if (reply_to_thread_id) {
-      const { data: threadData, error: threadError } = await supabase
-        .from('email_threads')
-        .select('*')
-        .eq('id', reply_to_thread_id)
-        .single();
-        
-      if (!threadError) {
-        originalThreadData = threadData;
-        console.log(`Found original thread with ID: ${reply_to_thread_id}`);
-      } else {
-        console.error('Error fetching original thread:', threadError);
-      }
-    }
-    
-    // ALWAYS include task readable_id in the subject line, even if custom subject is provided
-    let emailSubject = '';
-    
-    if (task.readable_id) {
-      // Always ensure we have the task ID at the beginning of the subject
-      // If user provided a subject, check if it already has the ID
-      if (subject) {
-        if (!subject.includes(`[${task.readable_id}]`)) {
-          emailSubject = `[${task.readable_id}] ${subject}`;
-        } else {
-          emailSubject = subject; // Already has the ID
-        }
-      } else {
-        emailSubject = `[${task.readable_id}] Re: ${task.title || 'Ihre Anfrage'}`;
-      }
-    } else {
-      // Fallback if no readable_id exists (shouldn't happen)
-      emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
-    }
-    
-    console.log(`Sending email with subject: "${emailSubject}"`);
+    // Use task title in subject or fallback
+    const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
     
     // Use the original from email as reply-to when available
     const replyToEmail = task.source === 'email' ? 
       (task.inbound_email?.from_email || task.endkunde_email) : null;
-    
-    // Generate a unique message ID for this email that we'll store
-    const messageId = `avanti-${task_id}-${Date.now()}@${verifiedDomain}`;
     
     // Prepare email request data
     const emailRequestData: any = {
@@ -138,10 +87,7 @@ serve(async (req) => {
       content: [{
         type: 'text/plain',
         value: body
-      }],
-      headers: {
-        "Message-ID": `<${messageId}>`
-      }
+      }]
     };
     
     // Add reply-to if available
@@ -152,13 +98,7 @@ serve(async (req) => {
       };
     }
     
-    // If replying to a specific thread, add appropriate headers for threading
-    if (originalThreadData?.thread_id) {
-      emailRequestData.headers["In-Reply-To"] = `<${originalThreadData.thread_id}>`;
-      emailRequestData.headers["References"] = `<${originalThreadData.thread_id}>`;
-    }
-    
-    // Add attachments if provided
+    // Add attachments if provided - FIXED IMPLEMENTATION
     if (attachments && attachments.length > 0) {
       const processedAttachments = [];
       
@@ -233,33 +173,25 @@ serve(async (req) => {
       throw new Error(`Failed to send email: ${errorText}`);
     }
 
-    console.log('Email sent successfully with message ID:', messageId);
-
-    // Store the email thread in the database with reply_to_id if replying to a thread
-    const emailThreadData = {
-      task_id,
-      subject: emailSubject,
-      direction: 'outbound',
-      sender: senderEmail,
-      recipient: recipient_email,
-      content: body,
-      attachments: attachments || null,
-      thread_id: messageId, // Store the message ID to track replies
-      reply_to_id: reply_to_thread_id || null // Store the reference to the original thread if applicable
-    };
-    
+    // Store the email thread in the database
     const { error: threadError } = await supabase
       .from('email_threads')
-      .insert(emailThreadData);
+      .insert({
+        task_id,
+        subject: emailSubject,
+        direction: 'outbound',
+        sender: senderEmail,
+        recipient: recipient_email,
+        content: body,
+        attachments: attachments || null
+      });
 
     if (threadError) {
       console.error('Error storing email thread:', threadError);
       // We don't throw here because the email was already sent
-    } else {
-      console.log('Email thread stored successfully with reply_to_id:', reply_to_thread_id || 'null');
     }
 
-    return new Response(JSON.stringify({ success: true, message_id: messageId }), {
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });

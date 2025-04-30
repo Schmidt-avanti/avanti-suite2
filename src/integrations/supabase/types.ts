@@ -113,7 +113,6 @@ export type Database = {
       }
       customers: {
         Row: {
-          avanti_email: string | null
           billing_address: string | null
           billing_email: string | null
           branch: string | null
@@ -134,7 +133,6 @@ export type Database = {
           zip: string | null
         }
         Insert: {
-          avanti_email?: string | null
           billing_address?: string | null
           billing_email?: string | null
           branch?: string | null
@@ -155,7 +153,6 @@ export type Database = {
           zip?: string | null
         }
         Update: {
-          avanti_email?: string | null
           billing_address?: string | null
           billing_email?: string | null
           branch?: string | null
@@ -236,59 +233,48 @@ export type Database = {
       }
       endkunden: {
         Row: {
-          Adresse: string
+          adresse: string
           created_at: string
-          customer_ID: string | null
-          external_ID: string | null
-          Gebäude: string | null
+          external_id: string | null
+          gebaeude: string | null
           id: string
-          Lage: string | null
-          Nachname: string
+          lage: string | null
+          nachname: string
           Ort: string
-          Postleitzahl: string
+          postleitzahl: string
           updated_at: string
-          Vorname: string | null
-          Wohnung: string | null
+          vorname: string | null
+          wohnung: string | null
         }
         Insert: {
-          Adresse: string
+          adresse: string
           created_at?: string
-          customer_ID?: string | null
-          external_ID?: string | null
-          Gebäude?: string | null
+          external_id?: string | null
+          gebaeude?: string | null
           id?: string
-          Lage?: string | null
-          Nachname: string
+          lage?: string | null
+          nachname: string
           Ort: string
-          Postleitzahl: string
+          postleitzahl: string
           updated_at?: string
-          Vorname?: string | null
-          Wohnung?: string | null
+          vorname?: string | null
+          wohnung?: string | null
         }
         Update: {
-          Adresse?: string
+          adresse?: string
           created_at?: string
-          customer_ID?: string | null
-          external_ID?: string | null
-          Gebäude?: string | null
+          external_id?: string | null
+          gebaeude?: string | null
           id?: string
-          Lage?: string | null
-          Nachname?: string
+          lage?: string | null
+          nachname?: string
           Ort?: string
-          Postleitzahl?: string
+          postleitzahl?: string
           updated_at?: string
-          Vorname?: string | null
-          Wohnung?: string | null
+          vorname?: string | null
+          wohnung?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "endkunden_customer_ID_fkey"
-            columns: ["customer_ID"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       inbound_emails: {
         Row: {
@@ -1229,10 +1215,6 @@ export type Database = {
           duration_seconds: number
           user_id: string
         }[]
-      }
-      generate_avanti_email: {
-        Args: { customer_name: string }
-        Returns: string
       }
       generate_customer_prefix: {
         Args: { customer_name: string }

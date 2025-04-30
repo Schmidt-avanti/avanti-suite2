@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +22,6 @@ interface FormState {
   name: string;
   branch: string;
   email: string;
-  avanti_email: string;
   address: Address;
   hasInvoiceAddress: boolean;
   invoiceAddress: Address;
@@ -34,7 +34,6 @@ const initialForm: FormState = {
   name: "",
   branch: "",
   email: "",
-  avanti_email: "",
   address: initialAddress,
   hasInvoiceAddress: false,
   invoiceAddress: initialAddress,
@@ -79,22 +78,10 @@ const useCustomerForm = ({
           const { data: toolsData } = await supabase.from("customer_tools").select("*").eq("customer_id", customer.id).maybeSingle();
           const { data: contactRows } = await supabase.from("customer_contacts").select("*").eq("customer_id", customer.id);
 
-          // Generate avanti_email if it doesn't exist
-          let avantiEmail = customerData?.avanti_email;
-          if (!avantiEmail && customerData?.name) {
-            // Generate email using the same logic as our database function
-            const name = customerData.name.toLowerCase();
-            const formattedName = name
-              .replace(/\s+/g, '-')
-              .replace(/[^a-z0-9\-]/g, '');
-            avantiEmail = `${formattedName}@inbox.avanti.cx`;
-          }
-
           setForm({
             name: customerData?.name || "",
             branch: customerData?.industry || "",
             email: customerData?.email || "",
-            avanti_email: avantiEmail || "",
             address: {
               street: customerData?.street || "",
               zip: customerData?.zip || "",
@@ -132,19 +119,6 @@ const useCustomerForm = ({
     }
   }, [customer]);
 
-  // Generate avanti_email when name changes if it's a new customer
-  useEffect(() => {
-    if (!isEditing && form.name && !form.avanti_email) {
-      // Generate email using the same logic as our database function
-      const name = form.name.toLowerCase();
-      const formattedName = name
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9\-]/g, '');
-      const avantiEmail = `${formattedName}@inbox.avanti.cx`;
-      setForm(prev => ({ ...prev, avanti_email: avantiEmail }));
-    }
-  }, [form.name, isEditing, form.avanti_email]);
-
   const handleNext = () => setStep((s) => (s < 3 ? (s + 1 as Step) : s));
   const handlePrev = () => setStep((s) => (s > 1 ? (s - 1 as Step) : s));
 
@@ -158,7 +132,6 @@ const useCustomerForm = ({
       name,
       branch,
       email,
-      avanti_email,
       address,
       hasInvoiceAddress,
       invoiceAddress,
@@ -176,7 +149,6 @@ const useCustomerForm = ({
             name,
             industry: branch,
             email,
-            avanti_email,
             street: address.street,
             zip: address.zip,
             city: address.city,
@@ -207,7 +179,6 @@ const useCustomerForm = ({
             name,
             industry: branch,
             email,
-            avanti_email,
             street: address.street,
             zip: address.zip,
             city: address.city,
