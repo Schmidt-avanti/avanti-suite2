@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -28,6 +29,7 @@ interface Task {
   };
   readable_id?: string;
   endkunde_id?: string;
+  source?: string;
 }
 
 interface TasksTableProps {
@@ -41,6 +43,21 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
 
   const handleRowClick = (taskId: string) => {
     navigate(`/tasks/${taskId}`);
+  };
+
+  const getSourceLabel = (source?: string) => {
+    if (!source) return 'Unbekannt';
+    
+    switch(source.toLowerCase()) {
+      case 'email':
+        return 'E-Mail';
+      case 'manual':
+        return 'Manuell';
+      case 'form':
+        return 'Formular';
+      default:
+        return source;
+    }
   };
 
   if (isLoading) {
@@ -66,9 +83,9 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
           <TableRow>
             {!isMobile && <TableHead className="w-[100px]">ID</TableHead>}
             <TableHead>Titel</TableHead>
-            {!isMobile && <TableHead>Kunde</TableHead>}
             <TableHead>Status</TableHead>
-            <TableHead>Zugewiesen an</TableHead>
+            {!isMobile && <TableHead>Kunde</TableHead>}
+            <TableHead>Quelle</TableHead>
             <TableHead className="text-right">Erstellt</TableHead>
           </TableRow>
         </TableHeader>
@@ -90,14 +107,14 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
                   <Badge variant="outline" className="ml-2 bg-blue-50">Endkunde</Badge>
                 )}
               </TableCell>
+              <TableCell>
+                <TaskStatusBadge status={task.status} />
+              </TableCell>
               {!isMobile && (
                 <TableCell>{task.customer?.name || 'Unbekannt'}</TableCell>
               )}
               <TableCell>
-                <TaskStatusBadge status={task.status} />
-              </TableCell>
-              <TableCell>
-                {task.assignee?.["Full Name"] || 'Nicht zugewiesen'}
+                {getSourceLabel(task.source)}
               </TableCell>
               <TableCell className="text-right text-muted-foreground text-sm">
                 {formatDistanceToNow(new Date(task.created_at), { 
