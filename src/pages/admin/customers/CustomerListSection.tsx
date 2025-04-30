@@ -62,19 +62,7 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
         .delete()
         .eq("id", customerToDelete.id);
 
-      if (error) {
-        // Handle specific foreign key constraint errors
-        if (error.code === '23503') {
-          if (error.details?.includes('use_cases')) {
-            throw new Error("Der Kunde kann nicht gelöscht werden, da ihm noch Use Cases zugeordnet sind. Bitte entfernen Sie zuerst alle Use Cases dieses Kunden.");
-          } else if (error.details?.includes('tasks')) {
-            throw new Error("Der Kunde kann nicht gelöscht werden, da ihm noch Aufgaben zugeordnet sind. Bitte löschen Sie zuerst alle Aufgaben dieses Kunden.");
-          } else {
-            throw new Error("Der Kunde kann nicht gelöscht werden, da ihm noch Daten in anderen Tabellen zugeordnet sind.");
-          }
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       setCustomers(customers.filter(c => c.id !== customerToDelete.id));
       toast.success("Kunde erfolgreich gelöscht");
@@ -82,7 +70,7 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
       console.error("Error deleting customer:", error);
       uiToast({
         title: "Fehler",
-        description: error instanceof Error ? error.message : "Der Kunde konnte nicht gelöscht werden.",
+        description: "Der Kunde konnte nicht gelöscht werden.",
         variant: "destructive"
       });
     } finally {
