@@ -150,6 +150,7 @@ const TaskDetail = () => {
   
   // Handler for email reply button clicks
   const handleEmailReplyClick = (thread: EmailThread) => {
+    console.log("Handling email reply click for thread:", thread.id);
     setSelectedEmailThread(thread);
     setEmailReplyDialogOpen(true);
   };
