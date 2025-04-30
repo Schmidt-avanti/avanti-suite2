@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.0";
 import { v4 as uuidv4 } from "https://esm.sh/uuid@9.0.0";
@@ -11,18 +10,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface EmailHeaders {
-  [key: string]: string;
-}
-
-interface EmailAttachment {
-  content: string;
-  type: string;
-  filename: string;
-  disposition: string;
-  content_id: string;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -30,195 +17,298 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-    const formData = await req.formData();
-    
-    // Extract basic email information from the webhook payload
-    const from = formData.get('from')?.toString() || '';
-    const fromEmail = from.match(/<([^>]+)>/) ? 
-                      from.match(/<([^>]+)>/)![1] : 
-                      from;
-                      
-    const fromName = from.match(/^([^<]+)</) ? 
-                    from.match(/^([^<]+)</)![1].trim() : 
-                    '';
-    
-    const subject = formData.get('subject')?.toString() || null;
-    const text = formData.get('text')?.toString() || null;
-    const html = formData.get('html')?.toString() || null;
-    const to = formData.get('to')?.toString() || '';
-    const headers = formData.get('headers')?.toString() || '';
-    
-    // Parse the headers to extract message-id and in-reply-to
-    let messageId: string | null = null;
-    let inReplyTo: string | null = null;
-    let references: string[] = [];
-    
-    // Log all formData fields for debugging
-    for (const [key, value] of formData.entries()) {
-      console.log(`[formData] ${key}: ${value}`);
-    }
-    
-    // Extract email headers (msg_id, in_reply_to, references)
-    try {
-      const headersParsed: EmailHeaders = headers ? JSON.parse(headers) : {};
-      if (headersParsed['Message-ID']) {
-        messageId = headersParsed['Message-ID'];
-      }
-      if (headersParsed['In-Reply-To']) {
-        inReplyTo = headersParsed['In-Reply-To'];
-      }
-      if (headersParsed['References']) {
-        references = headersParsed['References'].split(' ');
-      }
-    } catch (error) {
-      console.error('Error parsing headers:', error);
-    }
-
-    // Process attachments if any
+    const contentType = req.headers.get('content-type') || '';
+    let data;
     const attachments = [];
-    const attachmentCount = parseInt(formData.get('attachments')?.toString() || '0');
-    
-    for (let i = 0; i < attachmentCount; i++) {
+
+    if (contentType.includes('application/json')) {
       try {
-        const attachment: EmailAttachment = JSON.parse(formData.get(`attachment${i}`)?.toString() || '{}');
-        if (attachment && attachment.filename) {
-          // TODO: Store attachments in the storage bucket if needed
-          attachments.push(attachment);
-        }
-      } catch (err) {
-        console.error(`Error processing attachment ${i}:`, err);
+        data = await req.json();
+      } catch (error) {
+        console.error('Error parsing JSON:', error);
+        throw new Error('Invalid JSON format');
       }
-    }
-    
-    // Extract data for inbound email storage
-    const emailData = {
-      from_email: fromEmail,
-      from_name: fromName,
-      subject: subject,
-      body_text: text,
-      body_html: html,
-      to_emails: Array.isArray(to) ? to : [to], // Store as an array in case there are multiple recipients
-      received_at: new Date().toISOString(),
-      processed: false,
-      attachments: attachments.length > 0 ? attachments : null,
-      message_id: messageId,
-      in_reply_to: inReplyTo,
-      reference_ids: references.length > 0 ? references.join(' ') : null  // Changed from 'references' to 'reference_ids'
-    };
-    
-    console.log("Processed webhook data:", JSON.stringify(emailData));
-    
-    // Insert the inbound email into the database
-    const { data: inboundEmailData, error: inboundEmailError } = await supabase
-      .from('inbound_emails')
-      .insert(emailData)
-      .select();
+    } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
       
-    if (inboundEmailError) {
-      console.error('Error storing email:', inboundEmailError);
-      throw new Error('Error storing email: ' + JSON.stringify(inboundEmailError));
-    }
-    
-    // If this is a reply to an existing thread, find the task ID from previous threads
-    let relatedTaskId: string | null = null;
-    
-    if (inReplyTo) {
-      // Try to find a related task by message_id
-      const { data: threadData, error: threadError } = await supabase
-        .from('email_threads')
-        .select('task_id')
-        .eq('message_id', inReplyTo)
-        .maybeSingle();
+      // Helper to safely extract value
+      const getValue = async (key) => {
+        const val = formData.get(key);
+        return typeof val === 'string' ? val : await val?.text?.() || '';
+      };
       
-      if (threadError) {
-        console.error('Error finding related thread:', threadError);
-      } else if (threadData) {
-        relatedTaskId = threadData.task_id;
-      }
-    }
-    
-    // If we found a related task, store this as a thread in the email_threads table
-    if (relatedTaskId) {
-      const newThreadId = uuidv4();
-      
-      const { error: threadInsertError } = await supabase
-        .from('email_threads')
-        .insert({
-          task_id: relatedTaskId,
-          direction: 'inbound',
-          sender: fromEmail,
-          recipient: to,
-          subject: subject,
-          content: text || html || '',
-          message_id: messageId,
-          thread_id: newThreadId,
-          // If this is a reply, find the original thread by message_id
-          reply_to_id: inReplyTo ? 
-            (await supabase
-              .from('email_threads')
-              .select('id')
-              .eq('message_id', inReplyTo)
-              .maybeSingle()
-            ).data?.id : null
-        });
+      // Log and handle attachments
+      for (const [key, value] of formData.entries()){
+        const isAttachment = key.startsWith('attachment') && value instanceof File;
+        const preview = typeof value === 'string' ? value : await value?.text?.();
+        console.log(`[formData] ${key}:`, preview?.slice?.(0, 200));
         
-      if (threadInsertError) {
-        console.error('Error inserting thread:', threadInsertError);
+        if (isAttachment) {
+          const ext = value.name?.split('.').pop() || 'bin';
+          const fileName = `${Date.now()}-${key}.${ext}`;
+          const { error: uploadError } = await supabase.storage.from('email-attachments').upload(fileName, value, {
+            contentType: value.type || 'application/octet-stream'
+          });
+          
+          if (uploadError) {
+            console.error(`Upload failed (${key})`, uploadError);
+          } else {
+            const url = supabase.storage.from('email-attachments').getPublicUrl(fileName).data.publicUrl;
+            attachments.push(url);
+            console.log(`[attachment saved] ${fileName} → ${url}`);
+          }
+        }
+      }
+      
+      data = {
+        from: await getValue('from'),
+        from_name: await getValue('from_name') || await getValue('sender_name'),
+        subject: await getValue('subject'),
+        text: await getValue('text') || await getValue('plain'),
+        html: await getValue('html'),
+        to: await getValue('to'),
+        headers: await getValue('headers'),
+        sg_message_id: await getValue('sg_message_id') || `manual-${Date.now()}`
+      };
+      
+      // Optional MIME fallback
+      if (!data.text && !data.html && formData.get('email')) {
+        const rawMime = await formData.get('email')?.text?.();
+        const bodyMatch = rawMime?.match(/\r?\n\r?\n([\s\S]+)$/);
+        data.text = bodyMatch?.[1]?.trim() || '';
+        console.log('[MIME fallback body]', data.text.slice(0, 200));
+      }
+      
+      // Try to parse message_id and in_reply_to from headers
+      try {
+        const rawHeaders = data.headers;
+        let messageId = null;
+        let inReplyTo = null;
+        let references: string[] = [];
+        
+        // Try to extract message_id and in_reply_to from headers
+        if (rawHeaders) {
+          // Extract Message-ID
+          const messageIdMatch = rawHeaders.match(/Message-ID:\s*<([^>]+)>/i);
+          if (messageIdMatch && messageIdMatch[1]) {
+            messageId = messageIdMatch[1];
+          }
+          
+          // Extract In-Reply-To
+          const inReplyToMatch = rawHeaders.match(/In-Reply-To:\s*<([^>]+)>/i);
+          if (inReplyToMatch && inReplyToMatch[1]) {
+            inReplyTo = inReplyToMatch[1];
+          }
+          
+          // Extract References
+          const referencesMatch = rawHeaders.match(/References:\s*(.+?)(?:\r?\n\S|\r?\n$)/i);
+          if (referencesMatch && referencesMatch[1]) {
+            // Split references by spaces, but only keep message IDs (those that look like <something>)
+            references = referencesMatch[1].split(/\s+/).filter(ref => /^<.+>$/.test(ref)).map(ref => ref.substring(1, ref.length - 1));
+          }
+        }
+        
+        // Add these fields to the data object
+        data.message_id = messageId || data.sg_message_id;
+        data.in_reply_to = inReplyTo;
+        data.reference_ids = references;
+      } catch (error) {
+        console.error('Error extracting header information:', error);
       }
     } else {
-      // Try to match the email to a customer
-      const matchCustomerQuery = await supabase.rpc('match_email_to_customer', {
-        email_address: fromEmail
+      const textContent = await req.text();
+      console.log('Received non-JSON/non-form content:', textContent.slice(0, 200) + '...');
+      throw new Error(`Unsupported content type: ${contentType}`);
+    }
+    
+    console.log('Processed webhook data:', JSON.stringify(data).slice(0, 500) + '...');
+    
+    let eventsToProcess = Array.isArray(data) ? data : [data];
+    
+    for (const event of eventsToProcess){
+      const senderEmail = event.from || event.email || event.from_email;
+      const fromMatch = senderEmail ? senderEmail.match(/<([^>]+)>/) : null;
+      const fromEmail = fromMatch ? fromMatch[1] : senderEmail;
+      const fromName = senderEmail && senderEmail.match(/^([^<]+)</) ? senderEmail.match(/^([^<]+)</)[1].trim() : '';
+      
+      if (!fromEmail) {
+        console.warn('Skipping event with missing email data:', JSON.stringify(event).slice(0, 200));
+        continue;
+      }
+      
+      // Store the email in inbound_emails
+      const { data: emailData, error: emailError } = await supabase.from('inbound_emails').insert({
+        from_email: fromEmail,
+        from_name: fromName || event.from_name || event.sender_name || '',
+        subject: event.subject || '',
+        body_text: event.text || event.plain || event.body || '',
+        body_html: event.html || '',
+        to_emails: Array.isArray(event.to) ? event.to : [event.to || ''],
+        received_at: new Date().toISOString(),
+        processed: false,
+        attachments: attachments.length > 0 ? attachments : null,
+        message_id: event.message_id,
+        in_reply_to: event.in_reply_to,
+        reference_ids: event.reference_ids?.length > 0 ? event.reference_ids.join(' ') : null,
+        raw_headers: typeof event.headers === 'string' ? event.headers : JSON.stringify(event.headers || {})
+      }).select();
+      
+      if (emailError) {
+        console.error('Error storing email:', emailError);
+        throw emailError;
+      }
+      
+      const emailId = emailData?.[0]?.id;
+      
+      // Get the actual recipient email (the 'to' address)
+      const toEmail = event.to;
+      
+      // Extract the recipient's email address from a potential formatted string (e.g., "Name <email@example.com>")
+      const toEmailMatch = toEmail ? toEmail.match(/<([^>]+)>/) : null;
+      const actualToEmail = toEmailMatch ? toEmailMatch[1].trim() : toEmail?.trim();
+      
+      console.log(`Looking for customer with avanti_email: ${actualToEmail}`);
+
+      // First try to find a related task if this is a reply
+      let relatedTaskId = null;
+      
+      if (event.in_reply_to) {
+        // Try to find a related task by message_id
+        const { data: threadData, error: threadError } = await supabase
+          .from('email_threads')
+          .select('task_id')
+          .eq('message_id', event.in_reply_to)
+          .maybeSingle();
+        
+        if (threadError) {
+          console.error('Error finding related thread:', threadError);
+        } else if (threadData) {
+          relatedTaskId = threadData.task_id;
+          console.log(`Found related task: ${relatedTaskId} for reply to: ${event.in_reply_to}`);
+        }
+      }
+      
+      // Use the match_email_to_customer function to find the customer
+      const { data: customerMatchResult } = await supabase.rpc('match_email_to_customer', {
+        email_address: actualToEmail
       });
       
-      const customerId = matchCustomerQuery.data;
+      const customerId = customerMatchResult;
       
       if (customerId) {
-        // Create a new task from this email
-        const { data: newTask, error: taskError } = await supabase
-          .from('tasks')
-          .insert({
-            title: subject || 'Email without subject',
-            description: text || html || 'No content',
+        // First look up customer name for better logging
+        const { data: customerData } = await supabase.from('customers')
+          .select('name')
+          .eq('id', customerId)
+          .single();
+          
+        const customerName = customerData?.name || 'Unknown';
+        
+        if (relatedTaskId) {
+          // If this is a reply to an existing task, add it to the email_threads
+          const newThreadId = uuidv4();
+          
+          const { error: threadInsertError } = await supabase
+            .from('email_threads')
+            .insert({
+              task_id: relatedTaskId,
+              direction: 'inbound',
+              sender: fromEmail,
+              recipient: actualToEmail,
+              subject: event.subject || '',
+              content: event.text || event.html || '',
+              message_id: event.message_id,
+              thread_id: newThreadId,
+              // If this is a reply, find the original thread by message_id
+              reply_to_id: event.in_reply_to ? 
+                (await supabase
+                  .from('email_threads')
+                  .select('id')
+                  .eq('message_id', event.in_reply_to)
+                  .maybeSingle()
+                ).data?.id : null
+            });
+            
+          if (threadInsertError) {
+            console.error('Error inserting thread:', threadInsertError);
+          } else {
+            console.log(`Added email to existing task ${relatedTaskId} as a reply`);
+            
+            // Mark the email as processed
+            await supabase.from('inbound_emails')
+              .update({ processed: true })
+              .eq('id', emailId);
+          }
+        } else {
+          // Create a new task from this email
+          const { data: newTask, error: taskError } = await supabase.from('tasks').insert({
+            title: event.subject || 'Email ohne Betreff',
+            description: event.text?.trim() || event.html?.replace(/<[^>]+>/g, '').trim() || event.subject?.trim() || 'Keine Beschreibung',
             status: 'new',
             customer_id: customerId,
             source: 'email',
-            source_email_id: inboundEmailData ? inboundEmailData[0].id : null,
-            endkunde_email: fromEmail
-          })
-          .select();
+            endkunde_email: fromEmail,
+            attachments: attachments.length > 0 ? attachments : null,
+            source_email_id: emailId
+          }).select();
           
-        if (taskError) {
-          console.error('Error creating task:', taskError);
-        } else if (newTask) {
-          // Create an initial email_thread entry
-          const newThreadId = uuidv4();
-          
-          await supabase
-            .from('email_threads')
-            .insert({
-              task_id: newTask[0].id,
-              direction: 'inbound',
-              sender: fromEmail,
-              recipient: to,
-              subject: subject,
-              content: text || html || '',
-              message_id: messageId,
-              thread_id: newThreadId
-            });
+          if (taskError) {
+            console.error('Error creating task from email:', taskError);
+          } else {
+            console.log(`Successfully created task from email for customer ${customerName} (${customerId})`);
+            
+            // Create an initial email_thread entry
+            const newThreadId = uuidv4();
+            
+            const { error: threadError } = await supabase
+              .from('email_threads')
+              .insert({
+                task_id: newTask[0].id,
+                direction: 'inbound',
+                sender: fromEmail,
+                recipient: actualToEmail,
+                subject: event.subject || '',
+                content: event.text || event.html || '',
+                message_id: event.message_id,
+                thread_id: newThreadId
+              });
+              
+            if (threadError) {
+              console.error('Error creating email thread:', threadError);
+            } else {
+              console.log(`Created email thread for task ${newTask[0].id}`);
+            }
+            
+            // Mark the email as processed
+            await supabase.from('inbound_emails')
+              .update({ processed: true })
+              .eq('id', emailId);
+          }
         }
+      } else {
+        console.warn(`Could not create task: No matching customer found for email ${actualToEmail}`);
       }
     }
     
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({
+      success: true
+    }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Webhook Error:', err);
-    return new Response(JSON.stringify({ error: err.message || 'Unknown error' }), {
+    return new Response(JSON.stringify({
+      error: err.message
+    }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
     });
   }
 });
