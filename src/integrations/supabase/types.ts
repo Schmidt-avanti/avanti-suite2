@@ -231,6 +231,71 @@ export type Database = {
           },
         ]
       }
+      endkunden: {
+        Row: {
+          adresse: string
+          created_at: string
+          customer_id: string
+          email: string | null
+          external_id: string | null
+          gebaeude: string | null
+          id: string
+          is_active: boolean
+          lage: string | null
+          nachname: string
+          ort: string
+          postleitzahl: string
+          telefon: string | null
+          updated_at: string
+          vorname: string | null
+          wohnung: string | null
+        }
+        Insert: {
+          adresse: string
+          created_at?: string
+          customer_id: string
+          email?: string | null
+          external_id?: string | null
+          gebaeude?: string | null
+          id?: string
+          is_active?: boolean
+          lage?: string | null
+          nachname: string
+          ort: string
+          postleitzahl: string
+          telefon?: string | null
+          updated_at?: string
+          vorname?: string | null
+          wohnung?: string | null
+        }
+        Update: {
+          adresse?: string
+          created_at?: string
+          customer_id?: string
+          email?: string | null
+          external_id?: string | null
+          gebaeude?: string | null
+          id?: string
+          is_active?: boolean
+          lage?: string | null
+          nachname?: string
+          ort?: string
+          postleitzahl?: string
+          telefon?: string | null
+          updated_at?: string
+          vorname?: string | null
+          wohnung?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endkunden_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inbound_emails: {
         Row: {
           attachments: Json | null

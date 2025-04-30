@@ -19,9 +19,11 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { supabase } from '@/integrations/supabase/client';
 import { useTaskActivity } from '@/hooks/useTaskActivity';
 import { CreateTaskDescription } from '@/components/tasks/CreateTaskDescription';
+import { EndkundeSelector } from '@/components/tasks/EndkundeSelector';
 
 interface TaskFormValues {
   customerId: string;
+  endkundeId: string | null;
   description: string;
 }
 
@@ -32,16 +34,23 @@ const CreateTask = () => {
   const { customers, isLoading: isLoadingCustomers } = useCustomers();
   const { logTaskOpen } = useTaskActivity();
   const [isMatching, setIsMatching] = useState(false);
+  const [endkundeEmail, setEndkundeEmail] = useState<string | null>(null);
   
   const form = useForm<TaskFormValues>({
     defaultValues: {
       customerId: '',
+      endkundeId: null,
       description: '',
     },
   });
 
   const customerId = form.watch('customerId');
   const description = form.watch('description');
+
+  const handleEndkundeChange = (endkundeId: string | null, email: string | null = null) => {
+    form.setValue('endkundeId', endkundeId);
+    setEndkundeEmail(email);
+  };
 
   const onSubmit = async (values: TaskFormValues) => {
     if (!user) return;
@@ -93,7 +102,9 @@ const CreateTask = () => {
           match_reasoning: matchResult?.reasoning || "Kein Use Case automatisch erkannt.",
           status: 'new',
           source: 'manual',
-          forwarded_to: matchResult?.matched_use_case_id ? null : 'KVP'
+          forwarded_to: matchResult?.matched_use_case_id ? null : 'KVP',
+          endkunde_id: values.endkundeId, // Add endkunde ID if selected
+          endkunde_email: endkundeEmail, // Add endkunde email if available
         })
         .select()
         .single();
@@ -217,6 +228,26 @@ const CreateTask = () => {
                         )}
                       </SelectContent>
                     </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Add Endkunde selection */}
+            <FormField
+              control={form.control}
+              name="endkundeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Endkunde (optional)</FormLabel>
+                  <FormControl>
+                    <EndkundeSelector 
+                      customerId={customerId} 
+                      value={field.value}
+                      onChange={handleEndkundeChange}
+                      disabled={isMatching}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -1,28 +1,41 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { TaskStatusBadge } from './TaskStatusBadge';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import type { Task } from '@/types';
+import { TaskStatusBadge } from './TaskStatusBadge';
+import type { TaskStatus } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent } from '@/components/ui/card';
+
+interface Task {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  created_at: string;
+  customer?: {
+    name: string;
+  };
+  assignee?: {
+    "Full Name": string;
+  };
+  readable_id?: string;
+  endkunde_id?: string;
+}
 
 interface TasksTableProps {
   tasks: Task[];
-  isLoading?: boolean;
+  isLoading: boolean;
 }
 
-export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading = false }) => {
+export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -32,90 +45,70 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading = false
 
   if (isLoading) {
     return (
-      <div className="w-full py-8">
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
-        </div>
+      <div className="p-4 text-center">
+        <p>Lade Aufgaben...</p>
       </div>
     );
   }
 
   if (tasks.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">Keine Aufgaben gefunden</p>
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">Keine Aufgaben gefunden.</p>
       </div>
     );
   }
 
-  // Mobile card view
-  if (isMobile) {
-    return (
-      <div className="space-y-4">
-        {tasks.map((task) => (
-          <Card 
-            key={task.id} 
-            className="hover:bg-gray-50 cursor-pointer" 
-            onClick={() => handleRowClick(task.id)}
-          >
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start mb-3">
-                <div className="font-medium truncate max-w-[70%]">{task.title}</div>
-                <TaskStatusBadge status={task.status} />
-              </div>
-              
-              <div className="text-sm text-gray-500 mb-2 line-clamp-2">
-                {task.description || 'Keine Beschreibung'}
-              </div>
-              
-              <div className="flex justify-between items-center text-xs text-gray-500 mt-2">
-                <div>
-                  {task.created_at && formatDistanceToNow(new Date(task.created_at), { addSuffix: true, locale: de })}
-                </div>
-                <div>
-                  {task.customer?.name || 'Kein Kunde'}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
-  // Desktop table view
   return (
-    <ScrollArea className="w-full">
+    <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
+            {!isMobile && <TableHead className="w-[100px]">ID</TableHead>}
             <TableHead>Titel</TableHead>
+            {!isMobile && <TableHead>Kunde</TableHead>}
             <TableHead>Status</TableHead>
-            <TableHead>Quelle</TableHead>
-            <TableHead>Kunde</TableHead>
-            <TableHead>Erstellt am</TableHead>
+            <TableHead>Zugewiesen an</TableHead>
+            <TableHead className="text-right">Erstellt</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {tasks.map((task) => (
             <TableRow 
-              key={task.id}
+              key={task.id} 
+              className="cursor-pointer hover:bg-muted/50"
               onClick={() => handleRowClick(task.id)}
-              className="cursor-pointer hover:bg-gray-50 transition-colors"
             >
-              <TableCell className="font-medium">{task.title}</TableCell>
-              <TableCell><TaskStatusBadge status={task.status} /></TableCell>
-              <TableCell>
-                {task.source && <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">{task.source}</span>}
+              {!isMobile && (
+                <TableCell className="font-mono text-xs">
+                  {task.readable_id || task.id.substring(0, 8)}
+                </TableCell>
+              )}
+              <TableCell className="font-medium">
+                {task.title}
+                {task.endkunde_id && (
+                  <Badge variant="outline" className="ml-2 bg-blue-50">Endkunde</Badge>
+                )}
               </TableCell>
-              <TableCell>{task.customer?.name || '-'}</TableCell>
+              {!isMobile && (
+                <TableCell>{task.customer?.name || 'Unbekannt'}</TableCell>
+              )}
               <TableCell>
-                {task.created_at && formatDistanceToNow(new Date(task.created_at), { addSuffix: true, locale: de })}
+                <TaskStatusBadge status={task.status} />
+              </TableCell>
+              <TableCell>
+                {task.assignee?.["Full Name"] || 'Nicht zugewiesen'}
+              </TableCell>
+              <TableCell className="text-right text-muted-foreground text-sm">
+                {formatDistanceToNow(new Date(task.created_at), { 
+                  addSuffix: true,
+                  locale: de 
+                })}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </ScrollArea>
+    </div>
   );
 };

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import {
   User2,
@@ -7,15 +7,58 @@ import {
   Inbox,
   UserCheck,
   XCircle,
-  Hash
+  Hash,
+  Home
 } from "lucide-react";
 import { KnowledgeArticlesList } from './KnowledgeArticlesList';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TaskDetailInfoProps {
   task: any;
 }
 
+interface Endkunde {
+  id: string;
+  nachname: string;
+  vorname: string | null;
+  adresse: string;
+  postleitzahl: string;
+  ort: string;
+  wohnung: string | null;
+  gebaeude: string | null;
+  lage: string | null;
+  email: string | null;
+  telefon: string | null;
+}
+
 export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
+  const [endkunde, setEndkunde] = useState<Endkunde | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchEndkunde = async () => {
+      if (!task.endkunde_id) return;
+      
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('endkunden')
+          .select('*')
+          .eq('id', task.endkunde_id)
+          .single();
+          
+        if (error) throw error;
+        setEndkunde(data);
+      } catch (err) {
+        console.error('Error fetching endkunde:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchEndkunde();
+  }, [task.endkunde_id]);
+  
   return (
     <div className="flex flex-col gap-5">
       <Card className="rounded-xl shadow-md border-none bg-white/85">
@@ -46,6 +89,41 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
                 ))}
               </ul>
             </div>
+          )}
+
+          {/* Endkunde information if available */}
+          {endkunde && (
+            <>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+                <Home className="h-4 w-4" />
+                <span className="font-medium">Endkunde</span>
+              </div>
+              <div className="ml-6 space-y-1">
+                <div>
+                  <span className="font-medium">{endkunde.nachname}</span>
+                  {endkunde.vorname && <span> {endkunde.vorname}</span>}
+                </div>
+                <div>{endkunde.adresse}</div>
+                <div>{endkunde.postleitzahl} {endkunde.ort}</div>
+                {(endkunde.wohnung || endkunde.gebaeude || endkunde.lage) && (
+                  <div className="text-gray-600">
+                    {endkunde.gebaeude && <span>Gebäude: {endkunde.gebaeude} • </span>}
+                    {endkunde.wohnung && <span>Wohnung: {endkunde.wohnung} • </span>}
+                    {endkunde.lage && <span>Lage: {endkunde.lage}</span>}
+                  </div>
+                )}
+                {(endkunde.email || endkunde.telefon) && (
+                  <div className="text-gray-600">
+                    {endkunde.email && (
+                      <div>Email: <a href={`mailto:${endkunde.email}`} className="text-blue-600 hover:underline">
+                        {endkunde.email}
+                      </a></div>
+                    )}
+                    {endkunde.telefon && <div>Tel: {endkunde.telefon}</div>}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
