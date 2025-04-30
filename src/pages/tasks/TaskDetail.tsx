@@ -18,6 +18,7 @@ import { useTaskMessages } from '@/hooks/useTaskMessages';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -167,16 +168,19 @@ const TaskDetail = () => {
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
-          <div className="flex flex-col space-y-6">
-            <TaskDetailInfo task={task} />
-            
-            {/* Email Thread History Component */}
-            {emailThreads && emailThreads.length > 0 && (
-              <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
-                <EmailThreadHistory threads={emailThreads} />
-              </div>
-            )}
-          </div>
+          {/* Left column with scroll area */}
+          <ScrollArea className="h-[calc(100vh-280px)] lg:max-h-[700px]">
+            <div className="flex flex-col space-y-6 pr-4">
+              <TaskDetailInfo task={task} />
+              
+              {/* Email Thread History Component */}
+              {emailThreads && emailThreads.length > 0 && (
+                <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
+                  <EmailThreadHistory threads={emailThreads} />
+                </div>
+              )}
+            </div>
+          </ScrollArea>
 
           <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
             <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 p-6">
