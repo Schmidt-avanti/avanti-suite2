@@ -282,7 +282,7 @@ serve(async (req) => {
         if (threadError) {
           console.error('Error creating email thread:', threadError);
         } else {
-          console.log(`Successfully added email to task ${relatedTask.readable_id} as email thread`);
+          console.log(`Successfully added email to task ${relatedTask.readable_id} (${existingTaskId}) as email thread`);
         }
         
         // Mark the email as processed

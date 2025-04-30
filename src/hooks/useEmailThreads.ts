@@ -55,6 +55,28 @@ export const useEmailThreads = (taskId: string | null) => {
     };
     
     fetchThreads();
+    
+    // Set up a real-time subscription for email_threads
+    const subscription = supabase
+      .channel('email_threads_changes')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'email_threads',
+          filter: `task_id=eq.${taskId}`
+        },
+        (payload) => {
+          console.log('Real-time update on email_threads:', payload);
+          fetchThreads(); // Refetch threads when there's an update
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [taskId]);
   
   return { threads, loading };

@@ -51,7 +51,7 @@ const TaskDetail = () => {
   const { messages } = useTaskMessages(id || null);
   
   // Fetch email threads for this task
-  const { threads: emailThreads } = useEmailThreads(id || null);
+  const { threads: emailThreads, loading: emailThreadsLoading } = useEmailThreads(id || null);
 
   const findNextTask = async () => {
     if (!user?.id) return null;
@@ -174,7 +174,13 @@ const TaskDetail = () => {
               <TaskDetailInfo task={task} />
               
               {/* Email Thread History Component */}
-              {emailThreads && emailThreads.length > 0 && (
+              {emailThreadsLoading ? (
+                <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
+                  <div className="flex justify-center items-center h-20">
+                    <p>Lade E-Mail-Verlauf...</p>
+                  </div>
+                </div>
+              ) : emailThreads && emailThreads.length > 0 && (
                 <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
                   <EmailThreadHistory threads={emailThreads} />
                 </div>
