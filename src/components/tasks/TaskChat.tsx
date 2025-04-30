@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTaskMessages, Message } from '@/hooks/useTaskMessages';
@@ -19,7 +20,6 @@ interface TaskChatProps {
 export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [emailJustSent, setEmailJustSent] = useState(false);
   
   const { 
     messages, 
@@ -54,22 +54,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     sendMessage,
     handleRetry
   } = useTaskChatMessages(taskId, useCaseId, fetchMessages);
-
-  // Listen for email notification events
-  useEffect(() => {
-    // Simple event listener to detect when an email has been sent
-    const handleCustomEvent = () => {
-      setEmailJustSent(true);
-      // Hide the notification after 5 seconds
-      setTimeout(() => setEmailJustSent(false), 5000);
-    };
-
-    window.addEventListener('email-sent', handleCustomEvent);
-    
-    return () => {
-      window.removeEventListener('email-sent', handleCustomEvent);
-    };
-  }, []);
 
   // Automatische Nachricht senden, wenn ein Use-Case zugeordnet ist und noch keine Nachrichten vorhanden sind
   useEffect(() => {
@@ -167,7 +151,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         setInputValue={setInputValue}
         handleSubmit={handleSubmit}
         isLoading={isLoading}
-        emailSent={emailJustSent}
       />
     </div>
   );

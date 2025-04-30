@@ -4,22 +4,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2 } from "lucide-react";
 import { SpellChecker } from '@/components/ui/spell-checker';
-import { EmailConfirmationBubble } from './EmailConfirmationBubble';
 
 interface TaskChatInputProps {
   inputValue: string;
   setInputValue: (value: string) => void;
   handleSubmit: (e: React.FormEvent) => void;
   isLoading: boolean;
-  emailSent?: boolean;
 }
 
 export const TaskChatInput: React.FC<TaskChatInputProps> = ({
   inputValue,
   setInputValue,
   handleSubmit,
-  isLoading,
-  emailSent = false
+  isLoading
 }) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -30,9 +27,6 @@ export const TaskChatInput: React.FC<TaskChatInputProps> = ({
 
   return (
     <div className="sticky bottom-0 w-full px-6 pb-6 pt-4 bg-white shadow-md border-t border-gray-100 z-20">
-      {/* Email confirmation bubble */}
-      <EmailConfirmationBubble visible={emailSent} />
-      
       <form
         onSubmit={handleSubmit}
         className="w-full flex flex-col gap-2 border border-gray-200 p-4 bg-white rounded-md shadow-sm"

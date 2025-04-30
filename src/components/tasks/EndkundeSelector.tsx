@@ -46,31 +46,15 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
       try {
         setIsLoading(true);
-        // Explicitly type the query response to avoid deep instantiation
-        type EndkundenResponse = {
-          id: string;
-          nachname: string;
-          vorname: string | null;
-          adresse: string;
-          wohnung: string | null;
-          gebaeude: string | null;
-          lage: string | null;
-          postleitzahl: string;
-          ort: string;
-          email?: string | null;
-          telefon?: string | null;
-        };
-        
         const { data, error } = await supabase
           .from('endkunden')
-          .select('id, nachname, vorname, adresse, wohnung, gebaeude, lage, postleitzahl, ort')
+          .select('id, nachname, vorname, adresse, wohnung, gebaeude, lage, email, postleitzahl, ort')
           .eq('customer_id', customerId)
           .eq('is_active', true)
-          .order('nachname', { ascending: true }) as { data: EndkundenResponse[], error: any };
+          .order('nachname', { ascending: true });
 
         if (error) throw error;
 
-        // Transform the data into our expected format
         const formattedData = data.map(ek => {
           // Create a display name based on available fields
           const vorname = ek.vorname ? ` ${ek.vorname}` : '';
@@ -109,14 +93,11 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
     
     // Find the selected endkunde email to pass back
     try {
-      // Explicitly type the query response
-      type EmailResponse = { email: string | null };
-      
       const { data, error } = await supabase
         .from('endkunden')
         .select('email')
         .eq('id', endkundeId)
-        .single() as { data: EmailResponse | null, error: any };
+        .single();
       
       if (!error && data) {
         onChange(endkundeId, data.email);

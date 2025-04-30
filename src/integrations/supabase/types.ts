@@ -235,13 +235,17 @@ export type Database = {
         Row: {
           adresse: string
           created_at: string
+          customer_id: string
+          email: string | null
           external_id: string | null
           gebaeude: string | null
           id: string
+          is_active: boolean
           lage: string | null
           nachname: string
-          Ort: string
+          ort: string
           postleitzahl: string
+          telefon: string | null
           updated_at: string
           vorname: string | null
           wohnung: string | null
@@ -249,13 +253,17 @@ export type Database = {
         Insert: {
           adresse: string
           created_at?: string
+          customer_id: string
+          email?: string | null
           external_id?: string | null
           gebaeude?: string | null
           id?: string
+          is_active?: boolean
           lage?: string | null
           nachname: string
-          Ort: string
+          ort: string
           postleitzahl: string
+          telefon?: string | null
           updated_at?: string
           vorname?: string | null
           wohnung?: string | null
@@ -263,18 +271,30 @@ export type Database = {
         Update: {
           adresse?: string
           created_at?: string
+          customer_id?: string
+          email?: string | null
           external_id?: string | null
           gebaeude?: string | null
           id?: string
+          is_active?: boolean
           lage?: string | null
           nachname?: string
-          Ort?: string
+          ort?: string
           postleitzahl?: string
+          telefon?: string | null
           updated_at?: string
           vorname?: string | null
           wohnung?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "endkunden_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inbound_emails: {
         Row: {
