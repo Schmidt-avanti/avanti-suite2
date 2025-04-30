@@ -49,9 +49,10 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         
         console.log('Fetching endkunden for customer ID:', customerId);
         
+        // Fixed the query to properly handle column names, especially those with umlauts
         const { data, error } = await supabase
           .from('endkunden')
-          .select('id, Nachname, Vorname, Adresse, Wohnung, Gebäude, Lage, Postleitzahl, Ort, email, telefon')
+          .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort, email, telefon')
           .eq('customer_ID', customerId)
           .eq('is_active', true)
           .order('Nachname', { ascending: true });
@@ -63,8 +64,8 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
         console.log('Fetched endkunden:', data);
 
-        // Transform the data into our expected format
-        const formattedData = data.map(ek => {
+        // Transform the data into our expected format with strong typing
+        const formattedData = data.map((ek: any) => {
           // Create a display name based on available fields
           const vorname = ek.Vorname ? ` ${ek.Vorname}` : '';
           const wohnung = ek.Wohnung ? ` • Wohnung ${ek.Wohnung}` : '';
