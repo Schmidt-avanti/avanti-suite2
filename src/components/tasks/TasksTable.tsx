@@ -98,7 +98,7 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
             >
               {!isMobile && (
                 <TableCell className="font-mono text-xs">
-                  {task.readable_id || task.id.substring(0, 8)}
+                  {task.readable_id }
                 </TableCell>
               )}
               <TableCell className="font-medium">
