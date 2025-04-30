@@ -22,6 +22,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 
+type PaymentType = 'paypal' | 'creditcard';
+
+interface PaymentFormData {
+  type: PaymentType;
+  value: string;
+  customer_id: string;
+  card_holder?: string;
+  expiry_month?: number;
+  expiry_year?: number;
+  billing_address?: string;
+  billing_zip?: string;
+  billing_city?: string;
+}
+
 const PaymentDataPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -52,17 +66,7 @@ const PaymentDataPage = () => {
   });
 
   const addPaymentMethod = useMutation({
-    mutationFn: async (data: {
-      type: 'paypal' | 'creditcard';
-      value: string;
-      customer_id: string;
-      card_holder?: string;
-      expiry_month?: number;
-      expiry_year?: number;
-      billing_address?: string;
-      billing_zip?: string;
-      billing_city?: string;
-    }) => {
+    mutationFn: async (data: PaymentFormData) => {
       const { error } = await supabase
         .from('payment_methods')
         .insert([{
@@ -78,18 +82,7 @@ const PaymentDataPage = () => {
   });
 
   const updatePaymentMethod = useMutation({
-    mutationFn: async ({ id, ...data }: { 
-      id: string;
-      type: 'paypal' | 'creditcard';
-      value: string;
-      customer_id: string;
-      card_holder?: string;
-      expiry_month?: number;
-      expiry_year?: number;
-      billing_address?: string;
-      billing_zip?: string;
-      billing_city?: string;
-    }) => {
+    mutationFn: async ({ id, ...data }: { id: string } & PaymentFormData) => {
       const { error } = await supabase
         .from('payment_methods')
         .update(data)
@@ -120,17 +113,7 @@ const PaymentDataPage = () => {
     },
   });
 
-  const handleSubmit = async (data: {
-    type: 'paypal' | 'creditcard';
-    value: string;
-    customer_id: string;
-    card_holder?: string;
-    expiry_month?: number;
-    expiry_year?: number;
-    billing_address?: string;
-    billing_zip?: string;
-    billing_city?: string;
-  }) => {
+  const handleSubmit = async (data: PaymentFormData) => {
     if (editingMethod) {
       await updatePaymentMethod.mutateAsync({
         id: editingMethod.id,
@@ -193,7 +176,7 @@ const PaymentDataPage = () => {
           {paymentMethods.map((method) => (
             <PaymentMethodCard
               key={method.id}
-              type={method.type}
+              type={method.type as PaymentType}
               value={method.value}
               cardHolder={method.card_holder}
               expiryMonth={method.expiry_month}
@@ -214,9 +197,9 @@ const PaymentDataPage = () => {
         onSubmit={handleSubmit}
         selectedCustomerId={selectedCustomerId}
         initialData={editingMethod ? {
-          type: editingMethod.type,
+          type: editingMethod.type as PaymentType,
           value: editingMethod.value,
-          customer_id: editingMethod.customer_id,
+          customer_id: editingMethod.customer_id || "",
           card_holder: editingMethod.card_holder,
           expiry_month: editingMethod.expiry_month,
           expiry_year: editingMethod.expiry_year,

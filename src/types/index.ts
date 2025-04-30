@@ -1,3 +1,4 @@
+
 export type TaskStatus = 'new' | 'in progress' | 'blocked' | 'completed' | 'followup';
 
 export interface Customer {
@@ -111,7 +112,7 @@ export interface PaymentMethod {
   id: string;
   user_id: string;
   customer_id?: string;
-  type: string;
+  type: 'paypal' | 'creditcard';
   value: string;
   active: boolean;
   last_used?: string;

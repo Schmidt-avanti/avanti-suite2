@@ -86,6 +86,10 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             created_at,
             created_by,
             customer_id,
+            description,
+            closing_comment,
+            matched_use_case_id,
+            assigned_to,
             customer:customer_id(id, name)
           `)
           .order('created_at', { ascending: false });
@@ -208,7 +212,8 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             customer: transformCustomer(rawTask.customer),
             creator: rawTask.creator, 
             attachments: rawTask.attachments,
-            description: rawTask.description,
+            description: rawTask.description || "",
+            closing_comment: rawTask.closing_comment || null,
             matched_use_case_id: rawTask.matched_use_case_id,
             customer_id: rawTask.customer_id,
             created_by: rawTask.created_by,
