@@ -1,209 +1,213 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.0";
+import { v4 as uuidv4 } from "https://esm.sh/uuid@9.0.0";
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY')!;
+const sendgridVerifiedDomain = Deno.env.get('SENDGRID_VERIFIED_DOMAIN') || 'inbox.avanti.cx';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface SendEmailRequest {
+  task_id: string;
+  recipient_email: string;
+  subject?: string | null;
+  body: string;
+  attachments?: string[];
+  in_reply_to?: string | null;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { task_id, recipient_email, subject, body, attachments } = await req.json();
-
-    if (!task_id || !body || !recipient_email) {
-      throw new Error('Missing required fields: task_id, recipient_email, and body are required');
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    
+    // Get the authenticated user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing auth header');
     }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') || '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    );
-
-    // Get task details with customer information
-    const { data: task, error: taskError } = await supabase
+    
+    // Get user info
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      throw new Error('Invalid user token');
+    }
+    
+    // Parse the request body
+    const requestData: SendEmailRequest = await req.json();
+    const { task_id, recipient_email, subject: customSubject, body, attachments = [], in_reply_to } = requestData;
+    
+    if (!task_id || !recipient_email || !body) {
+      throw new Error('Missing required fields: task_id, recipient_email, body');
+    }
+    
+    console.log(`Processing email reply request for task: ${task_id}, to: ${recipient_email}`);
+    
+    // Get task information including customer ID
+    const { data: taskData, error: taskError } = await supabase
       .from('tasks')
-      .select(`
-        *,
-        customer:customers(name, email),
-        inbound_email:source_email_id (
-          from_email,
-          subject
-        )
-      `)
+      .select('id, title, customer_id, readable_id')
       .eq('id', task_id)
       .single();
-
-    if (taskError) {
-      console.error('Error fetching task:', taskError);
-      throw new Error('Could not find task');
-    }
-
-    // Get the SendGrid API key
-    const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY');
-    if (!sendgridApiKey) {
-      throw new Error('SENDGRID_API_KEY environment variable is not set');
-    }
-
-    // Get the verified domain or fallback to a default
-    const verifiedDomain = Deno.env.get('SENDGRID_VERIFIED_DOMAIN') || 'inbox.avanti.cx';
-    
-    // Create a safe sender name by removing special characters and spaces
-    let safeSenderName = (task.customer?.name || 'support')
-      .toLowerCase()
-      .replace(/[^\w.-]/g, '-')
-      .replace(/--+/g, '-')
-      .substring(0, 30);
-    
-    if (!safeSenderName || safeSenderName.length < 2) {
-      safeSenderName = 'support';
+      
+    if (taskError || !taskData) {
+      console.error('Task fetch error:', taskError);
+      throw new Error(`Task not found: ${task_error}`);
     }
     
-    // Create a dynamic sender email from the verified domain
-    const senderEmail = `${safeSenderName}@${verifiedDomain}`;
+    // Get customer information to determine reply-from address
+    const { data: customerData, error: customerError } = await supabase
+      .from('customers')
+      .select('name, avanti_email')
+      .eq('id', taskData.customer_id)
+      .single();
+      
+    if (customerError || !customerData) {
+      console.error('Customer fetch error:', customerError);
+      throw new Error('Customer not found');
+    }
     
-    // Use task title in subject or fallback
-    const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
+    // Generate sender email address based on customer/domain association
+    const fromEmail = customerData.avanti_email || 
+                     `${customerData.name.toLowerCase().replace(/\s+/g, '-')}@${sendgridVerifiedDomain}`;
     
-    // Use the original from email as reply-to when available
-    const replyToEmail = task.source === 'email' ? 
-      (task.inbound_email?.from_email || task.endkunde_email) : null;
+    console.log(`Using fromEmail: ${fromEmail}`);
     
-    // Prepare email request data
-    const emailRequestData: any = {
-      personalizations: [{
-        to: [{ email: recipient_email }]
-      }],
-      from: { 
-        email: senderEmail,
-        name: task.customer?.name || 'Support'
-      },
-      subject: emailSubject,
-      content: [{
-        type: 'text/plain',
-        value: body
-      }]
+    // Determine subject line (use custom if provided, otherwise task title)
+    const subject = customSubject || `Re: ${taskData.title} [${taskData.readable_id || ''}]`;
+    
+    // Prepare the SendGrid API request
+    const messageId = `<task-${taskData.id}-${uuidv4()}@${sendgridVerifiedDomain}>`;
+    const headers = {
+      "Message-ID": messageId
     };
     
-    // Add reply-to if available
-    if (replyToEmail) {
-      emailRequestData.reply_to = {
-        email: replyToEmail,
-        name: task.customer?.name || 'Support'
-      };
+    // If this is a reply to a previous email, add In-Reply-To and References headers
+    if (in_reply_to) {
+      headers["In-Reply-To"] = in_reply_to;
+      headers["References"] = in_reply_to;
     }
     
-    // Add attachments if provided - FIXED IMPLEMENTATION
-    if (attachments && attachments.length > 0) {
-      const processedAttachments = [];
-      
-      for (const url of attachments) {
-        try {
-          console.log(`Processing attachment: ${url}`);
-          
-          // Get filename from URL first to use in error messages
-          const filename = url.split('/').pop() || 'attachment';
-          
-          // Fetch the file from the URL
-          const response = await fetch(url);
-          if (!response.ok) {
-            console.error(`Failed to fetch attachment ${filename}: ${response.statusText}`);
-            continue;
-          }
-          
-          // Use a safer approach to convert to Base64
-          const arrayBuffer = await response.arrayBuffer();
-          const bytes = new Uint8Array(arrayBuffer);
-          
-          // Convert to Base64 manually in chunks to avoid stack overflow
-          let binary = '';
-          const chunkSize = 10240; // Process in ~10KB chunks
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            const chunk = bytes.slice(i, Math.min(i + chunkSize, bytes.length));
-            binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
-          }
-          const base64Content = btoa(binary);
-          
-          // Determine content type based on file extension
-          let contentType = 'application/octet-stream'; // Default
-          const ext = filename.split('.').pop()?.toLowerCase();
-          if (ext === 'pdf') contentType = 'application/pdf';
-          else if (['jpg', 'jpeg'].includes(ext || '')) contentType = 'image/jpeg';
-          else if (ext === 'png') contentType = 'image/png';
-          // Add more file types as needed
-          
-          processedAttachments.push({
-            content: base64Content,
-            filename,
-            type: contentType,
-            disposition: 'attachment'
-          });
-          
-          console.log(`Successfully processed attachment: ${filename}`);
-        } catch (error) {
-          console.error('Error processing attachment:', error.message);
+    const sendgridPayload = {
+      personalizations: [
+        {
+          to: [{ email: recipient_email }],
+        },
+      ],
+      from: {
+        email: fromEmail,
+        name: `Avanti ${customerData.name}`,
+      },
+      subject: subject,
+      content: [
+        {
+          type: 'text/plain',
+          value: body,
+        },
+      ],
+      headers: headers,
+      attachments: attachments.map(url => {
+        // Extract filename from URL
+        const filename = url.split('/').pop() || 'attachment';
+        
+        return {
+          content: '', // Placeholder, will be replaced with actual content
+          filename: filename,
+          disposition: 'attachment',
+          content_id: filename,
+        };
+      }),
+    };
+    
+    // For each attachment, fetch its content and add to the SendGrid payload
+    for (let i = 0; i < sendgridPayload.attachments.length; i++) {
+      try {
+        const response = await fetch(attachments[i]);
+        if (!response.ok) {
+          console.error(`Failed to fetch attachment ${i} (${attachments[i]}): ${response.status} ${response.statusText}`);
+          continue;
         }
-      }
-      
-      // Only add attachments if we successfully processed any
-      if (processedAttachments.length > 0) {
-        emailRequestData.attachments = processedAttachments;
-        console.log(`Added ${processedAttachments.length} attachments to email`);
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const base64Content = btoa(
+          String.fromCharCode(...new Uint8Array(arrayBuffer))
+        );
+        
+        sendgridPayload.attachments[i].content = base64Content;
+      } catch (err) {
+        console.error(`Error processing attachment ${i}:`, err);
       }
     }
     
-    // Send the email using SendGrid
-    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    // Remove empty attachments
+    sendgridPayload.attachments = sendgridPayload.attachments.filter(a => !!a.content);
+    
+    // Make the SendGrid API request
+    const sendgridResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${sendgridApiKey}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sendgridApiKey}`,
       },
-      body: JSON.stringify(emailRequestData)
+      body: JSON.stringify(sendgridPayload),
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('SendGrid error:', errorText);
-      throw new Error(`Failed to send email: ${errorText}`);
+    
+    if (!sendgridResponse.ok) {
+      const errorText = await sendgridResponse.text();
+      console.error('SendGrid API error:', sendgridResponse.status, errorText);
+      throw new Error(`SendGrid API error: ${errorText}`);
     }
-
-    // Store the email thread in the database
-    const { error: threadError } = await supabase
+    
+    console.log('Email sent successfully to:', recipient_email);
+    
+    // Store the email thread for future reference
+    const { data: threadData, error: threadError } = await supabase
       .from('email_threads')
       .insert({
-        task_id,
-        subject: emailSubject,
+        task_id: task_id,
         direction: 'outbound',
-        sender: senderEmail,
+        sender: fromEmail,
         recipient: recipient_email,
+        subject: subject,
         content: body,
-        attachments: attachments || null
-      });
-
+        attachments: attachments.length > 0 ? attachments : null,
+        message_id: messageId,
+        reply_to_id: in_reply_to || null,
+      })
+      .select();
+      
     if (threadError) {
       console.error('Error storing email thread:', threadError);
-      // We don't throw here because the email was already sent
+      // Don't throw here - we still sent the email successfully
     }
-
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Email sent successfully',
+    }), {
       status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
-
-  } catch (error) {
-    console.error('Error in send-reply-email function:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Unknown error occurred' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+  } catch (err: any) {
+    console.error('Error in send-reply-email:', err);
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: err.message || 'An unknown error occurred',
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 });

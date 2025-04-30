@@ -30,6 +30,7 @@ export interface EmailThread {
   created_at: string;
   thread_id?: string | null;
   reply_to_id?: string | null;
+  message_id?: string | null;
 }
 
 // Existing types (to fix build errors)
@@ -95,6 +96,7 @@ export interface Customer {
   billing_email?: string;
   billing_address?: string;
   contact_person?: string;
+  avanti_email?: string; // Add this field for the custom email
 }
 
 export type Notification = {

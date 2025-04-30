@@ -1,3 +1,4 @@
+
 -- Diese SQL-Datei erstellt den Trigger für Benachrichtigungen bei neuen E-Mail-Aufgaben
 
 -- Zunächst löschen wir den Trigger, falls er bereits existiert
@@ -95,8 +96,71 @@ END;
 $function$;
 
 -- Trigger für Statusänderungen erstellen
+DROP TRIGGER IF EXISTS notify_task_status_change_trigger ON tasks;
 CREATE TRIGGER notify_task_status_change_trigger
 AFTER UPDATE ON tasks
 FOR EACH ROW
 WHEN (OLD.status IS DISTINCT FROM NEW.status)
 EXECUTE FUNCTION public.notify_task_status_change();
+
+-- Trigger für E-Mail-Antworten erstellen
+CREATE OR REPLACE FUNCTION public.create_notification_for_email_reply()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+DECLARE
+  customer_name TEXT;
+  task_title TEXT;
+  task_readable_id TEXT;
+BEGIN
+  -- Nur fortfahren, wenn die Richtung 'inbound' ist (also eine Antwort vom Kunden)
+  IF NEW.direction = 'inbound' THEN
+    -- Die Aufgaben- und Kundeninformationen abrufen
+    SELECT 
+      t.title,
+      t.readable_id,
+      c.name
+    INTO 
+      task_title,
+      task_readable_id,
+      customer_name
+    FROM tasks t
+    JOIN customers c ON t.customer_id = c.id
+    WHERE t.id = NEW.task_id;
+    
+    -- Benachrichtigungen für Administratoren erstellen
+    INSERT INTO notifications (user_id, message, task_id)
+    SELECT 
+      p.id, 
+      'Neue E-Mail-Antwort für Aufgabe ' || COALESCE(task_readable_id, '') || 
+      ' von ' || NEW.sender, 
+      NEW.task_id
+    FROM profiles p
+    WHERE p.role = 'admin'
+    AND p.is_active = true;
+    
+    -- Benachrichtigungen für Agenten erstellen, die diesem Kunden zugewiesen sind
+    INSERT INTO notifications (user_id, message, task_id)
+    SELECT 
+      uca.user_id, 
+      'Neue E-Mail-Antwort für Aufgabe ' || COALESCE(task_readable_id, '') || 
+      ' von ' || NEW.sender, 
+      NEW.task_id
+    FROM user_customer_assignments uca
+    JOIN tasks t ON t.customer_id = uca.customer_id
+    JOIN profiles p ON uca.user_id = p.id
+    WHERE t.id = NEW.task_id
+    AND p.is_active = true;
+  END IF;
+  
+  RETURN NEW;
+END;
+$function$;
+
+-- Trigger für E-Mail-Antworten erstellen
+DROP TRIGGER IF EXISTS create_notification_for_email_reply_trigger ON email_threads;
+CREATE TRIGGER create_notification_for_email_reply_trigger
+AFTER INSERT ON email_threads
+FOR EACH ROW
+EXECUTE FUNCTION public.create_notification_for_email_reply();

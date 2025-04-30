@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -106,6 +107,19 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       }
       
       setUploadProgress(80);
+
+      // Fetch the original email thread first to get message IDs for threading
+      const { data: emailThreads } = await supabase
+        .from('email_threads')
+        .select('*')
+        .eq('task_id', taskId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      let inReplyToMessageId = null;
+      if (emailThreads && emailThreads.length > 0) {
+        inReplyToMessageId = emailThreads[0].message_id;
+      }
       
       const { data, error } = await supabase.functions.invoke('send-reply-email', {
         body: {
@@ -113,7 +127,8 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
           recipient_email: replyTo,
           subject: null, // Let the backend use the default subject based on task
           body: replyBody,
-          attachments: attachmentUrls
+          attachments: attachmentUrls,
+          in_reply_to: inReplyToMessageId // Include the reference for threading
         }
       });
 
@@ -129,6 +144,15 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
 
       // Show the confirmation bubble
       setShowConfirmation(true);
+
+      // Dispatch event to notify system that an email was sent
+      const emailSentEvent = new CustomEvent('email-sent', {
+        detail: {
+          recipient: replyTo,
+          task_id: taskId
+        }
+      });
+      window.dispatchEvent(emailSentEvent);
 
       toast({
         title: 'E-Mail gesendet',
