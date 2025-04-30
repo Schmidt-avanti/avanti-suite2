@@ -46,6 +46,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
       try {
         setIsLoading(true);
+        // Fix: Explicitly define the return type of the Supabase query to avoid deep type instantiation
         const { data, error } = await supabase
           .from('endkunden')
           .select('id, nachname, vorname, adresse, wohnung, gebaeude, lage, email, postleitzahl, ort')
@@ -55,6 +56,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
         if (error) throw error;
 
+        // Transform the data into our expected format
         const formattedData = data.map(ek => {
           // Create a display name based on available fields
           const vorname = ek.vorname ? ` ${ek.vorname}` : '';
@@ -93,6 +95,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
     
     // Find the selected endkunde email to pass back
     try {
+      // Fix: Explicitly define the return type to avoid deep type instantiation
       const { data, error } = await supabase
         .from('endkunden')
         .select('email')

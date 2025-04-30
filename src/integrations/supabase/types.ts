@@ -235,16 +235,13 @@ export type Database = {
         Row: {
           adresse: string
           created_at: string
-          email: string | null
           external_id: string | null
           gebaeude: string | null
           id: string
-          is_active: boolean
           lage: string | null
           nachname: string
           ort: string
           postleitzahl: string
-          telefon: string | null
           updated_at: string
           vorname: string | null
           wohnung: string | null
@@ -252,16 +249,13 @@ export type Database = {
         Insert: {
           adresse: string
           created_at?: string
-          email?: string | null
           external_id?: string | null
           gebaeude?: string | null
           id?: string
-          is_active?: boolean
           lage?: string | null
           nachname: string
           ort: string
           postleitzahl: string
-          telefon?: string | null
           updated_at?: string
           vorname?: string | null
           wohnung?: string | null
@@ -269,16 +263,13 @@ export type Database = {
         Update: {
           adresse?: string
           created_at?: string
-          email?: string | null
           external_id?: string | null
           gebaeude?: string | null
           id?: string
-          is_active?: boolean
           lage?: string | null
           nachname?: string
           ort?: string
           postleitzahl?: string
-          telefon?: string | null
           updated_at?: string
           vorname?: string | null
           wohnung?: string | null
