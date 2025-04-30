@@ -1,4 +1,3 @@
-
 -- Diese SQL-Datei erstellt den Trigger für Benachrichtigungen bei neuen E-Mail-Aufgaben
 
 -- Zunächst löschen wir den Trigger, falls er bereits existiert

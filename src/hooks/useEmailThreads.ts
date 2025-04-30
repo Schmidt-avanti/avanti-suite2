@@ -55,34 +55,6 @@ export const useEmailThreads = (taskId: string | null) => {
     };
     
     fetchThreads();
-    
-    // Set up real-time subscription for email threads
-    const channel = supabase
-      .channel('email-thread-changes')
-      .on('postgres_changes', 
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'email_threads',
-          filter: `task_id=eq.${taskId}`
-        },
-        (payload) => {
-          console.log('New email thread detected:', payload);
-          fetchThreads();
-          
-          // Dispatch custom event for other components to react to
-          if (payload.new && payload.new.direction === 'outbound') {
-            window.dispatchEvent(new CustomEvent('email-sent', {
-              detail: { thread: payload.new }
-            }));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [taskId]);
   
   return { threads, loading };
