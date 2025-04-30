@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.0";
 
@@ -128,12 +129,79 @@ serve(async (req) => {
       // Get the actual recipient email (the 'to' address)
       const toEmail = event.to;
       
-      // Match email to customer - this will now check avanti_email first per our updated function
-      const { data: customerMatchResult } = await supabase.rpc('match_email_to_customer', { 
-        email_address: toEmail 
-      });
+      // Check if this is a reply to an existing task
+      // First extract task ID from subject if it exists [XX000000]
+      const taskIdMatch = event.subject?.match(/\[(.*?)\]/);
+      const taskReadableId = taskIdMatch ? taskIdMatch[1].trim() : null;
+      let existingTaskId = null;
       
-      const customerId = customerMatchResult;
+      if (taskReadableId) {
+        // Try to find the task by readable_id
+        const { data: taskData } = await supabase
+          .from('tasks')
+          .select('id, customer_id')
+          .eq('readable_id', taskReadableId)
+          .maybeSingle();
+          
+        if (taskData) {
+          existingTaskId = taskData.id;
+          console.log(`Found existing task ${taskReadableId} with ID ${existingTaskId}`);
+          
+          // Add this email as a thread entry to the existing task
+          await supabase
+            .from('email_threads')
+            .insert({
+              task_id: existingTaskId,
+              direction: 'inbound',
+              sender: senderEmail,
+              recipient: toEmail,
+              subject: event.subject || '',
+              content: event.text || event.html?.replace(/<[^>]+>/g, '') || '',
+              attachments: attachments.length > 0 ? attachments : null
+            });
+            
+          // Mark the email as processed
+          await supabase
+            .from('inbound_emails')
+            .update({ processed: true })
+            .eq('id', emailId);
+            
+          // Skip creating a new task since we've added to an existing one
+          continue;
+        }
+      }
+      
+      // If this is a new conversation or we couldn't find the task by ID,
+      // try to match the email to a customer to create a new task
+      
+      // First check if this is an avanti email
+      const isAvantiEmail = toEmail && toEmail.toLowerCase().includes('@inbox.avanti.cx');
+      
+      let customerId = null;
+      
+      if (isAvantiEmail) {
+        // If it's an avanti email address being used as recipient,
+        // try to find the customer by their avanti_email
+        const { data: customerByAvanti } = await supabase
+          .from('customers')
+          .select('id, name')
+          .ilike('avanti_email', toEmail)
+          .maybeSingle();
+          
+        if (customerByAvanti) {
+          customerId = customerByAvanti.id;
+          console.log(`Found customer by avanti_email: ${customerByAvanti.name} (${customerId})`);
+        }
+      }
+      
+      // If we couldn't find by avanti_email, try the regular match function
+      if (!customerId) {
+        const { data: customerMatchResult } = await supabase.rpc('match_email_to_customer', { 
+          email_address: senderEmail 
+        });
+        
+        customerId = customerMatchResult;
+      }
       
       if (customerId) {
         // First look up customer name for better logging

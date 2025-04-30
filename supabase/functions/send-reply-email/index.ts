@@ -79,7 +79,9 @@ serve(async (req) => {
     }
     
     // Use task title in subject or fallback
-    const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
+    // NEW: Include task readable_id in the subject line
+    const taskReference = task.readable_id ? `[${task.readable_id}] ` : '';
+    const emailSubject = subject || `${taskReference}Re: ${task.title || 'Ihre Anfrage'}`;
     
     // Use the original from email as reply-to when available
     const replyToEmail = task.source === 'email' ? 
