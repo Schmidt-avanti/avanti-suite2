@@ -30,7 +30,7 @@ export interface EmailThread {
   created_at: string;
   thread_id?: string | null;
   reply_to_id?: string | null;
-  message_id?: string | null;
+  message_id?: string | null; // Added this property to fix the TypeScript error
 }
 
 // Existing types (to fix build errors)
