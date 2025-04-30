@@ -27,8 +27,8 @@ interface EndkundeSelectorProps {
   disabled?: boolean;
 }
 
-// Define the response type outside the component to avoid recursion issues
-type EndkundeResponse = {
+// Define a plain interface for the database response to avoid type recursion
+interface EndkundeResponse {
   id: string;
   Nachname: string;
   Vorname: string | null;
@@ -38,7 +38,7 @@ type EndkundeResponse = {
   Lage: string | null;
   Postleitzahl: string;
   Ort: string;
-};
+}
 
 export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({ 
   customerId, 
@@ -62,11 +62,12 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         
         console.log('Fetching endkunden for customer ID:', customerId);
         
+        // Use properly typed database query
         const { data, error } = await supabase
           .from('endkunden')
           .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
           .eq('customer_ID', customerId)
-          .eq('is_active', true)
+          // Remove is_active filter as it doesn't exist in the schema
           .order('Nachname', { ascending: true });
 
         if (error) {
@@ -76,11 +77,11 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
         console.log('Fetched endkunden:', data);
 
-        // Cast the data array first, then map it to avoid type recursion issues
-        const responseData = data as EndkundeResponse[];
+        // Explicitly type the data before processing
+        const typedData = data as unknown as EndkundeResponse[];
         
-        // Transform the data using the correctly typed array
-        const formattedData: EndkundeOption[] = responseData.map((ek) => {
+        // Transform the typed data into our component format
+        const formattedData: EndkundeOption[] = typedData.map((ek) => {
           // Create a display name based on available fields
           const vorname = ek.Vorname ? ` ${ek.Vorname}` : '';
           const wohnung = ek.Wohnung ? ` • Wohnung ${ek.Wohnung}` : '';
