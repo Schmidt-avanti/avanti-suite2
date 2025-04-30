@@ -1,4 +1,3 @@
-
 export type TaskStatus = 'new' | 'in progress' | 'blocked' | 'completed' | 'followup';
 
 export interface Customer {
@@ -24,6 +23,7 @@ export interface Task {
   created_by: string;
   creator?: {
     "Full Name": string;
+    id?: string;
   };
   assigned_to: string;
   assignee?: {
@@ -35,6 +35,7 @@ export interface Task {
   endkunde_id: string | null;
   endkunde_email: string | null;
   from_email?: string; // Added for compatibility with useTasks.ts
+  matched_use_case_id?: string | null;
 }
 
 export interface TaskActivity {
@@ -89,6 +90,8 @@ export interface User {
   firstName?: string;
   lastName?: string;
   name?: string;
+  fullName?: string;
+  avatarUrl?: string;
   customers?: Customer[];
   is_active?: boolean;
 }
