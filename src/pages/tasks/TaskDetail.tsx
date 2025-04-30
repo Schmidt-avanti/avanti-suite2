@@ -125,7 +125,13 @@ const TaskDetail = () => {
   const handleBack = async () => {
     setIsActive(false);
     await new Promise(resolve => setTimeout(resolve, 100));
-    navigate('/tasks');
+    
+    // Check if the task is completed and navigate accordingly
+    if (task && task.status === 'completed') {
+      navigate('/tasks/completed');
+    } else {
+      navigate('/tasks');
+    }
   };
 
   const handleEmailSent = (emailDetails: { recipient: string, subject: string }) => {
