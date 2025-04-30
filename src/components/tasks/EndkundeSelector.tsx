@@ -49,7 +49,19 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         
         console.log('Fetching endkunden for customer ID:', customerId);
         
-        // Query only the fields we need and ensure correct column names
+        // Explicitly define the response type to avoid recursion issues
+        type EndkundeResponse = {
+          id: string;
+          Nachname: string;
+          Vorname: string | null;
+          Adresse: string;
+          Wohnung: string | null;
+          Gebäude: string | null;
+          Lage: string | null;
+          Postleitzahl: string;
+          Ort: string;
+        };
+        
         const { data, error } = await supabase
           .from('endkunden')
           .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
@@ -65,7 +77,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         console.log('Fetched endkunden:', data);
 
         // Transform the data with explicit typing to avoid recursion issues
-        const formattedData: EndkundeOption[] = data.map((ek) => {
+        const formattedData: EndkundeOption[] = (data as EndkundeResponse[]).map((ek) => {
           // Create a display name based on available fields
           const vorname = ek.Vorname ? ` ${ek.Vorname}` : '';
           const wohnung = ek.Wohnung ? ` • Wohnung ${ek.Wohnung}` : '';
