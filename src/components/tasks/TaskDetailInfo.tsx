@@ -41,14 +41,14 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
       
       setIsLoading(true);
       try {
-        // Explicitly type the query response
+        // Define the response type with the exact property names from the database
         type EndkundeResponse = {
           id: string;
           Nachname: string;
           Vorname: string | null;
           Adresse: string;
           Wohnung: string | null;
-          Gebäude: string | null;
+          Gebäude: string | null; // Note the 'ä' here which is different from Gebaeude
           Lage: string | null;
           Postleitzahl: string;
           Ort: string;
@@ -63,7 +63,24 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
           .single() as { data: EndkundeResponse, error: any };
           
         if (error) throw error;
-        setEndkunde(data as Endkunde);
+        
+        // Map the response data to the expected format with consistent property names
+        if (data) {
+          const mappedEndkunde: Endkunde = {
+            id: data.id,
+            Nachname: data.Nachname,
+            Vorname: data.Vorname,
+            Adresse: data.Adresse,
+            Postleitzahl: data.Postleitzahl,
+            Ort: data.Ort,
+            Wohnung: data.Wohnung,
+            Gebaeude: data.Gebäude, // Map from Gebäude to Gebaeude
+            Lage: data.Lage,
+            email: data.email,
+            telefon: data.telefon
+          };
+          setEndkunde(mappedEndkunde);
+        }
       } catch (err) {
         console.error('Error fetching endkunde:', err);
       } finally {
