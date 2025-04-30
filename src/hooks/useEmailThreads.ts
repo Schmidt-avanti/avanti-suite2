@@ -1,87 +1,69 @@
 
 import { useState, useEffect } from 'react';
-import { EmailThread } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { EmailThread } from '@/types';
 
-export const useEmailThreads = (taskId: string | null) => {
+export const useEmailThreads = (taskId?: string) => {
   const [threads, setThreads] = useState<EmailThread[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    const fetchThreads = async () => {
-      if (!taskId) {
-        setThreads([]);
-        setLoading(false);
-        return;
-      }
-      
+    if (!taskId) {
+      setThreads([]);
+      setLoading(false);
+      return;
+    }
+
+    const fetchEmailThreads = async () => {
       try {
         setLoading(true);
-        console.log(`Fetching email threads for task ${taskId}...`);
-        
+        setError(null);
+
         const { data, error } = await supabase
           .from('email_threads')
           .select('*')
           .eq('task_id', taskId)
           .order('created_at', { ascending: false });
-          
+
         if (error) throw error;
-        
-        console.log(`Found ${data?.length || 0} email threads:`, data);
-        
-        // Type validation and casting
-        if (data) {
-          const typedThreads = data.map(thread => {
-            // Ensure direction is either "inbound" or "outbound"
-            const direction = thread.direction === 'inbound' ? 'inbound' : 'outbound';
-            
-            return {
-              ...thread,
-              direction
-            } as EmailThread;
-          });
-          
-          setThreads(typedThreads);
-        } else {
-          setThreads([]);
-        }
-      } catch (error: any) {
-        console.error('Error fetching email threads:', error);
-        toast({
-          variant: "destructive",
-          title: "Fehler",
-          description: "E-Mail-Verlauf konnte nicht geladen werden.",
-        });
+
+        setThreads(data || []);
+      } catch (err: any) {
+        console.error('Error fetching email threads:', err);
+        setError(err.message);
+        setThreads([]);
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchThreads();
-    
-    // Set up a real-time subscription for email_threads
-    const subscription = supabase
-      .channel('email_threads_changes')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'email_threads',
-          filter: `task_id=eq.${taskId}`
-        },
-        (payload) => {
-          console.log('Real-time update on email_threads:', payload);
-          fetchThreads(); // Refetch threads when there's an update
-        }
-      )
-      .subscribe();
-    
-    return () => {
-      subscription.unsubscribe();
-    };
+
+    fetchEmailThreads();
   }, [taskId]);
-  
-  return { threads, loading };
+
+  const refreshThreads = async () => {
+    if (!taskId) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from('email_threads')
+        .select('*')
+        .eq('task_id', taskId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setThreads(data || []);
+    } catch (err: any) {
+      console.error('Error refreshing email threads:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { threads, loading, error, refreshThreads };
 };

@@ -59,7 +59,7 @@ const TaskDetail = () => {
     }
     
     return () => {
-      if (taskId) endTaskTimer(taskId, user?.id);
+      if (taskId && user?.id) endTaskTimer(taskId, user.id);
     };
   }, [taskId, user, startTaskTimer, endTaskTimer]);
 
