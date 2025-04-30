@@ -19,6 +19,7 @@ import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { EmailThread } from '@/types';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +32,9 @@ const TaskDetail = () => {
   const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
   const [forwardTaskDialogOpen, setForwardTaskDialogOpen] = useState(false);
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
+  
+  // Track the currently selected thread for reply
+  const [activeThread, setActiveThread] = useState<EmailThread | null>(null);
   
   const [isActive, setIsActive] = useState(true);
   const { formattedTime } = useTaskTimer({ taskId: id || '', isActive });
@@ -52,6 +56,29 @@ const TaskDetail = () => {
   
   // Fetch email threads for this task
   const { threads: emailThreads, loading: emailThreadsLoading } = useEmailThreads(id || null);
+
+  // Handle thread reply click
+  const handleThreadReplyClick = (thread: EmailThread) => {
+    setActiveThread(thread);
+    // Scroll to reply panel for better UX
+    const replyPanel = document.getElementById('email-reply-panel');
+    if (replyPanel) {
+      replyPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    toast({
+      title: "Antwort an Thread",
+      description: "Sie antworten auf eine bestehende E-Mail",
+    });
+  };
+  
+  // Clear active thread selection
+  const clearActiveThread = () => {
+    setActiveThread(null);
+    toast({
+      title: "Antwortmodus verlassen",
+      description: "Sie verfassen eine neue E-Mail",
+    });
+  };
 
   const findNextTask = async () => {
     if (!user?.id) return null;
@@ -182,7 +209,10 @@ const TaskDetail = () => {
                 </div>
               ) : emailThreads && emailThreads.length > 0 && (
                 <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
-                  <EmailThreadHistory threads={emailThreads} />
+                  <EmailThreadHistory 
+                    threads={emailThreads} 
+                    onReplyClick={handleThreadReplyClick} 
+                  />
                 </div>
               )}
             </div>
@@ -191,11 +221,15 @@ const TaskDetail = () => {
           <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
             <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 p-6">
               {task.source === 'email' ? (
-                <EmailReplyPanel
-                  taskId={task.id}
-                  replyTo={replyTo}
-                  setReplyTo={setReplyTo}
-                />
+                <div id="email-reply-panel">
+                  <EmailReplyPanel
+                    taskId={task.id}
+                    replyTo={replyTo}
+                    setReplyTo={setReplyTo}
+                    activeThread={activeThread}
+                    clearActiveThread={clearActiveThread}
+                  />
+                </div>
               ) : (
                 <>
                   <CardHeader className="p-0 pb-2 flex flex-row items-center border-none">

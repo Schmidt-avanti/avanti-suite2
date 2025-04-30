@@ -21,15 +21,15 @@ export interface TaskTimeSummary {
 export interface EmailThread {
   id: string;
   task_id: string;
-  subject: string | null;
   direction: 'inbound' | 'outbound';
   sender: string;
   recipient: string;
+  subject?: string;
   content: string;
-  attachments?: string[];
   created_at: string;
-  thread_id?: string | null;
-  reply_to_id?: string | null;
+  attachments?: string[];
+  thread_id?: string;
+  reply_to_id?: string;
 }
 
 // Existing types (to fix build errors)

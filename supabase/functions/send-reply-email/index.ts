@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { task_id, recipient_email, subject, body, attachments } = await req.json();
+    const { task_id, recipient_email, subject, body, attachments, reply_to_thread_id } = await req.json();
 
     if (!task_id || !body || !recipient_email) {
       throw new Error('Missing required fields: task_id, recipient_email, and body are required');
@@ -78,6 +78,24 @@ serve(async (req) => {
       console.log(`No avanti_email found, using generated email: ${senderEmail}`);
     }
     
+    // Get original thread if replying to a specific thread
+    let originalThreadData = null;
+    
+    if (reply_to_thread_id) {
+      const { data: threadData, error: threadError } = await supabase
+        .from('email_threads')
+        .select('*')
+        .eq('id', reply_to_thread_id)
+        .single();
+        
+      if (!threadError) {
+        originalThreadData = threadData;
+        console.log(`Found original thread with ID: ${reply_to_thread_id}`);
+      } else {
+        console.error('Error fetching original thread:', threadError);
+      }
+    }
+    
     // ALWAYS include task readable_id in the subject line, even if custom subject is provided
     let emailSubject = '';
     
@@ -134,7 +152,13 @@ serve(async (req) => {
       };
     }
     
-    // Add attachments if provided - FIXED IMPLEMENTATION
+    // If replying to a specific thread, add appropriate headers for threading
+    if (originalThreadData?.thread_id) {
+      emailRequestData.headers["In-Reply-To"] = `<${originalThreadData.thread_id}>`;
+      emailRequestData.headers["References"] = `<${originalThreadData.thread_id}>`;
+    }
+    
+    // Add attachments if provided
     if (attachments && attachments.length > 0) {
       const processedAttachments = [];
       
@@ -211,23 +235,28 @@ serve(async (req) => {
 
     console.log('Email sent successfully with message ID:', messageId);
 
-    // Store the email thread in the database
+    // Store the email thread in the database with reply_to_id if replying to a thread
+    const emailThreadData = {
+      task_id,
+      subject: emailSubject,
+      direction: 'outbound',
+      sender: senderEmail,
+      recipient: recipient_email,
+      content: body,
+      attachments: attachments || null,
+      thread_id: messageId, // Store the message ID to track replies
+      reply_to_id: reply_to_thread_id || null // Store the reference to the original thread if applicable
+    };
+    
     const { error: threadError } = await supabase
       .from('email_threads')
-      .insert({
-        task_id,
-        subject: emailSubject,
-        direction: 'outbound',
-        sender: senderEmail,
-        recipient: recipient_email,
-        content: body,
-        attachments: attachments || null,
-        thread_id: messageId // Store the message ID to track replies
-      });
+      .insert(emailThreadData);
 
     if (threadError) {
       console.error('Error storing email thread:', threadError);
       // We don't throw here because the email was already sent
+    } else {
+      console.log('Email thread stored successfully with reply_to_id:', reply_to_thread_id || 'null');
     }
 
     return new Response(JSON.stringify({ success: true, message_id: messageId }), {

@@ -1,25 +1,56 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2, AlertTriangle, Paperclip, X } from "lucide-react";
+import { Send, Loader2, AlertTriangle, Paperclip, X, MessageSquare } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { SpellChecker } from '@/components/ui/spell-checker';
 import { v4 as uuidv4 } from "uuid";
+import { EmailThread } from '@/types';
+import { Card } from "@/components/ui/card";
 
 interface EmailReplyPanelProps {
   taskId: string;
   replyTo: string;
   setReplyTo: (email: string) => void;
+  activeThread?: EmailThread | null;
+  clearActiveThread?: () => void;
 }
 
-export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyTo, setReplyTo }) => {
+export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ 
+  taskId, 
+  replyTo, 
+  setReplyTo, 
+  activeThread,
+  clearActiveThread 
+}) => {
   const [replyBody, setReplyBody] = useState('');
+  const [subject, setSubject] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Set subject and recipient when activeThread changes
+  useEffect(() => {
+    if (activeThread) {
+      // Extract the subject from the active thread
+      let threadSubject = activeThread.subject || '';
+      
+      // If the subject doesn't already start with "Re:", add it
+      if (!threadSubject.startsWith('Re:')) {
+        setSubject(`Re: ${threadSubject}`);
+      } else {
+        setSubject(threadSubject);
+      }
+      
+      // Set the recipient to the sender of the active thread
+      if (activeThread.direction === 'inbound') {
+        setReplyTo(activeThread.sender);
+      }
+    }
+  }, [activeThread, setReplyTo]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -110,9 +141,11 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
         body: {
           task_id: taskId,
           recipient_email: replyTo,
-          subject: null, // Let the backend use the default subject based on task
+          subject: subject || null, // Use custom subject if available
           body: replyBody,
-          attachments: attachmentUrls
+          attachments: attachmentUrls,
+          // Add reply_to_thread_id if we're replying to a specific thread
+          reply_to_thread_id: activeThread?.id || null
         }
       });
 
@@ -132,8 +165,14 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       });
       
       setReplyBody('');
+      setSubject('');
       setAttachments([]);
       setUploadProgress(0);
+      
+      // Clear active thread if present
+      if (clearActiveThread) {
+        clearActiveThread();
+      }
       
     } catch (error: any) {
       console.error('Email sending error:', error);
@@ -173,11 +212,45 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       </CardHeader>
 
       <div className="flex-1 flex flex-col justify-start mt-4">
+        {/* Show active thread indicator if replying to a specific thread */}
+        {activeThread && (
+          <Card className="mb-4 bg-blue-50 border-blue-200">
+            <div className="p-3 flex items-center justify-between">
+              <div className="flex items-center">
+                <MessageSquare className="h-4 w-4 mr-2 text-blue-600" />
+                <span className="text-sm font-medium text-blue-700">
+                  Antwort auf E-Mail von {activeThread.sender}
+                </span>
+              </div>
+              {clearActiveThread && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={clearActiveThread}
+                  className="h-7 w-7 p-0 rounded-full"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </Card>
+        )}
+
         <label className="text-sm text-muted-foreground mb-1 font-medium">Empfänger</label>
         <input
           type="email"
           value={replyTo}
           onChange={(e) => setReplyTo(e.target.value)}
+          className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm mb-4 bg-white"
+          disabled={isSending}
+        />
+
+        {/* Add subject field */}
+        <label className="text-sm text-muted-foreground mb-1 font-medium">Betreff</label>
+        <input
+          type="text"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
           className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm mb-4 bg-white"
           disabled={isSending}
         />
