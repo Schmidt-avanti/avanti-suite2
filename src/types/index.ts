@@ -1,8 +1,15 @@
-export type TaskStatus = 'new' | 'in progress' | 'blocked' | 'completed';
+
+export type TaskStatus = 'new' | 'in progress' | 'blocked' | 'completed' | 'followup';
 
 export interface Customer {
   id: string;
   name: string;
+  branch?: string;
+  createdAt?: string;
+  isActive?: boolean;
+  cost_center?: string;
+  contact_person?: string;
+  billing_address?: string;
 }
 
 export interface Task {
@@ -27,6 +34,7 @@ export interface Task {
   source: string | null;
   endkunde_id: string | null;
   endkunde_email: string | null;
+  from_email?: string; // Added for compatibility with useTasks.ts
 }
 
 export interface TaskActivity {
@@ -34,10 +42,12 @@ export interface TaskActivity {
   task_id: string;
   user_id: string;
   timestamp: string;
-  action: string;
+  action: TaskActivityAction;
   status_from: TaskStatus | null;
   status_to: TaskStatus | null;
 }
+
+export type TaskActivityAction = 'create' | 'assign' | 'status_change' | 'open' | 'close';
 
 export interface TaskMessage {
   id: string;
@@ -68,4 +78,54 @@ export interface EmailThread {
   created_at: string;
   direction: 'inbound' | 'outbound';
   reply_to_id?: string;
+}
+
+// Add missing interfaces
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  customers?: Customer[];
+  is_active?: boolean;
+}
+
+export type UserRole = 'admin' | 'agent' | 'client';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+  task_id?: string;
+}
+
+export interface PaymentMethod {
+  id: string;
+  user_id: string;
+  customer_id?: string;
+  type: string;
+  value: string;
+  active: boolean;
+  last_used?: string;
+  created_at: string;
+  updated_at: string;
+  card_holder?: string;
+  expiry_month?: number;
+  expiry_year?: number;
+  billing_address?: string;
+  billing_city?: string;
+  billing_zip?: string;
+}
+
+export interface TaskTimeSummary {
+  user_id: string;
+  task_id: string;
+  total_hours: number;
+  total_seconds: number;
+  session_count: number;
 }
