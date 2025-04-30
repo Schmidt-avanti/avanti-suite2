@@ -64,47 +64,31 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           
           <TaskStatusBadge status={task.status as TaskStatus} className="ml-4" />
         </div>
-        
-        {/* Right section with forward button */}
-        {canAssignOrForward && !isCompleted && (
-          <Button
-            variant="outline"
-            className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
-            onClick={() => setForwardTaskDialogOpen(true)}
-          >
-            <Forward className="h-4 w-4 mr-2" />
-            Weiterleiten
-          </Button>
-        )}
       </div>
       
-      {/* Action buttons row */}
-      <div className="flex flex-wrap gap-2 mt-1">
-        {/* Follow up button - hide for completed tasks */}
-        {!isCompleted && (
-          <Button 
-            variant="outline" 
-            className="bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200"
-            onClick={() => setFollowUpDialogOpen(true)}
-          >
-            <Calendar className="h-4 w-4 mr-2" />
-            Wiedervorlage
-          </Button>
-        )}
+      {/* Action buttons row - all in one row */}
+      <div className="flex flex-wrap gap-2 mt-1 justify-end">
+        {/* Follow up button */}
+        <Button 
+          variant="outline" 
+          className="bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200"
+          onClick={() => setFollowUpDialogOpen(true)}
+        >
+          <Calendar className="h-4 w-4 mr-2" />
+          Wiedervorlage
+        </Button>
         
-        {/* Beenden ohne Ava button - hide for completed tasks */}
-        {!isCompleted && (
-          <Button 
-            variant="outline" 
-            className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
-            onClick={() => setCloseTaskDialogOpen(true)}
-          >
-            <X className="h-4 w-4 mr-2" />
-            Beenden ohne Ava
-          </Button>
-        )}
+        {/* "Beenden ohne Ava" button */}
+        <Button 
+          variant="outline" 
+          className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
+          onClick={() => setCloseTaskDialogOpen(true)}
+        >
+          <X className="h-4 w-4 mr-2" />
+          Beenden ohne Ava
+        </Button>
         
-        {/* Aufgabe abschließen button - hide for completed tasks */}
+        {/* "Aufgabe abschließen" button - only hidden for completed tasks */}
         {!isCompleted && (
           <Button 
             variant="outline" 
@@ -116,7 +100,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           </Button>
         )}
         
-        {/* Email button - show for ALL tasks */}
+        {/* Email button */}
         <Button
           variant="outline"
           className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
@@ -135,6 +119,18 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           >
             <UserPlus className="h-4 w-4 mr-2" />
             Mir zuweisen
+          </Button>
+        )}
+        
+        {/* Forward button - moved here to be in the same line */}
+        {canAssignOrForward && (
+          <Button
+            variant="outline"
+            className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
+            onClick={() => setForwardTaskDialogOpen(true)}
+          >
+            <Forward className="h-4 w-4 mr-2" />
+            Weiterleiten
           </Button>
         )}
         
