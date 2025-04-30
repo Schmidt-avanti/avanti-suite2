@@ -85,6 +85,7 @@ serve(async (req) => {
     let replyToThreadUuid: string | null = in_reply_to || null;
     
     if (in_reply_to) {
+      // Make sure we're comparing UUIDs to UUIDs, not UUID to text
       const { data: previousThread, error: threadError } = await supabase
         .from('email_threads')
         .select('message_id')

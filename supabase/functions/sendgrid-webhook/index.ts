@@ -103,7 +103,7 @@ serve(async (req) => {
       attachments: attachments.length > 0 ? attachments : null,
       message_id: messageId,
       in_reply_to: inReplyTo,
-      reference_ids: references.length > 0 ? references.join(' ') : null
+      reference_ids: references.length > 0 ? references.join(' ') : null  // Changed from 'references' to 'reference_ids'
     };
     
     console.log("Processed webhook data:", JSON.stringify(emailData));

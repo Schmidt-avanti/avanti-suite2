@@ -1,7 +1,7 @@
 
 -- Add new columns to the inbound_emails table for tracking email threads
 ALTER TABLE inbound_emails
-ADD COLUMN IF NOT EXISTS references text,
+ADD COLUMN IF NOT EXISTS reference_ids text,
 ADD COLUMN IF NOT EXISTS in_reply_to text,
 ADD COLUMN IF NOT EXISTS message_id text;
 
