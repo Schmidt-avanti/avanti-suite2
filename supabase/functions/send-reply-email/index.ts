@@ -89,7 +89,7 @@ serve(async (req) => {
       headers["References"] = in_reply_to;
     }
     
-    const sendgridPayload = {
+    const sendgridPayload: any = {
       personalizations: [
         {
           to: [{ email: recipient_email }],
@@ -106,42 +106,52 @@ serve(async (req) => {
           value: body,
         },
       ],
-      headers: headers,
-      attachments: attachments.map(url => {
-        // Extract filename from URL
-        const filename = url.split('/').pop() || 'attachment';
-        
-        return {
-          content: '', // Placeholder, will be replaced with actual content
-          filename: filename,
-          disposition: 'attachment',
-          content_id: filename,
-        };
-      }),
+      headers: headers
     };
     
-    // For each attachment, fetch its content and add to the SendGrid payload
-    for (let i = 0; i < sendgridPayload.attachments.length; i++) {
-      try {
-        const response = await fetch(attachments[i]);
-        if (!response.ok) {
-          console.error(`Failed to fetch attachment ${i} (${attachments[i]}): ${response.status} ${response.statusText}`);
-          continue;
+    // Only add attachments to the payload if there are any
+    if (attachments && attachments.length > 0) {
+      console.log(`Processing ${attachments.length} attachments...`);
+      
+      sendgridPayload.attachments = [];
+      
+      // For each attachment, fetch its content and add to the SendGrid payload
+      for (let i = 0; i < attachments.length; i++) {
+        try {
+          const response = await fetch(attachments[i]);
+          if (!response.ok) {
+            console.error(`Failed to fetch attachment ${i} (${attachments[i]}): ${response.status} ${response.statusText}`);
+            continue;
+          }
+          
+          // Extract filename from URL
+          const filename = attachments[i].split('/').pop() || 'attachment';
+          
+          const arrayBuffer = await response.arrayBuffer();
+          const base64Content = btoa(
+            String.fromCharCode(...new Uint8Array(arrayBuffer))
+          );
+          
+          sendgridPayload.attachments.push({
+            content: base64Content,
+            filename: filename,
+            disposition: 'attachment',
+            content_id: filename
+          });
+          
+          console.log(`Successfully processed attachment: ${filename}`);
+        } catch (err) {
+          console.error(`Error processing attachment ${i}:`, err);
         }
-        
-        const arrayBuffer = await response.arrayBuffer();
-        const base64Content = btoa(
-          String.fromCharCode(...new Uint8Array(arrayBuffer))
-        );
-        
-        sendgridPayload.attachments[i].content = base64Content;
-      } catch (err) {
-        console.error(`Error processing attachment ${i}:`, err);
+      }
+      
+      // Remove attachments array if it's empty after processing
+      if (sendgridPayload.attachments.length === 0) {
+        delete sendgridPayload.attachments;
       }
     }
     
-    // Remove empty attachments
-    sendgridPayload.attachments = sendgridPayload.attachments.filter(a => !!a.content);
+    console.log('SendGrid payload prepared, sending email...');
     
     // Make the SendGrid API request
     const sendgridResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
