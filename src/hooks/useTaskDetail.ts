@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useTaskActivity } from '@/hooks/useTaskActivity';
+import { useNavigate } from 'react-router-dom';
 import type { TaskStatus } from '@/types';
 
 export const useTaskDetail = (id: string | undefined, user: any) => {
@@ -11,6 +12,7 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
   const [replyTo, setReplyTo] = useState('');
   const { toast } = useToast();
   const { logTaskStatusChange } = useTaskActivity();
+  const navigate = useNavigate();
 
   const extractEmail = (input: string): string | null => {
     const match = input?.match(/<(.+?)>/);
@@ -64,6 +66,49 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
     }
   };
 
+  const findNextTask = async () => {
+    if (!user?.id) return null;
+    
+    try {
+      // Find next 'new' task assigned to this user
+      let query = supabase
+        .from('tasks')
+        .select('id')
+        .eq('status', 'new')
+        .eq('assigned_to', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1);
+        
+      const { data: newTasks, error: newTasksError } = await query;
+      
+      if (newTasksError) throw newTasksError;
+      
+      if (newTasks && newTasks.length > 0) {
+        return newTasks[0].id;
+      }
+      
+      // If no 'new' tasks, look for 'in_progress' tasks
+      const { data: inProgressTasks, error: inProgressTasksError } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('status', 'in_progress')
+        .eq('assigned_to', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1);
+        
+      if (inProgressTasksError) throw inProgressTasksError;
+      
+      if (inProgressTasks && inProgressTasks.length > 0) {
+        return inProgressTasks[0].id;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error finding next task:', error);
+      return null;
+    }
+  };
+
   const handleStatusChange = async (newStatus: TaskStatus) => {
     try {
       const { error } = await supabase
@@ -76,12 +121,27 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
       await logTaskStatusChange(id!, task.status as TaskStatus, newStatus);
       
       setTask({ ...task, status: newStatus });
+      
       toast({
         title: "Status geändert",
         description: `Die Aufgabe wurde als "${newStatus === 'completed' ? 'Abgeschlossen' : 
           newStatus === 'in_progress' ? 'In Bearbeitung' : 
           newStatus === 'followup' ? 'Wiedervorlage' : 'Neu'}" markiert.`,
       });
+      
+      // If task was completed, find and navigate to next task
+      if (newStatus === 'completed') {
+        const nextTaskId = await findNextTask();
+        if (nextTaskId) {
+          navigate(`/tasks/${nextTaskId}`);
+          toast({
+            title: "Nächste Aufgabe",
+            description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
+          });
+        } else {
+          navigate('/tasks');
+        }
+      }
     } catch (error: any) {
       console.error("Error changing status:", error);
       toast({
