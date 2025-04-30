@@ -19,14 +19,14 @@ interface TaskDetailInfoProps {
 
 interface Endkunde {
   id: string;
-  nachname: string;
-  vorname: string | null;
-  adresse: string;
-  postleitzahl: string;
-  ort: string;
-  wohnung: string | null;
-  gebaeude: string | null;
-  lage: string | null;
+  Nachname: string;
+  Vorname: string | null;
+  Adresse: string;
+  Postleitzahl: string;
+  Ort: string;
+  Wohnung: string | null;
+  Gebaeude: string | null;
+  Lage: string | null;
   email: string | null;
   telefon: string | null;
 }
@@ -44,14 +44,14 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
         // Explicitly type the query response
         type EndkundeResponse = {
           id: string;
-          nachname: string;
-          vorname: string | null;
-          adresse: string;
-          wohnung: string | null;
-          gebaeude: string | null;
-          lage: string | null;
-          postleitzahl: string;
-          ort: string;
+          Nachname: string;
+          Vorname: string | null;
+          Adresse: string;
+          Wohnung: string | null;
+          Gebäude: string | null;
+          Lage: string | null;
+          Postleitzahl: string;
+          Ort: string;
           email: string | null;
           telefon: string | null;
         };
@@ -106,7 +106,7 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
             </div>
           )}
 
-          {/* Endkunde information if available */}
+          {/* Endkunde information with improved formatting */}
           {endkunde && (
             <>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
@@ -114,29 +114,45 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
                 <span className="font-medium">Endkunde</span>
               </div>
               <div className="ml-6 space-y-1">
-                <div>
-                  <span className="font-medium">{endkunde.nachname}</span>
-                  {endkunde.vorname && <span> {endkunde.vorname}</span>}
+                <div className="text-lg font-medium mb-1">
+                  {endkunde.Nachname}
+                  {endkunde.Vorname && <span>, {endkunde.Vorname}</span>}
                 </div>
-                <div>{endkunde.adresse}</div>
-                <div>{endkunde.postleitzahl} {endkunde.ort}</div>
-                {(endkunde.wohnung || endkunde.gebaeude || endkunde.lage) && (
-                  <div className="text-gray-600">
-                    {endkunde.gebaeude && <span>Gebäude: {endkunde.gebaeude} • </span>}
-                    {endkunde.wohnung && <span>Wohnung: {endkunde.wohnung} • </span>}
-                    {endkunde.lage && <span>Lage: {endkunde.lage}</span>}
-                  </div>
-                )}
-                {(endkunde.email || endkunde.telefon) && (
-                  <div className="text-gray-600">
-                    {endkunde.email && (
-                      <div>Email: <a href={`mailto:${endkunde.email}`} className="text-blue-600 hover:underline">
-                        {endkunde.email}
-                      </a></div>
+                
+                <div className="p-3 border border-gray-200 rounded-md bg-gray-50 space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Adresse:</span>
+                      <div className="text-gray-700">{endkunde.Adresse}</div>
+                      <div className="text-gray-700">{endkunde.Postleitzahl} {endkunde.Ort}</div>
+                    </div>
+                    
+                    {(endkunde.Wohnung || endkunde.Gebaeude || endkunde.Lage) && (
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Details:</span>
+                        <div className="text-gray-700">
+                          {endkunde.Gebaeude && <div>Gebäude: {endkunde.Gebaeude}</div>}
+                          {endkunde.Wohnung && <div>Wohnung: {endkunde.Wohnung}</div>}
+                          {endkunde.Lage && <div>Lage: {endkunde.Lage}</div>}
+                        </div>
+                      </div>
                     )}
-                    {endkunde.telefon && <div>Tel: {endkunde.telefon}</div>}
                   </div>
-                )}
+                  
+                  {(endkunde.email || endkunde.telefon) && (
+                    <div className="pt-2 border-t border-gray-200 mt-2">
+                      <span className="text-sm font-medium text-gray-500">Kontakt:</span>
+                      <div className="text-gray-700">
+                        {endkunde.email && (
+                          <div>Email: <a href={`mailto:${endkunde.email}`} className="text-blue-600 hover:underline">
+                            {endkunde.email}
+                          </a></div>
+                        )}
+                        {endkunde.telefon && <div>Tel: {endkunde.telefon}</div>}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
