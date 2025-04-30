@@ -19,7 +19,7 @@ interface SendEmailRequest {
   subject?: string | null;
   body: string;
   attachments?: string[];
-  in_reply_to?: string | null;
+  in_reply_to?: string | null; // This will be the thread_id (UUID) from email_threads
 }
 
 serve(async (req) => {
@@ -30,9 +30,6 @@ serve(async (req) => {
   try {
     // Create a Supabase client with the service role key - this bypasses RLS
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-    
-    // We won't try to get the authenticated user since we're using service role
-    // Instead, proceed directly with the request data
     
     // Parse the request body
     const requestData: SendEmailRequest = await req.json();
@@ -79,14 +76,27 @@ serve(async (req) => {
     
     // Prepare the SendGrid API request
     const messageId = `<task-${taskData.id}-${uuidv4()}@${sendgridVerifiedDomain}>`;
-    const headers = {
+    const headers: Record<string, string> = {
       "Message-ID": messageId
     };
     
-    // If this is a reply to a previous email, add In-Reply-To and References headers
+    // If there's an in_reply_to value (which should be a thread_id), fetch that thread's message_id
+    let referencedMessageId: string | null = null;
     if (in_reply_to) {
-      headers["In-Reply-To"] = in_reply_to;
-      headers["References"] = in_reply_to;
+      const { data: previousThread, error: threadError } = await supabase
+        .from('email_threads')
+        .select('message_id')
+        .eq('id', in_reply_to)
+        .single();
+        
+      if (threadError) {
+        console.error('Error fetching referenced thread:', threadError);
+      } else if (previousThread && previousThread.message_id) {
+        referencedMessageId = previousThread.message_id;
+        headers["In-Reply-To"] = referencedMessageId;
+        headers["References"] = referencedMessageId;
+        console.log(`Using reference message ID: ${referencedMessageId}`);
+      }
     }
     
     const sendgridPayload: any = {
@@ -183,7 +193,8 @@ serve(async (req) => {
         content: body,
         attachments: attachments.length > 0 ? attachments : null,
         message_id: messageId,
-        reply_to_id: in_reply_to || null,
+        reply_to_id: in_reply_to || null, // Store the thread_id (UUID) as reply_to_id
+        thread_id: uuidv4() // Generate a new thread ID
       })
       .select();
       
@@ -195,6 +206,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       message: 'Email sent successfully',
+      thread_id: threadData ? threadData[0].id : null // Return the new thread ID
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2, AlertTriangle, Paperclip, X } from "lucide-react";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SpellChecker } from '@/components/ui/spell-checker';
 import { v4 as uuidv4 } from "uuid";
 import { EmailConfirmationBubble } from './EmailConfirmationBubble';
+import { EmailThread } from "@/types";
 
 interface EmailReplyPanelProps {
   taskId: string;
@@ -21,6 +22,37 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
   const [attachments, setAttachments] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [latestThreadId, setLatestThreadId] = useState<string | null>(null);
+
+  // Fetch the latest thread ID when component mounts
+  useEffect(() => {
+    const fetchLatestThread = async () => {
+      try {
+        const { data: emailThreads, error } = await supabase
+          .from('email_threads')
+          .select('id')
+          .eq('task_id', taskId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (error) {
+          console.error("Error fetching latest email thread:", error);
+          return;
+        }
+        
+        if (emailThreads && emailThreads.length > 0) {
+          setLatestThreadId(emailThreads[0].id);
+          console.log("Latest thread ID for replying:", emailThreads[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch latest email thread:", err);
+      }
+    };
+    
+    if (taskId) {
+      fetchLatestThread();
+    }
+  }, [taskId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -107,22 +139,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       
       setUploadProgress(80);
 
-      // Fetch the original email thread first to get message IDs for threading
-      const { data: emailThreads } = await supabase
-        .from('email_threads')
-        .select('*')
-        .eq('task_id', taskId)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      // Safely handle the case where the message_id property doesn't exist
-      let inReplyToMessageId = null;
-      if (emailThreads && emailThreads.length > 0) {
-        // Use optional chaining to safely access the message_id property
-        inReplyToMessageId = emailThreads[0]?.message_id || null;
-        console.log('Reply to message ID:', inReplyToMessageId);
-      }
-      
+      // Send the email with the thread ID (if any) as the in_reply_to parameter
       const { data, error } = await supabase.functions.invoke('send-reply-email', {
         body: {
           task_id: taskId,
@@ -130,7 +147,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
           subject: null, // Let the backend use the default subject based on task
           body: replyBody,
           attachments: attachmentUrls,
-          in_reply_to: inReplyToMessageId // Include the reference for threading
+          in_reply_to: latestThreadId // Use the thread ID (UUID) for threading
         }
       });
 
@@ -142,6 +159,11 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       
       if (data?.error) {
         throw new Error(data.error);
+      }
+      
+      // Update the latest thread ID with the newly created thread ID (if available)
+      if (data?.thread_id) {
+        setLatestThreadId(data.thread_id);
       }
 
       // Show the confirmation bubble
