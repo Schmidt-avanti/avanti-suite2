@@ -34,7 +34,6 @@ const CreateTask = () => {
   const { customers, isLoading: isLoadingCustomers } = useCustomers();
   const { logTaskOpen } = useTaskActivity();
   const [isMatching, setIsMatching] = useState(false);
-  const [endkundeEmail, setEndkundeEmail] = useState<string | null>(null);
   
   const form = useForm<TaskFormValues>({
     defaultValues: {
@@ -47,9 +46,8 @@ const CreateTask = () => {
   const customerId = form.watch('customerId');
   const description = form.watch('description');
 
-  const handleEndkundeChange = (endkundeId: string | null, email: string | null = null) => {
+  const handleEndkundeChange = (endkundeId: string | null) => {
     form.setValue('endkundeId', endkundeId);
-    setEndkundeEmail(email);
   };
 
   const onSubmit = async (values: TaskFormValues) => {
@@ -103,8 +101,7 @@ const CreateTask = () => {
           status: 'new',
           source: 'manual',
           forwarded_to: matchResult?.matched_use_case_id ? null : 'KVP',
-          endkunde_id: values.endkundeId, // Add endkunde ID if selected
-          endkunde_email: endkundeEmail, // Add endkunde email if available
+          endkunde_id: values.endkundeId // Add endkunde ID if selected
         })
         .select()
         .single();

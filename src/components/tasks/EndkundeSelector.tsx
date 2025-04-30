@@ -23,7 +23,7 @@ interface EndkundeOption {
 interface EndkundeSelectorProps {
   customerId: string;
   value: string | null;
-  onChange: (value: string | null, endkundeEmail?: string | null) => void;
+  onChange: (value: string | null) => void;
   disabled?: boolean;
 }
 
@@ -95,34 +95,14 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
     fetchEndkunden();
   }, [customerId]);
 
-  const handleEndkundeChange = async (endkundeId: string) => {
+  const handleEndkundeChange = (endkundeId: string) => {
     if (endkundeId === 'none') {
       onChange(null);
       return;
     }
     
-    // Since email is not fetched in the initial query, we need to get it separately
-    try {
-      console.log('Fetching email for endkunde ID:', endkundeId);
-      
-      const { data, error } = await supabase
-        .from('endkunden')
-        .select('email')
-        .eq('id', endkundeId)
-        .single();
-      
-      console.log('Email fetch result:', { data, error });
-      
-      if (!error && data) {
-        onChange(endkundeId, data.email);
-      } else {
-        // If email doesn't exist in the schema or there's an error, pass null
-        onChange(endkundeId, null);
-      }
-    } catch (err) {
-      console.error('Error fetching endkunde details:', err);
-      onChange(endkundeId, null);
-    }
+    // Simply pass the endkunde ID without fetching email
+    onChange(endkundeId);
   };
 
   return (
