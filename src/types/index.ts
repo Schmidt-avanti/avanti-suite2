@@ -1,4 +1,3 @@
-
 export type TaskStatus = 'new' | 'in progress' | 'blocked' | 'completed' | 'followup';
 
 export interface Customer {
@@ -76,10 +75,11 @@ export interface EmailThread {
   recipient: string;
   subject?: string;
   content: string;
-  attachments?: string[];
+  attachments?: string[] | Json | null;
   created_at: string;
   direction: 'inbound' | 'outbound';
   reply_to_id?: string;
+  thread_id?: string;
 }
 
 // Add missing interfaces
@@ -133,3 +133,12 @@ export interface TaskTimeSummary {
   total_seconds: number;
   session_count: number;
 }
+
+// Add Json type from Supabase
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]

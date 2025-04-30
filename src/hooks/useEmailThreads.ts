@@ -1,7 +1,18 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { EmailThread } from '@/types';
+import { EmailThread, Json } from '@/types';
+
+// Helper function to ensure attachments are string arrays
+const normalizeThreadData = (data: any[]): EmailThread[] => {
+  return data.map(thread => ({
+    ...thread,
+    // Convert attachments to string[] if it exists, otherwise set to undefined
+    attachments: thread.attachments ? 
+      (Array.isArray(thread.attachments) ? thread.attachments : [String(thread.attachments)]) 
+      : undefined
+  }));
+};
 
 export const useEmailThreads = (taskId?: string) => {
   const [threads, setThreads] = useState<EmailThread[]>([]);
@@ -28,7 +39,7 @@ export const useEmailThreads = (taskId?: string) => {
 
         if (error) throw error;
 
-        setThreads(data || []);
+        setThreads(normalizeThreadData(data || []));
       } catch (err: any) {
         console.error('Error fetching email threads:', err);
         setError(err.message);
@@ -56,7 +67,7 @@ export const useEmailThreads = (taskId?: string) => {
 
       if (error) throw error;
 
-      setThreads(data || []);
+      setThreads(normalizeThreadData(data || []));
     } catch (err: any) {
       console.error('Error refreshing email threads:', err);
       setError(err.message);
