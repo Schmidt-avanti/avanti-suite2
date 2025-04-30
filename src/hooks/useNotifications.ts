@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +9,7 @@ export const useNotifications = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [lastFetch, setLastFetch] = useState<Date>(new Date());
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -27,12 +29,13 @@ export const useNotifications = () => {
         return;
       }
 
-      // Only show unread notifications
+      // Track unread notifications
       const unreadNotifications = data?.filter(n => !n.read_at) || [];
       console.log('Fetched unread notifications:', unreadNotifications.length);
       
       setNotifications(data || []);
       setUnreadCount(unreadNotifications.length);
+      setLastFetch(new Date());
     } catch (err) {
       console.error('Exception when fetching notifications:', err);
     }
@@ -128,6 +131,7 @@ export const useNotifications = () => {
     unreadCount,
     markAsRead,
     markAllAsRead,
-    refresh: fetchNotifications
+    refresh: fetchNotifications,
+    lastFetch
   };
 };

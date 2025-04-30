@@ -278,7 +278,12 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
 
   const handleAssignTask = async (userId: string, note: string = "") => {
     try {
-      let updateData: any = { assigned_to: userId };
+      // Store the assignment note if provided
+      const updateData: any = { 
+        assigned_to: userId,
+        // Store the forwarding note if it exists
+        ...(note ? { forwarded_to: note } : {})
+      };
       
       const { error } = await supabase
         .from('tasks')
@@ -288,11 +293,21 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
       if (error) throw error;
       
       if (userId) {
+        // Get the task's readable_id for the notification message
+        const { data: taskData } = await supabase
+          .from('tasks')
+          .select('readable_id, title')
+          .eq('id', id)
+          .single();
+          
+        const taskIdentifier = taskData?.readable_id || task.title;
+        
+        // Create a notification for the assigned user
         await supabase
           .from('notifications')
           .insert({
             user_id: userId,
-            message: `Aufgabe "${task.title}" wurde Ihnen ${task.assigned_to ? 'weitergeleitet' : 'zugewiesen'}.${note ? ' Notiz: ' + note : ''}`,
+            message: `Aufgabe "${taskIdentifier}" wurde Ihnen ${task.assigned_to ? 'weitergeleitet' : 'zugewiesen'}.${note ? ' Notiz: ' + note : ''}`,
             task_id: id
           });
       }

@@ -5,11 +5,43 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { NotificationList } from './NotificationList';
+import { useEffect } from 'react';
+import { toast } from '@/hooks/use-toast';
 
 export function NotificationButton() {
-  const { notifications } = useNotifications();
-  const unreadCount = notifications?.filter(n => !n.read_at)?.length || 0;
+  const { notifications, unreadCount, refresh } = useNotifications();
   const isMobile = useIsMobile();
+
+  // Refresh notifications on component mount
+  useEffect(() => {
+    refresh();
+    
+    // Set up refresh interval
+    const intervalId = setInterval(refresh, 30000); // refresh every 30 seconds
+    
+    return () => clearInterval(intervalId);
+  }, [refresh]);
+
+  // Show a toast when new notifications arrive
+  useEffect(() => {
+    // Find the newest task assignment notification
+    const taskAssignments = notifications?.filter(n => 
+      n.message.includes('wurde Ihnen') && 
+      !n.read_at &&
+      // Only show notifications from the last minute to avoid showing old ones on page load
+      (new Date().getTime() - new Date(n.created_at).getTime() < 60000)
+    );
+    
+    if (taskAssignments && taskAssignments.length > 0) {
+      // Show toast for the newest assignment
+      const newestAssignment = taskAssignments[0];
+      toast({
+        title: "Neue Aufgabenzuweisung",
+        description: newestAssignment.message,
+        duration: 5000
+      });
+    }
+  }, [notifications]);
 
   return (
     <div className="relative">
