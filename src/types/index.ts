@@ -10,7 +10,7 @@ export interface Customer {
   street?: string;
   city?: string;
   zip?: string;
-  isActive?: boolean;
+  is_active?: boolean;
   created_at?: string;
   branch?: string;
   cost_center?: string;
@@ -45,6 +45,7 @@ export interface Task {
   endkunde_id: string | null;
   endkunde_email: string | null;
   from_email?: string;
+  matched_use_case_id?: string | null;
 }
 
 export interface TaskActivity {
@@ -99,7 +100,7 @@ export interface Notification {
 
 export interface PaymentMethod {
   id: string;
-  type: string;
+  type: 'paypal' | 'creditcard';  // Using string literals for type safety
   value: string;
   active: boolean;
   customer_id?: string;
@@ -119,11 +120,14 @@ export interface User {
   id: string;
   email: string;
   role: UserRole;
-  fullName: string;
+  fullName: string;  // The primary name field used throughout the app
+  firstName?: string; // Added for compatibility with existing code
+  lastName?: string;
+  avatarUrl?: string; // Added for profile pictures
   is_active?: boolean;
   createdAt: string;
   customers?: Customer[];
-  name?: string;
+  name?: string;     // Added for compatibility with some components
 }
 
 export interface TaskTimeSummary {

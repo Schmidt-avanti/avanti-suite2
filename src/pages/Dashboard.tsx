@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -45,7 +44,8 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const firstName = user?.firstName || user?.["Full Name"]?.split(' ')[0] || '';
+  // Get display name safely from any available name property
+  const displayName = user?.fullName?.split(' ')[0] || user?.firstName || user?.["Full Name"]?.split(' ')[0] || '';
 
   if (isTasksLoading) {
     return (
@@ -57,7 +57,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className={`text-2xl font-bold ${isMobile ? 'text-xl mb-4' : ''}`}>Willkommen zurück, {firstName}!</h1>
+      <h1 className={`text-2xl font-bold ${isMobile ? 'text-xl mb-4' : ''}`}>Willkommen zurück, {displayName}!</h1>
       
       <div className={`grid grid-cols-1 ${isMobile ? '' : 'md:grid-cols-2'} gap-6`}>
         <Link to="/tasks" className="block">

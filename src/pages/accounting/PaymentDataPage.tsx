@@ -23,6 +23,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 
+// Define payment method type to ensure type safety
+type PaymentMethodType = 'paypal' | 'creditcard';
+
 const PaymentDataPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -54,7 +57,7 @@ const PaymentDataPage = () => {
 
   const addPaymentMethod = useMutation({
     mutationFn: async (data: {
-      type: 'paypal' | 'creditcard';
+      type: PaymentMethodType;
       value: string;
       customer_id: string;
       card_holder?: string;
@@ -122,7 +125,7 @@ const PaymentDataPage = () => {
   });
 
   const handleSubmit = async (data: {
-    type: 'paypal' | 'creditcard';
+    type: PaymentMethodType;
     value: string;
     customer_id: string;
     card_holder?: string;

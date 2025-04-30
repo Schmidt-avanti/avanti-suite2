@@ -30,7 +30,7 @@ const UserEditDialog: React.FC<Props> = ({
   defaultValues,
 }) => {
   const { customers, loading, error } = useFetchCustomers();
-  const [name, setName] = useState(defaultValues?.firstName || "");
+  const [name, setName] = useState(defaultValues?.fullName || defaultValues?.firstName || defaultValues?.name || "");
   const [email, setEmail] = useState(defaultValues?.email || "");
   const [role, setRole] = useState<UserRole>(defaultValues?.role || "agent");
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>(
@@ -42,7 +42,7 @@ const UserEditDialog: React.FC<Props> = ({
 
   useEffect(() => {
     if (open) {
-      setName(defaultValues?.firstName || "");
+      setName(defaultValues?.fullName || defaultValues?.firstName || defaultValues?.name || "");
       setEmail(defaultValues?.email || "");
       setRole(defaultValues?.role || "agent");
       setSelectedCustomers(defaultValues?.customers?.map((c) => c.id) || []);
@@ -78,10 +78,13 @@ const UserEditDialog: React.FC<Props> = ({
       id: defaultValues?.id || "",
       email,
       role,
+      fullName: name, // Set fullName from name input field
       createdAt: defaultValues?.createdAt || "",
       customers: mappedCustomers,
       is_active: isActive,
-      name: name
+      name: name,
+      firstName: name.split(' ')[0] || "", // Extract firstName from name
+      lastName: name.split(' ')[1] || undefined,  // Extract lastName from name
     };
     onSave(user);
   };
