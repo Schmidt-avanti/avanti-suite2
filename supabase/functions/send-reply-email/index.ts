@@ -30,7 +30,7 @@ serve(async (req) => {
       .from('tasks')
       .select(`
         *,
-        customer:customers(name, email),
+        customer:customers(name, email, avanti_email),
         inbound_email:source_email_id (
           from_email,
           subject
@@ -64,8 +64,8 @@ serve(async (req) => {
       safeSenderName = 'support';
     }
     
-    // Create a dynamic sender email from the verified domain
-    const senderEmail = `${safeSenderName}@${verifiedDomain}`;
+    // Create a dynamic sender email from the verified domain - prioritize avanti_email
+    const senderEmail = task.customer?.avanti_email || `${safeSenderName}@${verifiedDomain}`;
     
     // Use task title in subject or fallback
     const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
@@ -174,7 +174,7 @@ serve(async (req) => {
     }
 
     // Store the email thread in the database
-    const { error: threadError } = await supabase
+    const { data: threadData, error: threadError } = await supabase
       .from('email_threads')
       .insert({
         task_id,
@@ -184,11 +184,20 @@ serve(async (req) => {
         recipient: recipient_email,
         content: body,
         attachments: attachments || null
-      });
+      })
+      .select('id');
 
     if (threadError) {
       console.error('Error storing email thread:', threadError);
       // We don't throw here because the email was already sent
+    } else {
+      // Create notification about email reply
+      await supabase
+        .from('notifications')
+        .insert({
+          message: `E-Mail-Antwort für Aufgabe #${task.readable_id || ''} wurde an ${recipient_email} gesendet.`,
+          task_id,
+        });
     }
 
     return new Response(JSON.stringify({ success: true }), {

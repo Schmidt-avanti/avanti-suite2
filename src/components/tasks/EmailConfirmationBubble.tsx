@@ -1,36 +1,30 @@
 
 import React, { useEffect, useState } from 'react';
-import { Check } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 
 interface EmailConfirmationBubbleProps {
   visible: boolean;
 }
 
 export const EmailConfirmationBubble: React.FC<EmailConfirmationBubbleProps> = ({ visible }) => {
-  const [isVisible, setIsVisible] = useState(false);
+  const [show, setShow] = useState(false);
   
   useEffect(() => {
     if (visible) {
-      setIsVisible(true);
-      
-      // Auto-hide after 5 seconds
-      const timeout = setTimeout(() => {
-        setIsVisible(false);
-      }, 5000);
-      
-      return () => clearTimeout(timeout);
+      setShow(true);
+      const timer = setTimeout(() => {
+        setShow(false);
+      }, 3000);
+      return () => clearTimeout(timer);
     }
   }, [visible]);
   
-  if (!isVisible) return null;
+  if (!show) return null;
   
   return (
-    <div 
-      className="flex items-center gap-2 py-2 px-4 bg-[#EAF6FF] text-[#004085] rounded-md shadow-sm mb-4 animate-fade-in-down"
-      role="alert"
-    >
-      <Check className="h-4 w-4 text-blue-500" />
-      <span className="text-sm font-medium">E-Mail versendet.</span>
+    <div className="fixed bottom-20 right-20 bg-white rounded-lg shadow-lg p-4 flex items-center animate-in fade-in slide-in-from-bottom-10 duration-500 z-50">
+      <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+      <span className="text-sm font-medium">E-Mail erfolgreich gesendet</span>
     </div>
   );
 };

@@ -129,7 +129,7 @@ serve(async (req) => {
       // Get the actual recipient email (the 'to' address)
       const toEmail = event.to;
       
-      // Match email to customer
+      // Match email to customer - USE AVANTI_EMAIL FIELD FIRST
       const { data: customerMatchResult } = await supabase.rpc('match_email_to_customer', { 
         email_address: toEmail 
       });
@@ -140,7 +140,7 @@ serve(async (req) => {
         // First look up customer name for better logging
         const { data: customerData } = await supabase
           .from('customers')
-          .select('name')
+          .select('name, avanti_email')
           .eq('id', customerId)
           .single();
           
@@ -159,7 +159,7 @@ serve(async (req) => {
             attachments: attachments.length > 0 ? attachments : null,
             source_email_id: emailId
           })
-          .select('id');
+          .select('id, readable_id');
             
         if (taskError) {
           console.error('Error creating task from email:', taskError);
@@ -168,6 +168,7 @@ serve(async (req) => {
           
           // Create email thread record
           const taskId = taskData[0].id;
+          const taskReadableId = taskData[0].readable_id;
           
           // Store as an email thread for conversation history
           await supabase
@@ -176,11 +177,23 @@ serve(async (req) => {
               task_id: taskId,
               direction: 'inbound',
               sender: senderEmail,
-              recipient: toEmail,
+              recipient: customerData?.avanti_email || toEmail,
               subject: event.subject || '',
               content: event.text || event.html?.replace(/<[^>]+>/g, '') || '',
               attachments: attachments.length > 0 ? attachments : null
             });
+          
+          // Generate notification with task number
+          if (taskReadableId) {
+            // Create notification for admins
+            await supabase
+              .from('notifications')
+              .insert({
+                user_id: null,  // Will be populated by trigger for all admins
+                message: `Neue E-Mail-Aufgabe #${taskReadableId} eingegangen: "${event.subject || 'Kein Betreff'}" von ${senderEmail}`,
+                task_id: taskId
+              });
+          }
           
           // Mark the email as processed
           await supabase
