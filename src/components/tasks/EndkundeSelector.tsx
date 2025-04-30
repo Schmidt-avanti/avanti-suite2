@@ -18,6 +18,8 @@ interface EndkundeOption {
   wohnung: string | null;
   gebaeude: string | null;
   lage: string | null;
+  postleitzahl: string | null;
+  ort: string | null;
 }
 
 interface EndkundeSelectorProps {
@@ -56,11 +58,8 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         if (error) throw error;
 
         const formattedData = data.map(ek => {
-          // Create a display name based on available fields
-          const vorname = ek.Vorname ? ` ${ek.Vorname}` : '';
-          const wohnung = ek.Wohnung ? ` • Wohnung ${ek.Wohnung}` : '';
-          const lage = ek.Lage ? ` • ${ek.Lage}` : '';
-          const gebaeude = ek.Gebäude ? ` • ${ek.Gebäude}` : '';
+          // Create a simpler display name - just full name
+          const vorname = ek.Vorname ? `${ek.Vorname}` : '';
           
           return {
             id: ek.id,
@@ -70,7 +69,10 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
             wohnung: ek.Wohnung,
             gebaeude: ek.Gebäude,
             lage: ek.Lage,
-            display: `${ek.Nachname}${vorname}, ${ek.Adresse}${wohnung}${gebaeude}${lage}`
+            postleitzahl: ek.Postleitzahl,
+            ort: ek.Ort,
+            // Simple display format - just name and surname
+            display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
           };
         });
 

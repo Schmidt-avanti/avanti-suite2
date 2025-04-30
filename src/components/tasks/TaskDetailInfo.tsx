@@ -8,7 +8,10 @@ import {
   UserCheck,
   XCircle,
   Hash,
-  Home
+  Home,
+  Phone,
+  Mail,
+  MapPin
 } from "lucide-react";
 import { KnowledgeArticlesList } from './KnowledgeArticlesList';
 import { supabase } from '@/integrations/supabase/client';
@@ -107,37 +110,48 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
             </div>
           )}
 
-          {/* Endkunde information if available */}
+          {/* Enhanced Endkunde information if available */}
           {endkunde && (
-            <>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
-                <Home className="h-4 w-4" />
-                <span className="font-medium">Endkunde</span>
+            <div className="mt-5 bg-blue-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-sm text-blue-800 font-medium mb-2">
+                <Home className="h-5 w-5" />
+                <span>Endkunde Informationen</span>
               </div>
-              <div className="ml-6 space-y-1">
-                <div>
-                  <span className="font-medium">{endkunde.nachname}</span>
-                  {endkunde.vorname && <span> {endkunde.vorname}</span>}
+              <div className="space-y-3 ml-2">
+                <div className="flex items-center">
+                  <User2 className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0" />
+                  <div>
+                    <span className="font-semibold">{endkunde.nachname}</span>
+                    {endkunde.vorname && <span>, {endkunde.vorname}</span>}
+                  </div>
                 </div>
-                <div>{endkunde.adresse}</div>
-                <div>{endkunde.postleitzahl} {endkunde.ort}</div>
-                {(endkunde.wohnung || endkunde.gebaeude || endkunde.lage) && (
-                  <div className="text-gray-600">
-                    {endkunde.gebaeude && <span>Gebäude: {endkunde.gebaeude} • </span>}
-                    {endkunde.wohnung && <span>Wohnung: {endkunde.wohnung} • </span>}
-                    {endkunde.lage && <span>Lage: {endkunde.lage}</span>}
+                
+                <div className="flex items-start">
+                  <MapPin className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+                  <div className="flex flex-col">
+                    <span>{endkunde.adresse}</span>
+                    <span>{endkunde.postleitzahl} {endkunde.ort}</span>
+                    {(endkunde.wohnung || endkunde.gebaeude || endkunde.lage) && (
+                      <div className="text-gray-600 text-sm mt-1">
+                        {endkunde.gebaeude && <div>Gebäude: {endkunde.gebaeude}</div>}
+                        {endkunde.wohnung && <div>Wohnung: {endkunde.wohnung}</div>}
+                        {endkunde.lage && <div>Lage: {endkunde.lage}</div>}
+                      </div>
+                    )}
                   </div>
-                )}
-                {/* We'll only show the email and telefon if they exist in the task instead */}
+                </div>
+
+                {/* Email from the task since it's not in endkunden table */}
                 {task.endkunde_email && (
-                  <div className="text-gray-600">
-                    <div>Email: <a href={`mailto:${task.endkunde_email}`} className="text-blue-600 hover:underline">
+                  <div className="flex items-center">
+                    <Mail className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0" />
+                    <a href={`mailto:${task.endkunde_email}`} className="text-blue-600 hover:underline">
                       {task.endkunde_email}
-                    </a></div>
+                    </a>
                   </div>
                 )}
               </div>
-            </>
+            </div>
           )}
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
@@ -176,7 +190,7 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
         </CardContent>
       </Card>
       
-      {/* Knowledge Articles Section - Now passing the task description */}
+      {/* Knowledge Articles Section */}
       <KnowledgeArticlesList 
         customerId={task.customer_id}
         taskDescription={task.description}
