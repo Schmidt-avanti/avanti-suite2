@@ -240,7 +240,7 @@ export type Database = {
           id: string
           lage: string | null
           nachname: string
-          ort: string
+          Ort: string
           postleitzahl: string
           updated_at: string
           vorname: string | null
@@ -254,7 +254,7 @@ export type Database = {
           id?: string
           lage?: string | null
           nachname: string
-          ort: string
+          Ort: string
           postleitzahl: string
           updated_at?: string
           vorname?: string | null
@@ -268,7 +268,7 @@ export type Database = {
           id?: string
           lage?: string | null
           nachname?: string
-          ort?: string
+          Ort?: string
           postleitzahl?: string
           updated_at?: string
           vorname?: string | null

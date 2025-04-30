@@ -41,14 +41,29 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
       
       setIsLoading(true);
       try {
+        // Explicitly type the query response
+        type EndkundeResponse = {
+          id: string;
+          nachname: string;
+          vorname: string | null;
+          adresse: string;
+          wohnung: string | null;
+          gebaeude: string | null;
+          lage: string | null;
+          postleitzahl: string;
+          ort: string;
+          email: string | null;
+          telefon: string | null;
+        };
+        
         const { data, error } = await supabase
           .from('endkunden')
           .select('*')
           .eq('id', task.endkunde_id)
-          .single();
+          .single() as { data: EndkundeResponse, error: any };
           
         if (error) throw error;
-        setEndkunde(data);
+        setEndkunde(data as Endkunde);
       } catch (err) {
         console.error('Error fetching endkunde:', err);
       } finally {
