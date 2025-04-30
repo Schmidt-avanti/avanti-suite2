@@ -1,17 +1,16 @@
 
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { AlertTriangle } from "lucide-react";
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { CheckCircle, Loader2 } from 'lucide-react';
 
 interface CloseTaskDialogProps {
   open: boolean;
@@ -20,68 +19,74 @@ interface CloseTaskDialogProps {
 }
 
 export function CloseTaskDialog({ open, onOpenChange, onClose }: CloseTaskDialogProps) {
-  const [comment, setComment] = useState("");
-  const commentMinLength = 10;
+  const [comment, setComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleClose = () => {
-    if (comment.trim().length < commentMinLength) return;
-    
-    onClose(comment);
-    setComment(""); // Reset the comment field
-    onOpenChange(false);
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      await onClose(comment);
+      setComment('');
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error closing task:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenChange = (newOpenState: boolean) => {
+    if (!newOpenState) {
+      setComment('');
+    }
+    onOpenChange(newOpenState);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Aufgabe abschließen ohne Ava</DialogTitle>
-          <DialogDescription>
-            Bitte dokumentieren Sie den Kundenkontakt, um die Aufgabe abzuschließen.
-            Sie werden danach automatisch zur nächsten verfügbaren Aufgabe weitergeleitet.
-          </DialogDescription>
+          <DialogTitle>Aufgabe abschließen</DialogTitle>
         </DialogHeader>
-        
-        <div className="py-4 space-y-4">
+
+        <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="closing-comment">
-              Dokumentation <span className="text-red-500">*</span>
+            <Label htmlFor="close-comment">
+              Abschlusskommentar
             </Label>
             <Textarea
-              id="closing-comment"
+              id="close-comment"
+              placeholder="Bitte geben Sie einen Abschlusskommentar ein..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Bitte geben Sie hier eine Dokumentation des Kundenkontakts ein..."
-              className="min-h-[120px]"
+              rows={5}
             />
-            
-            {comment.trim().length < commentMinLength && (
-              <div className="flex items-center gap-2 text-amber-600 text-sm mt-2">
-                <AlertTriangle className="h-4 w-4" />
-                <span>
-                  Mindestens {commentMinLength} Zeichen erforderlich
-                  ({comment.trim().length}/{commentMinLength})
-                </span>
-              </div>
-            )}
           </div>
         </div>
-        
+
         <DialogFooter>
           <Button
             variant="outline"
-            onClick={() => {
-              setComment(""); // Reset the comment field
-              onOpenChange(false);
-            }}
+            onClick={() => handleOpenChange(false)}
+            disabled={isSubmitting}
           >
             Abbrechen
           </Button>
           <Button
-            onClick={handleClose}
-            disabled={comment.trim().length < commentMinLength}
+            onClick={handleSubmit}
+            disabled={isSubmitting || !comment.trim()}
           >
-            Aufgabe abschließen
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Wird abgeschlossen...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Aufgabe abschließen
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
