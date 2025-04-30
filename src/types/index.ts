@@ -41,6 +41,7 @@ export interface Task {
   status: TaskStatus;
   created_at: string;
   source?: string;
+  readable_id?: string;
   customer?: {
     id: string;
     name: string;
@@ -56,6 +57,7 @@ export interface Task {
   follow_up_date?: string;
   closing_comment?: string;
   attachments?: any[];
+  endkunde_id?: string;
   endkunde_email?: string; 
   from_email?: string;     
   description?: string;    
