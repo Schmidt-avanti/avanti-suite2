@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
 import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
 import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
 import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog';
+import { EmailReplyDialog } from '@/components/tasks/EmailReplyDialog';
 import { TaskChat } from "@/components/tasks/TaskChat";
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
@@ -33,6 +33,9 @@ const TaskDetail = () => {
   const [forwardTaskDialogOpen, setForwardTaskDialogOpen] = useState(false);
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
   
+  // New dialog for email thread replies
+  const [emailReplyDialogOpen, setEmailReplyDialogOpen] = useState(false);
+  
   // Track the currently selected thread for reply
   const [activeThread, setActiveThread] = useState<EmailThread | null>(null);
   
@@ -57,18 +60,24 @@ const TaskDetail = () => {
   // Fetch email threads for this task
   const { threads: emailThreads, loading: emailThreadsLoading } = useEmailThreads(id || null);
 
-  // Handle thread reply click
+  // Handle thread reply click - now opens the dialog
   const handleThreadReplyClick = (thread: EmailThread) => {
     setActiveThread(thread);
-    // Scroll to reply panel for better UX
-    const replyPanel = document.getElementById('email-reply-panel');
-    if (replyPanel) {
-      replyPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    setEmailReplyDialogOpen(true);
+    
     toast({
-      title: "Antwort an Thread",
-      description: "Sie antworten auf eine bestehende E-Mail",
+      title: "Antwort vorbereiten",
+      description: "E-Mail-Antwort wird vorbereitet",
     });
+  };
+
+  // Handle email sent from the dialog
+  const handleEmailSent = () => {
+    toast({
+      title: "E-Mail gesendet",
+      description: "Ihre Antwort wurde erfolgreich gesendet.",
+    });
+    setActiveThread(null);
   };
   
   // Clear active thread selection
@@ -162,7 +171,7 @@ const TaskDetail = () => {
     }
   };
 
-  const handleEmailSent = (emailDetails: { recipient: string, subject: string }) => {
+  const handleEmailSentFromCustomerDialog = (emailDetails: { recipient: string, subject: string }) => {
     toast({
       title: "E-Mail gesendet",
       description: `E-Mail wurde erfolgreich an ${emailDetails.recipient} gesendet.`,
@@ -245,12 +254,22 @@ const TaskDetail = () => {
         </div>
       </div>
 
+      {/* Email to customer dialog */}
       <EmailToCustomerDialog
         open={emailToCustomerDialogOpen}
         onOpenChange={setEmailToCustomerDialogOpen}
         taskId={task.id}
         recipientEmail={task.customer?.email || task.endkunde_email}
         taskMessages={messages}
+        onEmailSent={handleEmailSentFromCustomerDialog}
+      />
+
+      {/* New Email reply dialog */}
+      <EmailReplyDialog
+        open={emailReplyDialogOpen}
+        onOpenChange={setEmailReplyDialogOpen}
+        taskId={task.id}
+        thread={activeThread}
         onEmailSent={handleEmailSent}
       />
 

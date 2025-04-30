@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowDownLeft, ArrowUpRight, Paperclip, Reply } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Paperclip, reply } from "lucide-react";
 import { EmailThread } from "@/types";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,7 @@ export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads,
                   className="flex items-center text-blue-600 hover:text-blue-800"
                   onClick={() => onReplyClick(thread)}
                 >
-                  <Reply className="h-4 w-4 mr-1" />
+                  <reply className="h-4 w-4 mr-1" />
                   <span>Antworten</span>
                 </Button>
               )}
