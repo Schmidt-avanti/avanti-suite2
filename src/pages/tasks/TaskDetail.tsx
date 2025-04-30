@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -29,7 +30,7 @@ const TaskDetail = () => {
   const { user } = useAuth();
   const { task, isLoading: taskLoading, fetchTaskDetails: fetchTask } = useTaskDetail(taskId);
   const { messages } = useTaskChatMessages(taskId);
-  const { elapsedTime, formattedTime, isTracking, startTracking, stopTracking } = useTaskTimer(taskId);
+  const { elapsedTime, isTracking, startTracking, stopTracking } = useTaskTimer(taskId);
   const { logTaskClose, logTaskStatusChange } = useTaskActivity();
   const { toast } = useToast();
   
@@ -60,7 +61,8 @@ const TaskDetail = () => {
     navigate('/tasks');
   };
 
-  const formattedTime = task?.created_at 
+  // Format the task creation date for display
+  const taskCreatedDateFormatted = task?.created_at 
     ? format(new Date(task.created_at), 'dd. MMMM yyyy, HH:mm', { locale: de }) 
     : '';
 
@@ -165,7 +167,7 @@ const TaskDetail = () => {
         {/* Task Header */}
         <TaskDetailHeader
           task={task}
-          formattedTime={formattedTime}
+          formattedTime={taskCreatedDateFormatted}
           isUnassigned={isUnassigned}
           user={user}
           canAssignOrForward={canAssignOrForward}
