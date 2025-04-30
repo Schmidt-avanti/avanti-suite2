@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.0";
 import { v4 as uuidv4 } from "https://esm.sh/uuid@9.0.0";
@@ -84,7 +85,7 @@ serve(async (req) => {
         const rawHeaders = data.headers;
         let messageId = null;
         let inReplyTo = null;
-        let references: string[] = [];
+        let references = [];
         
         // Try to extract message_id and in_reply_to from headers
         if (rawHeaders) {
