@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -34,23 +35,14 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
       const { data, error } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
       if (!error && data) {
         // Map Supabase snake_case to our frontend camelCase model and include isActive
-        const formattedCustomers = data.map(customer => ({
+        const mappedCustomers = data.map((customer: any) => ({
           id: customer.id,
           name: customer.name,
-          email: customer.email,
-          street: customer.street,
-          city: customer.city,
-          zip: customer.zip,
-          is_active: customer.is_active,
-          branch: customer.branch,
-          created_at: customer.created_at,
-          cost_center: customer.cost_center,
-          contact_person: customer.contact_person,
-          billing_address: customer.billing_address,
-          billing_email: customer.billing_email,
-          avanti_email: customer.avanti_email
+          branch: customer.industry,
+          createdAt: customer.created_at,
+          isActive: customer.is_active !== false // default to true
         }));
-        setCustomers(formattedCustomers);
+        setCustomers(mappedCustomers);
       }
     };
     fetchCustomers();
@@ -132,7 +124,7 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
             <TableRow key={customer.id} className={!customer.isActive ? "opacity-60" : ""}>
               <TableCell>{customer.name}</TableCell>
               <TableCell>{customer.branch ?? "–"}</TableCell>
-              <TableCell>{customer.created_at ? new Date(customer.created_at).toLocaleDateString() : "–"}</TableCell>
+              <TableCell>{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : "–"}</TableCell>
               <TableCell>{customer.isActive ? "Aktiv" : "Inaktiv"}</TableCell>
               <TableCell>
                 <div className="flex gap-1">

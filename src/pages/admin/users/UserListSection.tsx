@@ -101,19 +101,14 @@ const UserListSection: React.FC<UserListSectionProps> = ({
 
         console.log(`User ${profile.id} has customers:`, userCustomers);
 
-        const fullName = profile["Full Name"] || "";
-        
         return {
           id: profile.id,
           email: emailMap[profile.id] || "",
           role: (profile.role || 'client') as UserRole,
-          fullName: fullName,
-          firstName: fullName.split(' ')[0] || "",
-          lastName: fullName.split(' ')[1] || undefined,
+          firstName: profile["Full Name"] || undefined,
           createdAt: profile.created_at,
           is_active: profile.is_active ?? true,
           customers: userCustomers,
-          name: fullName,
         };
       });
 

@@ -13,10 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@/types";
 import { Loader2 } from "lucide-react";
+import { User } from "@/types";
 
-export interface AssignTaskDialogProps {
+interface AssignTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAssign: (userId: string, note: string) => void;

@@ -55,8 +55,6 @@ const fetchUserProfile = async (userId: string) => {
  */
 const createUserFromSessionAndProfile = (session: Session, profileData: any): User & { role: UserRole } => {
   const role = (profileData.role || "client") as UserRole;
-  const fullName = profileData["Full Name"] || "";
-  const firstName = fullName.split(' ')[0] || "";
   
   // Ensure role is one of our allowed types
   if (!['admin', 'agent', 'client'].includes(role)) {
@@ -68,11 +66,8 @@ const createUserFromSessionAndProfile = (session: Session, profileData: any): Us
     email: session.user.email ?? "",
     role: (['admin', 'agent', 'client'].includes(role) ? role : 'client') as UserRole,
     createdAt: session.user.created_at,
-    fullName: fullName,
-    firstName: firstName,
+    firstName: profileData["Full Name"] || undefined,
     lastName: undefined,
-    avatarUrl: session.user?.user_metadata?.avatar_url || undefined,
-    name: fullName,
   };
 };
 

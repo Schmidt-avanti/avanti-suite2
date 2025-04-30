@@ -34,10 +34,6 @@ const Navbar = () => {
     }
   };
 
-  // Get display name safely
-  const displayName = user?.firstName || user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || '';
-  const userInitial = (displayName?.[0] || '').toUpperCase();
-
   return (
     <header className="sticky top-0 z-20 w-full bg-white border-b border-gray-100 h-16">
       <div className="h-full flex items-center justify-between px-8 sm:px-4">
@@ -109,14 +105,15 @@ const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className={`relative ${isMobile ? 'h-8 w-8 ml-1' : 'h-9 w-9'} bg-gray-100 rounded-full flex items-center justify-center`}>
                     <Avatar className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'}`}>
+                      {/* Conditionally render AvatarImage only if avatarUrl exists */}
                       {user.avatarUrl && (
                         <AvatarImage 
                           src={user.avatarUrl} 
-                          alt={displayName} 
+                          alt={user.firstName || user.email} 
                         />
                       )}
                       <AvatarFallback className="bg-avanti-100 text-avanti-800 text-sm">
-                        {userInitial}
+                        {user.firstName?.charAt(0) || user.email.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -124,7 +121,7 @@ const Navbar = () => {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{displayName}</p>
+                      <p className="text-sm font-medium leading-none">{user.firstName || 'User'}</p>
                       <p className="text-xs leading-none text-muted-foreground">
                         {user.email}
                       </p>

@@ -1,23 +1,15 @@
 
-export type TaskStatus = 'new' | 'in_progress' | 'blocked' | 'completed' | 'followup';
-export type UserRole = 'admin' | 'agent' | 'client';
-export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'assign' | 'comment';
+export type TaskStatus = 'new' | 'in progress' | 'blocked' | 'completed' | 'followup';
 
 export interface Customer {
   id: string;
   name: string;
-  email?: string;
-  street?: string;
-  city?: string;
-  zip?: string;
-  is_active?: boolean;
-  created_at?: string;
   branch?: string;
+  createdAt?: string;
+  isActive?: boolean;
   cost_center?: string;
   contact_person?: string;
   billing_address?: string;
-  billing_email?: string;
-  avanti_email?: string;
 }
 
 export interface Task {
@@ -32,20 +24,17 @@ export interface Task {
   created_by: string;
   creator?: {
     "Full Name": string;
-    id?: string;
   };
   assigned_to: string;
   assignee?: {
     "Full Name": string;
-    id?: string;
   };
   closing_comment: string | null;
   attachments: string[] | null;
   source: string | null;
   endkunde_id: string | null;
   endkunde_email: string | null;
-  from_email?: string;
-  matched_use_case_id?: string | null;
+  from_email?: string; // Added for compatibility with useTasks.ts
 }
 
 export interface TaskActivity {
@@ -57,6 +46,8 @@ export interface TaskActivity {
   status_from: TaskStatus | null;
   status_to: TaskStatus | null;
 }
+
+export type TaskActivityAction = 'create' | 'assign' | 'status_change' | 'open' | 'close';
 
 export interface TaskMessage {
   id: string;
@@ -89,51 +80,52 @@ export interface EmailThread {
   reply_to_id?: string;
 }
 
-export interface Notification {
-  id: string;
-  message: string;
-  user_id: string;
-  task_id?: string;
-  created_at: string;
-  read_at?: string | null;
-}
-
-export interface PaymentMethod {
-  id: string;
-  type: 'paypal' | 'creditcard';  // Using string literals for type safety
-  value: string;
-  active: boolean;
-  customer_id?: string;
-  user_id: string;
-  card_holder?: string;
-  expiry_month?: number;
-  expiry_year?: number;
-  billing_address?: string;
-  billing_zip?: string;
-  billing_city?: string;
-  last_used?: string;
-  created_at: string;
-  updated_at: string;
-}
-
+// Add missing interfaces
 export interface User {
   id: string;
   email: string;
   role: UserRole;
-  fullName: string;  // The primary name field used throughout the app
-  firstName?: string; // Added for compatibility with existing code
-  lastName?: string;
-  avatarUrl?: string; // Added for profile pictures
-  is_active?: boolean;
   createdAt: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   customers?: Customer[];
-  name?: string;     // Added for compatibility with some components
+  is_active?: boolean;
+}
+
+export type UserRole = 'admin' | 'agent' | 'client';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+  task_id?: string;
+}
+
+export interface PaymentMethod {
+  id: string;
+  user_id: string;
+  customer_id?: string;
+  type: string;
+  value: string;
+  active: boolean;
+  last_used?: string;
+  created_at: string;
+  updated_at: string;
+  card_holder?: string;
+  expiry_month?: number;
+  expiry_year?: number;
+  billing_address?: string;
+  billing_city?: string;
+  billing_zip?: string;
 }
 
 export interface TaskTimeSummary {
-  task_id: string;
   user_id: string;
-  session_count: number;
-  total_seconds: number;
+  task_id: string;
   total_hours: number;
+  total_seconds: number;
+  session_count: number;
 }
