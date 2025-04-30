@@ -4,12 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-interface TaskTimerOptions {
-  taskId: string;
-  isActive: boolean;
-}
-
-export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
+export const useTaskTimer = (taskId?: string | null) => {
   const { user } = useAuth();
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isTracking, setIsTracking] = useState(false);
@@ -108,7 +103,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
   // Start tracking time
   const startTracking = async () => {
-    if (!user || isTracking) return;
+    if (!user || isTracking || !taskId) return;
 
     try {
       const { data, error } = await supabase
@@ -180,24 +175,11 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Effect for handling active state changes
-  useEffect(() => {
-    if (isActive && !isTracking && taskId) {
-      startTracking();
-    } else if (!isActive && isTracking) {
-      stopTracking();
-    }
-
-    return () => {
-      if (isTracking) {
-        stopTracking();
-      }
-    };
-  }, [isActive, taskId]);
-
   return {
     elapsedTime,
     formattedTime: formatTime(elapsedTime),
-    isTracking
+    isTracking,
+    startTracking,
+    stopTracking
   };
 };

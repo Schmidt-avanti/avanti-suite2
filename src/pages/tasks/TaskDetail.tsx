@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -28,10 +27,10 @@ const TaskDetail = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { task, loading: taskLoading, fetchTask } = useTaskDetail(taskId);
+  const { task, isLoading: taskLoading, fetchTaskDetails: fetchTask } = useTaskDetail(taskId);
   const { messages } = useTaskChatMessages(taskId);
-  const { startTaskTimer, endTaskTimer } = useTaskTimer();
-  const { logTaskClose, logTaskAssign } = useTaskActivity();
+  const { elapsedTime, formattedTime, isTracking, startTracking, stopTracking } = useTaskTimer(taskId);
+  const { logTaskClose, logTaskStatusChange } = useTaskActivity();
   const { toast } = useToast();
   
   // Add state for email-related functionality
@@ -49,13 +48,13 @@ const TaskDetail = () => {
 
   useEffect(() => {
     if (taskId && user) {
-      startTaskTimer(taskId);
+      startTracking();
     }
     
     return () => {
-      if (taskId) endTaskTimer(taskId);
+      if (taskId) stopTracking();
     };
-  }, [taskId, user, startTaskTimer, endTaskTimer]);
+  }, [taskId, user, startTracking, stopTracking]);
 
   const handleBack = () => {
     navigate('/tasks');
@@ -78,8 +77,6 @@ const TaskDetail = () => {
         .eq('id', taskId);
 
       if (error) throw error;
-
-      await logTaskAssign(taskId, null, user.id);
       
       toast({
         title: "Aufgabe zugewiesen",
@@ -229,11 +226,10 @@ const TaskDetail = () => {
         />
       )}
 
-      {/* Assignment, Forward, Close, and Follow-Up Dialogs */}
+      {/* Assignment Dialog */}
       <AssignTaskDialog
         open={assignTaskDialogOpen}
         onOpenChange={setAssignTaskDialogOpen}
-        taskId={taskId}
         onAssigned={fetchTask}
       />
       
