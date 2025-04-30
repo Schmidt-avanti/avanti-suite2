@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { send, Loader2, Paperclip, X, AlertTriangle } from "lucide-react";
+import { Send, Loader2, Paperclip, X, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { SpellChecker } from "@/components/ui/spell-checker";
@@ -383,7 +383,7 @@ export function EmailReplyDialog({
               </>
             ) : (
               <>
-                <send className="h-4 w-4 mr-2" />
+                <Send className="h-4 w-4 mr-2" />
                 Senden
               </>
             )}
