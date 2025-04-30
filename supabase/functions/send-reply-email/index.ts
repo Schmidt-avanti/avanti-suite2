@@ -25,12 +25,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     );
 
-    // Get task details with customer information
+    // Get task details with customer information - Now explicitly query for avanti_email
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select(`
         *,
-        customer:customers(name, email),
+        customer:customers(name, email, avanti_email),
         inbound_email:source_email_id (
           from_email,
           subject
@@ -53,19 +53,30 @@ serve(async (req) => {
     // Get the verified domain or fallback to a default
     const verifiedDomain = Deno.env.get('SENDGRID_VERIFIED_DOMAIN') || 'inbox.avanti.cx';
     
-    // Create a safe sender name by removing special characters and spaces
-    let safeSenderName = (task.customer?.name || 'support')
-      .toLowerCase()
-      .replace(/[^\w.-]/g, '-')
-      .replace(/--+/g, '-')
-      .substring(0, 30);
+    // NEW LOGIC: Prioritize using the stored avanti_email if available
+    let senderEmail;
     
-    if (!safeSenderName || safeSenderName.length < 2) {
-      safeSenderName = 'support';
+    // Check if customer has avanti_email and use it
+    if (task.customer?.avanti_email) {
+      senderEmail = task.customer.avanti_email;
+      console.log(`Using stored avanti_email: ${senderEmail}`);
+    } else {
+      // Fall back to dynamic generation only if no avanti_email exists
+      // Create a safe sender name by removing special characters and spaces
+      let safeSenderName = (task.customer?.name || 'support')
+        .toLowerCase()
+        .replace(/[^\w.-]/g, '-')
+        .replace(/--+/g, '-')
+        .substring(0, 30);
+      
+      if (!safeSenderName || safeSenderName.length < 2) {
+        safeSenderName = 'support';
+      }
+      
+      // Create a dynamic sender email from the verified domain
+      senderEmail = `${safeSenderName}@${verifiedDomain}`;
+      console.log(`No avanti_email found, using generated email: ${senderEmail}`);
     }
-    
-    // Create a dynamic sender email from the verified domain
-    const senderEmail = `${safeSenderName}@${verifiedDomain}`;
     
     // Use task title in subject or fallback
     const emailSubject = subject || `Re: ${task.title || 'Ihre Anfrage'}`;
