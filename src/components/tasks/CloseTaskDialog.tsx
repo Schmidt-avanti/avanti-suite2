@@ -38,7 +38,6 @@ export function CloseTaskDialog({ open, onOpenChange, onClose }: CloseTaskDialog
           <DialogTitle>Aufgabe abschließen ohne Ava</DialogTitle>
           <DialogDescription>
             Bitte dokumentieren Sie den Kundenkontakt, um die Aufgabe abzuschließen.
-            Sie werden danach automatisch zur nächsten verfügbaren Aufgabe weitergeleitet.
           </DialogDescription>
         </DialogHeader>
         
