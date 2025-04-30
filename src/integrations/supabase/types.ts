@@ -235,7 +235,6 @@ export type Database = {
         Row: {
           adresse: string
           created_at: string
-          customer_id: string
           email: string | null
           external_id: string | null
           gebaeude: string | null
@@ -253,7 +252,6 @@ export type Database = {
         Insert: {
           adresse: string
           created_at?: string
-          customer_id: string
           email?: string | null
           external_id?: string | null
           gebaeude?: string | null
@@ -271,7 +269,6 @@ export type Database = {
         Update: {
           adresse?: string
           created_at?: string
-          customer_id?: string
           email?: string | null
           external_id?: string | null
           gebaeude?: string | null
@@ -286,15 +283,7 @@ export type Database = {
           vorname?: string | null
           wohnung?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "endkunden_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       inbound_emails: {
         Row: {

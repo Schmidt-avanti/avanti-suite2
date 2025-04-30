@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { SpellChecker } from '@/components/ui/spell-checker';
 import { v4 as uuidv4 } from "uuid";
+import { EmailConfirmationBubble } from './EmailConfirmationBubble';
 
 interface EmailReplyPanelProps {
   taskId: string;
@@ -20,6 +20,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
   const [sendError, setSendError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -125,6 +126,9 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       if (data?.error) {
         throw new Error(data.error);
       }
+
+      // Show the confirmation bubble
+      setShowConfirmation(true);
 
       toast({
         title: 'E-Mail gesendet',
@@ -276,6 +280,9 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
             ></div>
           </div>
         )}
+
+        {/* Email Confirmation Bubble */}
+        <EmailConfirmationBubble visible={showConfirmation} />
         
         <Button
           className="w-fit bg-blue-600 hover:bg-blue-700 text-white self-start"
