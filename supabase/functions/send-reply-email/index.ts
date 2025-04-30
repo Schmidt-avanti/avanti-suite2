@@ -82,6 +82,8 @@ serve(async (req) => {
     
     // If there's an in_reply_to value (which should be a thread_id), fetch that thread's message_id
     let referencedMessageId: string | null = null;
+    let replyToThreadUuid: string | null = in_reply_to || null;
+    
     if (in_reply_to) {
       const { data: previousThread, error: threadError } = await supabase
         .from('email_threads')
@@ -181,6 +183,9 @@ serve(async (req) => {
     
     console.log('Email sent successfully to:', recipient_email);
     
+    // Generate a new thread ID for this email
+    const newThreadId = uuidv4();
+    
     // Store the email thread for future reference
     const { data: threadData, error: threadError } = await supabase
       .from('email_threads')
@@ -193,8 +198,8 @@ serve(async (req) => {
         content: body,
         attachments: attachments.length > 0 ? attachments : null,
         message_id: messageId,
-        reply_to_id: in_reply_to || null, // Store the thread_id (UUID) as reply_to_id
-        thread_id: uuidv4() // Generate a new thread ID
+        reply_to_id: replyToThreadUuid, // Store the thread_id (UUID) as reply_to_id
+        thread_id: newThreadId // Generate a new thread ID
       })
       .select();
       

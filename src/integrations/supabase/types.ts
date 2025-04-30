@@ -301,10 +301,12 @@ export type Database = {
           from_email: string
           from_name: string | null
           id: string
+          in_reply_to: string | null
           message_id: string | null
           processed: boolean
           raw_headers: string | null
           received_at: string
+          reference_ids: string | null
           subject: string | null
           to_emails: string[]
         }
@@ -315,10 +317,12 @@ export type Database = {
           from_email: string
           from_name?: string | null
           id?: string
+          in_reply_to?: string | null
           message_id?: string | null
           processed?: boolean
           raw_headers?: string | null
           received_at?: string
+          reference_ids?: string | null
           subject?: string | null
           to_emails: string[]
         }
@@ -329,10 +333,12 @@ export type Database = {
           from_email?: string
           from_name?: string | null
           id?: string
+          in_reply_to?: string | null
           message_id?: string | null
           processed?: boolean
           raw_headers?: string | null
           received_at?: string
+          reference_ids?: string | null
           subject?: string | null
           to_emails?: string[]
         }
