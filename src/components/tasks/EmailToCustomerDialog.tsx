@@ -1,5 +1,7 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -8,52 +10,57 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Send, Loader2, Paperclip, X, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { AlertTriangle, Loader2, Paperclip, Mail, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { SpellChecker } from "@/components/ui/spell-checker";
 import { v4 as uuidv4 } from "uuid";
+import { EmailThread } from "@/types";
 
 interface EmailToCustomerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   taskId: string;
-  customerName?: string;
-  endkundeEmail?: string | null;
-  onEmailSent: () => void;
+  recipientEmail: string | undefined;
+  taskMessages: any[] | null;
+  onEmailSent: (emailDetails: { recipient: string; subject: string }) => void;
 }
 
 export function EmailToCustomerDialog({
   open,
   onOpenChange,
   taskId,
-  customerName,
-  endkundeEmail,
+  recipientEmail,
+  taskMessages,
   onEmailSent,
 }: EmailToCustomerDialogProps) {
-  const [recipient, setRecipient] = useState(endkundeEmail || "");
+  const [recipient, setRecipient] = useState(recipientEmail || "");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [includeHistory, setIncludeHistory] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [sendError, setSendError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Reset form when dialog opens
-  React.useEffect(() => {
+  // Reset form when dialog opens/closes
+  useEffect(() => {
     if (open) {
-      setRecipient(endkundeEmail || "");
+      setRecipient(recipientEmail || "");
       setSubject("");
       setBody("");
+      setIncludeHistory(false);
       setAttachments([]);
-      setSendError(null);
+      setError(null);
       setUploadProgress(0);
     }
-  }, [open, endkundeEmail]);
+  }, [open, recipientEmail]);
+
+  const recipientMinLength = 5; // Basic validation for email
+  const subjectMinLength = 3;
+  const bodyMinLength = 10;
 
   const handleClose = () => {
     onOpenChange(false);
@@ -70,6 +77,14 @@ export function EmailToCustomerDialog({
     const newAttachments = [...attachments];
     newAttachments.splice(index, 1);
     setAttachments(newAttachments);
+  };
+
+  const addChatHistoryToBody = () => {
+    if (includeHistory && taskMessages && taskMessages.length > 0) {
+      // Include placeholder that will be replaced by the edge function
+      return `${body}\n\n---------- Chat-Verlauf ----------`;
+    }
+    return body;
   };
 
   const uploadAttachments = async (): Promise<string[]> => {
@@ -118,83 +133,81 @@ export function EmailToCustomerDialog({
     }
   };
 
-  const handleSendEmail = async () => {
-    if (!body) {
-      toast({
-        variant: 'destructive',
-        title: 'Fehler',
-        description: 'Bitte Nachricht angeben.'
-      });
+  const handleSend = async () => {
+    setError(null);
+
+    // Validation
+    if (!recipient || recipient.trim().length < recipientMinLength) {
+      setError("Bitte geben Sie eine gültige E-Mail-Adresse ein.");
+      return;
+    }
+
+    if (!subject || subject.trim().length < subjectMinLength) {
+      setError("Bitte geben Sie einen Betreff ein.");
+      return;
+    }
+
+    if (!body || body.trim().length < bodyMinLength) {
+      setError("Bitte geben Sie eine Nachricht ein.");
       return;
     }
 
     try {
       setIsSending(true);
-      setSendError(null);
-      setUploadProgress(0);
-      
-      // Upload attachments if any
-      let attachmentUrls: string[] = [];
-      if (attachments.length > 0) {
-        setUploadProgress(5);
-        console.log(`Uploading ${attachments.length} attachments...`);
-        attachmentUrls = await uploadAttachments();
-        console.log(`Uploaded ${attachmentUrls.length} attachments successfully:`, attachmentUrls);
-      }
-      
+
+      // Upload attachments first
+      setUploadProgress(5);
+      console.log(`Uploading ${attachments.length} attachments...`);
+      const attachmentUrls = await uploadAttachments();
+      console.log(`Uploaded ${attachmentUrls.length} attachments successfully:`, attachmentUrls);
+
       setUploadProgress(80);
-      
-      const { data, error } = await supabase.functions.invoke('send-customer-email', {
+
+      // Prepare the email body with optional chat history
+      const emailBody = addChatHistoryToBody();
+
+      // Send email via edge function
+      const { data, error } = await supabase.functions.invoke("send-reply-email", {
         body: {
           task_id: taskId,
           recipient_email: recipient,
           subject: subject,
-          body: body,
-          attachments: attachmentUrls
-        }
+          body: emailBody,
+          attachments: attachmentUrls,
+        },
       });
 
       setUploadProgress(100);
 
-      if (error) {
-        throw new Error(error.message || 'Fehler beim E-Mail Versand');
-      }
-      
-      if (data?.error) {
-        throw new Error(data.error);
+      if (error || data?.error) {
+        console.error("Error response from function:", error || data?.error);
+        throw new Error(
+          error?.message || data?.error || "Fehler beim Senden der E-Mail"
+        );
       }
 
       toast({
-        title: 'E-Mail gesendet',
-        description: `E-Mail an ${recipient} wurde erfolgreich gesendet.`,
+        title: "E-Mail gesendet",
+        description: `Die E-Mail wurde erfolgreich an ${recipient} gesendet.`,
       });
-      
-      // Close dialog and notify parent component
+
+      // Notify parent component
+      onEmailSent({ recipient, subject });
+
+      // Close dialog
       handleClose();
-      onEmailSent();
-      
     } catch (error: any) {
-      console.error('Email sending error:', error);
-      const errorMessage = error.message || 'Fehler beim E-Mail Versand';
-      
-      // More specific error handling
-      let userErrorMessage = errorMessage;
-      
-      // Check for common SendGrid errors
-      if (errorMessage.includes('verified Sender Identity') || errorMessage.includes('does not match a verified')) {
-        userErrorMessage = 'Der Domain des Absenders ist nicht verifiziert. Bitte kontaktieren Sie den Administrator.';
-      } else if (errorMessage.includes('rate limit')) {
-        userErrorMessage = 'SendGrid Ratelimit erreicht. Bitte versuchen Sie es später erneut.';
-      } else if (errorMessage.includes('blocked')) {
-        userErrorMessage = 'Der Empfänger hat E-Mails von dieser Domain blockiert.';
-      }
-      
-      setSendError(userErrorMessage);
-      
+      console.error("Email sending error:", error);
+      setError(
+        error.message ||
+          "Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut."
+      );
+
       toast({
-        variant: 'destructive',
-        title: 'Fehler beim Senden',
-        description: 'E-Mail konnte nicht gesendet werden. Details finden Sie im Dialog.',
+        variant: "destructive",
+        title: "Fehler beim Senden",
+        description:
+          "E-Mail konnte nicht gesendet werden. Details finden Sie im Formular.",
       });
     } finally {
       setIsSending(false);
@@ -204,24 +217,19 @@ export function EmailToCustomerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>E-Mail an Kunde</DialogTitle>
-          {customerName && (
-            <DialogDescription>
-              {customerName}
-            </DialogDescription>
-          )}
+          <DialogDescription>
+            Senden Sie eine E-Mail direkt an den Kunden.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="py-4 space-y-4">
-          {sendError && (
+          {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm flex items-start">
               <AlertTriangle className="h-4 w-4 mt-0.5 mr-2 flex-shrink-0" />
-              <div>
-                <p className="font-medium">Fehler beim Senden</p>
-                <p className="mt-1">{sendError}</p>
-              </div>
+              <div>{error}</div>
             </div>
           )}
 
@@ -234,7 +242,7 @@ export function EmailToCustomerDialog({
               type="email"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
-              placeholder="empfänger@beispiel.de"
+              placeholder="kunde@beispiel.de"
               disabled={isSending}
             />
           </div>
@@ -279,14 +287,14 @@ export function EmailToCustomerDialog({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => document.getElementById("dialog-file-upload")?.click()}
+                onClick={() => document.getElementById("file-upload")?.click()}
                 disabled={isSending}
               >
                 <Paperclip className="h-4 w-4 mr-2" />
                 Datei hinzufügen
               </Button>
               <input
-                id="dialog-file-upload"
+                id="file-upload"
                 type="file"
                 multiple
                 onChange={handleFileChange}
@@ -326,6 +334,27 @@ export function EmailToCustomerDialog({
               </div>
             )}
           </div>
+
+          <div className="flex items-center space-x-2 pt-2">
+            <input
+              type="checkbox"
+              id="include-history"
+              checked={includeHistory}
+              onChange={(e) => setIncludeHistory(e.target.checked)}
+              disabled={isSending || !taskMessages || taskMessages.length === 0}
+              className="rounded border-gray-300"
+            />
+            <Label
+              htmlFor="include-history"
+              className={`text-sm ${
+                !taskMessages || taskMessages.length === 0
+                  ? "text-gray-400"
+                  : ""
+              }`}
+            >
+              Chat-Verlauf in die E-Mail einfügen
+            </Label>
+          </div>
         </div>
 
         {uploadProgress > 0 && (
@@ -342,8 +371,8 @@ export function EmailToCustomerDialog({
             Abbrechen
           </Button>
           <Button
-            onClick={handleSendEmail}
-            disabled={isSending || !recipient || !body}
+            onClick={handleSend}
+            disabled={isSending || !recipient || !subject || !body}
           >
             {isSending ? (
               <>
@@ -352,7 +381,7 @@ export function EmailToCustomerDialog({
               </>
             ) : (
               <>
-                <Send className="h-4 w-4 mr-2" />
+                <Mail className="h-4 w-4 mr-2" />
                 Senden
               </>
             )}

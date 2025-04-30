@@ -1,109 +1,113 @@
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Calendar } from '@/components/ui/calendar';
-import { Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+} from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
+import { Calendar as CalendarIcon, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface FollowUpDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSchedule: (date: Date) => void;
+  onSave: (date: Date) => void;
 }
 
-export function FollowUpDialog({ open, onOpenChange, onSchedule }: FollowUpDialogProps) {
-  const [date, setDate] = useState<Date | undefined>(
-    new Date(new Date().setHours(9, 0, 0, 0) + 24 * 60 * 60 * 1000) // Tomorrow at 9:00
-  );
-  const [hour, setHour] = useState("9");
-  const [minute, setMinute] = useState("00");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export function FollowUpDialog({ open, onOpenChange, onSave }: FollowUpDialogProps) {
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [hour, setHour] = useState<string>("9");
+  const [minute, setMinute] = useState<string>("00");
 
-  const handleSchedule = async () => {
-    if (!date) return;
+  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
+  const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, "0"));
+
+  const handleSave = () => {
+    if (!date) {
+      console.error("Cannot create follow-up: No date selected");
+      return;
+    }
     
-    setIsSubmitting(true);
     try {
-      // Create a new date with the selected time
-      const scheduledDate = new Date(date);
-      scheduledDate.setHours(parseInt(hour), parseInt(minute), 0, 0);
+      const followUpDate = new Date(date);
+      followUpDate.setHours(parseInt(hour), parseInt(minute), 0, 0);
       
-      await onSchedule(scheduledDate);
+      console.log("Creating follow-up with date:", followUpDate);
+      onSave(followUpDate);
       onOpenChange(false);
     } catch (error) {
-      console.error('Error scheduling follow-up:', error);
-    } finally {
-      setIsSubmitting(false);
+      console.error("Error creating follow-up date:", error);
     }
   };
 
-  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
-  const minutes = ['00', '15', '30', '45'];
-
-  const resetAndClose = (newOpenState: boolean) => {
-    if (!newOpenState) {
-      // Reset only when closing, not when opening
-      const tomorrow = new Date(new Date().setHours(9, 0, 0, 0) + 24 * 60 * 60 * 1000);
+  // Reset the form when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      // Set default values for new follow-up (next business day at 9:00)
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
       setDate(tomorrow);
       setHour("9");
       setMinute("00");
     }
-    onOpenChange(newOpenState);
-  };
+  }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={resetAndClose}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Wiedervorlage planen</DialogTitle>
+          <DialogTitle>Wiedervorlage erstellen</DialogTitle>
+          <DialogDescription>
+            Wählen Sie Datum und Uhrzeit für die Wiedervorlage.
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-4">
+        
+        <div className="py-4 space-y-6">
           <div className="space-y-2">
-            <Label>Datum auswählen</Label>
+            <Label>Datum</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
-                  variant={"outline"}
+                  variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
                     !date && "text-muted-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP", { locale: de }) : <span>Datum wählen</span>}
+                  {date ? format(date, 'PPP', { locale: de }) : <span>Datum wählen</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
                   selected={date}
                   onSelect={setDate}
-                  disabled={(date) => date < new Date()}
                   initialFocus
                   locale={de}
                 />
               </PopoverContent>
             </Popover>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          
+          <div className="flex items-end gap-4">
             <div className="space-y-2">
               <Label>Stunde</Label>
-              <Select value={hour} onValueChange={setHour}>
-                <SelectTrigger>
+              <Select 
+                value={hour}
+                onValueChange={setHour}
+              >
+                <SelectTrigger className="w-[100px]">
                   <SelectValue placeholder="Stunde" />
                 </SelectTrigger>
                 <SelectContent>
@@ -115,10 +119,14 @@ export function FollowUpDialog({ open, onOpenChange, onSchedule }: FollowUpDialo
                 </SelectContent>
               </Select>
             </div>
+            
             <div className="space-y-2">
               <Label>Minute</Label>
-              <Select value={minute} onValueChange={setMinute}>
-                <SelectTrigger>
+              <Select 
+                value={minute}
+                onValueChange={setMinute}
+              >
+                <SelectTrigger className="w-[100px]">
                   <SelectValue placeholder="Minute" />
                 </SelectTrigger>
                 <SelectContent>
@@ -130,37 +138,28 @@ export function FollowUpDialog({ open, onOpenChange, onSchedule }: FollowUpDialo
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="flex items-center justify-start mt-2">
-            <Clock className="h-4 w-4 mr-2 text-gray-400" />
-            <span className="text-sm text-gray-500">
-              Geplante Zeit: {hour}:{minute} Uhr
-            </span>
+            
+            <Button
+              variant="outline"
+              size="icon"
+              className="mb-0.5"
+              onClick={() => {
+                // Set to current time
+                const now = new Date();
+                setHour(now.getHours().toString().padStart(2, "0"));
+                setMinute((Math.floor(now.getMinutes() / 5) * 5).toString().padStart(2, "0"));
+              }}
+            >
+              <Clock className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-
+        
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => resetAndClose(false)}
-            disabled={isSubmitting}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Abbrechen
           </Button>
-          <Button
-            onClick={handleSchedule}
-            disabled={isSubmitting || !date}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Wird geplant...
-              </>
-            ) : (
-              "Wiedervorlage planen"
-            )}
-          </Button>
+          <Button onClick={handleSave}>Speichern</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

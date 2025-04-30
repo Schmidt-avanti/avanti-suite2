@@ -1,90 +1,83 @@
+
 import { useState, useEffect } from 'react';
+import { EmailThread } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-import { EmailThread, Json } from '@/types';
+import { toast } from '@/components/ui/use-toast';
 
-// Helper function to ensure attachments are handled correctly
-const normalizeThreadData = (data: any[]): EmailThread[] => {
-  console.log("Normalizing thread data:", data);
-  
-  return data.map(thread => {
-    console.log("Processing thread:", thread.id, "attachments:", thread.attachments);
-    
-    return {
-      ...thread,
-      // Keep attachments as they are, they'll be processed in the component
-      attachments: thread.attachments
-    };
-  });
-};
-
-export const useEmailThreads = (taskId?: string) => {
+export const useEmailThreads = (taskId: string | null) => {
   const [threads, setThreads] = useState<EmailThread[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  
   useEffect(() => {
-    if (!taskId) {
-      setThreads([]);
-      setLoading(false);
-      return;
-    }
-
-    console.log("Fetching email threads for task:", taskId);
-    
-    const fetchEmailThreads = async () => {
+    const fetchThreads = async () => {
+      if (!taskId) {
+        setThreads([]);
+        setLoading(false);
+        return;
+      }
+      
       try {
         setLoading(true);
-        setError(null);
-
         const { data, error } = await supabase
           .from('email_threads')
           .select('*')
           .eq('task_id', taskId)
           .order('created_at', { ascending: false });
-
+          
         if (error) throw error;
-
-        console.log("Raw email threads data:", data);
         
-        const normalizedData = normalizeThreadData(data || []);
-        console.log("Normalized email threads:", normalizedData);
-        
-        setThreads(normalizedData);
-      } catch (err: any) {
-        console.error('Error fetching email threads:', err);
-        setError(err.message);
-        setThreads([]);
+        // Type validation and casting
+        if (data) {
+          const typedThreads = data.map(thread => {
+            // Ensure direction is either "inbound" or "outbound"
+            const direction = thread.direction === 'inbound' ? 'inbound' : 'outbound';
+            
+            return {
+              ...thread,
+              direction
+            } as EmailThread;
+          });
+          
+          setThreads(typedThreads);
+        } else {
+          setThreads([]);
+        }
+      } catch (error: any) {
+        console.error('Error fetching email threads:', error);
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "E-Mail-Verlauf konnte nicht geladen werden.",
+        });
       } finally {
         setLoading(false);
       }
     };
-
-    fetchEmailThreads();
-  }, [taskId]);
-
-  const refreshThreads = async () => {
-    if (!taskId) return;
     
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error } = await supabase
-        .from('email_threads')
-        .select('*')
-        .eq('task_id', taskId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      setThreads(normalizeThreadData(data || []));
-    } catch (err: any) {
-      console.error('Error refreshing email threads:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { threads, loading, error, refreshThreads };
+    fetchThreads();
+    
+    // Set up a real-time subscription for email_threads
+    const subscription = supabase
+      .channel('email_threads_changes')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'email_threads',
+          filter: `task_id=eq.${taskId}`
+        },
+        (payload) => {
+          console.log('Real-time update on email_threads:', payload);
+          fetchThreads(); // Refetch threads when there's an update
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [taskId]);
+  
+  return { threads, loading };
 };
