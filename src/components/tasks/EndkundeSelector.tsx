@@ -46,10 +46,10 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
       try {
         setIsLoading(true);
-        // Using correct column names with capital letters as they exist in the database
+        // Using column names individually to avoid special character parsing issues
         const { data, error } = await supabase
           .from('endkunden')
-          .select('id, Nachname, Vorname, Adresse, Wohnung, Gebäude, Lage, Postleitzahl, Ort')
+          .select('id, "Nachname", "Vorname", "Adresse", "Wohnung", "Gebäude", "Lage", "Postleitzahl", "Ort"')
           .eq('customer_ID', customerId)
           .order('Nachname', { ascending: true });
 
