@@ -1,25 +1,13 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { 
-  ChevronLeft, 
-  Mail, 
-  Clock, 
-  Calendar, 
-  CheckCircle, 
-  UserPlus, 
-  Share, 
-  MoreVertical 
+  ArrowLeft, Clock, CheckCircle, Calendar, Mail, 
+  UserPlus, Forward, X
 } from "lucide-react";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { TaskStatusBadge } from './TaskStatusBadge';
-import { TaskStatus } from '@/types';
+import type { TaskStatus } from '@/types';
+import { cn } from "@/lib/utils";
 
 interface TaskDetailHeaderProps {
   task: any;
@@ -50,113 +38,116 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   setFollowUpDialogOpen,
   setCloseTaskDialogOpen,
   setEmailToCustomerDialogOpen,
-  handleStatusChange,
+  handleStatusChange
 }) => {
+  const isEmailTask = task.source === 'email';
+  const isCompleted = task.status === 'completed';
+  
   return (
-    <Card className="border-0 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex flex-col md:flex-row justify-between gap-4">
-          {/* Back button and title */}
-          <div className="flex flex-col space-y-2">
-            <Button
-              variant="link"
-              className="flex items-center pl-0 w-fit text-blue-500 hover:text-blue-600"
-              onClick={handleBack}
-            >
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Zurück zur Aufgabenliste
-            </Button>
-            <h1 className="text-xl font-semibold text-gray-900 leading-tight flex items-center">
-              <span className="text-gray-500 font-normal mr-2">#{task.readable_id}</span>
-              {task.title}
-            </h1>
-            <div className="flex items-center gap-2 flex-wrap text-sm text-gray-500">
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 mr-1" />
-                {formattedTime}
-              </div>
-              <div className="h-1 w-1 bg-gray-300 rounded-full mx-1"></div>
-              <div>
-                Kunde: <span className="font-medium text-gray-700">{task.customer?.name}</span>
-              </div>
-              <div className="h-1 w-1 bg-gray-300 rounded-full mx-1"></div>
-              <TaskStatusBadge status={task.status} />
-            </div>
+    <div className="bg-blue-50 p-4 rounded-t-xl flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        {/* Left section with back button, status and timer */}
+        <div className="flex items-center">
+          <Button
+            onClick={handleBack}
+            variant="ghost"
+            className="text-gray-600 hover:bg-gray-100 mr-2"
+          >
+            <ArrowLeft className="h-5 w-5 mr-1" />
+            Zurück zur Übersicht
+          </Button>
+          
+          <div className="flex items-center text-gray-500 ml-4">
+            <Clock className="h-4 w-4 mr-1" />
+            <span className="text-sm font-medium">{formattedTime}</span>
           </div>
-
-          {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 items-center">
-            {/* Email to customer button */}
-            <Button
-              variant="outline"
-              onClick={() => setEmailToCustomerDialogOpen(true)}
-              className="flex items-center"
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              E-Mail an Kunde
-            </Button>
-
-            {/* Assignment actions */}
-            {isUnassigned ? (
-              <Button
-                onClick={handleAssignToMe}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Mir zuweisen
-              </Button>
-            ) : (
-              canAssignOrForward && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <Share className="h-4 w-4 mr-2" />
-                      Weiterleiten
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setAssignTaskDialogOpen(true)}>
-                      An Mitarbeiter zuweisen
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )
-            )}
-
-            {/* Status actions */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <MoreVertical className="h-4 w-4 mr-2" />
-                  Aktionen
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {task.status !== 'completed' && (
-                  <>
-                    <DropdownMenuItem onClick={() => handleStatusChange('in progress')}>
-                      In Bearbeitung setzen
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setFollowUpDialogOpen(true)}>
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Wiedervorlage planen
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setCloseTaskDialogOpen(true)}>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Aufgabe abschließen
-                    </DropdownMenuItem>
-                  </>
-                )}
-                {task.status === 'completed' && (
-                  <DropdownMenuItem onClick={() => handleStatusChange('in progress')}>
-                    Aufgabe wieder öffnen
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          
+          <TaskStatusBadge status={task.status as TaskStatus} className="ml-4" />
+          
+          {/* Removed readable_id display from here */}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      
+      {/* Action buttons row - all in one row */}
+      <div className="flex flex-wrap gap-2 mt-1 justify-end">
+        {/* Follow up button */}
+        <Button 
+          variant="outline" 
+          className="bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200"
+          onClick={() => setFollowUpDialogOpen(true)}
+        >
+          <Calendar className="h-4 w-4 mr-2" />
+          Wiedervorlage
+        </Button>
+        
+        {/* "Beenden ohne Ava" button */}
+        <Button 
+          variant="outline" 
+          className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
+          onClick={() => setCloseTaskDialogOpen(true)}
+        >
+          <X className="h-4 w-4 mr-2" />
+          Beenden ohne Ava
+        </Button>
+        
+        {/* "Aufgabe abschließen" button - only hidden for completed tasks */}
+        {!isCompleted && (
+          <Button 
+            variant="outline" 
+            className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
+            onClick={() => handleStatusChange('completed' as TaskStatus)}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Aufgabe abschließen
+          </Button>
+        )}
+        
+        {/* Email button */}
+        <Button
+          variant="outline"
+          className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
+          onClick={() => setEmailToCustomerDialogOpen(true)}
+        >
+          <Mail className="h-4 w-4 mr-2" />
+          E-Mail an Kunde
+        </Button>
+        
+        {/* Assignment buttons - only show for email tasks and non-completed tasks */}
+        {isEmailTask && isUnassigned && user && !isCompleted && (
+          <Button
+            variant="outline"
+            className="bg-white text-green-600 border-green-200 hover:bg-green-50"
+            onClick={handleAssignToMe}
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Mir zuweisen
+          </Button>
+        )}
+        
+        {/* Forward button - moved here to be in the same line */}
+        {canAssignOrForward && (
+          <Button
+            variant="outline"
+            className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
+            onClick={() => setForwardTaskDialogOpen(true)}
+          >
+            <Forward className="h-4 w-4 mr-2" />
+            Weiterleiten
+          </Button>
+        )}
+        
+        {/* Assign button - only show for email tasks and non-completed tasks */}
+        {isEmailTask && canAssignOrForward && !isCompleted && (
+          <Button 
+            variant="outline" 
+            className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
+            onClick={() => setAssignTaskDialogOpen(true)}
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Zuweisen
+          </Button>
+        )}
+      </div>
+    </div>
   );
 };

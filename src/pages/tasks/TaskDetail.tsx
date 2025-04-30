@@ -5,14 +5,15 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
+import { useTaskChatMessages } from '@/hooks/useTaskChatMessages';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
 import { TaskChat } from '@/components/tasks/TaskChat';
-import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory';
-import { EmailReplyDialog } from '@/components/tasks/EmailReplyDialog';
+import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory'; // Add EmailThreadHistory import
+import { EmailReplyDialog } from '@/components/tasks/EmailReplyDialog'; // Add EmailReplyDialog import
 import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog';
 import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
 import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
@@ -20,32 +21,25 @@ import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useTaskActivity } from '@/hooks/useTaskActivity';
 import { useTaskTimer } from '@/hooks/useTaskTimer';
-import { TaskStatus, EmailThread } from '@/types';
+import { TaskStatus } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 
 const TaskDetail = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { 
-    task, 
-    isLoading: taskLoading, 
-    fetchTaskDetails 
-  } = useTaskDetail(taskId, user);
-  const { 
-    startTimer: startTaskTimer, 
-    endTimer: endTaskTimer 
-  } = useTaskTimer();
-  const { logTaskStatusChange, logTaskClose } = useTaskActivity();
+  const { task, loading: taskLoading, fetchTask } = useTaskDetail(taskId);
+  const { startTaskTimer, endTaskTimer } = useTaskTimer();
+  const { logTaskClose, logTaskAssign } = useTaskActivity();
   const { toast } = useToast();
   
   // Add state for email-related functionality
-  const [selectedEmailThread, setSelectedEmailThread] = useState<EmailThread | null>(null);
+  const [selectedEmailThread, setSelectedEmailThread] = useState(null);
   const [emailReplyDialogOpen, setEmailReplyDialogOpen] = useState(false);
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
   
   // Get email threads for this task
-  const { threads, loading: threadsLoading, refreshThreads } = useEmailThreads(taskId);
+  const { threads, loading: threadsLoading } = useEmailThreads(taskId);
   
   const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
   const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
@@ -54,11 +48,11 @@ const TaskDetail = () => {
 
   useEffect(() => {
     if (taskId && user) {
-      startTaskTimer(taskId, user.id);
+      startTaskTimer(taskId);
     }
     
     return () => {
-      if (taskId && user?.id) endTaskTimer(taskId, user.id);
+      if (taskId) endTaskTimer(taskId);
     };
   }, [taskId, user, startTaskTimer, endTaskTimer]);
 
@@ -83,26 +77,15 @@ const TaskDetail = () => {
         .eq('id', taskId);
 
       if (error) throw error;
-      
-      // Log activity - we'll update this
-      const { error: activityError } = await supabase
-        .from('task_activities')
-        .insert({
-          task_id: taskId,
-          user_id: user.id,
-          action: 'assign',
-          status_from: task?.status || 'new',
-          status_to: task?.status || 'new'
-        });
-        
-      if (activityError) console.error("Failed to log activity:", activityError);
+
+      await logTaskAssign(taskId, null, user.id);
       
       toast({
         title: "Aufgabe zugewiesen",
         description: "Die Aufgabe wurde Ihnen zugewiesen.",
       });
       
-      fetchTaskDetails();
+      fetchTask();
     } catch (error) {
       console.error("Error assigning task:", error);
       toast({
@@ -137,7 +120,7 @@ const TaskDetail = () => {
         });
       }
       
-      fetchTaskDetails();
+      fetchTask();
     } catch (error) {
       console.error("Error changing status:", error);
       toast({
@@ -149,8 +132,7 @@ const TaskDetail = () => {
   };
   
   // Handler for email reply button clicks
-  const handleEmailReplyClick = (thread: EmailThread) => {
-    console.log("Handling email reply click for thread:", thread.id);
+  const handleEmailReplyClick = (thread) => {
     setSelectedEmailThread(thread);
     setEmailReplyDialogOpen(true);
   };
@@ -158,8 +140,7 @@ const TaskDetail = () => {
   // Handler for when an email is sent
   const handleEmailSent = () => {
     console.log('Email sent, refreshing data...');
-    refreshThreads();
-    fetchTaskDetails();
+    fetchTask();
   };
 
   if (taskLoading) {
@@ -236,12 +217,12 @@ const TaskDetail = () => {
       )}
       
       {/* Email to Customer Dialog */}
-      {taskId && task && (
+      {taskId && (
         <EmailToCustomerDialog
           open={emailToCustomerDialogOpen}
           onOpenChange={setEmailToCustomerDialogOpen}
           taskId={taskId}
-          customerName={task?.customer?.name}
+          customer={task?.customer}
           endkundeEmail={task?.endkunde_email}
           onEmailSent={handleEmailSent}
         />
@@ -251,21 +232,16 @@ const TaskDetail = () => {
       <AssignTaskDialog
         open={assignTaskDialogOpen}
         onOpenChange={setAssignTaskDialogOpen}
-        onAssign={(userId: string, note: string) => {
-          // Handle assignment
-          console.log(`Assigning task ${taskId} to user ${userId} with note: ${note}`);
-          fetchTaskDetails();
-        }}
-        currentAssignee={task?.assigned_to}
+        taskId={taskId}
+        onAssigned={fetchTask}
       />
       
       <CloseTaskDialog
         open={closeTaskDialogOpen}
         onOpenChange={setCloseTaskDialogOpen}
-        onClose={(comment: string) => {
-          // Handle close
-          console.log(`Closing task ${taskId} with comment: ${comment}`);
-          fetchTaskDetails();
+        taskId={taskId}
+        onClosed={() => {
+          fetchTask();
           navigate('/tasks');
         }}
       />
@@ -273,10 +249,8 @@ const TaskDetail = () => {
       <FollowUpDialog
         open={followUpDialogOpen}
         onOpenChange={setFollowUpDialogOpen}
-        onSchedule={(date: Date) => {
-          console.log(`Scheduling follow-up for task ${taskId} on ${date}`);
-          fetchTaskDetails();
-        }}
+        taskId={taskId}
+        onScheduled={fetchTask}
       />
     </>
   );
