@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { KnowledgeArticlesList } from './KnowledgeArticlesList';
 import { supabase } from '@/integrations/supabase/client';
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 interface TaskDetailInfoProps {
   task: any;
@@ -110,48 +111,76 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
             </div>
           )}
 
-          {/* Enhanced Endkunde information if available */}
+          {/* Endkunde Card with Popover */}
           {endkunde && (
-            <div className="mt-5 bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center gap-2 text-sm text-blue-800 font-medium mb-2">
-                <Home className="h-5 w-5" />
-                <span>Endkunde Informationen</span>
-              </div>
-              <div className="space-y-3 ml-2">
-                <div className="flex items-center">
-                  <User2 className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0" />
-                  <div>
-                    <span className="font-semibold">{endkunde.nachname}</span>
-                    {endkunde.vorname && <span>, {endkunde.vorname}</span>}
+            <Popover>
+              <PopoverTrigger asChild>
+                <div className="mt-5 bg-blue-50 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors">
+                  <div className="flex items-center gap-2 text-blue-800 mb-2">
+                    <Home className="h-5 w-5" />
+                    <span className="font-medium">Endkunde Informationen</span>
+                  </div>
+                  <div className="space-y-2 ml-1">
+                    <div className="flex items-center">
+                      <User2 className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0" />
+                      <div>
+                        <span className="font-semibold">{endkunde.nachname}</span>
+                        {endkunde.vorname && <span>, {endkunde.vorname}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <MapPin className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+                      <div>
+                        {endkunde.adresse}<br />
+                        {endkunde.postleitzahl} {endkunde.ort}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="flex items-start">
-                  <MapPin className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
-                  <div className="flex flex-col">
-                    <span>{endkunde.adresse}</span>
-                    <span>{endkunde.postleitzahl} {endkunde.ort}</span>
-                    {(endkunde.wohnung || endkunde.gebaeude || endkunde.lage) && (
-                      <div className="text-gray-600 text-sm mt-1">
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4 bg-white rounded-lg shadow-lg border border-blue-100">
+                <div className="space-y-3">
+                  <div className="flex items-center border-b border-blue-100 pb-2">
+                    <User2 className="h-5 w-5 text-blue-700 mr-2" />
+                    <div className="text-lg font-semibold">{endkunde.nachname}{endkunde.vorname ? `, ${endkunde.vorname}` : ''}</div>
+                  </div>
+                  
+                  <div className="flex items-start">
+                    <MapPin className="h-5 w-5 text-blue-700 mr-2 flex-shrink-0 mt-0.5" />
+                    <div className="flex flex-col">
+                      <div className="font-medium">Adresse</div>
+                      <div>{endkunde.adresse}</div>
+                      <div>{endkunde.postleitzahl} {endkunde.ort}</div>
+                    </div>
+                  </div>
+                  
+                  {(endkunde.gebaeude || endkunde.wohnung || endkunde.lage) && (
+                    <div className="flex items-start">
+                      <Home className="h-5 w-5 text-blue-700 mr-2 flex-shrink-0 mt-0.5" />
+                      <div className="flex flex-col">
+                        <div className="font-medium">Details</div>
                         {endkunde.gebaeude && <div>Gebäude: {endkunde.gebaeude}</div>}
                         {endkunde.wohnung && <div>Wohnung: {endkunde.wohnung}</div>}
                         {endkunde.lage && <div>Lage: {endkunde.lage}</div>}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+                  
+                  {/* Email from the task since it's not in endkunden table */}
+                  {task.endkunde_email && (
+                    <div className="flex items-center">
+                      <Mail className="h-5 w-5 text-blue-700 mr-2 flex-shrink-0" />
+                      <div className="flex flex-col">
+                        <div className="font-medium">Kontakt</div>
+                        <a href={`mailto:${task.endkunde_email}`} className="text-blue-600 hover:underline">
+                          {task.endkunde_email}
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* Email from the task since it's not in endkunden table */}
-                {task.endkunde_email && (
-                  <div className="flex items-center">
-                    <Mail className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0" />
-                    <a href={`mailto:${task.endkunde_email}`} className="text-blue-600 hover:underline">
-                      {task.endkunde_email}
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
+              </PopoverContent>
+            </Popover>
           )}
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
