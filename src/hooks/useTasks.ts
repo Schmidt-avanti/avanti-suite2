@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,6 +74,8 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             title,
             status,
             source,
+            readable_id,
+            endkunde_id,
             endkunde_email,
             attachments, 
             created_at,
@@ -195,13 +196,15 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             status: validateTaskStatus(rawTask.status),
             created_at: rawTask.created_at,
             source: rawTask.source,
-            endkunde_email: rawTask.endkunde_email, // Now included in the Task interface
-            from_email: rawTask.from_email, // Now included in the Task interface
+            readable_id: rawTask.readable_id,
+            endkunde_id: rawTask.endkunde_id,
+            endkunde_email: rawTask.endkunde_email,
+            from_email: rawTask.from_email,
             customer: transformCustomer(rawTask.customer),
             creator: rawTask.creator, 
             attachments: rawTask.attachments,
-            description: rawTask.description, // Now included in the Task interface
-            matched_use_case_id: rawTask.matched_use_case_id // Now included in the Task interface
+            description: rawTask.description,
+            matched_use_case_id: rawTask.matched_use_case_id
           };
         });
         
