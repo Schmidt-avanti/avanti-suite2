@@ -113,6 +113,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          avanti_email: string | null
           billing_address: string | null
           billing_email: string | null
           branch: string | null
@@ -133,6 +134,7 @@ export type Database = {
           zip: string | null
         }
         Insert: {
+          avanti_email?: string | null
           billing_address?: string | null
           billing_email?: string | null
           branch?: string | null
@@ -153,6 +155,7 @@ export type Database = {
           zip?: string | null
         }
         Update: {
+          avanti_email?: string | null
           billing_address?: string | null
           billing_email?: string | null
           branch?: string | null
@@ -1226,6 +1229,10 @@ export type Database = {
           duration_seconds: number
           user_id: string
         }[]
+      }
+      generate_avanti_email: {
+        Args: { customer_name: string }
+        Returns: string
       }
       generate_customer_prefix: {
         Args: { customer_name: string }

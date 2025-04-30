@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.0";
 
@@ -129,7 +128,7 @@ serve(async (req) => {
       // Get the actual recipient email (the 'to' address)
       const toEmail = event.to;
       
-      // Match email to customer
+      // Match email to customer - this will now check avanti_email first per our updated function
       const { data: customerMatchResult } = await supabase.rpc('match_email_to_customer', { 
         email_address: toEmail 
       });
