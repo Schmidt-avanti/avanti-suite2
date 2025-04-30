@@ -12,8 +12,8 @@ import { Loader2 } from 'lucide-react';
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
 import { TaskChat } from '@/components/tasks/TaskChat';
-import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory'; // Add EmailThreadHistory import
-import { EmailReplyDialog } from '@/components/tasks/EmailReplyDialog'; // Add EmailReplyDialog import
+import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory'; 
+import { EmailReplyDialog } from '@/components/tasks/EmailReplyDialog';
 import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog';
 import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
 import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
@@ -29,6 +29,7 @@ const TaskDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { task, loading: taskLoading, fetchTask } = useTaskDetail(taskId);
+  const { messages } = useTaskChatMessages(taskId);
   const { startTaskTimer, endTaskTimer } = useTaskTimer();
   const { logTaskClose, logTaskAssign } = useTaskActivity();
   const { toast } = useToast();
@@ -222,8 +223,8 @@ const TaskDetail = () => {
           open={emailToCustomerDialogOpen}
           onOpenChange={setEmailToCustomerDialogOpen}
           taskId={taskId}
-          customer={task?.customer}
-          endkundeEmail={task?.endkunde_email}
+          recipientEmail={task?.endkunde_email}
+          taskMessages={messages}
           onEmailSent={handleEmailSent}
         />
       )}
@@ -239,18 +240,54 @@ const TaskDetail = () => {
       <CloseTaskDialog
         open={closeTaskDialogOpen}
         onOpenChange={setCloseTaskDialogOpen}
-        taskId={taskId}
-        onClosed={() => {
-          fetchTask();
-          navigate('/tasks');
+        onClose={(comment) => {
+          // We need to update the task status and add closing comment
+          if (!taskId) return;
+          
+          supabase
+            .from('tasks')
+            .update({ 
+              status: 'completed', 
+              closing_comment: comment 
+            })
+            .eq('id', taskId)
+            .then(async ({ error }) => {
+              if (error) {
+                console.error("Error closing task:", error);
+                return;
+              }
+              
+              await logTaskClose(taskId);
+              fetchTask();
+              navigate('/tasks');
+            });
         }}
       />
       
       <FollowUpDialog
         open={followUpDialogOpen}
         onOpenChange={setFollowUpDialogOpen}
-        taskId={taskId}
-        onScheduled={fetchTask}
+        onScheduled={(date, note) => {
+          // Update task status to followup
+          if (!taskId) return;
+          
+          supabase
+            .from('tasks')
+            .update({
+              status: 'followup',
+              followup_date: date.toISOString(),
+              followup_note: note
+            })
+            .eq('id', taskId)
+            .then(({ error }) => {
+              if (error) {
+                console.error("Error scheduling followup:", error);
+                return;
+              }
+              
+              fetchTask();
+            });
+        }}
       />
     </>
   );

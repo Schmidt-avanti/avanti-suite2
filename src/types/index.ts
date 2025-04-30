@@ -1,4 +1,5 @@
-export type TaskStatus = 'new' | 'in progress' | 'blocked' | 'completed';
+
+export type TaskStatus = 'new' | 'in_progress' | 'blocked' | 'completed' | 'followup';
 
 export interface Customer {
   id: string;
