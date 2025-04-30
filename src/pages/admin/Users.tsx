@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -160,6 +160,54 @@ const UsersAdminPage: React.FC = () => {
       setEditUser(null);
     }
   };
+
+  const addTestData = async () => {
+    // Create a test admin user
+    const email = `admin${Date.now()}@test.com`;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email,
+          password: 'Testpassword123!',
+          role: 'admin',
+          fullName: 'Test Admin' // Use fullName instead of firstName
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        const newUser = {
+          id: data.id,
+          email: email,
+          role: 'admin' as UserRole,
+          createdAt: new Date().toISOString(),
+          customers: [] as Customer[],
+          is_active: true,
+          fullName: 'Test Admin' // Use fullName instead of firstName
+        };
+
+        setUsers(prevUsers => [...prevUsers, newUser]);
+        toast({
+          title: 'Test-Benutzer erstellt',
+          description: `Email: ${email}, Passwort: Testpassword123!`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: 'Fehler',
+        description: error.message || 'Unbekannter Fehler',
+      });
+    }
+  };
+
+  useEffect(() => {
+    addTestData();
+  }, []);
 
   return (
     <div>

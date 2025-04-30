@@ -1,5 +1,4 @@
-
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2, Ban } from "lucide-react";
@@ -18,14 +17,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface Props {
+interface CustomerListSectionProps {
   customers: Customer[];
   setCustomers: (c: Customer[]) => void;
   onEdit: (c: Customer) => void;
   setDialogOpen: (open: boolean) => void;
 }
 
-const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit }) => {
+const CustomerListSection: React.FC<CustomerListSectionProps> = ({ 
+  customers, 
+  setCustomers, 
+  onEdit, 
+  setDialogOpen 
+}) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [customerToDelete, setCustomerToDelete] = React.useState<Customer | null>(null);
   const { toast: uiToast } = useToast();
@@ -107,8 +111,14 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
     }
   };
 
+  const sortedCustomers = [...customers].sort((a, b) => {
+    if (a.isActive && !b.isActive) return -1;
+    if (!a.isActive && b.isActive) return 1;
+    return 0;
+  });
+
   return (
-    <>
+    <div>
       <Table>
         <TableHeader>
           <TableRow>
@@ -120,10 +130,10 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {customers.map((customer) => (
+          {sortedCustomers.map((customer) => (
             <TableRow key={customer.id} className={!customer.isActive ? "opacity-60" : ""}>
               <TableCell>{customer.name}</TableCell>
-              <TableCell>{customer.branch ?? "–"}</TableCell>
+              <TableCell>{customer.branch || "–"}</TableCell>
               <TableCell>{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : "–"}</TableCell>
               <TableCell>{customer.isActive ? "Aktiv" : "Inaktiv"}</TableCell>
               <TableCell>
@@ -171,7 +181,7 @@ const CustomerListSection: React.FC<Props> = ({ customers, setCustomers, onEdit 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 };
 

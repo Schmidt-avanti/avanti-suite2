@@ -1,215 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React from 'react';
 import { useCustomers } from '@/hooks/useCustomers';
-import { DatePicker } from './DatePicker';
-import { InvoiceTable } from './InvoiceTable';
-import { InvoiceSummary } from './InvoiceSummary';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download } from 'lucide-react';
-import { exportInvoiceToExcel, InvoiceData } from '@/utils/excelExport';
-import { format } from 'date-fns';
-import { useInvoiceData, DailyMinutesRecord } from '@/hooks/useInvoiceData';
-import { useInvoiceCalculation, InvoiceCalculation } from '@/hooks/useInvoiceCalculation';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-const InvoicePage = () => {
-  const {
-    customers,
-    isLoading: customersLoading
-  } = useCustomers();
-  const [selectedCustomer, setSelectedCustomer] = useState<string>('');
-  const [dateRange, setDateRange] = useState<{
-    from: Date | undefined;
-    to: Date | undefined;
-  }>({
-    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    // Erster Tag des aktuellen Monats
-    to: new Date()
-  });
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 
-  // Daten für die Rechnung holen, aber nur wenn ein Kunde ausgewählt ist und beide Datumswerte gesetzt sind
-  const {
-    data: invoiceData,
-    isLoading: isInvoiceDataLoading,
-    error: invoiceDataError
-  } = useInvoiceData(selectedCustomer, dateRange.from as Date, dateRange.to as Date);
+export const InvoicePage = () => {
+  const { customers, isLoading } = useCustomers();
+  const [selectedCustomer, setSelectedCustomer] = React.useState(null);
+  const { toast } = useToast();
 
-  // Berechnungen für die Rechnung
-  const {
-    data: calculations,
-    isLoading: isCalculationsLoading,
-    error: calculationsError
-  } = useInvoiceCalculation(selectedCustomer, dateRange.from as Date, dateRange.to as Date);
-
-  // Debug-Funktion um zu überprüfen, ob es überhaupt Daten für diesen Kunden gibt
-  useEffect(() => {
-    if (selectedCustomer && dateRange.from && dateRange.to) {
-      const checkForData = async () => {
-        try {
-          const fromDate = new Date(dateRange.from as Date);
-          const toDate = new Date(dateRange.to as Date);
-          toDate.setHours(23, 59, 59, 999);
-
-          // Direkter Check in der Datenbank, ob es task_times für die Aufgaben dieses Kunden gibt
-          const {
-            data,
-            error
-          } = await supabase.from('task_times').select('id, duration_seconds, started_at').order('started_at', {
-            ascending: false
-          }).limit(5);
-          console.log('Raw task_times check (5 newest entries):', data);
-          if (error) {
-            console.error('Error checking task_times:', error);
-          }
-
-          // Check für Kundenaufgaben
-          const {
-            data: taskData,
-            error: taskError
-          } = await supabase.from('tasks').select('id, title, customer_id').eq('customer_id', selectedCustomer).order('created_at', {
-            ascending: false
-          }).limit(5);
-          console.log('Customer tasks check (5 newest entries):', taskData);
-          if (taskError) {
-            console.error('Error checking tasks:', taskError);
-          }
-
-          // Wenn taskData vorhanden ist, prüfe, ob es Zeiteinträge für diese Aufgaben gibt
-          if (taskData && taskData.length > 0) {
-            const taskIds = taskData.map((task: any) => task.id);
-            const {
-              data: timeEntries,
-              error: timeError
-            } = await supabase.from('task_times').select('*').in('task_id', taskIds).order('started_at', {
-              ascending: false
-            }).limit(5);
-            console.log('Time entries for selected customer tasks:', timeEntries);
-            if (timeError) {
-              console.error('Error checking time entries for tasks:', timeError);
-            } else if (!timeEntries || timeEntries.length === 0) {
-              toast.warning('Es wurden keine Zeiterfassungen für die Aufgaben dieses Kunden gefunden.');
-            }
-          } else {
-            toast.warning('Es wurden keine Aufgaben für diesen Kunden gefunden.');
-          }
-        } catch (e) {
-          console.error('Debug check failed:', e);
-        }
-      };
-      checkForData();
-    }
-  }, [selectedCustomer, dateRange.from, dateRange.to]);
-
-  // Fehler-Handling
-  React.useEffect(() => {
-    if (invoiceDataError) {
-      console.error('Fehler beim Laden der Rechnungsdaten:', invoiceDataError);
-      toast.error('Fehler beim Laden der Rechnungsdaten.');
-    }
-    if (calculationsError) {
-      console.error('Fehler bei der Berechnung:', calculationsError);
-      toast.error('Fehler bei der Rechnungsberechnung.');
-    }
-  }, [invoiceDataError, calculationsError]);
-  const handleExport = () => {
-    if (!selectedCustomer || !dateRange.from || !dateRange.to) {
-      toast.error("Bitte wählen Sie einen Kunden und einen Datumsbereich aus.");
-      return;
-    }
-    const customer = customers.find(c => c.id === selectedCustomer);
-    if (!customer) {
-      toast.error("Kunde konnte nicht gefunden werden.");
-      return;
-    }
-    if (!invoiceData || !calculations) {
-      toast.error("Die Rechnungsdaten konnten nicht geladen werden.");
-      return;
-    }
-    try {
-      const exportData: InvoiceData = {
-        customerName: customer.name,
-        costCenter: customer.cost_center || '',
-        dateRange: `${format(dateRange.from, 'dd.MM.yyyy')} - ${format(dateRange.to, 'dd.MM.yyyy')}`,
-        contactPerson: customer.contact_person || '',
-        billingAddress: customer.billing_address || '',
-        dailyRecords: invoiceData.map((record: DailyMinutesRecord) => ({
-          date: record.date,
-          minutes: record.minutes
-        })),
-        summary: calculations
-      };
-      exportInvoiceToExcel(exportData);
-      toast.success("Rechnung wurde erfolgreich exportiert.");
-    } catch (error) {
-      console.error("Fehler beim Exportieren der Rechnung:", error);
-      toast.error("Beim Exportieren der Rechnung ist ein Fehler aufgetreten.");
-    }
+  const selectCustomer = (customer) => {
+    setSelectedCustomer(customer);
+    toast({
+      title: "Kunde ausgewählt",
+      description: `Rechnungsdaten für ${customer.name} werden geladen.`,
+    });
   };
-  const isLoading = customersLoading || isInvoiceDataLoading || isCalculationsLoading;
-  const hasError = !!invoiceDataError || !!calculationsError;
-  return <div className="space-y-6">
+  
+  return (
+    <div className="container py-6">
       <Card>
         <CardHeader>
-          <CardTitle>Rechnungserstellung</CardTitle>
+          <CardTitle>Kunden auswählen</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Kunde</label>
-              <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Kunden auswählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.filter(customer => customer.isActive).map(customer => <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </SelectItem>)}
-                </SelectContent>
-              </Select>
+          {isLoading ? (
+            <div>Lade Kunden...</div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-4 mb-8">
+              {customers.filter(c => c.is_active).map((customer) => (
+                <button
+                  key={customer.id}
+                  onClick={() => selectCustomer(customer)}
+                  className={`flex flex-col items-start p-4 border rounded-md hover:bg-muted transition-colors ${
+                    selectedCustomer?.id === customer.id ? 'border-primary bg-primary/10' : 'border-border'
+                  }`}
+                >
+                  <div className="font-semibold">{customer.name}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{customer.cost_center}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {customer.contact_person}<br />
+                    {customer.billing_address}
+                  </div>
+                </button>
+              ))}
             </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Von</label>
-              <DatePicker date={dateRange.from} onSelect={date => setDateRange(prev => ({
-              ...prev,
-              from: date
-            }))} />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Bis</label>
-              <DatePicker date={dateRange.to} onSelect={date => setDateRange(prev => ({
-              ...prev,
-              to: date
-            }))} />
-            </div>
-          </div>
-
-          {isLoading && <div className="py-8 text-center">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
-                <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
-              </div>
-              <p className="mt-2 text-muted-foreground">Lade Rechnungsdaten...</p>
-            </div>}
-
-          {hasError && !isLoading && <div className="py-8 text-center text-red-500">
-              <p>Bei der Verarbeitung der Rechnungsdaten ist ein Fehler aufgetreten.</p>
-              <p className="text-sm mt-2">Bitte versuchen Sie es erneut oder kontaktieren Sie den Support.</p>
-            </div>}
-
-          {!isLoading && !hasError && selectedCustomer && dateRange.from && dateRange.to && <>
-              <InvoiceTable customerId={selectedCustomer} from={dateRange.from} to={dateRange.to} />
-              <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-start">
-                <InvoiceSummary customerId={selectedCustomer} from={dateRange.from} to={dateRange.to} />
-                <Button onClick={handleExport} className="mt-4 md:mt-0 md:ml-4">
-                  <Download className="mr-2 h-4 w-4" />
-                  Rechnung als Excel herunterladen
-                </Button>
-              </div>
-            </>}
+          )}
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
-export default InvoicePage;

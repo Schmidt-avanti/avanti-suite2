@@ -46,47 +46,54 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
       try {
         setIsLoading(true);
-        // Explicitly type the query response to avoid deep instantiation
+        // Explicitly type the query response to match the actual database column names
         type EndkundenResponse = {
           id: string;
-          nachname: string;
-          vorname: string | null;
-          adresse: string;
-          wohnung: string | null;
-          gebaeude: string | null;
-          lage: string | null;
-          postleitzahl: string;
-          ort: string;
+          Nachname: string;
+          Vorname: string | null;
+          Adresse: string;
+          Wohnung: string | null;
+          Gebäude: string | null;
+          Lage: string | null;
+          Postleitzahl: string;
+          Ort: string;
           email?: string | null;
           telefon?: string | null;
         };
         
+        console.log('Fetching endkunden for customer ID:', customerId);
+        
         const { data, error } = await supabase
           .from('endkunden')
-          .select('id, nachname, vorname, adresse, wohnung, gebaeude, lage, postleitzahl, ort')
-          .eq('customer_id', customerId)
+          .select('id, Nachname, Vorname, Adresse, Wohnung, Gebäude, Lage, Postleitzahl, Ort, email, telefon')
+          .eq('customer_ID', customerId)
           .eq('is_active', true)
-          .order('nachname', { ascending: true }) as { data: EndkundenResponse[], error: any };
+          .order('Nachname', { ascending: true }) as { data: EndkundenResponse[], error: any };
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching endkunden:', error);
+          throw error;
+        }
+
+        console.log('Fetched endkunden:', data);
 
         // Transform the data into our expected format
         const formattedData = data.map(ek => {
           // Create a display name based on available fields
-          const vorname = ek.vorname ? ` ${ek.vorname}` : '';
-          const wohnung = ek.wohnung ? ` • Wohnung ${ek.wohnung}` : '';
-          const lage = ek.lage ? ` • ${ek.lage}` : '';
-          const gebaeude = ek.gebaeude ? ` • ${ek.gebaeude}` : '';
+          const vorname = ek.Vorname ? ` ${ek.Vorname}` : '';
+          const wohnung = ek.Wohnung ? ` • Wohnung ${ek.Wohnung}` : '';
+          const lage = ek.Lage ? ` • ${ek.Lage}` : '';
+          const gebaeude = ek.Gebäude ? ` • ${ek.Gebäude}` : '';
           
           return {
             id: ek.id,
-            nachname: ek.nachname,
-            vorname: ek.vorname,
-            adresse: ek.adresse,
-            wohnung: ek.wohnung,
-            gebaeude: ek.gebaeude,
-            lage: ek.lage,
-            display: `${ek.nachname}${vorname}, ${ek.adresse}${wohnung}${gebaeude}${lage}`
+            nachname: ek.Nachname,
+            vorname: ek.Vorname,
+            adresse: ek.Adresse,
+            wohnung: ek.Wohnung,
+            gebaeude: ek.Gebäude,
+            lage: ek.Lage,
+            display: `${ek.Nachname}${vorname}, ${ek.Adresse}${wohnung}${gebaeude}${lage}`
           };
         });
 
@@ -112,11 +119,15 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       // Explicitly type the query response
       type EmailResponse = { email: string | null };
       
+      console.log('Fetching email for endkunde ID:', endkundeId);
+      
       const { data, error } = await supabase
         .from('endkunden')
         .select('email')
         .eq('id', endkundeId)
         .single() as { data: EmailResponse | null, error: any };
+      
+      console.log('Email fetch result:', { data, error });
       
       if (!error && data) {
         onChange(endkundeId, data.email);

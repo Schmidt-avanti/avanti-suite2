@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -204,7 +205,12 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             creator: rawTask.creator, 
             attachments: rawTask.attachments,
             description: rawTask.description,
-            matched_use_case_id: rawTask.matched_use_case_id
+            matched_use_case_id: rawTask.matched_use_case_id,
+            // Add these required fields to fix TypeScript errors
+            customer_id: rawTask.customer_id,
+            created_by: rawTask.created_by,
+            assigned_to: rawTask.assigned_to,
+            closing_comment: rawTask.closing_comment
           };
         });
         

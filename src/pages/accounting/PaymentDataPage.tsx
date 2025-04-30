@@ -1,4 +1,4 @@
-
+import React from 'react';
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,10 @@ const PaymentDataPage = () => {
   const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
   const [deletingMethod, setDeletingMethod] = useState<PaymentMethod | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createPayPalOpen, setCreatePayPalOpen] = useState(false);
+  const [createCreditCardOpen, setCreateCreditCardOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   const { data: paymentMethods = [] } = useQuery({
     queryKey: ['payment-methods', user?.role, selectedCustomerId],
@@ -153,6 +157,77 @@ const PaymentDataPage = () => {
     if (deletingMethod) {
       await deletePaymentMethod.mutateAsync(deletingMethod.id);
       setDeletingMethod(null);
+    }
+  };
+
+  const handlePayPalSubmit = async (values: any) => {
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase
+        .from('payment_methods')
+        .insert({
+          user_id: user?.id,
+          type: 'paypal' as 'paypal' | 'creditcard', // Type assertion to fix the TypeScript error
+          value: values.paypal,
+          customer_id: selectedCustomer?.id
+        });
+
+      if (error) throw error;
+
+      toast.success('PayPal-Konto gespeichert');
+      fetchPaymentMethods();
+      setCreatePayPalOpen(false);
+    } catch (error) {
+      toast.error('Fehler beim Speichern der Zahlungsmethode');
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleCreditCardSubmit = async (values: any) => {
+    try {
+      setIsSubmitting(true);
+      
+      // Type assertion to fix the TypeScript error
+      const paymentData: {
+        user_id: string;
+        type: 'paypal' | 'creditcard';
+        value: string;
+        customer_id: string;
+        card_holder: string;
+        expiry_month: number;
+        expiry_year: number;
+        billing_address: string;
+        billing_zip: string;
+        billing_city: string;
+      } = {
+        user_id: user?.id || '',
+        type: 'creditcard',
+        value: values.cardNumber,
+        customer_id: selectedCustomer?.id || '',
+        card_holder: values.cardHolder,
+        expiry_month: parseInt(values.expiryMonth),
+        expiry_year: parseInt(values.expiryYear),
+        billing_address: values.billingAddress,
+        billing_zip: values.billingZip,
+        billing_city: values.billingCity
+      };
+
+      const { error } = await supabase
+        .from('payment_methods')
+        .insert(paymentData);
+
+      if (error) throw error;
+
+      toast.success('Kreditkarte gespeichert');
+      fetchPaymentMethods();
+      setCreateCreditCardOpen(false);
+    } catch (error) {
+      toast.error('Fehler beim Speichern der Zahlungsmethode');
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

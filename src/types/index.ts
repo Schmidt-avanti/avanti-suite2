@@ -62,12 +62,17 @@ export interface Task {
   from_email?: string;     
   description?: string;    
   matched_use_case_id?: string;
+  
+  // Adding the missing properties to fix TypeScript errors
+  customer_id: string;
+  created_by?: string;
+  assigned_to?: string;
 }
 
 // Add missing types that are causing errors
 export type UserRole = 'admin' | 'agent' | 'client';
 
-export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'comment';
+export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'comment' | 'assign';
 
 export interface User {
   id: string;
@@ -84,8 +89,8 @@ export interface Customer {
   id: string;
   name: string;
   branch?: string;
-  createdAt: string;
-  isActive?: boolean;
+  created_at: string;
+  is_active?: boolean;
   cost_center?: string;
   billing_email?: string;
   billing_address?: string;

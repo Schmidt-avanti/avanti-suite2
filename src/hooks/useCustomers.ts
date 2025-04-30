@@ -29,8 +29,8 @@ export const useCustomers = () => {
                 id: ac.customers.id,
                 name: ac.customers.name,
                 branch: ac.customers.branch,
-                isActive: ac.customers.is_active,
-                createdAt: '' // Wir setzen ein leeres Datum, da es hier nicht gebraucht wird
+                is_active: ac.customers.is_active,
+                created_at: '' // Wir setzen ein leeres Datum, da es hier nicht gebraucht wird
               }));
             setCustomers(mappedCustomers);
             setIsLoading(false);
@@ -49,8 +49,8 @@ export const useCustomers = () => {
               id: userAssignment.customers.id,
               name: userAssignment.customers.name,
               branch: userAssignment.customers.branch,
-              isActive: userAssignment.customers.is_active,
-              createdAt: '' // Wir setzen ein leeres Datum, da es hier nicht gebraucht wird
+              is_active: userAssignment.customers.is_active,
+              created_at: '' // Wir setzen ein leeres Datum, da es hier nicht gebraucht wird
             }]);
             setIsLoading(false);
             return;
@@ -65,8 +65,8 @@ export const useCustomers = () => {
               id: customer.id,
               name: customer.name,
               branch: customer.branch,
-              isActive: customer.is_active,
-              createdAt: '' // Wir setzen ein leeres Datum, da es hier nicht gebraucht wird
+              is_active: customer.is_active,
+              created_at: '' // Wir setzen ein leeres Datum, da es hier nicht gebraucht wird
             }));
             setCustomers(formattedCustomers);
           }
