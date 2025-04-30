@@ -21,12 +21,14 @@ export const SpellChecker: React.FC<SpellCheckerProps> = ({ text, onCorrect }) =
     setSuggestions(null);
 
     try {
-      // Example of calling a spell check service
+      console.log("Starting spell check for text:", text.substring(0, 30) + "...");
+      
+      // Making sure we use the correct OpenAI API structure for gpt-4.1
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY || ''}`
         },
         body: JSON.stringify({
           model: "gpt-4.1",
@@ -44,11 +46,16 @@ export const SpellChecker: React.FC<SpellCheckerProps> = ({ text, onCorrect }) =
         })
       });
 
+      console.log("OpenAI API response status:", response.status);
+      
       if (!response.ok) {
-        throw new Error('Fehler bei der Rechtschreibprüfung');
+        const errorText = await response.text();
+        console.error("OpenAI API error:", errorText);
+        throw new Error(`Fehler bei der Rechtschreibprüfung: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log("OpenAI response received:", data);
       setSuggestions(data.choices[0].message.content);
     } catch (err) {
       console.error('Spell check error:', err);

@@ -1,17 +1,20 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { EmailThread, Json } from '@/types';
 
-// Helper function to ensure attachments are string arrays
+// Helper function to ensure attachments are handled correctly
 const normalizeThreadData = (data: any[]): EmailThread[] => {
-  return data.map(thread => ({
-    ...thread,
-    // Convert attachments to string[] if it exists, otherwise set to undefined
-    attachments: thread.attachments ? 
-      (Array.isArray(thread.attachments) ? thread.attachments : [String(thread.attachments)]) 
-      : undefined
-  }));
+  console.log("Normalizing thread data:", data);
+  
+  return data.map(thread => {
+    console.log("Processing thread:", thread.id, "attachments:", thread.attachments);
+    
+    return {
+      ...thread,
+      // Keep attachments as they are, they'll be processed in the component
+      attachments: thread.attachments
+    };
+  });
 };
 
 export const useEmailThreads = (taskId?: string) => {
@@ -26,6 +29,8 @@ export const useEmailThreads = (taskId?: string) => {
       return;
     }
 
+    console.log("Fetching email threads for task:", taskId);
+    
     const fetchEmailThreads = async () => {
       try {
         setLoading(true);
@@ -39,7 +44,12 @@ export const useEmailThreads = (taskId?: string) => {
 
         if (error) throw error;
 
-        setThreads(normalizeThreadData(data || []));
+        console.log("Raw email threads data:", data);
+        
+        const normalizedData = normalizeThreadData(data || []);
+        console.log("Normalized email threads:", normalizedData);
+        
+        setThreads(normalizedData);
       } catch (err: any) {
         console.error('Error fetching email threads:', err);
         setError(err.message);

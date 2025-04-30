@@ -5,7 +5,6 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
-import { useTaskChatMessages } from '@/hooks/useTaskChatMessages';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -46,7 +45,7 @@ const TaskDetail = () => {
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
   
   // Get email threads for this task
-  const { threads, loading: threadsLoading } = useEmailThreads(taskId);
+  const { threads, loading: threadsLoading, refreshThreads } = useEmailThreads(taskId);
   
   const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
   const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
@@ -158,6 +157,7 @@ const TaskDetail = () => {
   // Handler for when an email is sent
   const handleEmailSent = () => {
     console.log('Email sent, refreshing data...');
+    refreshThreads();
     fetchTaskDetails();
   };
 
