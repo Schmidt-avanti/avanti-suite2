@@ -8,10 +8,23 @@ import {
   UserCheck,
   XCircle,
   Hash,
-  Home
+  Home,
+  Info
 } from "lucide-react";
 import { KnowledgeArticlesList } from './KnowledgeArticlesList';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  Popover, 
+  PopoverContent, 
+  PopoverTrigger 
+} from "@/components/ui/popover";
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 
 interface TaskDetailInfoProps {
   task: any;
@@ -123,53 +136,79 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
             </div>
           )}
 
-          {/* Endkunde information with improved formatting */}
+          {/* Endkunde information - simplified view with popover for details */}
           {endkunde && (
             <>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
                 <Home className="h-4 w-4" />
                 <span className="font-medium">Endkunde</span>
               </div>
-              <div className="ml-6 space-y-1">
-                <div className="text-lg font-medium mb-1">
-                  {endkunde.Nachname}
-                  {endkunde.Vorname && <span>, {endkunde.Vorname}</span>}
+              <div className="ml-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-medium">
+                    {endkunde.Nachname}
+                    {endkunde.Vorname && <span>, {endkunde.Vorname}</span>}
+                  </span>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Info className="h-4 w-4 text-blue-500" />
+                              <span className="sr-only">Mehr Informationen</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-4">
+                            <div className="space-y-4">
+                              <h4 className="font-medium text-sm text-gray-500">Kontaktdetails</h4>
+                              
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <h5 className="text-sm font-medium text-gray-500">Adresse:</h5>
+                                  <p className="text-sm">{endkunde.Adresse}</p>
+                                  <p className="text-sm">{endkunde.Postleitzahl} {endkunde.Ort}</p>
+                                </div>
+                                
+                                {(endkunde.Wohnung || endkunde.Gebaeude || endkunde.Lage) && (
+                                  <div>
+                                    <h5 className="text-sm font-medium text-gray-500">Details:</h5>
+                                    {endkunde.Gebaeude && <p className="text-sm">Gebäude: {endkunde.Gebaeude}</p>}
+                                    {endkunde.Wohnung && <p className="text-sm">Wohnung: {endkunde.Wohnung}</p>}
+                                    {endkunde.Lage && <p className="text-sm">Lage: {endkunde.Lage}</p>}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {(endkunde.email || endkunde.telefon) && (
+                                <div className="pt-2 border-t border-gray-200">
+                                  <h5 className="text-sm font-medium text-gray-500">Kontakt:</h5>
+                                  {endkunde.email && (
+                                    <p className="text-sm">
+                                      Email: <a href={`mailto:${endkunde.email}`} className="text-blue-600 hover:underline">
+                                        {endkunde.email}
+                                      </a>
+                                    </p>
+                                  )}
+                                  {endkunde.telefon && <p className="text-sm">Tel: {endkunde.telefon}</p>}
+                                </div>
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Mehr Informationen anzeigen</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 
-                <div className="p-3 border border-gray-200 rounded-md bg-gray-50 space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Adresse:</span>
-                      <div className="text-gray-700">{endkunde.Adresse}</div>
-                      <div className="text-gray-700">{endkunde.Postleitzahl} {endkunde.Ort}</div>
-                    </div>
-                    
-                    {(endkunde.Wohnung || endkunde.Gebaeude || endkunde.Lage) && (
-                      <div>
-                        <span className="text-sm font-medium text-gray-500">Details:</span>
-                        <div className="text-gray-700">
-                          {endkunde.Gebaeude && <div>Gebäude: {endkunde.Gebaeude}</div>}
-                          {endkunde.Wohnung && <div>Wohnung: {endkunde.Wohnung}</div>}
-                          {endkunde.Lage && <div>Lage: {endkunde.Lage}</div>}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {(endkunde.email || endkunde.telefon) && (
-                    <div className="pt-2 border-t border-gray-200 mt-2">
-                      <span className="text-sm font-medium text-gray-500">Kontakt:</span>
-                      <div className="text-gray-700">
-                        {endkunde.email && (
-                          <div>Email: <a href={`mailto:${endkunde.email}`} className="text-blue-600 hover:underline">
-                            {endkunde.email}
-                          </a></div>
-                        )}
-                        {endkunde.telefon && <div>Tel: {endkunde.telefon}</div>}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                {/* Simple address line */}
+                <p className="text-sm text-gray-500">
+                  {endkunde.Adresse}, {endkunde.Postleitzahl} {endkunde.Ort}
+                </p>
               </div>
             </>
           )}
