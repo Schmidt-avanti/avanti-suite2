@@ -46,11 +46,11 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
       try {
         setIsLoading(true);
+        // Fixed column name to customer_ID (capital ID) and removed is_active filter
         const { data, error } = await supabase
           .from('endkunden')
-          .select('id, nachname, vorname, adresse, wohnung, gebaeude, lage, email, postleitzahl, ort')
-          .eq('customer_id', customerId)
-          .eq('is_active', true)
+          .select('id, nachname, vorname, adresse, wohnung, gebaeude, lage, postleitzahl, ort')
+          .eq('customer_ID', customerId)
           .order('nachname', { ascending: true });
 
         if (error) throw error;
@@ -91,23 +91,8 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       return;
     }
     
-    // Find the selected endkunde email to pass back
-    try {
-      const { data, error } = await supabase
-        .from('endkunden')
-        .select('email')
-        .eq('id', endkundeId)
-        .single();
-      
-      if (!error && data) {
-        onChange(endkundeId, data.email);
-      } else {
-        onChange(endkundeId, null);
-      }
-    } catch (err) {
-      console.error('Error fetching endkunde details:', err);
-      onChange(endkundeId, null);
-    }
+    // Since email field doesn't exist in endkunden table, we'll just pass null for the email
+    onChange(endkundeId, null);
   };
 
   return (

@@ -48,7 +48,23 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
           .single();
           
         if (error) throw error;
-        setEndkunde(data);
+        
+        // Create endkunde object with all required fields, providing null for missing ones
+        const endkundeData: Endkunde = {
+          id: data.id,
+          nachname: data.Nachname,
+          vorname: data.Vorname,
+          adresse: data.Adresse,
+          postleitzahl: data.Postleitzahl,
+          ort: data.Ort,
+          wohnung: data.Wohnung,
+          gebaeude: data.Gebäude,
+          lage: data.Lage,
+          email: null, // This field doesn't exist in the database
+          telefon: null // This field doesn't exist in the database
+        };
+        
+        setEndkunde(endkundeData);
       } catch (err) {
         console.error('Error fetching endkunde:', err);
       } finally {
@@ -112,14 +128,12 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
                     {endkunde.lage && <span>Lage: {endkunde.lage}</span>}
                   </div>
                 )}
-                {(endkunde.email || endkunde.telefon) && (
+                {/* We'll only show the email and telefon if they exist in the task instead */}
+                {task.endkunde_email && (
                   <div className="text-gray-600">
-                    {endkunde.email && (
-                      <div>Email: <a href={`mailto:${endkunde.email}`} className="text-blue-600 hover:underline">
-                        {endkunde.email}
-                      </a></div>
-                    )}
-                    {endkunde.telefon && <div>Tel: {endkunde.telefon}</div>}
+                    <div>Email: <a href={`mailto:${task.endkunde_email}`} className="text-blue-600 hover:underline">
+                      {task.endkunde_email}
+                    </a></div>
                   </div>
                 )}
               </div>

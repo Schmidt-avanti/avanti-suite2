@@ -233,63 +233,54 @@ export type Database = {
       }
       endkunden: {
         Row: {
-          adresse: string
+          Adresse: string
           created_at: string
-          customer_id: string
-          email: string | null
-          external_id: string | null
-          gebaeude: string | null
+          customer_ID: string | null
+          external_ID: string | null
+          Gebäude: string | null
           id: string
-          is_active: boolean
-          lage: string | null
-          nachname: string
-          ort: string
-          postleitzahl: string
-          telefon: string | null
+          Lage: string | null
+          Nachname: string
+          Ort: string
+          Postleitzahl: string
           updated_at: string
-          vorname: string | null
-          wohnung: string | null
+          Vorname: string | null
+          Wohnung: string | null
         }
         Insert: {
-          adresse: string
+          Adresse: string
           created_at?: string
-          customer_id: string
-          email?: string | null
-          external_id?: string | null
-          gebaeude?: string | null
+          customer_ID?: string | null
+          external_ID?: string | null
+          Gebäude?: string | null
           id?: string
-          is_active?: boolean
-          lage?: string | null
-          nachname: string
-          ort: string
-          postleitzahl: string
-          telefon?: string | null
+          Lage?: string | null
+          Nachname: string
+          Ort: string
+          Postleitzahl: string
           updated_at?: string
-          vorname?: string | null
-          wohnung?: string | null
+          Vorname?: string | null
+          Wohnung?: string | null
         }
         Update: {
-          adresse?: string
+          Adresse?: string
           created_at?: string
-          customer_id?: string
-          email?: string | null
-          external_id?: string | null
-          gebaeude?: string | null
+          customer_ID?: string | null
+          external_ID?: string | null
+          Gebäude?: string | null
           id?: string
-          is_active?: boolean
-          lage?: string | null
-          nachname?: string
-          ort?: string
-          postleitzahl?: string
-          telefon?: string | null
+          Lage?: string | null
+          Nachname?: string
+          Ort?: string
+          Postleitzahl?: string
           updated_at?: string
-          vorname?: string | null
-          wohnung?: string | null
+          Vorname?: string | null
+          Wohnung?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "endkunden_customer_id_fkey"
-            columns: ["customer_id"]
+            foreignKeyName: "endkunden_customer_ID_fkey"
+            columns: ["customer_ID"]
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
