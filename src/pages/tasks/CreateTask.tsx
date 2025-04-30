@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -162,6 +161,14 @@ const CreateTask = () => {
         description: matchResult?.matched_use_case_id
           ? `Aufgabe ${task.readable_id || ''} mit Use Case erstellt und Ihnen zugewiesen.`
           : `Aufgabe ${task.readable_id || ''} ohne Use Case erstellt und Ihnen zugewiesen – KVP benachrichtigt.`,
+        action: (
+          <Button 
+            variant="outline" 
+            onClick={() => navigate(`/tasks/${task.id}`)}
+          >
+            Aufgabe anzeigen
+          </Button>
+        )
       });
 
       navigate(`/tasks/${task.id}`);

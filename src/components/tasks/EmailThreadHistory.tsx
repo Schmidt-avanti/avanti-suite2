@@ -24,12 +24,19 @@ export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads,
     );
   }
 
+  // Sort threads by creation date (newest first)
+  const sortedThreads = [...threads].sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  console.log("Rendering email threads:", sortedThreads);
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium mb-2">E-Mail-Verlauf</h3>
       
       <div className="space-y-3">
-        {threads.map((thread, index) => (
+        {sortedThreads.map((thread, index) => (
           <Card key={thread.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="flex items-center justify-between p-3 bg-gray-50 border-b border-gray-100">
               <div className="flex items-center">
@@ -113,4 +120,4 @@ export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads,
       </div>
     </div>
   );
-}
+};

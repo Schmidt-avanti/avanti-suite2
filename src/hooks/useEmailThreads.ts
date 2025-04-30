@@ -18,6 +18,8 @@ export const useEmailThreads = (taskId: string | null) => {
       
       try {
         setLoading(true);
+        console.log(`Fetching email threads for task ${taskId}...`);
+        
         const { data, error } = await supabase
           .from('email_threads')
           .select('*')
@@ -25,6 +27,8 @@ export const useEmailThreads = (taskId: string | null) => {
           .order('created_at', { ascending: false });
           
         if (error) throw error;
+        
+        console.log(`Found ${data?.length || 0} email threads:`, data);
         
         // Type validation and casting
         if (data) {
