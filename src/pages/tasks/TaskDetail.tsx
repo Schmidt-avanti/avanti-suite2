@@ -1,193 +1,190 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTaskTimer } from '@/hooks/useTaskTimer';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
-import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
-import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
-import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
-import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog';
-import { EmailReplyDialog } from '@/components/tasks/EmailReplyDialog';
-import { TaskChat } from "@/components/tasks/TaskChat";
+import { useTaskDetail } from '@/hooks/useTaskDetail';
+import { useEmailThreads } from '@/hooks/useEmailThreads';
+import { Card } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
-import { EmailReplyPanel } from '@/components/tasks/EmailReplyPanel';
+import { TaskChat } from '@/components/tasks/TaskChat';
 import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory';
-import { useTaskDetail } from '@/hooks/useTaskDetail';
-import { useTaskMessages } from '@/hooks/useTaskMessages';
-import { useEmailThreads } from '@/hooks/useEmailThreads';
-import { toast } from '@/components/ui/use-toast';
-import { supabase } from "@/integrations/supabase/client";
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { EmailThread } from '@/types';
+import { EmailReplyDialog } from '@/components/tasks/EmailReplyDialog';
+import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog';
+import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
+import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
+import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useTaskActivity } from '@/hooks/useTaskActivity';
+import { useTaskTimer } from '@/hooks/useTaskTimer';
+import { TaskStatus, EmailThread } from '@/types';
+import { useToast } from '@/components/ui/use-toast';
 
 const TaskDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-
-  // Task status dialogs
-  const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
-  const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
-  const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
-  const [forwardTaskDialogOpen, setForwardTaskDialogOpen] = useState(false);
+  const { 
+    task, 
+    isLoading: taskLoading, 
+    fetchTaskDetails 
+  } = useTaskDetail(taskId, user);
+  const { 
+    startTimer: startTaskTimer, 
+    endTimer: endTaskTimer 
+  } = useTaskTimer();
+  const { logTaskStatusChange, logTaskClose } = useTaskActivity();
+  const { toast } = useToast();
+  
+  // Add state for email-related functionality
+  const [selectedEmailThread, setSelectedEmailThread] = useState<EmailThread | null>(null);
+  const [emailReplyDialogOpen, setEmailReplyDialogOpen] = useState(false);
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
   
-  // New dialog for email thread replies
-  const [emailReplyDialogOpen, setEmailReplyDialogOpen] = useState(false);
+  // Get email threads for this task
+  const { threads, loading: threadsLoading, refreshThreads } = useEmailThreads(taskId);
   
-  // Track the currently selected thread for reply
-  const [activeThread, setActiveThread] = useState<EmailThread | null>(null);
-  
-  const [isActive, setIsActive] = useState(true);
-  const { formattedTime } = useTaskTimer({ taskId: id || '', isActive });
-  
-  const {
-    task,
-    isLoading,
-    replyTo,
-    setReplyTo,
-    handleStatusChange,
-    handleFollowUp,
-    handleCloseWithoutAva,
-    handleAssignToMe,
-    handleAssignTask
-  } = useTaskDetail(id, user);
-
-  // Fetch task messages for chat history
-  const { messages } = useTaskMessages(id || null);
-  
-  // Fetch email threads for this task
-  const { threads: emailThreads, loading: emailThreadsLoading } = useEmailThreads(id || null);
-
-  // Handle thread reply click - now opens the dialog
-  const handleThreadReplyClick = (thread: EmailThread) => {
-    setActiveThread(thread);
-    setEmailReplyDialogOpen(true);
-    
-    toast({
-      title: "Antwort vorbereiten",
-      description: "E-Mail-Antwort wird vorbereitet",
-    });
-  };
-
-  // Handle email sent from the dialog
-  const handleEmailSent = () => {
-    toast({
-      title: "E-Mail gesendet",
-      description: "Ihre Antwort wurde erfolgreich gesendet.",
-    });
-    setActiveThread(null);
-  };
-  
-  // Clear active thread selection
-  const clearActiveThread = () => {
-    setActiveThread(null);
-    toast({
-      title: "Antwortmodus verlassen",
-      description: "Sie verfassen eine neue E-Mail",
-    });
-  };
-
-  const findNextTask = async () => {
-    if (!user?.id) return null;
-    
-    try {
-      // Find next 'new' task assigned to this user
-      let query = supabase
-        .from('tasks')
-        .select('id')
-        .eq('status', 'new')
-        .eq('assigned_to', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1);
-        
-      const { data: newTasks, error: newTasksError } = await query;
-      
-      if (newTasksError) throw newTasksError;
-      
-      if (newTasks && newTasks.length > 0) {
-        return newTasks[0].id;
-      }
-      
-      // If no 'new' tasks, look for 'in_progress' tasks
-      const { data: inProgressTasks, error: inProgressTasksError } = await supabase
-        .from('tasks')
-        .select('id')
-        .eq('status', 'in_progress')
-        .eq('assigned_to', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1);
-        
-      if (inProgressTasksError) throw inProgressTasksError;
-      
-      if (inProgressTasks && inProgressTasks.length > 0) {
-        return inProgressTasks[0].id;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error finding next task:', error);
-      return null;
-    }
-  };
-
-  const handleTaskClose = async (comment: string) => {
-    await handleCloseWithoutAva(comment);
-    
-    // Find and navigate to next task
-    const nextTaskId = await findNextTask();
-    if (nextTaskId) {
-      setIsActive(false);
-      await new Promise(resolve => setTimeout(resolve, 100)); // Give time for timer to stop
-      navigate(`/tasks/${nextTaskId}`);
-      toast({
-        title: "Nächste Aufgabe",
-        description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
-      });
-    } else {
-      setIsActive(false);
-      await new Promise(resolve => setTimeout(resolve, 100));
-      navigate('/tasks');
-    }
-  };
+  const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
+  const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
+  const [forwardTaskDialogOpen, setForwardTaskDialogOpen] = useState(false);
+  const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
 
   useEffect(() => {
-    return () => {
-      console.log('TaskDetail unmounting, setting isActive to false');
-      setIsActive(false);
-    };
-  }, []);
-
-  const handleBack = async () => {
-    setIsActive(false);
-    await new Promise(resolve => setTimeout(resolve, 100));
+    if (taskId && user) {
+      startTaskTimer(taskId, user.id);
+    }
     
-    // Check if the task is completed and navigate accordingly
-    if (task && task.status === 'completed') {
-      navigate('/tasks/completed');
-    } else {
-      navigate('/tasks');
+    return () => {
+      if (taskId && user?.id) endTaskTimer(taskId, user.id);
+    };
+  }, [taskId, user, startTaskTimer, endTaskTimer]);
+
+  const handleBack = () => {
+    navigate('/tasks');
+  };
+
+  const formattedTime = task?.created_at 
+    ? format(new Date(task.created_at), 'dd. MMMM yyyy, HH:mm', { locale: de }) 
+    : '';
+
+  const isUnassigned = !task?.assigned_to;
+  const canAssignOrForward = user && (!task?.assigned_to || task?.assigned_to === user.id);
+
+  const handleAssignToMe = async () => {
+    if (!taskId || !user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ assigned_to: user.id })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      // Log activity - we'll update this
+      const { error: activityError } = await supabase
+        .from('task_activities')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          action: 'assign',
+          status_from: task?.status || 'new',
+          status_to: task?.status || 'new'
+        });
+        
+      if (activityError) console.error("Failed to log activity:", activityError);
+      
+      toast({
+        title: "Aufgabe zugewiesen",
+        description: "Die Aufgabe wurde Ihnen zugewiesen.",
+      });
+      
+      fetchTaskDetails();
+    } catch (error) {
+      console.error("Error assigning task:", error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Die Aufgabe konnte nicht zugewiesen werden.",
+      });
     }
   };
 
-  const handleEmailSentFromCustomerDialog = (emailDetails: { recipient: string, subject: string }) => {
-    toast({
-      title: "E-Mail gesendet",
-      description: `E-Mail wurde erfolgreich an ${emailDetails.recipient} gesendet.`,
-    });
+  const handleStatusChange = async (status: TaskStatus) => {
+    if (!taskId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      if (status === 'completed') {
+        await logTaskClose(taskId);
+        toast({
+          title: "Aufgabe abgeschlossen",
+          description: "Die Aufgabe wurde erfolgreich abgeschlossen.",
+        });
+      } else {
+        toast({
+          title: "Status geändert",
+          description: `Der Status wurde zu "${status}" geändert.`,
+        });
+      }
+      
+      fetchTaskDetails();
+    } catch (error) {
+      console.error("Error changing status:", error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Der Status konnte nicht geändert werden.",
+      });
+    }
+  };
+  
+  // Handler for email reply button clicks
+  const handleEmailReplyClick = (thread: EmailThread) => {
+    console.log("Handling email reply click for thread:", thread.id);
+    setSelectedEmailThread(thread);
+    setEmailReplyDialogOpen(true);
+  };
+  
+  // Handler for when an email is sent
+  const handleEmailSent = () => {
+    console.log('Email sent, refreshing data...');
+    refreshThreads();
+    fetchTaskDetails();
   };
 
-  if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
-  if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
+  if (taskLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
-  const canAssignOrForward = user?.role === 'admin' || user?.id === task.assigned_to;
-  const isUnassigned = !task.assigned_to;
+  if (!task) {
+    return (
+      <Card className="p-6">
+        <div className="text-center text-gray-500">
+          Aufgabe nicht gefunden
+        </div>
+      </Card>
+    );
+  }
 
   return (
-    <div className="max-w-screen-xl mx-auto w-full px-3 md:px-8 py-5">
-      <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-0">
-        <TaskDetailHeader 
+    <>
+      <div className="space-y-4 mb-20">
+        {/* Task Header */}
+        <TaskDetailHeader
           task={task}
           formattedTime={formattedTime}
           isUnassigned={isUnassigned}
@@ -202,104 +199,86 @@ const TaskDetail = () => {
           setEmailToCustomerDialogOpen={setEmailToCustomerDialogOpen}
           handleStatusChange={handleStatusChange}
         />
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
-          {/* Left column with scroll area */}
-          <ScrollArea className="h-[calc(100vh-280px)] lg:max-h-[700px]">
-            <div className="flex flex-col space-y-6 pr-4">
-              <TaskDetailInfo task={task} />
-              
-              {/* Email Thread History Component */}
-              {emailThreadsLoading ? (
-                <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
-                  <div className="flex justify-center items-center h-20">
-                    <p>Lade E-Mail-Verlauf...</p>
-                  </div>
-                </div>
-              ) : emailThreads && emailThreads.length > 0 && (
-                <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
-                  <EmailThreadHistory 
-                    threads={emailThreads} 
-                    onReplyClick={handleThreadReplyClick} 
-                  />
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-
-          <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
-            <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 p-6">
-              {task.source === 'email' ? (
-                <div id="email-reply-panel">
-                  <EmailReplyPanel
-                    taskId={task.id}
-                    replyTo={replyTo}
-                    setReplyTo={setReplyTo}
-                    activeThread={activeThread}
-                    clearActiveThread={clearActiveThread}
-                  />
-                </div>
-              ) : (
-                <>
-                  <CardHeader className="p-0 pb-2 flex flex-row items-center border-none">
-                    <CardTitle className="text-xl font-semibold text-blue-900">
-                      Bearbeitung der Aufgabe
-                    </CardTitle>
-                  </CardHeader>
-                  <TaskChat taskId={task.id} useCaseId={task.matched_use_case_id} />
-                </>
-              )}
-            </div>
+        
+        {/* Main content area */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {/* Left side: Task info and Email History */}
+          <div className="md:col-span-4 space-y-6">
+            <TaskDetailInfo task={task} />
+            
+            {/* Email Thread History */}
+            {!threadsLoading && threads && threads.length > 0 && (
+              <div className="mt-6">
+                <EmailThreadHistory 
+                  threads={threads} 
+                  onReplyClick={handleEmailReplyClick} 
+                />
+              </div>
+            )}
+          </div>
+          
+          {/* Right side: Task chat */}
+          <div className="md:col-span-8">
+            <TaskChat taskId={taskId} />
           </div>
         </div>
       </div>
 
-      {/* Email to customer dialog */}
-      <EmailToCustomerDialog
-        open={emailToCustomerDialogOpen}
-        onOpenChange={setEmailToCustomerDialogOpen}
-        taskId={task.id}
-        recipientEmail={task.customer?.email || task.endkunde_email}
-        taskMessages={messages}
-        onEmailSent={handleEmailSentFromCustomerDialog}
-      />
+      {/* Email Reply Dialog */}
+      {taskId && (
+        <EmailReplyDialog
+          open={emailReplyDialogOpen}
+          onOpenChange={setEmailReplyDialogOpen}
+          taskId={taskId}
+          thread={selectedEmailThread}
+          onEmailSent={handleEmailSent}
+        />
+      )}
+      
+      {/* Email to Customer Dialog */}
+      {taskId && task && (
+        <EmailToCustomerDialog
+          open={emailToCustomerDialogOpen}
+          onOpenChange={setEmailToCustomerDialogOpen}
+          taskId={taskId}
+          customerName={task?.customer?.name}
+          endkundeEmail={task?.endkunde_email}
+          onEmailSent={handleEmailSent}
+        />
+      )}
 
-      {/* New Email reply dialog */}
-      <EmailReplyDialog
-        open={emailReplyDialogOpen}
-        onOpenChange={setEmailReplyDialogOpen}
-        taskId={task.id}
-        thread={activeThread}
-        onEmailSent={handleEmailSent}
-      />
-
-      <FollowUpDialog
-        open={followUpDialogOpen}
-        onOpenChange={setFollowUpDialogOpen}
-        onSave={handleFollowUp}
-      />
-
-      <CloseTaskDialog
-        open={closeTaskDialogOpen}
-        onOpenChange={setCloseTaskDialogOpen}
-        onClose={handleTaskClose}
-      />
-
+      {/* Assignment, Forward, Close, and Follow-Up Dialogs */}
       <AssignTaskDialog
         open={assignTaskDialogOpen}
         onOpenChange={setAssignTaskDialogOpen}
-        onAssign={handleAssignTask}
-        currentAssignee={task.assigned_to}
+        onAssign={(userId: string, note: string) => {
+          // Handle assignment
+          console.log(`Assigning task ${taskId} to user ${userId} with note: ${note}`);
+          fetchTaskDetails();
+        }}
+        currentAssignee={task?.assigned_to}
       />
-
-      <AssignTaskDialog
-        open={forwardTaskDialogOpen}
-        onOpenChange={setForwardTaskDialogOpen}
-        onAssign={handleAssignTask}
-        currentAssignee={task.assigned_to}
-        isForwarding={true}
+      
+      <CloseTaskDialog
+        open={closeTaskDialogOpen}
+        onOpenChange={setCloseTaskDialogOpen}
+        onClose={(comment: string) => {
+          // Handle close
+          console.log(`Closing task ${taskId} with comment: ${comment}`);
+          fetchTaskDetails();
+          navigate('/tasks');
+        }}
       />
-    </div>
+      
+      <FollowUpDialog
+        open={followUpDialogOpen}
+        onOpenChange={setFollowUpDialogOpen}
+        onSchedule={(date: Date) => {
+          console.log(`Scheduling follow-up for task ${taskId} on ${date}`);
+          fetchTaskDetails();
+        }}
+      />
+    </>
   );
 };
 

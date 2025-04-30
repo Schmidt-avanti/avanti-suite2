@@ -1,74 +1,88 @@
-// Add to existing types
-export interface TaskTime {
+export type TaskStatus = 'new' | 'in progress' | 'blocked' | 'completed' | 'followup';
+
+export interface Customer {
+  id: string;
+  name: string;
+  branch?: string;
+  createdAt?: string;
+  isActive?: boolean;
+  cost_center?: string;
+  contact_person?: string;
+  billing_address?: string;
+}
+
+export interface Task {
+  id: string;
+  readable_id: string;
+  created_at: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  customer_id: string;
+  customer?: Customer;
+  created_by: string;
+  creator?: {
+    "Full Name": string;
+    id?: string;
+  };
+  assigned_to: string;
+  assignee?: {
+    "Full Name": string;
+  };
+  closing_comment: string | null;
+  attachments: string[] | null;
+  source: string | null;
+  endkunde_id: string | null;
+  endkunde_email: string | null;
+  from_email?: string; // Added for compatibility with useTasks.ts
+  matched_use_case_id?: string | null;
+}
+
+export interface TaskActivity {
   id: string;
   task_id: string;
   user_id: string;
-  started_at: string;
-  ended_at?: string;
-  duration_seconds?: number;
+  timestamp: string;
+  action: TaskActivityAction;
+  status_from: TaskStatus | null;
+  status_to: TaskStatus | null;
+}
+
+export type TaskActivityAction = 'create' | 'assign' | 'status_change' | 'open' | 'close';
+
+export interface TaskMessage {
+  id: string;
   created_at: string;
-}
-
-export interface TaskTimeSummary {
   task_id: string;
-  user_id: string;
-  total_seconds: number;
-  total_hours: number;
-  session_count: number;
+  content: string;
+  role: 'user' | 'assistant';
+  created_by: string;
 }
 
-// Adding email thread interface
+export interface UseCase {
+  id: string;
+  title: string;
+  description: string;
+  customer_id: string;
+  prompt: string;
+  active: boolean;
+}
+
 export interface EmailThread {
   id: string;
   task_id: string;
-  direction: 'inbound' | 'outbound';
   sender: string;
   recipient: string;
   subject?: string;
   content: string;
+  attachments?: string[] | Json | null;
   created_at: string;
-  attachments?: string[];
-  thread_id?: string;
+  direction: 'inbound' | 'outbound';
   reply_to_id?: string;
+  thread_id?: string;
 }
 
-// Existing types (to fix build errors)
-export type TaskStatus = 'new' | 'in_progress' | 'followup' | 'completed';
-
-export interface Task {
-  id: string;
-  title: string;
-  status: TaskStatus;
-  created_at: string;
-  source?: string;
-  readable_id?: string;
-  customer?: {
-    id: string;
-    name: string;
-  };
-  creator?: {
-    id: string;
-    "Full Name": string;
-  };
-  assignee?: {
-    id: string;
-    "Full Name": string;
-  };
-  follow_up_date?: string;
-  closing_comment?: string;
-  attachments?: any[];
-  endkunde_id?: string;
-  endkunde_email?: string; 
-  from_email?: string;     
-  description?: string;    
-  matched_use_case_id?: string;
-}
-
-// Add missing types that are causing errors
-export type UserRole = 'admin' | 'agent' | 'client';
-
-export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'comment';
-
+// Add missing interfaces
 export interface User {
   id: string;
   email: string;
@@ -76,45 +90,55 @@ export interface User {
   createdAt: string;
   firstName?: string;
   lastName?: string;
+  name?: string;
+  fullName?: string;
   avatarUrl?: string;
-  fullName?: string; // Add this property to fix the error
+  customers?: Customer[];
+  is_active?: boolean;
 }
 
-export interface Customer {
-  id: string;
-  name: string;
-  branch?: string;
-  createdAt: string;
-  isActive?: boolean;
-  cost_center?: string;
-  billing_email?: string;
-  billing_address?: string;
-  contact_person?: string;
-}
+export type UserRole = 'admin' | 'agent' | 'client';
 
-export type Notification = {
+export interface Notification {
   id: string;
   user_id: string;
   message: string;
-  task_id?: string;
   created_at: string;
   read_at: string | null;
-};
+  task_id?: string;
+}
 
 export interface PaymentMethod {
   id: string;
   user_id: string;
+  customer_id?: string;
   type: 'paypal' | 'creditcard';
   value: string;
+  active: boolean;
+  last_used?: string;
   created_at: string;
   updated_at: string;
-  last_used: string | null;
-  active: boolean;
-  customer_id?: string;
   card_holder?: string;
   expiry_month?: number;
   expiry_year?: number;
   billing_address?: string;
-  billing_zip?: string;
   billing_city?: string;
+  billing_zip?: string;
 }
+
+export interface TaskTimeSummary {
+  user_id: string;
+  task_id: string;
+  total_hours: number;
+  total_seconds: number;
+  session_count: number;
+}
+
+// Add Json type from Supabase
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]

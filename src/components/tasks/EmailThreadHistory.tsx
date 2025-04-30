@@ -3,8 +3,8 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowDownLeft, ArrowUpRight, Paperclip, reply } from "lucide-react";
-import { EmailThread } from "@/types";
+import { ArrowDownLeft, ArrowUpRight, Paperclip, Reply } from "lucide-react";
+import { EmailThread, Json } from "@/types";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 
@@ -12,6 +12,50 @@ interface EmailThreadHistoryProps {
   threads: EmailThread[];
   onReplyClick?: (thread: EmailThread) => void;
 }
+
+// Helper function to safely check if attachments exist and have length
+const hasAttachments = (attachments: string[] | Json | null | undefined): boolean => {
+  if (!attachments) return false;
+  
+  if (Array.isArray(attachments)) {
+    return attachments.length > 0;
+  }
+  
+  // If it's a string, consider it as a single attachment
+  if (typeof attachments === 'string') {
+    return true;
+  }
+  
+  return false;
+};
+
+// Helper to safely convert attachments to array
+const getAttachmentsArray = (attachments: string[] | Json | null | undefined): string[] => {
+  if (!attachments) return [];
+  
+  if (Array.isArray(attachments)) {
+    return attachments.map(item => String(item));
+  }
+  
+  // If it's a string, treat as a single attachment
+  if (typeof attachments === 'string') {
+    return [attachments];
+  }
+  
+  // If it's an object with numeric keys (like a JSON array)
+  if (typeof attachments === 'object' && attachments !== null) {
+    try {
+      const values = Object.values(attachments);
+      if (values.length > 0) {
+        return values.map(item => String(item));
+      }
+    } catch (e) {
+      console.error("Error processing attachments object:", e);
+    }
+  }
+  
+  return [];
+};
 
 export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads, onReplyClick }) => {
   if (!threads || threads.length === 0) {
@@ -24,12 +68,19 @@ export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads,
     );
   }
 
+  // Sort threads by creation date (newest first)
+  const sortedThreads = [...threads].sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  console.log("Rendering email threads:", sortedThreads);
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium mb-2">E-Mail-Verlauf</h3>
       
       <div className="space-y-3">
-        {threads.map((thread, index) => (
+        {sortedThreads.map((thread, index) => (
           <Card key={thread.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="flex items-center justify-between p-3 bg-gray-50 border-b border-gray-100">
               <div className="flex items-center">
@@ -55,7 +106,7 @@ export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads,
                   className="flex items-center text-blue-600 hover:text-blue-800"
                   onClick={() => onReplyClick(thread)}
                 >
-                  <reply className="h-4 w-4 mr-1" />
+                  <Reply className="h-4 w-4 mr-1" />
                   <span>Antworten</span>
                 </Button>
               )}
@@ -82,14 +133,14 @@ export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads,
                 {thread.content}
               </div>
               
-              {thread.attachments && thread.attachments.length > 0 && (
+              {hasAttachments(thread.attachments) && (
                 <div className="mt-4">
                   <div className="text-sm font-medium text-gray-500 mb-2 flex items-center">
                     <Paperclip className="h-4 w-4 mr-1" />
-                    <span>Anhänge ({thread.attachments.length})</span>
+                    <span>Anhänge ({getAttachmentsArray(thread.attachments).length})</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {thread.attachments.map((url, i) => {
+                    {getAttachmentsArray(thread.attachments).map((url, i) => {
                       const filename = url.split('/').pop() || `Anhang ${i + 1}`;
                       return (
                         <a
@@ -113,4 +164,4 @@ export const EmailThreadHistory: React.FC<EmailThreadHistoryProps> = ({ threads,
       </div>
     </div>
   );
-}
+};

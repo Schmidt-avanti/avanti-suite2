@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -115,20 +114,20 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
         .from('tasks')
         .update({ status: newStatus })
         .eq('id', id);
-      
+    
       if (error) throw error;
-      
+    
       await logTaskStatusChange(id!, task.status as TaskStatus, newStatus);
-      
+    
       setTask({ ...task, status: newStatus });
-      
+    
       toast({
         title: "Status geändert",
         description: `Die Aufgabe wurde als "${newStatus === 'completed' ? 'Abgeschlossen' : 
-          newStatus === 'in_progress' ? 'In Bearbeitung' : 
+          newStatus === 'in progress' ? 'In Bearbeitung' : 
           newStatus === 'followup' ? 'Wiedervorlage' : 'Neu'}" markiert.`,
       });
-      
+    
       // If task was completed, find and navigate to next task
       if (newStatus === 'completed') {
         const nextTaskId = await findNextTask();

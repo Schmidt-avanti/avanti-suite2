@@ -1,4 +1,3 @@
-
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -105,7 +104,7 @@ const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className={`relative ${isMobile ? 'h-8 w-8 ml-1' : 'h-9 w-9'} bg-gray-100 rounded-full flex items-center justify-center`}>
                     <Avatar className={`${isMobile ? 'h-7 w-7' : 'h-8 w-8'}`}>
-                      {/* Conditionally render AvatarImage only if avatarUrl exists */}
+                      {/* Only render AvatarImage if we have an image URL */}
                       {user.avatarUrl && (
                         <AvatarImage 
                           src={user.avatarUrl} 

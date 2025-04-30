@@ -6,10 +6,15 @@ import { ReportFilters } from '@/hooks/useReportData';
 
 // Helper function to validate task status
 const validateTaskStatus = (status: string): TaskStatus => {
-  const validStatuses: TaskStatus[] = ['new', 'in_progress', 'followup', 'completed'];
+  const validStatuses: TaskStatus[] = ['new', 'in progress', 'followup', 'completed', 'blocked'];
   
   if (validStatuses.includes(status as TaskStatus)) {
     return status as TaskStatus;
+  }
+  
+  // Handle the case where we might get 'in_progress' from the database
+  if (status === 'in_progress') {
+    return 'in progress';
   }
   
   console.warn(`Invalid task status: "${status}", defaulting to "new"`);
@@ -81,6 +86,10 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             created_at,
             created_by,
             customer_id,
+            description,
+            closing_comment,
+            matched_use_case_id,
+            assigned_to,
             customer:customer_id(id, name)
           `)
           .order('created_at', { ascending: false });
@@ -203,8 +212,12 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             customer: transformCustomer(rawTask.customer),
             creator: rawTask.creator, 
             attachments: rawTask.attachments,
-            description: rawTask.description,
-            matched_use_case_id: rawTask.matched_use_case_id
+            description: rawTask.description || "",
+            closing_comment: rawTask.closing_comment || null,
+            matched_use_case_id: rawTask.matched_use_case_id,
+            customer_id: rawTask.customer_id,
+            created_by: rawTask.created_by,
+            assigned_to: rawTask.assigned_to || ""
           };
         });
         
