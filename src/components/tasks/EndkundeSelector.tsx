@@ -49,10 +49,10 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         
         console.log('Fetching endkunden for customer ID:', customerId);
         
-        // Fixed the query to properly handle column names, especially those with umlauts
+        // Query only the fields we need and ensure correct column names
         const { data, error } = await supabase
           .from('endkunden')
-          .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort, email, telefon')
+          .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
           .eq('customer_ID', customerId)
           .eq('is_active', true)
           .order('Nachname', { ascending: true });
@@ -64,8 +64,8 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
         console.log('Fetched endkunden:', data);
 
-        // Transform the data into our expected format with strong typing
-        const formattedData = data.map((ek: any) => {
+        // Transform the data with explicit typing to avoid recursion issues
+        const formattedData: EndkundeOption[] = data.map((ek) => {
           // Create a display name based on available fields
           const vorname = ek.Vorname ? ` ${ek.Vorname}` : '';
           const wohnung = ek.Wohnung ? ` • Wohnung ${ek.Wohnung}` : '';
@@ -101,7 +101,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       return;
     }
     
-    // Find the selected endkunde email to pass back
+    // Since email is not fetched in the initial query, we need to get it separately
     try {
       console.log('Fetching email for endkunde ID:', endkundeId);
       
@@ -116,6 +116,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       if (!error && data) {
         onChange(endkundeId, data.email);
       } else {
+        // If email doesn't exist in the schema or there's an error, pass null
         onChange(endkundeId, null);
       }
     } catch (err) {
