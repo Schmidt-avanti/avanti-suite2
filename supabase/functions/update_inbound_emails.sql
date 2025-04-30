@@ -2,7 +2,12 @@
 -- Add new columns to the inbound_emails table for tracking email threads
 ALTER TABLE inbound_emails
 ADD COLUMN IF NOT EXISTS references text,
-ADD COLUMN IF NOT EXISTS in_reply_to text;
+ADD COLUMN IF NOT EXISTS in_reply_to text,
+ADD COLUMN IF NOT EXISTS message_id text;
+
+-- Add message_id column to email_threads table if it doesn't exist yet
+ALTER TABLE email_threads
+ADD COLUMN IF NOT EXISTS message_id text;
 
 -- Make sure we have the avanti_email generation function available
 CREATE OR REPLACE FUNCTION public.generate_avanti_email(customer_name text)
