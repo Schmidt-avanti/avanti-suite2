@@ -50,6 +50,32 @@ export type Database = {
           },
         ]
       }
+      customer_task_counters: {
+        Row: {
+          current_count: number
+          customer_id: string
+          prefix: string
+        }
+        Insert: {
+          current_count?: number
+          customer_id: string
+          prefix: string
+        }
+        Update: {
+          current_count?: number
+          customer_id?: string
+          prefix?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_task_counters_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_tools: {
         Row: {
           created_at: string
@@ -672,6 +698,7 @@ export type Database = {
           match_confidence: number | null
           match_reasoning: string | null
           matched_use_case_id: string | null
+          readable_id: string | null
           source: string | null
           source_email_id: string | null
           status: string
@@ -693,6 +720,7 @@ export type Database = {
           match_confidence?: number | null
           match_reasoning?: string | null
           matched_use_case_id?: string | null
+          readable_id?: string | null
           source?: string | null
           source_email_id?: string | null
           status?: string
@@ -714,6 +742,7 @@ export type Database = {
           match_confidence?: number | null
           match_reasoning?: string | null
           matched_use_case_id?: string | null
+          readable_id?: string | null
           source?: string | null
           source_email_id?: string | null
           status?: string
@@ -1131,6 +1160,10 @@ export type Database = {
           duration_seconds: number
           user_id: string
         }[]
+      }
+      generate_customer_prefix: {
+        Args: { customer_name: string }
+        Returns: string
       }
       generate_embedding: {
         Args: { input_text: string }

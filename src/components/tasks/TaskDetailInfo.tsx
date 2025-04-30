@@ -7,6 +7,7 @@ import {
   Inbox,
   UserCheck,
   XCircle,
+  Hash
 } from "lucide-react";
 import { KnowledgeArticlesList } from './KnowledgeArticlesList';
 
@@ -20,6 +21,16 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
       <Card className="rounded-xl shadow-md border-none bg-white/85">
         <CardContent className="p-6 pb-3 space-y-2 break-words whitespace-pre-wrap">
           <h2 className="text-lg font-semibold mb-1">Aufgabendetails</h2>
+          
+          {/* Display Task ID if available */}
+          {task.readable_id && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 mb-3">
+              <Hash className="h-4 w-4" />
+              <span className="font-medium">Aufgabennummer</span>
+              <span className="font-mono font-semibold text-blue-700">{task.readable_id}</span>
+            </div>
+          )}
+          
           <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
             <Inbox className="h-4 w-4" />
             <span className="font-medium">Beschreibung</span>
