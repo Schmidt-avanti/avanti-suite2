@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -115,11 +116,11 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
         .order('created_at', { ascending: false })
         .limit(1);
       
-      // Fix: Handle the case where the message_id property doesn't exist
+      // Safely handle the case where the message_id property doesn't exist
       let inReplyToMessageId = null;
       if (emailThreads && emailThreads.length > 0) {
         // Use optional chaining to safely access the message_id property
-        inReplyToMessageId = emailThreads[0].message_id || null;
+        inReplyToMessageId = emailThreads[0]?.message_id || null;
         console.log('Reply to message ID:', inReplyToMessageId);
       }
       
