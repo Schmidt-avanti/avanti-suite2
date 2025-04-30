@@ -27,6 +27,19 @@ interface EndkundeSelectorProps {
   disabled?: boolean;
 }
 
+// Define the response type outside the component to avoid recursion issues
+type EndkundeResponse = {
+  id: string;
+  Nachname: string;
+  Vorname: string | null;
+  Adresse: string;
+  Wohnung: string | null;
+  Gebäude: string | null;
+  Lage: string | null;
+  Postleitzahl: string;
+  Ort: string;
+};
+
 export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({ 
   customerId, 
   value, 
@@ -49,19 +62,6 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         
         console.log('Fetching endkunden for customer ID:', customerId);
         
-        // Explicitly define the response type to avoid recursion issues
-        type EndkundeResponse = {
-          id: string;
-          Nachname: string;
-          Vorname: string | null;
-          Adresse: string;
-          Wohnung: string | null;
-          Gebäude: string | null;
-          Lage: string | null;
-          Postleitzahl: string;
-          Ort: string;
-        };
-        
         const { data, error } = await supabase
           .from('endkunden')
           .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
@@ -76,8 +76,11 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
         console.log('Fetched endkunden:', data);
 
-        // Transform the data with explicit typing to avoid recursion issues
-        const formattedData: EndkundeOption[] = (data as EndkundeResponse[]).map((ek) => {
+        // Cast the data array first, then map it to avoid type recursion issues
+        const responseData = data as EndkundeResponse[];
+        
+        // Transform the data using the correctly typed array
+        const formattedData: EndkundeOption[] = responseData.map((ek) => {
           // Create a display name based on available fields
           const vorname = ek.Vorname ? ` ${ek.Vorname}` : '';
           const wohnung = ek.Wohnung ? ` • Wohnung ${ek.Wohnung}` : '';
