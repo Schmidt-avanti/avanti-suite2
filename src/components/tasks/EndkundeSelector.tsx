@@ -46,20 +46,6 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
       try {
         setIsLoading(true);
-        // Explicitly type the query response to match the actual database column names
-        type EndkundenResponse = {
-          id: string;
-          Nachname: string;
-          Vorname: string | null;
-          Adresse: string;
-          Wohnung: string | null;
-          Gebäude: string | null;
-          Lage: string | null;
-          Postleitzahl: string;
-          Ort: string;
-          email?: string | null;
-          telefon?: string | null;
-        };
         
         console.log('Fetching endkunden for customer ID:', customerId);
         
@@ -68,7 +54,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
           .select('id, Nachname, Vorname, Adresse, Wohnung, Gebäude, Lage, Postleitzahl, Ort, email, telefon')
           .eq('customer_ID', customerId)
           .eq('is_active', true)
-          .order('Nachname', { ascending: true }) as { data: EndkundenResponse[], error: any };
+          .order('Nachname', { ascending: true });
 
         if (error) {
           console.error('Error fetching endkunden:', error);
@@ -116,16 +102,13 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
     
     // Find the selected endkunde email to pass back
     try {
-      // Explicitly type the query response
-      type EmailResponse = { email: string | null };
-      
       console.log('Fetching email for endkunde ID:', endkundeId);
       
       const { data, error } = await supabase
         .from('endkunden')
         .select('email')
         .eq('id', endkundeId)
-        .single() as { data: EmailResponse | null, error: any };
+        .single();
       
       console.log('Email fetch result:', { data, error });
       

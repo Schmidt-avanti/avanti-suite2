@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -167,18 +168,25 @@ const PaymentDataPage = () => {
         .from('payment_methods')
         .insert({
           user_id: user?.id,
-          type: 'paypal' as 'paypal' | 'creditcard', // Type assertion to fix the TypeScript error
+          type: 'paypal' as 'paypal' | 'creditcard', 
           value: values.paypal,
           customer_id: selectedCustomer?.id
         });
 
       if (error) throw error;
 
-      toast.success('PayPal-Konto gespeichert');
-      fetchPaymentMethods();
+      toast({
+        title: 'PayPal-Konto gespeichert',
+        description: 'Die Zahlungsmethode wurde erfolgreich gespeichert.'
+      });
+      queryClient.invalidateQueries({ queryKey: ['payment-methods'] });
       setCreatePayPalOpen(false);
     } catch (error) {
-      toast.error('Fehler beim Speichern der Zahlungsmethode');
+      toast({
+        title: 'Fehler beim Speichern',
+        description: 'Die Zahlungsmethode konnte nicht gespeichert werden.',
+        variant: 'destructive'
+      });
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -189,7 +197,6 @@ const PaymentDataPage = () => {
     try {
       setIsSubmitting(true);
       
-      // Type assertion to fix the TypeScript error
       const paymentData: {
         user_id: string;
         type: 'paypal' | 'creditcard';
@@ -220,11 +227,18 @@ const PaymentDataPage = () => {
 
       if (error) throw error;
 
-      toast.success('Kreditkarte gespeichert');
-      fetchPaymentMethods();
+      toast({
+        title: 'Kreditkarte gespeichert',
+        description: 'Die Zahlungsmethode wurde erfolgreich gespeichert.'
+      });
+      queryClient.invalidateQueries({ queryKey: ['payment-methods'] });
       setCreateCreditCardOpen(false);
     } catch (error) {
-      toast.error('Fehler beim Speichern der Zahlungsmethode');
+      toast({
+        title: 'Fehler beim Speichern',
+        description: 'Die Zahlungsmethode konnte nicht gespeichert werden.',
+        variant: 'destructive'
+      });
       console.error(error);
     } finally {
       setIsSubmitting(false);

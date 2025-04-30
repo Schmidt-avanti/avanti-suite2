@@ -168,7 +168,8 @@ const useCustomerForm = ({
             ? {
                 ...c,
                 name: data[0].name,
-                branch: data[0]?.industry ?? ""
+                industry: data[0].industry,
+                branch: data[0].industry
               }
             : c
         ));
@@ -192,15 +193,9 @@ const useCustomerForm = ({
 
         if (error) throw error;
         customerId = data[0].id;
-
-        const newCustomers = data.map((customer: any) => ({
-          id: customer.id,
-          name: customer.name,
-          branch: customer.industry ?? "",
-          createdAt: customer.created_at,
-          isActive: customer.is_active !== false
-        }));
-        setCustomers((prev) => [...prev, ...newCustomers]);
+        
+        // Add the new customer to the list
+        setCustomers(prev => [...prev, ...data]);
       }
 
       const { data: existingTools } = await supabase

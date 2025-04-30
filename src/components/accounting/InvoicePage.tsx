@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useCustomers } from '@/hooks/useCustomers';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

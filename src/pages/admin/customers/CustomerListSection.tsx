@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+
+import React, { useEffect } from "react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2, Ban } from "lucide-react";
@@ -38,15 +39,7 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
     const fetchCustomers = async () => {
       const { data, error } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
       if (!error && data) {
-        // Map Supabase snake_case to our frontend camelCase model and include isActive
-        const mappedCustomers = data.map((customer: any) => ({
-          id: customer.id,
-          name: customer.name,
-          branch: customer.industry,
-          createdAt: customer.created_at,
-          isActive: customer.is_active !== false // default to true
-        }));
-        setCustomers(mappedCustomers);
+        setCustomers(data);
       }
     };
     fetchCustomers();
@@ -85,7 +78,7 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
 
   const handleToggleActive = async (customer: Customer) => {
     try {
-      const newStatus = !customer.isActive;
+      const newStatus = !customer.is_active;
 
       const { error } = await supabase
         .from("customers")
@@ -96,7 +89,7 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
 
       setCustomers(
         customers.map(c =>
-          c.id === customer.id ? { ...c, isActive: newStatus } : c
+          c.id === customer.id ? { ...c, is_active: newStatus } : c
         )
       );
 
@@ -112,8 +105,8 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
   };
 
   const sortedCustomers = [...customers].sort((a, b) => {
-    if (a.isActive && !b.isActive) return -1;
-    if (!a.isActive && b.isActive) return 1;
+    if (a.is_active && !b.is_active) return -1;
+    if (!a.is_active && b.is_active) return 1;
     return 0;
   });
 
@@ -131,11 +124,11 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
         </TableHeader>
         <TableBody>
           {sortedCustomers.map((customer) => (
-            <TableRow key={customer.id} className={!customer.isActive ? "opacity-60" : ""}>
+            <TableRow key={customer.id} className={!customer.is_active ? "opacity-60" : ""}>
               <TableCell>{customer.name}</TableCell>
               <TableCell>{customer.branch || "–"}</TableCell>
-              <TableCell>{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : "–"}</TableCell>
-              <TableCell>{customer.isActive ? "Aktiv" : "Inaktiv"}</TableCell>
+              <TableCell>{customer.created_at ? new Date(customer.created_at).toLocaleDateString() : "–"}</TableCell>
+              <TableCell>{customer.is_active ? "Aktiv" : "Inaktiv"}</TableCell>
               <TableCell>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" onClick={() => onEdit(customer)} title="Bearbeiten">
@@ -145,7 +138,7 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
                     variant="ghost"
                     size="icon"
                     onClick={() => handleToggleActive(customer)}
-                    title={customer.isActive ? "Deaktivieren" : "Aktivieren"}
+                    title={customer.is_active ? "Deaktivieren" : "Aktivieren"}
                   >
                     <Ban className="w-4 h-4" />
                   </Button>

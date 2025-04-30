@@ -21,13 +21,7 @@ export function useFetchCustomers() {
           setError(error.message);
           setCustomers([]);
         } else {
-          setCustomers(
-            (data ?? []).map((row) => ({
-              id: row.id,
-              name: row.name,
-              createdAt: row.created_at,
-            }))
-          );
+          setCustomers(data || []);
         }
         setLoading(false);
       });
