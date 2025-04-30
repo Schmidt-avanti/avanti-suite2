@@ -3,12 +3,20 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from '@/contexts/AuthContext';
-import { Message } from './useTaskMessages';
+import { TaskMessage } from '@/types';
+
+export interface Message {
+  id: string;
+  content: string;
+  role: 'user' | 'assistant';
+  created_at: string;
+  created_by: string;
+}
 
 export const useTaskChatMessages = (
   taskId: string | undefined, 
-  useCaseId: string | undefined,
-  onMessageSent: () => void
+  useCaseId: string | undefined = undefined,
+  onMessageSent: () => void = () => {}
 ) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRateLimited, setIsRateLimited] = useState(false);
@@ -17,7 +25,7 @@ export const useTaskChatMessages = (
   const [inputValue, setInputValue] = useState('');
   const { user } = useAuth();
 
-  const sendMessage = async (text: string, buttonChoice: string | null = null, selectedOptions: Set<string>) => {
+  const sendMessage = async (text: string, buttonChoice: string | null = null, selectedOptions: Set<string> = new Set()) => {
     // Validate taskId
     if (!user || !taskId || taskId === "undefined") {
       console.error("Invalid taskId or user", { taskId, userId: user?.id });

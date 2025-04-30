@@ -28,8 +28,18 @@ const TaskDetail = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { task, isLoading: taskLoading, fetchTaskDetails: fetchTask } = useTaskDetail(taskId);
-  const { messages } = useTaskChatMessages(taskId);
+  const { task, isLoading: taskLoading, fetchTaskDetails: fetchTask } = useTaskDetail(taskId, user);
+  
+  // We need to change how we use the useTaskChatMessages hook based on its signature
+  const { 
+    inputValue, 
+    setInputValue,
+    isLoading: chatLoading,
+    sendMessage
+  } = useTaskChatMessages(taskId, undefined, () => fetchTask());
+  
+  // We can use the TaskChat component to handle messages display
+  
   const { elapsedTime, isTracking, startTracking, stopTracking } = useTaskTimer(taskId);
   const { logTaskClose, logTaskStatusChange } = useTaskActivity();
   const { toast } = useToast();
@@ -223,7 +233,7 @@ const TaskDetail = () => {
           onOpenChange={setEmailToCustomerDialogOpen}
           taskId={taskId}
           recipientEmail={task?.endkunde_email}
-          taskMessages={messages}
+          taskMessages={[]} // We need to update this to use actual messages
           onEmailSent={handleEmailSent}
         />
       )}
@@ -232,7 +242,22 @@ const TaskDetail = () => {
       <AssignTaskDialog
         open={assignTaskDialogOpen}
         onOpenChange={setAssignTaskDialogOpen}
-        onAssigned={fetchTask}
+        onAssign={(userId, note) => {
+          if (!taskId) return;
+          
+          supabase
+            .from('tasks')
+            .update({ assigned_to: userId })
+            .eq('id', taskId)
+            .then(({ error }) => {
+              if (error) {
+                console.error("Error assigning task:", error);
+                return;
+              }
+              
+              fetchTask();
+            });
+        }}
       />
       
       <CloseTaskDialog

@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types";
 import { Loader2 } from "lucide-react";
 
-interface AssignTaskDialogProps {
+export interface AssignTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAssign: (userId: string, note: string) => void;
