@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   ArrowLeft, Clock, CheckCircle, Calendar, Mail, 
-  UserPlus, Forward, X, Hash
+  UserPlus, Forward, X
 } from "lucide-react";
 import { TaskStatusBadge } from './TaskStatusBadge';
 import type { TaskStatus } from '@/types';
@@ -64,15 +64,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           
           <TaskStatusBadge status={task.status as TaskStatus} className="ml-4" />
           
-          {/* Display readable task ID if available */}
-          {task.readable_id && (
-            <div className="ml-4 flex items-center bg-gray-100 rounded px-2 py-1">
-              <Hash className="h-3.5 w-3.5 mr-1 text-gray-600" />
-              <span className="text-xs font-mono font-semibold text-gray-700">
-                {task.readable_id}
-              </span>
-            </div>
-          )}
+          {/* Removed readable_id display from here */}
         </div>
       </div>
       

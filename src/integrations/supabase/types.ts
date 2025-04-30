@@ -757,6 +757,7 @@ export type Database = {
           customer_id: string
           description: string
           endkunde_email: string | null
+          endkunde_id: string | null
           follow_up_date: string | null
           forwarded_to: string | null
           id: string
@@ -779,6 +780,7 @@ export type Database = {
           customer_id: string
           description: string
           endkunde_email?: string | null
+          endkunde_id?: string | null
           follow_up_date?: string | null
           forwarded_to?: string | null
           id?: string
@@ -801,6 +803,7 @@ export type Database = {
           customer_id?: string
           description?: string
           endkunde_email?: string | null
+          endkunde_id?: string | null
           follow_up_date?: string | null
           forwarded_to?: string | null
           id?: string
@@ -820,6 +823,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_endkunde_id_fkey"
+            columns: ["endkunde_id"]
+            isOneToOne: false
+            referencedRelation: "endkunden"
             referencedColumns: ["id"]
           },
           {
