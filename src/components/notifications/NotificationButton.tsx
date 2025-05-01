@@ -8,6 +8,7 @@ import { NotificationList } from './NotificationList';
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
+import type { Notification } from '@/types';
 
 export function NotificationButton() {
   const { notifications, unreadCount, refresh, markAsRead, markAllAsRead } = useNotifications();
@@ -17,17 +18,20 @@ export function NotificationButton() {
   // Use React Query for efficient background updates
   const { data: notificationsData } = useQuery({
     queryKey: ['notifications'],
-    queryFn: refresh,
+    queryFn: async () => {
+      const result = await refresh();
+      return result || [];
+    },
     refetchInterval: 30000, // Refetch every 30 seconds
     initialData: notifications
   });
 
   // Memoized function to check for new task notifications
-  const checkForNewTaskNotifications = useCallback((currentNotifications: any[]) => {
-    if (!currentNotifications) return;
+  const checkForNewTaskNotifications = useCallback((currentNotifications: Notification[] | undefined) => {
+    if (!currentNotifications || currentNotifications.length === 0) return;
 
     // Find the newest task assignment notification
-    const taskAssignments = currentNotifications?.filter(n => 
+    const taskAssignments = currentNotifications.filter(n => 
       n.message.includes('wurde Ihnen') && 
       !n.read_at &&
       // Only show notifications from the last minute to avoid showing old ones on page load
@@ -50,12 +54,18 @@ export function NotificationButton() {
         setLastNotifiedId(newestAssignment.id);
       }
     }
-  }, [lastNotifiedId, toast]);
+  }, [lastNotifiedId]);
 
   // Show a toast when new notifications arrive
   useEffect(() => {
-    checkForNewTaskNotifications(notificationsData);
+    if (notificationsData && notificationsData.length > 0) {
+      checkForNewTaskNotifications(notificationsData);
+    }
   }, [notificationsData, checkForNewTaskNotifications]);
+
+  const currentUnreadCount = notificationsData 
+    ? notificationsData.filter(n => !n.read_at).length
+    : unreadCount;
 
   return (
     <div className="relative">
@@ -66,9 +76,9 @@ export function NotificationButton() {
             className={`relative ${isMobile ? 'h-8 w-8' : 'h-9 w-9'} bg-gray-100 rounded-full flex items-center justify-center`}
           >
             <Bell className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-600`} />
-            {unreadCount > 0 && (
+            {currentUnreadCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-medium rounded-full w-5 h-5 flex items-center justify-center">
-                {unreadCount > 9 ? '9+' : unreadCount}
+                {currentUnreadCount > 9 ? '9+' : currentUnreadCount}
               </span>
             )}
           </Button>
