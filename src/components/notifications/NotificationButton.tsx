@@ -19,8 +19,9 @@ export function NotificationButton() {
   const { data: notificationsData } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      const result = await refresh();
-      return result || [];
+      await refresh();
+      // Return the notifications from the hook state, not from the refresh function
+      return notifications;
     },
     refetchInterval: 30000, // Refetch every 30 seconds
     initialData: notifications
