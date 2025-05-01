@@ -5,27 +5,29 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { NotificationList } from './NotificationList';
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 export function NotificationButton() {
-  const { notifications, unreadCount, refresh } = useNotifications();
+  const { notifications, unreadCount, refresh, markAsRead, markAllAsRead } = useNotifications();
   const isMobile = useIsMobile();
+  const [lastNotifiedId, setLastNotifiedId] = useState<string | null>(null);
 
-  // Refresh notifications on component mount
-  useEffect(() => {
-    refresh();
-    
-    // Set up refresh interval
-    const intervalId = setInterval(refresh, 30000); // refresh every 30 seconds
-    
-    return () => clearInterval(intervalId);
-  }, [refresh]);
+  // Use React Query for efficient background updates
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: refresh,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    initialData: notifications
+  });
 
-  // Show a toast when new notifications arrive
-  useEffect(() => {
+  // Memoized function to check for new task notifications
+  const checkForNewTaskNotifications = useCallback((currentNotifications: any[]) => {
+    if (!currentNotifications) return;
+
     // Find the newest task assignment notification
-    const taskAssignments = notifications?.filter(n => 
+    const taskAssignments = currentNotifications?.filter(n => 
       n.message.includes('wurde Ihnen') && 
       !n.read_at &&
       // Only show notifications from the last minute to avoid showing old ones on page load
@@ -33,15 +35,27 @@ export function NotificationButton() {
     );
     
     if (taskAssignments && taskAssignments.length > 0) {
-      // Show toast for the newest assignment
+      // Get the newest assignment
       const newestAssignment = taskAssignments[0];
-      toast({
-        title: "Neue Aufgabenzuweisung",
-        description: newestAssignment.message,
-        duration: 5000
-      });
+      
+      // Only show toast if this is a new notification
+      if (newestAssignment.id !== lastNotifiedId) {
+        toast({
+          title: "Neue Aufgabenzuweisung",
+          description: newestAssignment.message,
+          duration: 5000
+        });
+        
+        // Remember this notification was shown
+        setLastNotifiedId(newestAssignment.id);
+      }
     }
-  }, [notifications]);
+  }, [lastNotifiedId, toast]);
+
+  // Show a toast when new notifications arrive
+  useEffect(() => {
+    checkForNewTaskNotifications(notificationsData);
+  }, [notificationsData, checkForNewTaskNotifications]);
 
   return (
     <div className="relative">
@@ -60,7 +74,11 @@ export function NotificationButton() {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-80 p-0" align={isMobile ? "end" : "center"}>
-          <NotificationList notifications={notifications} />
+          <NotificationList 
+            notifications={notificationsData || []} 
+            markAsRead={markAsRead}
+            markAllAsRead={markAllAsRead}
+          />
         </PopoverContent>
       </Popover>
     </div>

@@ -4,18 +4,22 @@ import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { Notification } from '@/types';
-import { useNotifications } from '@/hooks/useNotifications';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
 
 interface NotificationListProps {
   notifications: Notification[];
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
 }
 
-export const NotificationList: React.FC<NotificationListProps> = ({ notifications }) => {
+export const NotificationList: React.FC<NotificationListProps> = ({ 
+  notifications,
+  markAsRead,
+  markAllAsRead
+}) => {
   const navigate = useNavigate();
-  const { markAsRead, markAllAsRead } = useNotifications();
 
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.read_at) {

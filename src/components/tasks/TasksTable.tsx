@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Table, 
@@ -37,14 +37,12 @@ interface TasksTableProps {
   isLoading: boolean;
 }
 
-export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
-
-  const handleRowClick = (taskId: string) => {
-    navigate(`/tasks/${taskId}`);
-  };
-
+// Memoize individual rows for better performance with large datasets
+const TaskRow = memo(({ task, isMobile, onRowClick }: { 
+  task: Task, 
+  isMobile: boolean,
+  onRowClick: (id: string) => void 
+}) => {
   const getSourceLabel = (source?: string) => {
     if (!source) return 'Unbekannt';
     
@@ -58,6 +56,51 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
       default:
         return source;
     }
+  };
+
+  return (
+    <TableRow 
+      className="cursor-pointer hover:bg-muted/50"
+      onClick={() => onRowClick(task.id)}
+    >
+      {!isMobile && (
+        <TableCell className="font-mono text-xs">
+          {task.readable_id || '-'}
+        </TableCell>
+      )}
+      <TableCell className="font-medium">
+        {task.title}
+        {task.endkunde_id && (
+          <Badge variant="outline" className="ml-2 bg-blue-50">Endkunde</Badge>
+        )}
+      </TableCell>
+      <TableCell>
+        <TaskStatusBadge status={task.status} />
+      </TableCell>
+      {!isMobile && (
+        <TableCell>{task.customer?.name || 'Unbekannt'}</TableCell>
+      )}
+      <TableCell>
+        {getSourceLabel(task.source)}
+      </TableCell>
+      <TableCell className="text-right text-muted-foreground text-sm">
+        {formatDistanceToNow(new Date(task.created_at), { 
+          addSuffix: true,
+          locale: de 
+        })}
+      </TableCell>
+    </TableRow>
+  );
+});
+
+TaskRow.displayName = 'TaskRow';
+
+export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
+  const handleRowClick = (taskId: string) => {
+    navigate(`/tasks/${taskId}`);
   };
 
   if (isLoading) {
@@ -91,38 +134,12 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
         </TableHeader>
         <TableBody>
           {tasks.map((task) => (
-            <TableRow 
+            <TaskRow 
               key={task.id} 
-              className="cursor-pointer hover:bg-muted/50"
-              onClick={() => handleRowClick(task.id)}
-            >
-              {!isMobile && (
-                <TableCell className="font-mono text-xs">
-                  {task.readable_id || '-'}
-                </TableCell>
-              )}
-              <TableCell className="font-medium">
-                {task.title}
-                {task.endkunde_id && (
-                  <Badge variant="outline" className="ml-2 bg-blue-50">Endkunde</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                <TaskStatusBadge status={task.status} />
-              </TableCell>
-              {!isMobile && (
-                <TableCell>{task.customer?.name || 'Unbekannt'}</TableCell>
-              )}
-              <TableCell>
-                {getSourceLabel(task.source)}
-              </TableCell>
-              <TableCell className="text-right text-muted-foreground text-sm">
-                {formatDistanceToNow(new Date(task.created_at), { 
-                  addSuffix: true,
-                  locale: de 
-                })}
-              </TableCell>
-            </TableRow>
+              task={task} 
+              isMobile={isMobile} 
+              onRowClick={handleRowClick} 
+            />
           ))}
         </TableBody>
       </Table>
