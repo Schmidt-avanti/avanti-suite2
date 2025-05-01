@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,17 +7,35 @@ import { PlusIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TasksTable } from '@/components/tasks/TasksTable';
 import { useTasks } from '@/hooks/useTasks';
+import { useTaskCounts } from '@/hooks/useTaskCounts';
 import type { TaskStatus } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useQueryClient } from '@tanstack/react-query';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 
 const Tasks = () => {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<TaskStatus | null>(null);
-  // Holen nur die aktiven (nicht abgeschlossenen) Aufgaben
   const { tasks, isLoading } = useTasks(statusFilter, false);
+  const { counts } = useTaskCounts();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
 
-  // Handler function für den Status-Filter
+  // Prefetch data when component loads
+  useEffect(() => {
+    // Prefetch task counts for dashboard
+    queryClient.prefetchQuery({ queryKey: ['taskCounts'] });
+    
+    // Prefetch tasks with common filters
+    ['new', 'in_progress', 'followup'].forEach(status => {
+      queryClient.prefetchQuery({
+        queryKey: ['tasks', status, false],
+        staleTime: 30000 // 30 seconds
+      });
+    });
+  }, [queryClient]);
+
+  // Handler function for the status filter
   const handleStatusChange = (value: string) => {
     setStatusFilter(value === 'all' ? null : value as TaskStatus);
   };
@@ -36,10 +54,10 @@ const Tasks = () => {
                 <SelectValue placeholder="Status filtern" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Alle Status</SelectItem>
-                <SelectItem value="new">Neu</SelectItem>
-                <SelectItem value="in_progress">In Bearbeitung</SelectItem>
-                <SelectItem value="followup">Auf Wiedervorlage</SelectItem>
+                <SelectItem value="all">Alle Status ({counts.total - counts.completed})</SelectItem>
+                <SelectItem value="new">Neu ({counts.new})</SelectItem>
+                <SelectItem value="in_progress">In Bearbeitung ({counts.in_progress})</SelectItem>
+                <SelectItem value="followup">Auf Wiedervorlage ({counts.followup})</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -51,7 +69,11 @@ const Tasks = () => {
       </div>
 
       <Card>
-        <TasksTable tasks={tasks} isLoading={isLoading} />
+        {isLoading ? (
+          <TableSkeleton columnCount={6} rowCount={10} />
+        ) : (
+          <TasksTable tasks={tasks} isLoading={isLoading} />
+        )}
       </Card>
     </div>
   );

@@ -7,24 +7,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { NotificationList } from './NotificationList';
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
 import type { Notification } from '@/types';
 
 export function NotificationButton() {
-  const { notifications, unreadCount, refresh, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
   const isMobile = useIsMobile();
   const [lastNotifiedId, setLastNotifiedId] = useState<string | null>(null);
-
-  // Use React Query for efficient background updates
-  const { data: notificationsData } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: async () => {
-      await refresh();
-      return notifications;
-    },
-    refetchInterval: 30000, // Refetch every 30 seconds
-    initialData: notifications
-  });
 
   // Memoized function to check for new task notifications
   const checkForNewTaskNotifications = useCallback((currentNotifications: Notification[] | undefined) => {
@@ -58,15 +46,10 @@ export function NotificationButton() {
 
   // Show a toast when new notifications arrive
   useEffect(() => {
-    if (notificationsData && notificationsData.length > 0) {
-      checkForNewTaskNotifications(notificationsData);
+    if (notifications && notifications.length > 0) {
+      checkForNewTaskNotifications(notifications);
     }
-  }, [notificationsData, checkForNewTaskNotifications]);
-
-  // Calculate unread count from the actual notifications data
-  const currentUnreadCount = notificationsData 
-    ? notificationsData.filter(n => !n.read_at).length
-    : unreadCount;
+  }, [notifications, checkForNewTaskNotifications]);
 
   return (
     <div className="relative">
@@ -77,16 +60,21 @@ export function NotificationButton() {
             className={`relative ${isMobile ? 'h-8 w-8' : 'h-9 w-9'} bg-gray-100 rounded-full flex items-center justify-center`}
           >
             <Bell className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-600`} />
-            {currentUnreadCount > 0 && (
+            {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-medium rounded-full w-5 h-5 flex items-center justify-center">
-                {currentUnreadCount > 9 ? '9+' : currentUnreadCount}
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+            {isLoading && unreadCount === 0 && (
+              <span className="absolute -top-1 -right-1 bg-gray-300 text-white text-xs font-medium rounded-full w-5 h-5 flex items-center justify-center">
+                ...
               </span>
             )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-80 p-0" align={isMobile ? "end" : "center"}>
           <NotificationList 
-            notifications={notificationsData || []} 
+            notifications={notifications} 
             markAsRead={markAsRead}
             markAllAsRead={markAllAsRead}
           />
