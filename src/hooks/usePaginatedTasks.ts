@@ -79,6 +79,7 @@ export const usePaginatedTasks = (
         }
 
         // Now fetch the actual data with pagination
+        // Fix: Don't join with created_by directly, fetch basic task info first
         let query = supabase
           .from('tasks')
           .select(`
@@ -93,8 +94,7 @@ export const usePaginatedTasks = (
             created_at,
             created_by,
             customer_id,
-            customer:customer_id(id, name),
-            creator:created_by(id, "Full Name")
+            customer:customer_id(id, name)
           `)
           .order('created_at', { ascending: false })
           .range(from, to);
@@ -133,8 +133,28 @@ export const usePaginatedTasks = (
           return;
         }
         
+        // In a separate step, fetch creator information for tasks
+        const tasksWithCreator = await Promise.all(data.map(async (task) => {
+          if (task.created_by) {
+            const { data: creatorData } = await supabase
+              .from('profiles')
+              .select('id, "Full Name"')
+              .eq('id', task.created_by)
+              .maybeSingle();
+
+            return {
+              ...task,
+              creator: creatorData ? { 
+                id: creatorData.id,
+                "Full Name": creatorData["Full Name"]
+              } : null
+            };
+          }
+          return task;
+        }));
+        
         // Transform the data with proper type safety
-        const transformedTasks: Task[] = data.map((rawTask: any): Task => {
+        const transformedTasks: Task[] = tasksWithCreator.map((rawTask: any): Task => {
           return {
             id: rawTask.id,
             title: rawTask.title,

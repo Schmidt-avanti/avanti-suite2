@@ -10,6 +10,7 @@ import { usePaginatedTasks } from '@/hooks/usePaginatedTasks';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
 
 const CompletedTasks = () => {
   const [filters, setFilters] = useState<ReportFiltersType>({
@@ -58,15 +59,29 @@ const CompletedTasks = () => {
 
   useEffect(() => {
     const loadUsers = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, "Full Name"');
-      
-      if (data) {
-        setUsers(data.map(user => ({
-          id: user.id,
-          full_name: user["Full Name"]
-        })));
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, "Full Name"');
+        
+        if (error) {
+          console.error('Error loading users:', error);
+          toast({
+            title: "Fehler",
+            description: "Benutzerliste konnte nicht geladen werden",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        if (data) {
+          setUsers(data.map(user => ({
+            id: user.id,
+            full_name: user["Full Name"]
+          })));
+        }
+      } catch (err) {
+        console.error('Exception loading users:', err);
       }
     };
 
@@ -101,17 +116,19 @@ const CompletedTasks = () => {
         {isLoading ? (
           <TableSkeleton columnCount={6} rowCount={pageSize > 10 ? 10 : pageSize} />
         ) : (
-          <TasksTable tasks={tasks} isLoading={isLoading} />
-        )}
-        
-        {totalPages > 1 && (
-          <div className="flex justify-center py-4 border-t">
-            <PaginationControls 
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
-          </div>
+          <>
+            <TasksTable tasks={tasks} isLoading={isLoading} />
+            
+            {totalPages > 1 && (
+              <div className="flex justify-center py-4 border-t">
+                <PaginationControls 
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
+          </>
         )}
       </Card>
     </div>
