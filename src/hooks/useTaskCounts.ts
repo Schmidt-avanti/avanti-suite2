@@ -158,7 +158,7 @@ export const useTaskCounts = () => {
     queryKey: ['taskCounts', user?.id],
     queryFn: fetchTaskCounts,
     staleTime: 60000, // 1 minute
-    cacheTime: 300000, // 5 minutes
+    gcTime: 300000, // 5 minutes - Updated from cacheTime to gcTime which is the modern equivalent
   });
 
   return {

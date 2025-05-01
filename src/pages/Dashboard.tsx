@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton';
 import { useTaskCounts } from '@/hooks/useTaskCounts';
 import { useQueryClient } from '@tanstack/react-query';
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
