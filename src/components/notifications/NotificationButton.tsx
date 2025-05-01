@@ -20,7 +20,6 @@ export function NotificationButton() {
     queryKey: ['notifications'],
     queryFn: async () => {
       await refresh();
-      // Return the notifications from the hook state, not from the refresh function
       return notifications;
     },
     refetchInterval: 30000, // Refetch every 30 seconds
@@ -64,6 +63,7 @@ export function NotificationButton() {
     }
   }, [notificationsData, checkForNewTaskNotifications]);
 
+  // Calculate unread count from the actual notifications data
   const currentUnreadCount = notificationsData 
     ? notificationsData.filter(n => !n.read_at).length
     : unreadCount;

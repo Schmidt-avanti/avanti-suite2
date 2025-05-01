@@ -31,7 +31,7 @@ export const useNotifications = () => {
 
       // Track unread notifications
       const unreadNotifications = data?.filter(n => !n.read_at) || [];
-      console.log('Fetched unread notifications:', unreadNotifications.length);
+      console.log('Fetched notifications:', data?.length, 'Unread:', unreadNotifications.length);
       
       setNotifications(data || []);
       setUnreadCount(unreadNotifications.length);
