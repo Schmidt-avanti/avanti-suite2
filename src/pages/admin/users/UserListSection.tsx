@@ -33,10 +33,10 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      // Get profiles
+      // Get profiles with email field
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, role, "Full Name", created_at, is_active');
+        .select('id, role, "Full Name", created_at, is_active, email');
       
       if (profilesError) throw profilesError;
 
@@ -48,44 +48,8 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         return;
       }
 
-      let emailMap: Record<string, string> = {};
+      // No need for email map since we now have email in profiles
       
-      try {
-        // Get auth users for email addresses
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-        
-        if (authError) {
-          console.error('Error fetching auth users:', authError);
-          // Continue anyway with empty email map
-        } else if (authUsers?.users) {
-          // Type for Auth-User
-          interface AuthUser {
-            id: string;
-            email?: string;
-            [key: string]: any;
-          }
-          
-          const usersArray = authUsers.users as AuthUser[];
-          
-          emailMap = usersArray.reduce((acc: Record<string, string>, user: AuthUser) => {
-            if (user && typeof user.id === 'string') {
-              acc[user.id] = user.email || '';
-            }
-            return acc;
-          }, {} as Record<string, string>);
-          
-          console.log('Email map created:', emailMap);
-        }
-      } catch (authError) {
-        console.error('Error accessing auth admin API:', authError);
-        // Fallback to regular auth methods if admin methods fail
-        toast({
-          variant: "destructive",
-          title: "Hinweis",
-          description: "E-Mail-Adressen konnten nicht abgerufen werden. Eingeschränkte Anzeige verfügbar.",
-        });
-      }
-
       // Get customer assignments for all users
       const { data: assignments, error: assignmentsError } = await supabase
         .from('user_customer_assignments')
@@ -122,7 +86,7 @@ const UserListSection: React.FC<UserListSectionProps> = ({
 
         return {
           id: profile.id,
-          email: emailMap[profile.id] || "",
+          email: profile.email || "", // Use email directly from profiles
           role: (profile.role || 'client') as UserRole,
           firstName: profile["Full Name"] || undefined,
           createdAt: profile.created_at,
