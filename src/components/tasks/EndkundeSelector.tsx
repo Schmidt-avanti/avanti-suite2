@@ -9,9 +9,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
 
-// Define a simple interface for the Endkunde option
 interface EndkundeOption {
   id: string;
   display: string;
@@ -32,7 +30,7 @@ interface EndkundeSelectorProps {
   disabled?: boolean;
 }
 
-// Define a plain interface for the database response
+// Define a plain interface for the database response to avoid type recursion
 interface EndkundeResponse {
   id: string;
   Nachname: string;
@@ -53,7 +51,6 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 }) => {
   const [endkunden, setEndkunden] = useState<EndkundeOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
 
   useEffect(() => {
     const fetchEndkunden = async () => {
@@ -66,92 +63,78 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       try {
         setIsLoading(true);
         
-        console.log(`Fetching endkunden for customer ID: ${customerId}, User role: ${user?.role}, User ID: ${user?.id}`);
+        console.log('Fetching endkunden for customer ID:', customerId);
         
-        // First try querying with customer_ID (uppercase)
-        const { data: endkundenData, error: endkundenError } = await supabase
+        // Try with both column names to handle potential case sensitivity issues
+        // First try with customer_ID (the original column name in the database)
+        const { data: dataWithUnderscoreID, error: errorWithUnderscoreID } = await supabase
           .from('endkunden')
           .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
           .eq('customer_ID', customerId)
           .order('Nachname', { ascending: true });
 
-        console.log('Query with customer_ID (uppercase):', { 
-          data: endkundenData?.length || 0, 
-          error: endkundenError?.message || 'none',
-          status: endkundenError?.code || 'no-error'
-        });
-        
-        // If error is permission related
-        if (endkundenError && (endkundenError.code === 'PGRST301' || endkundenError.message.includes('permission'))) {
-          console.error('Permission error fetching endkunden:', endkundenError);
-          
-          // For agents, verify if they have access to this customer
-          if (user?.role === 'agent') {
-            console.log("Checking if agent has access to this customer...");
-            const { data: assignments, error: assignmentError } = await supabase
-              .from('user_customer_assignments')
-              .select('customer_id')
-              .eq('user_id', user.id)
-              .eq('customer_id', customerId);
-              
-            console.log("Agent assignments check:", { 
-              assignments: assignments?.length || 0,
-              error: assignmentError?.message || 'none' 
-            });
-              
-            if (!assignments || assignments.length === 0) {
-              console.warn("Agent does not have access to this customer");
-              toast({
-                title: "Zugriffsfehler",
-                description: "Sie haben keine Berechtigung, auf Endkunden dieses Kunden zuzugreifen.",
-                variant: "destructive"
-              });
-            }
-          }
-          
-          setIsLoading(false);
-          return;
-        }
+        console.log('Query with customer_ID:', { data: dataWithUnderscoreID, error: errorWithUnderscoreID });
 
-        if (endkundenError) {
-          console.error('Error fetching endkunden:', endkundenError);
-          toast({
-            title: "Fehler beim Laden der Endkunden",
-            description: endkundenError.message,
-            variant: "destructive"
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        if (!endkundenData || endkundenData.length === 0) {
-          console.log('No endkunden found for this customer ID');
-          
-          // As a fallback, try with lowercase customer_id
-          console.log("Trying fallback with lowercase customer_id...");
-          const { data: fallbackData, error: fallbackError } = await supabase
+        // If first query fails or returns no results, try with customer_id (lowercase)
+        let data, error;
+        if (!dataWithUnderscoreID || dataWithUnderscoreID.length === 0) {
+          const result = await supabase
             .from('endkunden')
             .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
             .eq('customer_id', customerId)
             .order('Nachname', { ascending: true });
-            
-          console.log('Fallback query results:', { 
-            data: fallbackData?.length || 0, 
-            error: fallbackError?.message || 'none' 
-          });
           
-          if (fallbackData && fallbackData.length > 0) {
-            processEndkundenData(fallbackData);
-          } else {
-            setEndkunden([]);
-          }
+          data = result.data;
+          error = result.error;
+          console.log('Query with customer_id (lowercase):', { data, error });
+        } else {
+          data = dataWithUnderscoreID;
+          error = errorWithUnderscoreID;
+        }
+
+        if (error) {
+          console.error('Error fetching endkunden:', error);
+          toast({
+            title: "Fehler beim Laden der Endkunden",
+            description: error.message,
+            variant: "destructive"
+          });
+          return;
+        }
+
+        console.log('Fetched endkunden:', data);
+
+        if (!data || data.length === 0) {
+          console.log('No endkunden found for this customer ID');
+          setEndkunden([]);
           setIsLoading(false);
           return;
         }
 
-        console.log(`Fetched ${endkundenData.length} endkunden records`);
-        processEndkundenData(endkundenData);
+        // Explicitly type the data before processing
+        const typedData = data as unknown as EndkundeResponse[];
         
+        // Transform the typed data into our component format
+        const formattedData: EndkundeOption[] = typedData.map((ek) => {
+          // Create a simpler display name with just name and surname
+          const vorname = ek.Vorname ? `${ek.Vorname}` : '';
+          
+          return {
+            id: ek.id,
+            nachname: ek.Nachname,
+            vorname: ek.Vorname,
+            adresse: ek.Adresse,
+            wohnung: ek.Wohnung,
+            gebaeude: ek.Gebäude,
+            lage: ek.Lage,
+            postleitzahl: ek.Postleitzahl,
+            ort: ek.Ort,
+            // Simplified display for dropdown - just name and surname
+            display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
+          };
+        });
+
+        setEndkunden(formattedData);
       } catch (err) {
         console.error('Error fetching endkunden:', err);
         toast({
@@ -163,34 +146,9 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         setIsLoading(false);
       }
     };
-    
-    // Helper function to process the endkunden data - SIMPLIFIED to fix type recursion
-    const processEndkundenData = (data: EndkundeResponse[]) => {
-      const formattedData: EndkundeOption[] = [];
-      
-      // Use simple for loop to avoid complex type inference
-      for (const ek of data) {
-        const displayName = ek.Vorname ? `${ek.Nachname}, ${ek.Vorname}` : ek.Nachname;
-        
-        formattedData.push({
-          id: ek.id,
-          nachname: ek.Nachname,
-          vorname: ek.Vorname,
-          adresse: ek.Adresse,
-          wohnung: ek.Wohnung,
-          gebaeude: ek.Gebäude,
-          lage: ek.Lage,
-          postleitzahl: ek.Postleitzahl,
-          ort: ek.Ort,
-          display: displayName
-        });
-      }
-
-      setEndkunden(formattedData);
-    };
 
     fetchEndkunden();
-  }, [customerId, user]);
+  }, [customerId]);
 
   const handleEndkundeChange = (endkundeId: string) => {
     if (endkundeId === 'none') {
@@ -198,6 +156,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       return;
     }
     
+    // Simply pass the endkunde ID without fetching email
     onChange(endkundeId);
   };
 

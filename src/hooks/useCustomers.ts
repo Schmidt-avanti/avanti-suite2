@@ -13,21 +13,14 @@ export const useCustomers = () => {
     const fetchCustomers = async () => {
       try {
         setIsLoading(true);
-        console.log(`Fetching customers for user role: ${user?.role}, ID: ${user?.id}`);
-        
         let query = supabase.from('customers').select('id, name, branch, is_active');
 
         // Für Agenten nur die zugewiesenen Kunden abrufen
         if (user?.role === 'agent') {
-          const { data: assignedCustomers, error: assignmentError } = await supabase
+          const { data: assignedCustomers } = await supabase
             .from('user_customer_assignments')
             .select('customer_id, customers(id, name, branch, is_active)')
             .eq('user_id', user.id);
-            
-          console.log('Agent assignments query:', {
-            data: assignedCustomers?.length || 0,
-            error: assignmentError?.message || 'none'
-          });
 
           if (assignedCustomers && assignedCustomers.length > 0) {
             const mappedCustomers = assignedCustomers
@@ -42,21 +35,14 @@ export const useCustomers = () => {
             setCustomers(mappedCustomers);
             setIsLoading(false);
             return;
-          } else {
-            console.log('No assigned customers found for agent, will return empty list');
           }
         } else if (user?.role === 'client') {
           // Für Kunden nur ihren eigenen Kunden abrufen
-          const { data: userAssignment, error: assignmentError } = await supabase
+          const { data: userAssignment } = await supabase
             .from('user_customer_assignments')
             .select('customer_id, customers(id, name, branch, is_active)')
             .eq('user_id', user.id)
             .single();
-            
-          console.log('Client assignment query:', {
-            data: userAssignment ? 'found' : 'not found',
-            error: assignmentError?.message || 'none'
-          });
 
           if (userAssignment && userAssignment.customers) {
             setCustomers([{
@@ -73,13 +59,7 @@ export const useCustomers = () => {
 
         // Für Admins oder wenn keine zugewiesenen Kunden gefunden wurden
         if (user?.role === 'admin') {
-          console.log('Fetching all customers for admin');
-          const { data, error } = await query;
-          console.log('Admin customers query:', {
-            data: data?.length || 0,
-            error: error?.message || 'none'
-          });
-          
+          const { data } = await query;
           if (data) {
             const formattedCustomers = data.map(customer => ({
               id: customer.id,
@@ -90,9 +70,6 @@ export const useCustomers = () => {
             }));
             setCustomers(formattedCustomers);
           }
-        } else {
-          console.log(`User with role ${user?.role} has no customer access method defined`);
-          setCustomers([]);
         }
       } catch (error) {
         console.error('Error fetching customers:', error);
