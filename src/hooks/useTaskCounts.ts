@@ -16,7 +16,7 @@ interface TaskCounts {
 // Update the interface to include an index signature to satisfy Record<string, unknown>
 interface CustomerFilter {
   [key: string]: string | { in: string } | undefined;
-  customer_ID?: string | { in: string };
+  customer_id?: string | { in: string };
 }
 
 export const useTaskCounts = () => {
@@ -60,7 +60,8 @@ export const useTaskCounts = () => {
 
         if (assignedCustomers && assignedCustomers.length > 0) {
           const customerIds = assignedCustomers.map(ac => ac.customer_id);
-          customerFilter = { "customer_ID": { in: customerIds.join(',') } };
+          // Fixed: Changed customer_ID to customer_id
+          customerFilter = { "customer_id": { in: customerIds.join(',') } };
         } else {
           // No assigned customers, return empty counts
           return {
@@ -79,7 +80,8 @@ export const useTaskCounts = () => {
           .maybeSingle();
 
         if (userAssignment) {
-          customerFilter = { "customer_ID": userAssignment.customer_id };
+          // Fixed: Changed customer_ID to customer_id
+          customerFilter = { "customer_id": userAssignment.customer_id };
         } else {
           // No customer assignment, return empty counts
           return {
