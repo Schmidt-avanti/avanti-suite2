@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,21 +100,38 @@ const UsersAdminPage: React.FC = () => {
           description: "Der Benutzer wurde aktualisiert.",
         });
       } else {
-        const { data, error } = await supabase.functions.invoke('create-user', {
-          body: {
-            email: user.email,
-            password: "W1llkommen@avanti",
-            userData: {
-              role: user.role,
-              "Full Name": user.name,
-              needs_password_reset: true
+        // Improved error handling and validation for create-user
+        if (!user.email || !user.name) {
+          toast({
+            variant: "destructive",
+            title: "Fehler",
+            description: "E-Mail und Name sind erforderlich.",
+          });
+          return;
+        }
+
+        try {
+          const { data, error } = await supabase.functions.invoke('create-user', {
+            body: {
+              email: user.email,
+              password: "W1llkommen@avanti",
+              userData: {
+                role: user.role,
+                "Full Name": user.name,
+                needs_password_reset: true,
+                is_active: true
+              }
             }
+          });
+
+          console.log("Create user response:", data, error);
+
+          if (error) throw error;
+
+          if (!data || !data.userId) {
+            throw new Error(data?.message || "Benutzer konnte nicht erstellt werden.");
           }
-        });
 
-        if (error) throw error;
-
-        if (data?.userId) {
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
@@ -146,6 +164,9 @@ const UsersAdminPage: React.FC = () => {
             title: "Benutzer angelegt",
             description: `Der Benutzer wurde erfolgreich angelegt. Passwort: W1llkommen@avanti`,
           });
+        } catch (error: any) {
+          console.error("Error invoking create-user function:", error);
+          throw new Error(`Fehler beim Erstellen des Benutzers: ${error.message}`);
         }
       }
     } catch (error: any) {
@@ -161,7 +182,9 @@ const UsersAdminPage: React.FC = () => {
     }
   };
 
-  const addTestData = async () => {
+  // Remove the automatic test data creation on component mount
+  // as this was causing errors
+  /*const addTestData = async () => {
     // Create a test admin user
     const email = `admin${Date.now()}@test.com`;
     
@@ -207,7 +230,7 @@ const UsersAdminPage: React.FC = () => {
 
   useEffect(() => {
     addTestData();
-  }, []);
+  }, []);*/
 
   return (
     <div>

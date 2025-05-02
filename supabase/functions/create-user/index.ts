@@ -16,6 +16,7 @@ interface CreateUserRequest {
     role: string
     "Full Name": string
     needs_password_reset: boolean
+    is_active: boolean
   }
 }
 
@@ -83,9 +84,14 @@ serve(async (req) => {
     // Validate required fields
     const { email, password, userData } = requestData
     if (!email || !password || !userData) {
-      console.error('Missing required fields:', { email: !!email, password: !!password, userData: !!userData })
+      const missingFields = {
+        email: !email,
+        password: !password,
+        userData: !userData
+      }
+      console.error('Missing required fields:', missingFields)
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Missing required fields', details: missingFields }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

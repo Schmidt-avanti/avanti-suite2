@@ -37,35 +37,54 @@ const UserListSection: React.FC<UserListSectionProps> = ({
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, role, "Full Name", created_at, is_active');
+      
       if (profilesError) throw profilesError;
 
       console.log('Fetched profiles:', profiles);
 
-      // Get auth users for email addresses
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      
-      // Create email map
-      let emailMap: Record<string, string> = {};
-      
-      if (!authError && authUsers?.users) {
-        // Type for Auth-User
-        interface AuthUser {
-          id: string;
-          email?: string;
-          [key: string]: any;
-        }
-        
-        const usersArray = authUsers.users as AuthUser[];
-        
-        emailMap = usersArray.reduce((acc: Record<string, string>, user: AuthUser) => {
-          if (user && typeof user.id === 'string') {
-            acc[user.id] = user.email || '';
-          }
-          return acc;
-        }, {} as Record<string, string>);
+      if (!profiles || profiles.length === 0) {
+        setUsers([]);
+        setIsLoading(false);
+        return;
       }
 
-      console.log('Email map created:', emailMap);
+      let emailMap: Record<string, string> = {};
+      
+      try {
+        // Get auth users for email addresses
+        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+        
+        if (authError) {
+          console.error('Error fetching auth users:', authError);
+          // Continue anyway with empty email map
+        } else if (authUsers?.users) {
+          // Type for Auth-User
+          interface AuthUser {
+            id: string;
+            email?: string;
+            [key: string]: any;
+          }
+          
+          const usersArray = authUsers.users as AuthUser[];
+          
+          emailMap = usersArray.reduce((acc: Record<string, string>, user: AuthUser) => {
+            if (user && typeof user.id === 'string') {
+              acc[user.id] = user.email || '';
+            }
+            return acc;
+          }, {} as Record<string, string>);
+          
+          console.log('Email map created:', emailMap);
+        }
+      } catch (authError) {
+        console.error('Error accessing auth admin API:', authError);
+        // Fallback to regular auth methods if admin methods fail
+        toast({
+          variant: "destructive",
+          title: "Hinweis",
+          description: "E-Mail-Adressen konnten nicht abgerufen werden. Eingeschränkte Anzeige verfügbar.",
+        });
+      }
 
       // Get customer assignments for all users
       const { data: assignments, error: assignmentsError } = await supabase
@@ -156,20 +175,27 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   // Löschen
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.auth.admin.deleteUser(id);
-
-      if (error) throw error;
+      // First try to delete with admin API
+      try {
+        const { error } = await supabase.auth.admin.deleteUser(id);
+        if (error) throw error;
+      } catch (adminError) {
+        console.error("Admin API error:", adminError);
+        // Fallback to standard delete operation
+        const { error } = await supabase.rpc('delete_user', { user_id: id });
+        if (error) throw error;
+      }
 
       setUsers(users => users.filter(user => user.id !== id));
       toast({
         title: "Benutzer gelöscht",
         description: "Das Profil wurde gelöscht.",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: "Der Benutzer konnte nicht gelöscht werden.",
+        description: error.message || "Der Benutzer konnte nicht gelöscht werden.",
       });
     }
   };
