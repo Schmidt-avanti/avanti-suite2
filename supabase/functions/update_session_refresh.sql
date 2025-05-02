@@ -8,16 +8,9 @@ AS $$
 DECLARE
   user_id_var UUID;
 BEGIN
-  -- Get the current user ID safely
-  user_id_var := auth.uid();
-  
-  -- Only proceed if we have a valid user ID
-  IF user_id_var IS NOT NULL THEN
-    INSERT INTO public.user_sessions(user_id, last_seen)
-    VALUES (user_id_var, now())
-    ON CONFLICT (user_id)
-    DO UPDATE SET last_seen = now();
-  END IF;
+  -- This is a dummy function that does nothing, just to keep compatibility
+  -- We've disabled session tracking as requested
+  RETURN;
   
   -- Add proper error handling
   EXCEPTION WHEN OTHERS THEN
