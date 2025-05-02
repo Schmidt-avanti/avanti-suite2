@@ -181,8 +181,13 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         if (error) throw error;
       } catch (adminError) {
         console.error("Admin API error:", adminError);
-        // Fallback to standard delete operation
-        const { error } = await supabase.rpc('delete_user', { user_id: id });
+        // Fallback to a direct delete operation on the profiles table
+        // instead of calling an rpc function that doesn't exist
+        const { error } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', id);
+          
         if (error) throw error;
       }
 
