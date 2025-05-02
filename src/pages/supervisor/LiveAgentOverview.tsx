@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, CircleCheck, CirclePause, CircleX, Clock } from 'lucide-react';
 import { format, formatDistance } from 'date-fns';
@@ -112,7 +113,7 @@ const LiveAgentOverview = () => {
           toast({
             title: "Warnung",
             description: "Sitzungsdaten konnten nicht abgerufen werden.",
-            variant: "warning",
+            variant: "destructive", // Fixed: Changed from "warning" to "destructive" to match allowed types
           });
           // Continue without session data - activeSessions will remain an empty array
         }
