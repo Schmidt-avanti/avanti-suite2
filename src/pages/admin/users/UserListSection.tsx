@@ -182,9 +182,16 @@ const UserListSection: React.FC<UserListSectionProps> = ({
     }
 
     try {
-      // Get the current URL and construct the redirect URL for password reset
-      const origin = window.location.origin;
-      const redirectTo = `${origin}/auth/reset-password`;
+      // Determine the appropriate base URL for the current environment
+      const isProduction = window.location.hostname === 'suite.avanti.cx';
+      const baseUrl = isProduction 
+        ? 'https://suite.avanti.cx' 
+        : window.location.origin; // Uses current origin for development
+      
+      // Construct the full redirect URL
+      const redirectTo = `${baseUrl}/auth/reset-password`;
+      
+      console.log(`Sending reset password email to ${user.email} with redirect to: ${redirectTo}`);
       
       const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
         redirectTo: redirectTo,

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -26,16 +26,43 @@ const passwordResetSchema = z.object({
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasTokenError, setHasTokenError] = useState(false);
 
-  // Get token from URL
-  const token = searchParams.get('token') || "";
+  // Get token from URL - check both query param and hash fragment
+  const tokenFromParams = searchParams.get('token') || "";
+  const [tokenFromHash, setTokenFromHash] = useState<string>("");
+  
+  useEffect(() => {
+    // Extract token from hash if present (e.g. #access_token=xxx)
+    const hash = location.hash;
+    if (hash && hash.includes('access_token=')) {
+      const hashParams = new URLSearchParams(hash.substring(1));
+      setTokenFromHash(hashParams.get('access_token') || "");
+    }
+    
+    // Check for error in hash
+    if (hash && hash.includes('error=')) {
+      setHasTokenError(true);
+      const hashParams = new URLSearchParams(hash.substring(1));
+      const errorMsg = hashParams.get('error_description') || "Der Link ist ungültig oder abgelaufen.";
+      
+      toast({
+        variant: "destructive",
+        title: "Ungültiger Link",
+        description: errorMsg.replace(/\+/g, ' ')
+      });
+    }
+  }, [location.hash, toast]);
+  
+  // Use the token from either source
+  const token = tokenFromHash || tokenFromParams;
 
   useEffect(() => {
-    if (!token) {
+    if (!token && !location.hash.includes('access_token=')) {
       setHasTokenError(true);
       toast({
         variant: "destructive",
@@ -43,7 +70,7 @@ const ResetPassword: React.FC = () => {
         description: "Der Passwort-Reset-Link ist ungültig oder abgelaufen."
       });
     }
-  }, [token, toast]);
+  }, [token, location.hash, toast]);
 
   const form = useForm<z.infer<typeof passwordResetSchema>>({
     resolver: zodResolver(passwordResetSchema),
@@ -65,7 +92,7 @@ const ResetPassword: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      // Use updateUser with the new password
+      // Use updateUser with the new password (the token is in the URL or cookies already)
       const { error } = await supabase.auth.updateUser({ 
         password: values.password 
       });
@@ -80,6 +107,7 @@ const ResetPassword: React.FC = () => {
       // Redirect to login page
       navigate("/auth/login", { replace: true });
     } catch (error: any) {
+      console.error("Password reset error:", error);
       toast({
         variant: "destructive",
         title: "Fehler",
