@@ -19,6 +19,7 @@ import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { KnowledgeArticleManager } from '@/components/tasks/KnowledgeArticleManager';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -173,6 +174,12 @@ const TaskDetail = () => {
           <ScrollArea className="h-[calc(100vh-280px)] lg:max-h-[700px]">
             <div className="flex flex-col space-y-6 pr-4">
               <TaskDetailInfo task={task} />
+              
+              {/* Knowledge Article Manager - Add the component here */}
+              <KnowledgeArticleManager 
+                customerId={task.customer_id} 
+                taskDescription={task.description}
+              />
               
               {/* Email Thread History Component */}
               {emailThreads && emailThreads.length > 0 && (
