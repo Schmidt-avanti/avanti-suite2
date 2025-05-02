@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 type AgentStatus = 'active' | 'short_break' | 'offline';
 
@@ -117,7 +118,7 @@ const LiveAgentOverview = () => {
           .select('user_id, customer_id, customers(name)');
 
         // Create a set of logged-in user IDs for quick lookup
-        const loggedInUserIds = new Set(activeSessions.map(session => session.user_id) || []);
+        const loggedInUserIds = new Set(activeSessions?.map(session => session.user_id) || []);
 
         const formattedAgents: Agent[] = (profiles || []).map(profile => {
           const activeBreak = shortBreaks?.find(b => b.user_id === profile.id);
@@ -162,14 +163,15 @@ const LiveAgentOverview = () => {
         schema: 'public', 
         table: 'short_breaks' 
       }, 
-      (payload: ShortBreakPayload) => {
+      (payload) => {
+        const typedPayload = payload as unknown as ShortBreakPayload;
         setAgents(prev => {
           return prev.map(agent => {
-            if (agent.id === payload.new.user_id) {
+            if (agent.id === typedPayload.new.user_id) {
               return {
                 ...agent,
                 status: 'short_break',
-                statusSince: new Date(payload.new.start_time)
+                statusSince: new Date(typedPayload.new.start_time)
               };
             }
             return agent;
@@ -186,11 +188,12 @@ const LiveAgentOverview = () => {
         schema: 'public', 
         table: 'short_breaks' 
       }, 
-      (payload: ShortBreakPayload) => {
-        if (payload.new.status === 'completed') {
+      (payload) => {
+        const typedPayload = payload as unknown as ShortBreakPayload;
+        if (typedPayload.new.status === 'completed') {
           setAgents(prev => {
             return prev.map(agent => {
-              if (agent.id === payload.new.user_id && agent.isLoggedIn) {
+              if (agent.id === typedPayload.new.user_id && agent.isLoggedIn) {
                 return {
                   ...agent,
                   status: 'active',
@@ -212,16 +215,17 @@ const LiveAgentOverview = () => {
         schema: 'public',
         table: 'user_sessions'
       },
-      (payload: UserSessionPayload) => {
+      (payload) => {
         // Handle session changes (login/logout)
-        const sessionUserId = payload.new?.user_id;
+        const typedPayload = payload as unknown as UserSessionPayload;
+        const sessionUserId = typedPayload.new?.user_id;
         
         if (sessionUserId) {
           setAgents(prev => {
             const agentExists = prev.some(agent => agent.id === sessionUserId);
             
             // If it's a new session or updated session with recent timestamp
-            if (payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && new Date(payload.new.last_seen) >= new Date(Date.now() - 15 * 60 * 1000))) {
+            if (typedPayload.eventType === 'INSERT' || (typedPayload.eventType === 'UPDATE' && new Date(typedPayload.new.last_seen) >= new Date(Date.now() - 15 * 60 * 1000))) {
               if (agentExists) {
                 // Update existing agent to logged in
                 return prev.map(agent => 
@@ -236,7 +240,7 @@ const LiveAgentOverview = () => {
               }
             } 
             // If session is deleted or expired
-            else if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && new Date(payload.new.last_seen) < new Date(Date.now() - 15 * 60 * 1000))) {
+            else if (typedPayload.eventType === 'DELETE' || (typedPayload.eventType === 'UPDATE' && new Date(typedPayload.new.last_seen) < new Date(Date.now() - 15 * 60 * 1000))) {
               // Mark agent as offline
               return prev.map(agent => 
                 agent.id === sessionUserId 
@@ -252,7 +256,9 @@ const LiveAgentOverview = () => {
     );
     
     // Subscribe to the channel
-    channel.subscribe();
+    channel.subscribe((status) => {
+      console.log('Realtime subscription status:', status);
+    });
 
     // Fetch agents every 5 minutes to keep the list fresh
     const interval = setInterval(fetchAgents, 5 * 60 * 1000);
