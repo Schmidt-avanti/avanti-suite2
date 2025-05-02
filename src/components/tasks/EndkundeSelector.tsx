@@ -111,28 +111,32 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
           return;
         }
 
-        // Explicitly type the data before processing
-        const typedData = data as unknown as EndkundeResponse[];
+        // Create a new array to store our formatted data
+        const formattedData: EndkundeOption[] = [];
         
-        // Transform the typed data into our component format
-        const formattedData: EndkundeOption[] = typedData.map((ek) => {
-          // Create a simpler display name with just name and surname
-          const vorname = ek.Vorname ? `${ek.Vorname}` : '';
+        // Use for...of loop to iterate over the data array to avoid type recursion issues
+        for (const ek of data) {
+          // Cast each item to the expected response type
+          const typedEk = ek as unknown as EndkundeResponse;
           
-          return {
-            id: ek.id,
-            nachname: ek.Nachname,
-            vorname: ek.Vorname,
-            adresse: ek.Adresse,
-            wohnung: ek.Wohnung,
-            gebaeude: ek.Gebäude,
-            lage: ek.Lage,
-            postleitzahl: ek.Postleitzahl,
-            ort: ek.Ort,
-            // Simplified display for dropdown - just name and surname
-            display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
-          };
-        });
+          // Create the display name
+          const vorname = typedEk.Vorname ? `${typedEk.Vorname}` : '';
+          const displayName = vorname ? `${typedEk.Nachname}, ${vorname}` : typedEk.Nachname;
+          
+          // Build our formatted option
+          formattedData.push({
+            id: typedEk.id,
+            nachname: typedEk.Nachname,
+            vorname: typedEk.Vorname,
+            adresse: typedEk.Adresse,
+            wohnung: typedEk.Wohnung,
+            gebaeude: typedEk.Gebäude,
+            lage: typedEk.Lage,
+            postleitzahl: typedEk.Postleitzahl,
+            ort: typedEk.Ort,
+            display: displayName
+          });
+        }
 
         setEndkunden(formattedData);
       } catch (err) {
