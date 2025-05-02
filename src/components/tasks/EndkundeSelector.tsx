@@ -8,6 +8,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface EndkundeOption {
   id: string;
@@ -64,20 +65,51 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         
         console.log('Fetching endkunden for customer ID:', customerId);
         
-        // Use properly typed database query
-        const { data, error } = await supabase
+        // Try with both column names to handle potential case sensitivity issues
+        // First try with customer_ID (the original column name in the database)
+        const { data: dataWithUnderscoreID, error: errorWithUnderscoreID } = await supabase
           .from('endkunden')
           .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
           .eq('customer_ID', customerId)
-          // Remove is_active filter as it doesn't exist in the schema
           .order('Nachname', { ascending: true });
+
+        console.log('Query with customer_ID:', { data: dataWithUnderscoreID, error: errorWithUnderscoreID });
+
+        // If first query fails or returns no results, try with customer_id (lowercase)
+        let data, error;
+        if (!dataWithUnderscoreID || dataWithUnderscoreID.length === 0) {
+          const result = await supabase
+            .from('endkunden')
+            .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
+            .eq('customer_id', customerId)
+            .order('Nachname', { ascending: true });
+          
+          data = result.data;
+          error = result.error;
+          console.log('Query with customer_id (lowercase):', { data, error });
+        } else {
+          data = dataWithUnderscoreID;
+          error = errorWithUnderscoreID;
+        }
 
         if (error) {
           console.error('Error fetching endkunden:', error);
-          throw error;
+          toast({
+            title: "Fehler beim Laden der Endkunden",
+            description: error.message,
+            variant: "destructive"
+          });
+          return;
         }
 
         console.log('Fetched endkunden:', data);
+
+        if (!data || data.length === 0) {
+          console.log('No endkunden found for this customer ID');
+          setEndkunden([]);
+          setIsLoading(false);
+          return;
+        }
 
         // Explicitly type the data before processing
         const typedData = data as unknown as EndkundeResponse[];
@@ -105,6 +137,11 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         setEndkunden(formattedData);
       } catch (err) {
         console.error('Error fetching endkunden:', err);
+        toast({
+          title: "Fehler beim Laden der Endkunden",
+          description: "Es ist ein unerwarteter Fehler aufgetreten.",
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
@@ -136,12 +173,14 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         <SelectItem value="none">Kein Endkunde</SelectItem>
         {isLoading ? (
           <SelectItem value="loading" disabled>Laden...</SelectItem>
-        ) : (
+        ) : endkunden.length > 0 ? (
           endkunden.map((ek) => (
             <SelectItem key={ek.id} value={ek.id}>
               {ek.display}
             </SelectItem>
           ))
+        ) : (
+          <SelectItem value="empty" disabled>Keine Endkunden verfügbar</SelectItem>
         )}
       </SelectContent>
     </Select>

@@ -36,7 +36,7 @@ import ShortBreakSettings from "@/pages/supervisor/ShortBreakSettings";
 import ProcessingTime from "@/pages/supervisor/ProcessingTime";
 
 // Agent Pages
-import AgentDashboard from "@/pages/agent/Dashboard";
+// import AgentDashboard from "@/pages/agent/Dashboard";
 
 // Client Pages
 import ClientDashboard from "@/pages/customer/Dashboard";
@@ -243,12 +243,12 @@ const App = () => {
                     }
                   />
 
-                  {/* Agent routes */}
+                  {/* Agent routes - Now redirects to the main Dashboard */}
                   <Route
                     path="/agent/dashboard"
                     element={
                       <ProtectedRoute allowedRoles={["agent"]}>
-                        <AgentDashboard />
+                        <Navigate to="/dashboard" replace />
                       </ProtectedRoute>
                     }
                   />
