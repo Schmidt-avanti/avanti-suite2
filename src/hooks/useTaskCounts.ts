@@ -13,11 +13,10 @@ interface TaskCounts {
   isLoading: boolean;
 }
 
-// Define an interface for the customer filter to avoid typing issues
+// Update the interface to include an index signature to satisfy Record<string, unknown>
 interface CustomerFilter {
-  customer_id?: string | {
-    in: string;
-  };
+  [key: string]: string | { in: string } | undefined;
+  customer_ID?: string | { in: string };
 }
 
 export const useTaskCounts = () => {
@@ -51,7 +50,7 @@ export const useTaskCounts = () => {
       };
 
       // For role-based filtering, get the customer IDs first
-      let customerFilter: CustomerFilter = {};
+      let customerFilter: Record<string, unknown> = {};
       
       if (user.role === 'agent') {
         const { data: assignedCustomers } = await supabase
@@ -61,7 +60,7 @@ export const useTaskCounts = () => {
 
         if (assignedCustomers && assignedCustomers.length > 0) {
           const customerIds = assignedCustomers.map(ac => ac.customer_id);
-          customerFilter = { customer_id: { in: customerIds.join(',') } };
+          customerFilter = { "customer_ID": { in: customerIds.join(',') } };
         } else {
           // No assigned customers, return empty counts
           return {
@@ -80,7 +79,7 @@ export const useTaskCounts = () => {
           .maybeSingle();
 
         if (userAssignment) {
-          customerFilter = { customer_id: userAssignment.customer_id };
+          customerFilter = { "customer_ID": userAssignment.customer_id };
         } else {
           // No customer assignment, return empty counts
           return {
