@@ -64,12 +64,11 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         
         console.log('Fetching endkunden for customer ID:', customerId);
         
-        // Use properly typed database query
+        // Use properly typed database query - fixed column name to customer_ID
         const { data, error } = await supabase
           .from('endkunden')
           .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
           .eq('customer_ID', customerId)
-          // Remove is_active filter as it doesn't exist in the schema
           .order('Nachname', { ascending: true });
 
         if (error) {
@@ -79,28 +78,32 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
         console.log('Fetched endkunden:', data);
 
-        // Explicitly type the data before processing
-        const typedData = data as unknown as EndkundeResponse[];
+        // Fix: Using a for loop instead of map to avoid deep type instantiation
+        const formattedData: EndkundeOption[] = [];
         
-        // Transform the typed data into our component format
-        const formattedData: EndkundeOption[] = typedData.map((ek) => {
-          // Create a simpler display name with just name and surname
-          const vorname = ek.Vorname ? `${ek.Vorname}` : '';
+        if (data) {
+          // Explicitly cast data to the correct type
+          const typedData = data as unknown as EndkundeResponse[];
           
-          return {
-            id: ek.id,
-            nachname: ek.Nachname,
-            vorname: ek.Vorname,
-            adresse: ek.Adresse,
-            wohnung: ek.Wohnung,
-            gebaeude: ek.Gebäude,
-            lage: ek.Lage,
-            postleitzahl: ek.Postleitzahl,
-            ort: ek.Ort,
-            // Simplified display for dropdown - just name and surname
-            display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
-          };
-        });
+          // Use a for loop instead of map to avoid TS2589 error
+          for (const ek of typedData) {
+            const vorname = ek.Vorname ? `${ek.Vorname}` : '';
+            
+            formattedData.push({
+              id: ek.id,
+              nachname: ek.Nachname,
+              vorname: ek.Vorname,
+              adresse: ek.Adresse,
+              wohnung: ek.Wohnung,
+              gebaeude: ek.Gebäude,
+              lage: ek.Lage,
+              postleitzahl: ek.Postleitzahl,
+              ort: ek.Ort,
+              // Simplified display for dropdown - just name and surname
+              display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
+            });
+          }
+        }
 
         setEndkunden(formattedData);
       } catch (err) {

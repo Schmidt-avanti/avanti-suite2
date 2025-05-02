@@ -13,6 +13,13 @@ interface TaskCounts {
   isLoading: boolean;
 }
 
+// Define an interface for the customer filter to avoid typing issues
+interface CustomerFilter {
+  customer_id?: string | {
+    in: string;
+  };
+}
+
 export const useTaskCounts = () => {
   const { user } = useAuth();
   
@@ -44,7 +51,7 @@ export const useTaskCounts = () => {
       };
 
       // For role-based filtering, get the customer IDs first
-      let customerFilter = {};
+      let customerFilter: CustomerFilter = {};
       
       if (user.role === 'agent') {
         const { data: assignedCustomers } = await supabase

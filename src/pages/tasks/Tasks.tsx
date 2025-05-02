@@ -6,20 +6,37 @@ import { Card } from '@/components/ui/card';
 import { PlusIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TasksTable } from '@/components/tasks/TasksTable';
-import { useTasks } from '@/hooks/useTasks';
 import { useTaskCounts } from '@/hooks/useTaskCounts';
 import type { TaskStatus } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQueryClient } from '@tanstack/react-query';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { usePaginatedTasks } from '@/hooks/usePaginatedTasks';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 const Tasks = () => {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<TaskStatus | null>(null);
-  const { tasks, isLoading } = useTasks(statusFilter, false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  
+  // Use the paginated tasks hook instead of useTasks
+  const { tasks, isLoading, totalPages } = usePaginatedTasks(
+    statusFilter, 
+    false, 
+    undefined, 
+    currentPage, 
+    pageSize
+  );
+  
   const { counts } = useTaskCounts();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+
+  // Reset to page 1 when status filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
 
   // Prefetch data when component loads
   useEffect(() => {
@@ -33,11 +50,26 @@ const Tasks = () => {
         staleTime: 30000 // 30 seconds
       });
     });
-  }, [queryClient]);
+    
+    // Prefetch next page for smoother navigation
+    if (currentPage < totalPages) {
+      queryClient.prefetchQuery({
+        queryKey: ['tasks', 'paginated', statusFilter, currentPage + 1, pageSize],
+        staleTime: 30000
+      });
+    }
+  }, [queryClient, statusFilter, currentPage, totalPages, pageSize]);
 
   // Handler function for the status filter
   const handleStatusChange = (value: string) => {
     setStatusFilter(value === 'all' ? null : value as TaskStatus);
+  };
+  
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -72,7 +104,19 @@ const Tasks = () => {
         {isLoading ? (
           <TableSkeleton columnCount={6} rowCount={10} />
         ) : (
-          <TasksTable tasks={tasks} isLoading={isLoading} />
+          <>
+            <TasksTable tasks={tasks} isLoading={isLoading} />
+            
+            {totalPages > 1 && (
+              <div className="flex justify-center py-4 border-t">
+                <PaginationControls 
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
+          </>
         )}
       </Card>
     </div>
