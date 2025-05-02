@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, CircleCheck, CirclePause, CircleX, Clock } from 'lucide-react';
 import { format, formatDistance } from 'date-fns';
@@ -152,85 +151,97 @@ const LiveAgentOverview = () => {
     // Set up realtime subscription
     const channel = supabase
       .channel('agent-status-changes')
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'short_breaks' 
-      }, (payload: ShortBreakPayload) => {
-        setAgents(prev => {
-          return prev.map(agent => {
-            if (agent.id === payload.new.user_id) {
-              return {
-                ...agent,
-                status: 'short_break',
-                statusSince: new Date(payload.new.start_time)
-              };
-            }
-            return agent;
-          });
-        });
-      })
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'short_breaks' 
-      }, (payload: ShortBreakPayload) => {
-        if (payload.new.status === 'completed') {
+      .on(
+        'postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'short_breaks' 
+        }, 
+        (payload: ShortBreakPayload) => {
           setAgents(prev => {
             return prev.map(agent => {
-              if (agent.id === payload.new.user_id && agent.isLoggedIn) {
+              if (agent.id === payload.new.user_id) {
                 return {
                   ...agent,
-                  status: 'active',
-                  statusSince: new Date()
+                  status: 'short_break',
+                  statusSince: new Date(payload.new.start_time)
                 };
               }
               return agent;
             });
           });
         }
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'user_sessions'
-      }, (payload: UserSessionPayload) => {
-        // Handle session changes (login/logout)
-        const sessionUserId = payload.new?.user_id;
-        
-        if (sessionUserId) {
-          setAgents(prev => {
-            const agentExists = prev.some(agent => agent.id === sessionUserId);
-            
-            // If it's a new session or updated session with recent timestamp
-            if (payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && new Date(payload.new.last_seen) >= new Date(Date.now() - 15 * 60 * 1000))) {
-              if (agentExists) {
-                // Update existing agent to logged in
+      )
+      .on(
+        'postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'short_breaks' 
+        }, 
+        (payload: ShortBreakPayload) => {
+          if (payload.new.status === 'completed') {
+            setAgents(prev => {
+              return prev.map(agent => {
+                if (agent.id === payload.new.user_id && agent.isLoggedIn) {
+                  return {
+                    ...agent,
+                    status: 'active',
+                    statusSince: new Date()
+                  };
+                }
+                return agent;
+              });
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_sessions'
+        },
+        (payload: UserSessionPayload) => {
+          // Handle session changes (login/logout)
+          const sessionUserId = payload.new?.user_id;
+          
+          if (sessionUserId) {
+            setAgents(prev => {
+              const agentExists = prev.some(agent => agent.id === sessionUserId);
+              
+              // If it's a new session or updated session with recent timestamp
+              if (payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && new Date(payload.new.last_seen) >= new Date(Date.now() - 15 * 60 * 1000))) {
+                if (agentExists) {
+                  // Update existing agent to logged in
+                  return prev.map(agent => 
+                    agent.id === sessionUserId 
+                      ? { ...agent, isLoggedIn: true, status: agent.status === 'short_break' ? 'short_break' : 'active' } 
+                      : agent
+                  );
+                } else {
+                  // Fetch and add the new agent
+                  fetchAgents();
+                  return prev;
+                }
+              } 
+              // If session is deleted or expired
+              else if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && new Date(payload.new.last_seen) < new Date(Date.now() - 15 * 60 * 1000))) {
+                // Mark agent as offline
                 return prev.map(agent => 
                   agent.id === sessionUserId 
-                    ? { ...agent, isLoggedIn: true, status: agent.status === 'short_break' ? 'short_break' : 'active' } 
+                    ? { ...agent, isLoggedIn: false, status: 'offline' } 
                     : agent
                 );
-              } else {
-                // Fetch and add the new agent
-                fetchAgents();
-                return prev;
               }
-            } 
-            // If session is deleted or expired
-            else if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && new Date(payload.new.last_seen) < new Date(Date.now() - 15 * 60 * 1000))) {
-              // Mark agent as offline
-              return prev.map(agent => 
-                agent.id === sessionUserId 
-                  ? { ...agent, isLoggedIn: false, status: 'offline' } 
-                  : agent
-              );
-            }
-            
-            return prev;
-          });
+              
+              return prev;
+            });
+          }
         }
-      })
+      )
       .subscribe();
 
     // Fetch agents every 5 minutes to keep the list fresh
