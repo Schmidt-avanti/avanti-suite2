@@ -14,10 +14,6 @@ interface TaskCounts {
   isLoading: boolean;
 }
 
-interface CustomerFilter {
-  customer_id: string | string[];
-}
-
 export const useTaskCounts = () => {
   const { user } = useAuth();
   
@@ -37,7 +33,7 @@ export const useTaskCounts = () => {
       console.log(`Fetching task counts for user role: ${user.role}, id: ${user.id}`);
       
       // For role-based filtering, get the customer IDs first
-      let customerFilter: CustomerFilter | Record<string, never> = {};
+      let customerFilter = {};
       
       if (user.role === 'agent') {
         const { data: assignedCustomers, error: assignmentError } = await supabase
@@ -109,12 +105,10 @@ export const useTaskCounts = () => {
         }
         
         // Apply the customer filter
-        if (Object.keys(customerFilter).length > 0) {
-          if (user.role === 'agent' && Array.isArray(customerFilter.customer_id)) {
-            query = query.in('customer_id', customerFilter.customer_id);
-          } else if ((user.role === 'client' || user.role === 'agent') && !Array.isArray(customerFilter.customer_id)) {
-            query = query.eq('customer_id', customerFilter.customer_id as string);
-          }
+        if (user.role === 'agent' && Array.isArray(customerFilter.customer_id)) {
+          query = query.in('customer_id', customerFilter.customer_id);
+        } else if ((user.role === 'client' || user.role === 'agent') && !Array.isArray(customerFilter.customer_id)) {
+          query = query.eq('customer_id', customerFilter.customer_id);
         }
         
         return query;
