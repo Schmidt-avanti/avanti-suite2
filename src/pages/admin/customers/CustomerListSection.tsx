@@ -33,6 +33,7 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
 }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [customerToDelete, setCustomerToDelete] = React.useState<Customer | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
   const { toast: uiToast } = useToast();
 
   useEffect(() => {
@@ -52,25 +53,27 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
 
   const handleDelete = async () => {
     if (!customerToDelete) return;
+    
+    setIsDeleting(true);
 
     try {
+      // Call our custom function to delete customer and all related data
       const { error } = await supabase
-        .from("customers")
-        .delete()
-        .eq("id", customerToDelete.id);
+        .rpc('delete_customer_cascade', { customer_id_param: customerToDelete.id });
 
       if (error) throw error;
 
       setCustomers(customers.filter(c => c.id !== customerToDelete.id));
-      toast.success("Kunde erfolgreich gelöscht");
+      toast.success("Kunde und alle zugehörigen Daten wurden erfolgreich gelöscht");
     } catch (error) {
       console.error("Error deleting customer:", error);
       uiToast({
         title: "Fehler",
-        description: "Der Kunde konnte nicht gelöscht werden.",
+        description: "Der Kunde konnte nicht gelöscht werden. Bitte prüfen Sie, ob noch Abhängigkeiten bestehen.",
         variant: "destructive"
       });
     } finally {
+      setIsDeleting(false);
       setDeleteDialogOpen(false);
       setCustomerToDelete(null);
     }
@@ -160,16 +163,28 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Kunden löschen</AlertDialogTitle>
-            <AlertDialogDescription>
-              Sind Sie sicher, dass Sie den Kunden "{customerToDelete?.name}" löschen möchten?
-              Diese Aktion kann nicht rückgängig gemacht werden.
+            <AlertDialogTitle>Kunden vollständig löschen</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Sind Sie sicher, dass Sie den Kunden "{customerToDelete?.name}" und <strong>alle zugehörigen Daten</strong> löschen möchten?</p>
+              <p className="font-semibold text-destructive">Diese Aktion wird Folgendes löschen:</p>
+              <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                <li>Alle Aufgaben und Aufgabendetails dieses Kunden</li>
+                <li>Alle Wissensartikel dieses Kunden</li>
+                <li>Alle Use Cases dieses Kunden</li>
+                <li>Alle Kontaktpersonen des Kunden</li>
+                <li>Alle Kundenzuweisungen zu Nutzern</li>
+              </ul>
+              <p className="font-semibold">Diese Aktion kann nicht rückgängig gemacht werden!</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Ja, Kunden löschen
+            <AlertDialogCancel disabled={isDeleting}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Lösche..." : "Ja, Kunden vollständig löschen"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

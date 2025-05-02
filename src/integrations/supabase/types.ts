@@ -1246,6 +1246,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      delete_customer_cascade: {
+        Args: { customer_id_param: string }
+        Returns: undefined
+      }
       generate_avanti_email: {
         Args: { customer_name: string }
         Returns: string
