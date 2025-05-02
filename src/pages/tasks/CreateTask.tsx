@@ -51,55 +51,9 @@ const CreateTask = () => {
   };
 
   const onSubmit = async (values: TaskFormValues) => {
-    if (!user) {
-      console.error('No authenticated user found, cannot create task');
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: "Sie müssen angemeldet sein, um eine Aufgabe zu erstellen.",
-      });
-      return;
-    }
-
-    console.log('Current user attempting to create task:', user);
-    console.log('User role:', user.role);
-    console.log('Selected customer ID:', values.customerId);
-    
-    // Verify user has access to the selected customer
-    if (user.role === 'agent' || user.role === 'client') {
-      const { data: assignments, error: assignmentError } = await supabase
-        .from('user_customer_assignments')
-        .select('customer_id')
-        .eq('user_id', user.id)
-        .eq('customer_id', values.customerId);
-        
-      if (assignmentError) {
-        console.error('Error checking customer assignment:', assignmentError);
-        toast({
-          variant: "destructive",
-          title: "Fehler",
-          description: "Berechtigung konnte nicht überprüft werden.",
-        });
-        return;
-      }
-      
-      if (!assignments || assignments.length === 0) {
-        console.error('User does not have access to this customer:', values.customerId);
-        toast({
-          variant: "destructive",
-          title: "Keine Berechtigung",
-          description: "Sie haben keinen Zugriff auf diesen Kunden.",
-        });
-        return;
-      }
-      
-      console.log('User has verified access to customer:', values.customerId);
-    }
-
+    if (!user) return;
     setIsMatching(true);
     try {
-      console.log('Creating new task with values:', values);
-      
       let matchResult = null;
 
       try {
@@ -113,16 +67,26 @@ const CreateTask = () => {
         
         if (result.error) throw result.error;
         matchResult = result.data;
-        console.log('Use case matching result:', matchResult);
       } catch (matchError) {
         console.warn("No use case matched:", matchError);
         toast({
           title: "Kein Use Case erkannt",
           description: "Die Aufgabe wird trotzdem erstellt und an KVP weitergeleitet.",
         });
+
+        // Optional: Trigger a webhook/email notification to KVP team
+        await fetch('https://your-automation-endpoint/send-kvp-alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerId: values.customerId,
+            description: values.description,
+            createdBy: user.email,
+            reason: 'Kein Use Case erkannt',
+          }),
+        });
       }
 
-      // Insert the new task
       const { data: task, error: taskError } = await supabase
         .from('tasks')
         .insert({
@@ -142,15 +106,10 @@ const CreateTask = () => {
         .select()
         .single();
 
-      if (taskError) {
-        console.error("Error creating task:", taskError);
-        throw taskError;
-      }
-
-      console.log("Task created successfully:", task);
+      if (taskError) throw taskError;
 
       // Create an activity log entry for the assignment
-      const { error: activityError } = await supabase
+      await supabase
         .from('task_activities')
         .insert({
           task_id: task.id,
@@ -159,10 +118,6 @@ const CreateTask = () => {
           status_from: 'new',
           status_to: 'new'
         });
-        
-      if (activityError) {
-        console.error("Error creating task activity:", activityError);
-      }
 
       const { error: messageError } = await supabase
         .from('task_messages')
@@ -173,10 +128,7 @@ const CreateTask = () => {
           created_by: user.id,
         });
 
-      if (messageError) {
-        console.error("Error creating task message:", messageError);
-        throw messageError;
-      }
+      if (messageError) throw messageError;
 
       // Direkt eine initiale AI-Anfrage für den Task triggern,
       // wenn ein Use Case erkannt wurde
@@ -216,7 +168,7 @@ const CreateTask = () => {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: error.message || "Ein unbekannter Fehler ist aufgetreten.",
+        description: error.message,
       });
     } finally {
       setIsMatching(false);
@@ -264,14 +216,12 @@ const CreateTask = () => {
                       <SelectContent>
                         {isLoadingCustomers ? (
                           <SelectItem value="loading" disabled>Lädt...</SelectItem>
-                        ) : customers.length > 0 ? (
+                        ) : (
                           customers.map((customer) => (
                             <SelectItem key={customer.id} value={customer.id}>
                               {customer.name}
                             </SelectItem>
                           ))
-                        ) : (
-                          <SelectItem value="none" disabled>Keine Kunden gefunden</SelectItem>
                         )}
                       </SelectContent>
                     </Select>

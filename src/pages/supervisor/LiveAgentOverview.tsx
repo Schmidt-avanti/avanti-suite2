@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, CircleCheck, CirclePause, CircleX, Clock } from 'lucide-react';
 import { format, formatDistance } from 'date-fns';
@@ -19,7 +18,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { useIsMobile } from '@/hooks/use-mobile';
-import { RealtimeChannel } from '@supabase/supabase-js';
 
 type AgentStatus = 'active' | 'short_break' | 'offline';
 
@@ -31,40 +29,6 @@ interface Agent {
   customerId?: string;
   customerName?: string;
   lastActivity?: Date;
-  isLoggedIn: boolean;
-}
-
-// Define the session interface to help TypeScript recognize the structure
-interface UserSession {
-  user_id: string;
-  last_seen: string;
-}
-
-// Define interfaces for the realtime subscription payloads
-interface UserSessionPayload {
-  new: {
-    user_id: string;
-    last_seen: string;
-  };
-  old?: {
-    user_id: string;
-    last_seen: string;
-  };
-  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-}
-
-interface ShortBreakPayload {
-  new: {
-    user_id: string;
-    start_time: string;
-    status: string;
-  };
-  old?: {
-    user_id: string;
-    start_time: string;
-    status: string;
-  };
-  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
 }
 
 const LiveAgentOverview = () => {
@@ -78,7 +42,6 @@ const LiveAgentOverview = () => {
   useEffect(() => {
     const fetchAgents = async () => {
       try {
-        // Fetch all agent profiles
         const { data: profiles, error } = await supabase
           .from('profiles')
           .select('id, "Full Name", role')
@@ -86,37 +49,6 @@ const LiveAgentOverview = () => {
           .eq('is_active', true);
 
         if (error) throw error;
-
-        // Fetch active sessions to determine who's logged in
-        let activeSessions: UserSession[] = [];
-        
-        try {
-          // Log that we're attempting to fetch sessions for debugging
-          console.log("Fetching user sessions...");
-          
-          const { data, error: rpcError } = await supabase
-            .from('user_sessions')
-            .select('user_id, last_seen')
-            .gte('last_seen', new Date(Date.now() - 15 * 60 * 1000).toISOString());
-            
-          if (rpcError) {
-            throw rpcError;
-          }
-          
-          if (data) {
-            activeSessions = data as UserSession[];
-            console.log("Active sessions found:", activeSessions.length);
-          }
-        } catch (sessionError) {
-          console.error("Could not fetch session data:", sessionError);
-          // Show toast notification for session fetch error
-          toast({
-            title: "Warnung",
-            description: "Sitzungsdaten konnten nicht abgerufen werden.",
-            variant: "destructive", // Fixed: Changed from "warning" to "destructive" to match allowed types
-          });
-          // Continue without session data - activeSessions will remain an empty array
-        }
 
         const { data: shortBreaks } = await supabase
           .from('short_breaks')
@@ -127,28 +59,21 @@ const LiveAgentOverview = () => {
           .from('user_customer_assignments')
           .select('user_id, customer_id, customers(name)');
 
-        // Make sure we're safely handling the case where activeSessions might be undefined
-        const loggedInUserIds = new Set(activeSessions?.map(session => session.user_id) || []);
-        console.log("Logged in user IDs:", Array.from(loggedInUserIds));
-
         const formattedAgents: Agent[] = (profiles || []).map(profile => {
           const activeBreak = shortBreaks?.find(b => b.user_id === profile.id);
           const assignment = assignments?.find(a => a.user_id === profile.id);
-          const isLoggedIn = loggedInUserIds.has(profile.id);
           
           return {
             id: profile.id,
             fullName: profile["Full Name"],
-            status: isLoggedIn ? (activeBreak ? 'short_break' : 'active') : 'offline',
+            status: activeBreak ? 'short_break' : 'active',
             statusSince: activeBreak ? new Date(activeBreak.start_time) : new Date(),
             customerId: assignment?.customer_id,
             customerName: assignment?.customers?.name,
-            lastActivity: isLoggedIn ? new Date() : undefined,
-            isLoggedIn: isLoggedIn
+            lastActivity: new Date()
           };
         });
 
-        // Only show agents that are logged in
         setAgents(formattedAgents);
       } catch (error) {
         console.error('Error fetching agents:', error);
@@ -162,49 +87,35 @@ const LiveAgentOverview = () => {
 
     fetchAgents();
 
-    // Set up realtime subscription
-    // Fix: Use the correct channel subscription pattern for Supabase
-    const channel = supabase.channel('agent-status-changes');
-    
-    // Subscribe to INSERT events on short_breaks table
-    channel.on(
-      'postgres_changes', 
-      { 
+    const channel = supabase
+      .channel('agent-status-changes')
+      .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'short_breaks' 
-      }, 
-      (payload) => {
-        const typedPayload = payload as unknown as ShortBreakPayload;
+      }, payload => {
         setAgents(prev => {
           return prev.map(agent => {
-            if (agent.id === typedPayload.new.user_id) {
+            if (agent.id === payload.new.user_id) {
               return {
                 ...agent,
                 status: 'short_break',
-                statusSince: new Date(typedPayload.new.start_time)
+                statusSince: new Date(payload.new.start_time)
               };
             }
             return agent;
           });
         });
-      }
-    );
-    
-    // Subscribe to UPDATE events on short_breaks table
-    channel.on(
-      'postgres_changes', 
-      { 
+      })
+      .on('postgres_changes', { 
         event: 'UPDATE', 
         schema: 'public', 
         table: 'short_breaks' 
-      }, 
-      (payload) => {
-        const typedPayload = payload as unknown as ShortBreakPayload;
-        if (typedPayload.new.status === 'completed') {
+      }, payload => {
+        if (payload.new.status === 'completed') {
           setAgents(prev => {
             return prev.map(agent => {
-              if (agent.id === typedPayload.new.user_id && agent.isLoggedIn) {
+              if (agent.id === payload.new.user_id) {
                 return {
                   ...agent,
                   status: 'active',
@@ -215,68 +126,11 @@ const LiveAgentOverview = () => {
             });
           });
         }
-      }
-    );
-    
-    // Subscribe to all events on user_sessions table
-    channel.on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'user_sessions'
-      },
-      (payload) => {
-        // Handle session changes (login/logout)
-        const typedPayload = payload as unknown as UserSessionPayload;
-        const sessionUserId = typedPayload.new?.user_id;
-        
-        if (sessionUserId) {
-          setAgents(prev => {
-            const agentExists = prev.some(agent => agent.id === sessionUserId);
-            
-            // If it's a new session or updated session with recent timestamp
-            if (typedPayload.eventType === 'INSERT' || (typedPayload.eventType === 'UPDATE' && new Date(typedPayload.new.last_seen) >= new Date(Date.now() - 15 * 60 * 1000))) {
-              if (agentExists) {
-                // Update existing agent to logged in
-                return prev.map(agent => 
-                  agent.id === sessionUserId 
-                    ? { ...agent, isLoggedIn: true, status: agent.status === 'short_break' ? 'short_break' : 'active' } 
-                    : agent
-                );
-              } else {
-                // Fetch and add the new agent
-                fetchAgents();
-                return prev;
-              }
-            } 
-            // If session is deleted or expired
-            else if (typedPayload.eventType === 'DELETE' || (typedPayload.eventType === 'UPDATE' && new Date(typedPayload.new.last_seen) < new Date(Date.now() - 15 * 60 * 1000))) {
-              // Mark agent as offline
-              return prev.map(agent => 
-                agent.id === sessionUserId 
-                  ? { ...agent, isLoggedIn: false, status: 'offline' } 
-                  : agent
-              );
-            }
-            
-            return prev;
-          });
-        }
-      }
-    );
-    
-    // Subscribe to the channel
-    channel.subscribe((status) => {
-      console.log('Realtime subscription status:', status);
-    });
-
-    // Fetch agents every 5 minutes to keep the list fresh
-    const interval = setInterval(fetchAgents, 5 * 60 * 1000);
+      })
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(interval);
     };
   }, [toast]);
 
@@ -340,58 +194,48 @@ const LiveAgentOverview = () => {
 
   const renderMobileView = () => (
     <div className="grid gap-4">
-      {agents.length === 0 ? (
-        <Card className="p-4 text-center">
-          <p className="text-muted-foreground">Keine aktiven Agenten online</p>
-        </Card>
-      ) : (
-        agents.map((agent) => (
-          <Card key={agent.id} className={`p-4 ${!agent.isLoggedIn ? 'opacity-60' : ''}`}>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {getInitials(agent.fullName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-medium">{agent.fullName}</div>
-                    <div className="text-sm text-muted-foreground">{agent.customerName || "—"}</div>
-                  </div>
+      {agents.map((agent) => (
+        <Card key={agent.id} className="p-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar>
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {getInitials(agent.fullName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-medium">{agent.fullName}</div>
+                  <div className="text-sm text-muted-foreground">{agent.customerName || "—"}</div>
                 </div>
-                {getStatusBadge(agent.status)}
               </div>
-              
-              {agent.isLoggedIn && (
-                <>
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>seit {formatDuration(agent.statusSince)}</span>
-                    </div>
-                    {agent.lastActivity && (
-                      <Badge variant="outline" className="bg-gray-50">
-                        {formatTime(agent.lastActivity)}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => handleOpenChat(agent)}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Chat starten
-                  </Button>
-                </>
+              {getStatusBadge(agent.status)}
+            </div>
+            
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span>seit {formatDuration(agent.statusSince)}</span>
+              </div>
+              {agent.lastActivity && (
+                <Badge variant="outline" className="bg-gray-50">
+                  {formatTime(agent.lastActivity)}
+                </Badge>
               )}
             </div>
-          </Card>
-        ))
-      )}
+            
+            <Button 
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => handleOpenChat(agent)}
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Chat starten
+            </Button>
+          </div>
+        </Card>
+      ))}
     </div>
   );
 
@@ -409,73 +253,61 @@ const LiveAgentOverview = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {agents.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center py-8">
-                <p className="text-muted-foreground">Keine aktiven Agenten online</p>
+          {agents.map((agent) => (
+            <TableRow 
+              key={agent.id}
+              className="hover:bg-gray-50/50 transition-colors"
+            >
+              <TableCell className="font-medium">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                      {getInitials(agent.fullName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {agent.fullName}
+                </div>
+              </TableCell>
+              <TableCell>
+                {getStatusBadge(agent.status)}
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <span>{formatDuration(agent.statusSince)}</span>
+                </div>
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {agent.customerName || "—"}
+              </TableCell>
+              <TableCell>
+                {agent.lastActivity && (
+                  <Badge variant="outline" className="bg-gray-50">
+                    {formatTime(agent.lastActivity)}
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell className="text-right">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleOpenChat(agent)}
+                        className="text-muted-foreground hover:text-primary"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Nachricht an Agent senden</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </TableCell>
             </TableRow>
-          ) : (
-            agents.map((agent) => (
-              <TableRow 
-                key={agent.id}
-                className={`hover:bg-gray-50/50 transition-colors ${!agent.isLoggedIn ? 'opacity-60 bg-gray-50/30' : ''}`}
-              >
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                        {getInitials(agent.fullName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    {agent.fullName}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {getStatusBadge(agent.status)}
-                </TableCell>
-                <TableCell>
-                  {agent.isLoggedIn && (
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>{formatDuration(agent.statusSince)}</span>
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {agent.customerName || "—"}
-                </TableCell>
-                <TableCell>
-                  {agent.lastActivity && agent.isLoggedIn && (
-                    <Badge variant="outline" className="bg-gray-50">
-                      {formatTime(agent.lastActivity)}
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  {agent.isLoggedIn && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleOpenChat(agent)}
-                            className="text-muted-foreground hover:text-primary"
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Nachricht an Agent senden</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
+          ))}
         </TableBody>
       </Table>
     </div>
@@ -488,7 +320,19 @@ const LiveAgentOverview = () => {
         <p className="text-muted-foreground">Verwalten Sie aktive Agenten und deren Status in Echtzeit</p>
       </div>
 
-      {isMobile ? renderMobileView() : renderDesktopView()}
+      {agents.length === 0 ? (
+        <Card className="p-8 text-center">
+          <Avatar className="h-12 w-12 mx-auto mb-4">
+            <AvatarFallback className="bg-muted text-muted-foreground">?</AvatarFallback>
+          </Avatar>
+          <h3 className="text-lg font-medium mb-2">Keine aktiven Agenten</h3>
+          <p className="text-muted-foreground">
+            Aktuell sind keine Agenten online oder mit Aufgaben beschäftigt.
+          </p>
+        </Card>
+      ) : (
+        isMobile ? renderMobileView() : renderDesktopView()
+      )}
 
       {selectedAgent && (
         <SupervisorChat

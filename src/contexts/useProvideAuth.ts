@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserRole, User } from "@/types";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Session } from "@supabase/supabase-js";
 
 export interface AuthState {
@@ -20,7 +20,7 @@ const fetchUserProfile = async (userId: string) => {
   console.log("Fetching profile for user ID:", userId);
   
   try {
-    // Direct query to prevent recursion issues
+    // Direkte SQL-Abfrage ohne Rekursion zu verhindern
     const { data: profile, error } = await supabase
       .from("profiles")
       .select("role, \"Full Name\"")
@@ -43,19 +43,6 @@ const fetchUserProfile = async (userId: string) => {
     }
     
     console.log("Profile successfully fetched:", profile);
-
-    // Validate role data
-    if (!profile.role) {
-      console.error("Profile has no role assigned:", profile);
-      throw new Error("Keine Rolle zugewiesen");
-    }
-
-    // Validate role value
-    if (!['admin', 'agent', 'client'].includes(profile.role)) {
-      console.error(`Invalid role found in profile: ${profile.role}`);
-      throw new Error(`Ungültige Rolle: ${profile.role}`);
-    }
-    
     return profile;
   } catch (error) {
     console.error("Error in fetchUserProfile:", error);
@@ -67,22 +54,17 @@ const fetchUserProfile = async (userId: string) => {
  * Maps a Supabase session user and profile data to our application User type
  */
 const createUserFromSessionAndProfile = (session: Session, profileData: any): User & { role: UserRole } => {
-  // Ensure role is one of our allowed types with explicit validation
-  const rawRole = profileData.role;
-  let role: UserRole = 'client'; // Default fallback
+  const role = (profileData.role || "client") as UserRole;
   
-  if (['admin', 'agent', 'client'].includes(rawRole)) {
-    role = rawRole as UserRole;
-  } else {
-    console.warn(`Invalid role found in profile: ${rawRole}, defaulting to 'client'`);
+  // Ensure role is one of our allowed types
+  if (!['admin', 'agent', 'client'].includes(role)) {
+    console.warn(`Invalid role found in profile: ${role}, defaulting to 'client'`);
   }
-  
-  console.log(`Creating user object with role: ${role}`);
   
   return {
     id: session.user.id,
     email: session.user.email ?? "",
-    role: role,
+    role: (['admin', 'agent', 'client'].includes(role) ? role : 'client') as UserRole,
     createdAt: session.user.created_at,
     firstName: profileData["Full Name"] || undefined,
     lastName: undefined,
@@ -102,7 +84,6 @@ export function useProvideAuth(): AuthState {
     try {
       const profile = await fetchUserProfile(session.user.id);
       const mappedUser = createUserFromSessionAndProfile(session, profile);
-      console.log("Mapped user with role:", mappedUser.role);
       setUser(mappedUser);
       return mappedUser;
     } catch (error: any) {
@@ -181,6 +162,7 @@ export function useProvideAuth(): AuthState {
             await loadProfileAndSetUser(initialSession);
           } catch (err) {
             console.error("Error loading profile during initialization:", err);
+            // We'll let the error propagate to be handled by the caller
           } finally {
             setIsLoading(false);
           }
@@ -221,6 +203,9 @@ export function useProvideAuth(): AuthState {
       }
       
       console.log("Authentication successful for user:", data.session.user.id);
+      
+      // We don't need to explicitly load the profile here as the auth state listener will handle it
+      // This helps avoid race conditions
       
       toast({
         title: "Login erfolgreich",
