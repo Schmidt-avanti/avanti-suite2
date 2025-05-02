@@ -168,8 +168,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       // Process the data using a simple loop to avoid complex type inference
       const formattedData: EndkundeOption[] = [];
       
-      for (let i = 0; i < data.length; i++) {
-        const ek = data[i];
+      for (const ek of data) {
         const vorname = ek.Vorname ? `${ek.Vorname}` : '';
         
         formattedData.push({
