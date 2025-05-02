@@ -501,7 +501,6 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
-          email: string | null
           "Full Name": string
           id: string
           is_active: boolean
@@ -509,7 +508,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          email?: string | null
           "Full Name": string
           id: string
           is_active?: boolean
@@ -517,7 +515,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          email?: string | null
           "Full Name"?: string
           id?: string
           is_active?: boolean
@@ -1201,10 +1198,6 @@ export type Database = {
       }
     }
     Functions: {
-      admin_populate_profile_emails: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
@@ -1387,10 +1380,6 @@ export type Database = {
       update_chat_session: {
         Args: { chat_id_param: string; user_id_param: string }
         Returns: undefined
-      }
-      user_has_customer_access: {
-        Args: { customer_id_param: string }
-        Returns: boolean
       }
       vector_avg: {
         Args: { "": number[] }

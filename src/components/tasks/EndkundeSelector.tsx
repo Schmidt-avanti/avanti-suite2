@@ -8,7 +8,6 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 
 interface EndkundeOption {
   id: string;
@@ -65,87 +64,47 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         
         console.log('Fetching endkunden for customer ID:', customerId);
         
-        // Try with both column names to handle potential case sensitivity issues
-        // First try with customer_ID (the original column name in the database)
-        const { data: dataWithUnderscoreID, error: errorWithUnderscoreID } = await supabase
+        // Use properly typed database query
+        const { data, error } = await supabase
           .from('endkunden')
           .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
           .eq('customer_ID', customerId)
+          // Remove is_active filter as it doesn't exist in the schema
           .order('Nachname', { ascending: true });
-
-        console.log('Query with customer_ID:', { data: dataWithUnderscoreID, error: errorWithUnderscoreID });
-
-        // If first query fails or returns no results, try with customer_id (lowercase)
-        let data, error;
-        if (!dataWithUnderscoreID || dataWithUnderscoreID.length === 0) {
-          const result = await supabase
-            .from('endkunden')
-            .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
-            .eq('customer_ID', customerId)
-            .order('Nachname', { ascending: true });
-          
-          data = result.data;
-          error = result.error;
-          console.log('Query with customer_id (lowercase):', { data, error });
-        } else {
-          data = dataWithUnderscoreID;
-          error = errorWithUnderscoreID;
-        }
 
         if (error) {
           console.error('Error fetching endkunden:', error);
-          toast({
-            title: "Fehler beim Laden der Endkunden",
-            description: error.message,
-            variant: "destructive"
-          });
-          return;
+          throw error;
         }
 
         console.log('Fetched endkunden:', data);
 
-        if (!data || data.length === 0) {
-          console.log('No endkunden found for this customer ID');
-          setEndkunden([]);
-          setIsLoading(false);
-          return;
-        }
-
-        // Create a new array to store our formatted data
-        const formattedData: EndkundeOption[] = [];
+        // Explicitly type the data before processing
+        const typedData = data as unknown as EndkundeResponse[];
         
-        // Use for...of loop to iterate over the data array to avoid type recursion issues
-        for (const ek of data) {
-          // Cast each item to the expected response type
-          const typedEk = ek as unknown as EndkundeResponse;
+        // Transform the typed data into our component format
+        const formattedData: EndkundeOption[] = typedData.map((ek) => {
+          // Create a simpler display name with just name and surname
+          const vorname = ek.Vorname ? `${ek.Vorname}` : '';
           
-          // Create the display name
-          const vorname = typedEk.Vorname ? `${typedEk.Vorname}` : '';
-          const displayName = vorname ? `${typedEk.Nachname}, ${vorname}` : typedEk.Nachname;
-          
-          // Build our formatted option
-          formattedData.push({
-            id: typedEk.id,
-            nachname: typedEk.Nachname,
-            vorname: typedEk.Vorname,
-            adresse: typedEk.Adresse,
-            wohnung: typedEk.Wohnung,
-            gebaeude: typedEk.Gebäude,
-            lage: typedEk.Lage,
-            postleitzahl: typedEk.Postleitzahl,
-            ort: typedEk.Ort,
-            display: displayName
-          });
-        }
+          return {
+            id: ek.id,
+            nachname: ek.Nachname,
+            vorname: ek.Vorname,
+            adresse: ek.Adresse,
+            wohnung: ek.Wohnung,
+            gebaeude: ek.Gebäude,
+            lage: ek.Lage,
+            postleitzahl: ek.Postleitzahl,
+            ort: ek.Ort,
+            // Simplified display for dropdown - just name and surname
+            display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
+          };
+        });
 
         setEndkunden(formattedData);
       } catch (err) {
         console.error('Error fetching endkunden:', err);
-        toast({
-          title: "Fehler beim Laden der Endkunden",
-          description: "Es ist ein unerwarteter Fehler aufgetreten.",
-          variant: "destructive"
-        });
       } finally {
         setIsLoading(false);
       }
@@ -177,14 +136,12 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         <SelectItem value="none">Kein Endkunde</SelectItem>
         {isLoading ? (
           <SelectItem value="loading" disabled>Laden...</SelectItem>
-        ) : endkunden.length > 0 ? (
+        ) : (
           endkunden.map((ek) => (
             <SelectItem key={ek.id} value={ek.id}>
               {ek.display}
             </SelectItem>
           ))
-        ) : (
-          <SelectItem value="empty" disabled>Keine Endkunden verfügbar</SelectItem>
         )}
       </SelectContent>
     </Select>

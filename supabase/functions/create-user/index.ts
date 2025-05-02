@@ -16,7 +16,6 @@ interface CreateUserRequest {
     role: string
     "Full Name": string
     needs_password_reset: boolean
-    is_active: boolean
   }
 }
 
@@ -84,14 +83,9 @@ serve(async (req) => {
     // Validate required fields
     const { email, password, userData } = requestData
     if (!email || !password || !userData) {
-      const missingFields = {
-        email: !email,
-        password: !password,
-        userData: !userData
-      }
-      console.error('Missing required fields:', missingFields)
+      console.error('Missing required fields:', { email: !!email, password: !!password, userData: !!userData })
       return new Response(
-        JSON.stringify({ error: 'Missing required fields', details: missingFields }),
+        JSON.stringify({ error: 'Missing required fields' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -121,23 +115,6 @@ serve(async (req) => {
     }
 
     console.log('User created successfully:', data.user.id)
-
-    // Insert user profile with email
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .insert({
-        id: data.user.id,
-        role: userData.role, 
-        "Full Name": userData["Full Name"],
-        is_active: true,
-        email: email  // Store email in profiles table
-      });
-      
-    if (profileError) {
-      console.error('Error creating profile:', profileError)
-      // We don't want to fail the whole operation if just the profile insert fails
-      // The user is created in auth.users, which is the most important part
-    }
 
     // Return the user ID
     return new Response(

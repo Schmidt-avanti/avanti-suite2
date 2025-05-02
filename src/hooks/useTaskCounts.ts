@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
-import { toast } from '@/hooks/use-toast';
 
 interface TaskCounts {
   new: number;
@@ -19,7 +18,6 @@ export const useTaskCounts = () => {
   
   const fetchTaskCounts = async () => {
     if (!user) {
-      console.log('No user found, returning zero counts');
       return {
         new: 0,
         in_progress: 0,
@@ -30,32 +28,35 @@ export const useTaskCounts = () => {
     }
 
     try {
-      console.log(`Fetching task counts for user role: ${user.role}, id: ${user.id}`);
-      
+      // Base query to apply common filters
+      const createBaseQuery = () => {
+        let query = supabase.from('tasks').select('*', { count: 'exact', head: true });
+        
+        // Apply user role-based filtering
+        if (user.role === 'agent') {
+          // For agents, we'll fetch the assigned customer IDs in the main function
+          // and then filter based on those
+        } else if (user.role === 'client') {
+          // Similarly, for clients, we'll handle this in the main function
+        }
+        
+        return query;
+      };
+
       // For role-based filtering, get the customer IDs first
       let customerFilter = {};
       
       if (user.role === 'agent') {
-        const { data: assignedCustomers, error: assignmentError } = await supabase
+        const { data: assignedCustomers } = await supabase
           .from('user_customer_assignments')
           .select('customer_id')
           .eq('user_id', user.id);
 
-        if (assignmentError) {
-          console.error('Error fetching assigned customers:', assignmentError);
-          throw assignmentError;
-        }
-
-        console.log('Agent assigned customers:', assignedCustomers);
-
         if (assignedCustomers && assignedCustomers.length > 0) {
           const customerIds = assignedCustomers.map(ac => ac.customer_id);
-          // Use the 'in' filter with an array directly, not a joined string
-          customerFilter = { customer_id: customerIds };
-          console.log('Using customer filter:', customerFilter);
+          customerFilter = { customer_id: { in: customerIds.join(',') } };
         } else {
           // No assigned customers, return empty counts
-          console.log('No assigned customers for this agent');
           return {
             new: 0,
             in_progress: 0,
@@ -65,24 +66,16 @@ export const useTaskCounts = () => {
           };
         }
       } else if (user.role === 'client') {
-        const { data: userAssignment, error: assignmentError } = await supabase
+        const { data: userAssignment } = await supabase
           .from('user_customer_assignments')
           .select('customer_id')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (assignmentError) {
-          console.error('Error fetching client assignment:', assignmentError);
-          throw assignmentError;
-        }
-
-        console.log('Client assignment:', userAssignment);
-
         if (userAssignment) {
           customerFilter = { customer_id: userAssignment.customer_id };
         } else {
           // No customer assignment, return empty counts
-          console.log('No customer assignment for this client');
           return {
             new: 0,
             in_progress: 0,
@@ -94,63 +87,62 @@ export const useTaskCounts = () => {
       }
 
       // Run count queries in parallel for better performance
-      // Fix the 'in' filter application
-      async function runQuery(status = null) {
-        let query = supabase
-          .from('tasks')
-          .select('*', { count: 'exact', head: true });
-        
-        if (status) {
-          query = query.eq('status', status);
-        }
-        
-        // Apply the customer filter
-        if (user.role === 'agent' && Array.isArray(customerFilter.customer_id)) {
-          query = query.in('customer_id', customerFilter.customer_id);
-        } else if ((user.role === 'client' || user.role === 'agent') && !Array.isArray(customerFilter.customer_id)) {
-          query = query.eq('customer_id', customerFilter.customer_id);
-        }
-        
-        return query;
-      }
-      
       const [
-        newCountResult,
-        inProgressCountResult,
-        followupCountResult,
-        completedCountResult,
-        totalCountResult
+        { count: newCount, error: newError },
+        { count: inProgressCount, error: inProgressError },
+        { count: followupCount, error: followupError },
+        { count: completedCount, error: completedError },
+        { count: totalCount, error: totalError }
       ] = await Promise.all([
-        runQuery('new'),
-        runQuery('in_progress'),
-        runQuery('followup'),
-        runQuery('completed'),
-        runQuery()
+        // New tasks
+        supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'new')
+          .match(customerFilter),
+        
+        // In progress tasks
+        supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'in_progress')
+          .match(customerFilter),
+        
+        // Follow-up tasks
+        supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'followup')
+          .match(customerFilter),
+        
+        // Completed tasks
+        supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'completed')
+          .match(customerFilter),
+        
+        // Total tasks
+        supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .match(customerFilter)
       ]);
-      
+
       // Log any errors
-      [newCountResult, inProgressCountResult, followupCountResult, completedCountResult, totalCountResult].forEach(result => {
-        if (result.error) console.error('Error fetching task count:', result.error);
+      [newError, inProgressError, followupError, completedError, totalError].forEach(error => {
+        if (error) console.error('Error fetching task counts:', error);
       });
 
-      const result = {
-        new: newCountResult.count || 0,
-        in_progress: inProgressCountResult.count || 0,
-        followup: followupCountResult.count || 0,
-        completed: completedCountResult.count || 0,
-        total: totalCountResult.count || 0
+      return {
+        new: newCount || 0,
+        in_progress: inProgressCount || 0,
+        followup: followupCount || 0,
+        completed: completedCount || 0,
+        total: totalCount || 0
       };
-      
-      console.log('Task counts result:', result);
-      return result;
-      
     } catch (error) {
       console.error('Error in useTaskCounts hook:', error);
-      toast({
-        title: "Fehler beim Laden der Aufgabenzahlen",
-        description: "Es ist ein unerwarteter Fehler aufgetreten.",
-        variant: "destructive"
-      });
       return {
         new: 0,
         in_progress: 0,
@@ -163,7 +155,7 @@ export const useTaskCounts = () => {
 
   // Use React Query for efficient caching and background updates
   const { data, isLoading } = useQuery({
-    queryKey: ['taskCounts', user?.id, user?.role],
+    queryKey: ['taskCounts', user?.id],
     queryFn: fetchTaskCounts,
     staleTime: 60000, // 1 minute
     gcTime: 300000, // 5 minutes - Updated from cacheTime to gcTime which is the modern equivalent

@@ -33,23 +33,40 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      // Get profiles with email field
+      // Get profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, role, "Full Name", created_at, is_active, email');
-      
+        .select('id, role, "Full Name", created_at, is_active');
       if (profilesError) throw profilesError;
 
       console.log('Fetched profiles:', profiles);
 
-      if (!profiles || profiles.length === 0) {
-        setUsers([]);
-        setIsLoading(false);
-        return;
+      // Get auth users for email addresses
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      
+      // Create email map
+      let emailMap: Record<string, string> = {};
+      
+      if (!authError && authUsers?.users) {
+        // Type for Auth-User
+        interface AuthUser {
+          id: string;
+          email?: string;
+          [key: string]: any;
+        }
+        
+        const usersArray = authUsers.users as AuthUser[];
+        
+        emailMap = usersArray.reduce((acc: Record<string, string>, user: AuthUser) => {
+          if (user && typeof user.id === 'string') {
+            acc[user.id] = user.email || '';
+          }
+          return acc;
+        }, {} as Record<string, string>);
       }
 
-      // No need for email map since we now have email in profiles
-      
+      console.log('Email map created:', emailMap);
+
       // Get customer assignments for all users
       const { data: assignments, error: assignmentsError } = await supabase
         .from('user_customer_assignments')
@@ -86,7 +103,7 @@ const UserListSection: React.FC<UserListSectionProps> = ({
 
         return {
           id: profile.id,
-          email: profile.email || "", // Use email directly from profiles
+          email: emailMap[profile.id] || "",
           role: (profile.role || 'client') as UserRole,
           firstName: profile["Full Name"] || undefined,
           createdAt: profile.created_at,
@@ -139,32 +156,20 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   // Löschen
   const handleDelete = async (id: string) => {
     try {
-      // First try to delete with admin API
-      try {
-        const { error } = await supabase.auth.admin.deleteUser(id);
-        if (error) throw error;
-      } catch (adminError) {
-        console.error("Admin API error:", adminError);
-        // Fallback to a direct delete operation on the profiles table
-        // instead of calling an rpc function that doesn't exist
-        const { error } = await supabase
-          .from('profiles')
-          .delete()
-          .eq('id', id);
-          
-        if (error) throw error;
-      }
+      const { error } = await supabase.auth.admin.deleteUser(id);
+
+      if (error) throw error;
 
       setUsers(users => users.filter(user => user.id !== id));
       toast({
         title: "Benutzer gelöscht",
         description: "Das Profil wurde gelöscht.",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: error.message || "Der Benutzer konnte nicht gelöscht werden.",
+        description: "Der Benutzer konnte nicht gelöscht werden.",
       });
     }
   };
@@ -182,19 +187,8 @@ const UserListSection: React.FC<UserListSectionProps> = ({
     }
 
     try {
-      // Determine the appropriate base URL for the current environment
-      const isProduction = window.location.hostname === 'suite.avanti.cx';
-      const baseUrl = isProduction 
-        ? 'https://suite.avanti.cx' 
-        : window.location.origin; // Uses current origin for development
-      
-      // Construct the full redirect URL
-      const redirectTo = `${baseUrl}/auth/reset-password`;
-      
-      console.log(`Sending reset password email to ${user.email} with redirect to: ${redirectTo}`);
-      
       const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: redirectTo,
+        redirectTo: window.location.origin + '/auth/reset-password',
       });
 
       if (error) throw error;

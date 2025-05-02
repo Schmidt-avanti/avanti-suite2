@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,7 +12,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Auth Pages
 import Login from "@/pages/auth/Login";
-import ResetPassword from "@/pages/auth/ResetPassword";
 
 // Dashboard Page
 import Dashboard from "@/pages/Dashboard";
@@ -36,7 +34,7 @@ import ShortBreakSettings from "@/pages/supervisor/ShortBreakSettings";
 import ProcessingTime from "@/pages/supervisor/ProcessingTime";
 
 // Agent Pages
-// import AgentDashboard from "@/pages/agent/Dashboard";
+import AgentDashboard from "@/pages/agent/Dashboard";
 
 // Client Pages
 import ClientDashboard from "@/pages/customer/Dashboard";
@@ -77,7 +75,6 @@ const App = () => {
                 {/* Public routes */}
                 <Route path="/" element={<Index />} />
                 <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/reset-password" element={<ResetPassword />} />
                 {/* Entferne Registrierung, leite ggf. weiter */}
                 <Route path="/auth/register" element={<Navigate to="/auth/login" replace />} />
 
@@ -243,12 +240,12 @@ const App = () => {
                     }
                   />
 
-                  {/* Agent routes - Now redirects to the main Dashboard */}
+                  {/* Agent routes */}
                   <Route
                     path="/agent/dashboard"
                     element={
                       <ProtectedRoute allowedRoles={["agent"]}>
-                        <Navigate to="/dashboard" replace />
+                        <AgentDashboard />
                       </ProtectedRoute>
                     }
                   />
