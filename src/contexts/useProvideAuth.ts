@@ -43,6 +43,19 @@ const fetchUserProfile = async (userId: string) => {
     }
     
     console.log("Profile successfully fetched:", profile);
+
+    // Validate role data
+    if (!profile.role) {
+      console.error("Profile has no role assigned:", profile);
+      throw new Error("Keine Rolle zugewiesen");
+    }
+
+    // Validate role value
+    if (!['admin', 'agent', 'client'].includes(profile.role)) {
+      console.error(`Invalid role found in profile: ${profile.role}`);
+      throw new Error(`Ungültige Rolle: ${profile.role}`);
+    }
+    
     return profile;
   } catch (error) {
     console.error("Error in fetchUserProfile:", error);
@@ -54,17 +67,22 @@ const fetchUserProfile = async (userId: string) => {
  * Maps a Supabase session user and profile data to our application User type
  */
 const createUserFromSessionAndProfile = (session: Session, profileData: any): User & { role: UserRole } => {
-  const role = (profileData.role || "client") as UserRole;
+  // Ensure role is one of our allowed types with explicit validation
+  const rawRole = profileData.role;
+  let role: UserRole = 'client'; // Default fallback
   
-  // Ensure role is one of our allowed types
-  if (!['admin', 'agent', 'client'].includes(role)) {
-    console.warn(`Invalid role found in profile: ${role}, defaulting to 'client'`);
+  if (['admin', 'agent', 'client'].includes(rawRole)) {
+    role = rawRole as UserRole;
+  } else {
+    console.warn(`Invalid role found in profile: ${rawRole}, defaulting to 'client'`);
   }
+  
+  console.log(`Creating user object with role: ${role}`);
   
   return {
     id: session.user.id,
     email: session.user.email ?? "",
-    role: (['admin', 'agent', 'client'].includes(role) ? role : 'client') as UserRole,
+    role: role,
     createdAt: session.user.created_at,
     firstName: profileData["Full Name"] || undefined,
     lastName: undefined,

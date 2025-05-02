@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -50,11 +51,54 @@ const CreateTask = () => {
   };
 
   const onSubmit = async (values: TaskFormValues) => {
-    if (!user) return;
+    if (!user) {
+      console.error('No authenticated user found, cannot create task');
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Sie müssen angemeldet sein, um eine Aufgabe zu erstellen.",
+      });
+      return;
+    }
+
+    console.log('Current user attempting to create task:', user);
+    console.log('User role:', user.role);
+    console.log('Selected customer ID:', values.customerId);
+    
+    // Verify user has access to the selected customer
+    if (user.role === 'agent' || user.role === 'client') {
+      const { data: assignments, error: assignmentError } = await supabase
+        .from('user_customer_assignments')
+        .select('customer_id')
+        .eq('user_id', user.id)
+        .eq('customer_id', values.customerId);
+        
+      if (assignmentError) {
+        console.error('Error checking customer assignment:', assignmentError);
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "Berechtigung konnte nicht überprüft werden.",
+        });
+        return;
+      }
+      
+      if (!assignments || assignments.length === 0) {
+        console.error('User does not have access to this customer:', values.customerId);
+        toast({
+          variant: "destructive",
+          title: "Keine Berechtigung",
+          description: "Sie haben keinen Zugriff auf diesen Kunden.",
+        });
+        return;
+      }
+      
+      console.log('User has verified access to customer:', values.customerId);
+    }
+
     setIsMatching(true);
     try {
       console.log('Creating new task with values:', values);
-      console.log('Current user:', user);
       
       let matchResult = null;
 
@@ -69,6 +113,7 @@ const CreateTask = () => {
         
         if (result.error) throw result.error;
         matchResult = result.data;
+        console.log('Use case matching result:', matchResult);
       } catch (matchError) {
         console.warn("No use case matched:", matchError);
         toast({
@@ -105,7 +150,7 @@ const CreateTask = () => {
       console.log("Task created successfully:", task);
 
       // Create an activity log entry for the assignment
-      await supabase
+      const { error: activityError } = await supabase
         .from('task_activities')
         .insert({
           task_id: task.id,
@@ -114,6 +159,10 @@ const CreateTask = () => {
           status_from: 'new',
           status_to: 'new'
         });
+        
+      if (activityError) {
+        console.error("Error creating task activity:", activityError);
+      }
 
       const { error: messageError } = await supabase
         .from('task_messages')
@@ -124,7 +173,10 @@ const CreateTask = () => {
           created_by: user.id,
         });
 
-      if (messageError) throw messageError;
+      if (messageError) {
+        console.error("Error creating task message:", messageError);
+        throw messageError;
+      }
 
       // Direkt eine initiale AI-Anfrage für den Task triggern,
       // wenn ein Use Case erkannt wurde
@@ -164,7 +216,7 @@ const CreateTask = () => {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: error.message,
+        description: error.message || "Ein unbekannter Fehler ist aufgetreten.",
       });
     } finally {
       setIsMatching(false);
@@ -212,12 +264,14 @@ const CreateTask = () => {
                       <SelectContent>
                         {isLoadingCustomers ? (
                           <SelectItem value="loading" disabled>Lädt...</SelectItem>
-                        ) : (
+                        ) : customers.length > 0 ? (
                           customers.map((customer) => (
                             <SelectItem key={customer.id} value={customer.id}>
                               {customer.name}
                             </SelectItem>
                           ))
+                        ) : (
+                          <SelectItem value="none" disabled>Keine Kunden gefunden</SelectItem>
                         )}
                       </SelectContent>
                     </Select>
