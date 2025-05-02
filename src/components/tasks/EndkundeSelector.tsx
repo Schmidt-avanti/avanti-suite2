@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EndkundeOption {
   id: string;
@@ -51,6 +52,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 }) => {
   const [endkunden, setEndkunden] = useState<EndkundeOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchEndkunden = async () => {
@@ -63,63 +65,45 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       try {
         setIsLoading(true);
         
-        console.log('Fetching endkunden for customer ID:', customerId);
+        console.log(`Fetching endkunden for customer ID: ${customerId}, User role: ${user?.role}`);
         
-        // Try with both column names to handle potential case sensitivity issues
-        // First try with customer_ID (the original column name in the database)
-        const { data: dataWithUnderscoreID, error: errorWithUnderscoreID } = await supabase
+        // We know for certain that the column in the database is named 'customer_ID' (uppercase ID)
+        const { data: endkundenData, error: endkundenError } = await supabase
           .from('endkunden')
           .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
           .eq('customer_ID', customerId)
           .order('Nachname', { ascending: true });
 
-        console.log('Query with customer_ID:', { data: dataWithUnderscoreID, error: errorWithUnderscoreID });
+        console.log('Query with customer_ID (uppercase):', { 
+          data: endkundenData?.length || 0, 
+          error: endkundenError?.message || 'none' 
+        });
 
-        // If first query fails or returns no results, try with customer_id (lowercase)
-        let data = null;
-        let error = null;
-        
-        if (!dataWithUnderscoreID || dataWithUnderscoreID.length === 0) {
-          const result = await supabase
-            .from('endkunden')
-            .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
-            .eq('customer_id', customerId)
-            .order('Nachname', { ascending: true });
-          
-          data = result.data;
-          error = result.error;
-          console.log('Query with customer_id (lowercase):', { data, error });
-        } else {
-          data = dataWithUnderscoreID;
-          error = errorWithUnderscoreID;
-        }
-
-        if (error) {
-          console.error('Error fetching endkunden:', error);
+        if (endkundenError) {
+          console.error('Error fetching endkunden:', endkundenError);
           toast({
             title: "Fehler beim Laden der Endkunden",
-            description: error.message,
+            description: endkundenError.message,
             variant: "destructive"
           });
           setIsLoading(false);
           return;
         }
 
-        console.log('Fetched endkunden:', data);
-
-        if (!data || data.length === 0) {
+        if (!endkundenData || endkundenData.length === 0) {
           console.log('No endkunden found for this customer ID');
           setEndkunden([]);
           setIsLoading(false);
           return;
         }
 
-        // Transform the data into our component format with explicit typing
+        console.log(`Fetched ${endkundenData.length} endkunden records`);
+
+        // Process the data using a simple loop to avoid complex type inference
         const formattedData: EndkundeOption[] = [];
         
-        // Use a for loop instead of map to avoid complex type inference
-        for (let i = 0; i < data.length; i++) {
-          const ek = data[i] as EndkundeResponse;
+        for (let i = 0; i < endkundenData.length; i++) {
+          const ek = endkundenData[i];
           const vorname = ek.Vorname ? `${ek.Vorname}` : '';
           
           formattedData.push({
@@ -151,7 +135,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
     };
 
     fetchEndkunden();
-  }, [customerId]);
+  }, [customerId, user]);
 
   const handleEndkundeChange = (endkundeId: string) => {
     if (endkundeId === 'none') {
