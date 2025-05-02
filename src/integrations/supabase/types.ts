@@ -1388,6 +1388,10 @@ export type Database = {
         Args: { chat_id_param: string; user_id_param: string }
         Returns: undefined
       }
+      user_has_customer_access: {
+        Args: { customer_id_param: string }
+        Returns: boolean
+      }
       vector_avg: {
         Args: { "": number[] }
         Returns: string

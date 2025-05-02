@@ -164,13 +164,13 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       }
     };
     
-    // Helper function to process the endkunden data
+    // Helper function to process the endkunden data - SIMPLIFIED to fix type recursion
     const processEndkundenData = (data: EndkundeResponse[]) => {
-      // Process the data using a simple loop to avoid complex type inference
       const formattedData: EndkundeOption[] = [];
       
+      // Use simple for loop to avoid complex type inference
       for (const ek of data) {
-        const vorname = ek.Vorname ? `${ek.Vorname}` : '';
+        const displayName = ek.Vorname ? `${ek.Nachname}, ${ek.Vorname}` : ek.Nachname;
         
         formattedData.push({
           id: ek.id,
@@ -182,8 +182,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
           lage: ek.Lage,
           postleitzahl: ek.Postleitzahl,
           ort: ek.Ort,
-          // Simplified display for dropdown - just name and surname
-          display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
+          display: displayName
         });
       }
 
@@ -199,7 +198,6 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       return;
     }
     
-    // Simply pass the endkunde ID without fetching email
     onChange(endkundeId);
   };
 
