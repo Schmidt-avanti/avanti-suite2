@@ -42,9 +42,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     
     // Rolle stimmt nicht für Bereich! → harte Weiterleitung nach Startseite
     if (user.role === 'admin') {
-      return <Navigate to="/admin/users" replace />;
+      return <Navigate to="/admin/dashboard" replace />;
     } else if (user.role === 'agent') {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/agent/dashboard" replace />;
     } else if (user.role === 'client') {
       return <Navigate to="/meine-aufgaben" replace />;
     }
