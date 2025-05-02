@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building, CheckSquare, Clock, AlertCircle } from 'lucide-react';
@@ -10,7 +9,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
-import { AssignmentsDiagnostic } from '@/components/diagnostic/AssignmentsDiagnostic';
 
 const AgentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -66,9 +64,6 @@ const AgentDashboard: React.FC = () => {
   return (
     <div className="dashboard-container">
       <h1 className="text-2xl font-bold mb-6">Agent Dashboard</h1>
-      
-      {/* Add diagnostic component to help troubleshoot */}
-      <AssignmentsDiagnostic />
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 mt-6">
         <Card className="hover:shadow-md transition-shadow">
