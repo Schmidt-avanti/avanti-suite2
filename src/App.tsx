@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,7 +12,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Auth Pages
 import Login from "@/pages/auth/Login";
-import ForgotPassword from "@/pages/auth/ForgotPassword";
 
 // Dashboard Page
 import Dashboard from "@/pages/Dashboard";
@@ -77,8 +75,6 @@ const App = () => {
                 {/* Public routes */}
                 <Route path="/" element={<Index />} />
                 <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-                <Route path="/auth/reset-password" element={<Login />} /> {/* This route already exists and points to Login which handles reset */}
                 {/* Entferne Registrierung, leite ggf. weiter */}
                 <Route path="/auth/register" element={<Navigate to="/auth/login" replace />} />
 

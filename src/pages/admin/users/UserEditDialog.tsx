@@ -73,16 +73,6 @@ const UserEditDialog: React.FC<Props> = ({
   };
 
   const handleSave = () => {
-    // Validate email
-    if (!email || !email.includes('@')) {
-      toast({
-        variant: "destructive",
-        title: "Ungültige E-Mail",
-        description: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
-      });
-      return;
-    }
-
     const mappedCustomers = customers.filter((c) => selectedCustomers.includes(c.id));
     const user: User & { customers: Customer[]; is_active: boolean; name: string } = {
       id: defaultValues?.id || "",
@@ -227,6 +217,7 @@ const UserEditDialog: React.FC<Props> = ({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
+              disabled={!!defaultValues}
               autoComplete="name"
             />
           </div>

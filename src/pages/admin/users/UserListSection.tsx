@@ -36,10 +36,36 @@ const UserListSection: React.FC<UserListSectionProps> = ({
       // Get profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, role, "Full Name", created_at, is_active, email');
+        .select('id, role, "Full Name", created_at, is_active');
       if (profilesError) throw profilesError;
 
       console.log('Fetched profiles:', profiles);
+
+      // Get auth users for email addresses
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      
+      // Create email map
+      let emailMap: Record<string, string> = {};
+      
+      if (!authError && authUsers?.users) {
+        // Type for Auth-User
+        interface AuthUser {
+          id: string;
+          email?: string;
+          [key: string]: any;
+        }
+        
+        const usersArray = authUsers.users as AuthUser[];
+        
+        emailMap = usersArray.reduce((acc: Record<string, string>, user: AuthUser) => {
+          if (user && typeof user.id === 'string') {
+            acc[user.id] = user.email || '';
+          }
+          return acc;
+        }, {} as Record<string, string>);
+      }
+
+      console.log('Email map created:', emailMap);
 
       // Get customer assignments for all users
       const { data: assignments, error: assignmentsError } = await supabase
@@ -77,7 +103,7 @@ const UserListSection: React.FC<UserListSectionProps> = ({
 
         return {
           id: profile.id,
-          email: profile.email || "", // Use email from profile
+          email: emailMap[profile.id] || "",
           role: (profile.role || 'client') as UserRole,
           firstName: profile["Full Name"] || undefined,
           createdAt: profile.created_at,
@@ -130,10 +156,7 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   // Löschen
   const handleDelete = async (id: string) => {
     try {
-      // Remove user from edge function call
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { action: 'delete', userId: id }
-      });
+      const { error } = await supabase.auth.admin.deleteUser(id);
 
       if (error) throw error;
 
@@ -142,11 +165,11 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         title: "Benutzer gelöscht",
         description: "Das Profil wurde gelöscht.",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: "Der Benutzer konnte nicht gelöscht werden: " + (error.message || "Unbekannter Fehler"),
+        description: "Der Benutzer konnte nicht gelöscht werden.",
       });
     }
   };

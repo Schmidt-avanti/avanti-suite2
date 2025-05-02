@@ -13,10 +13,10 @@ interface TaskCounts {
   isLoading: boolean;
 }
 
-// Update the interface to use lowercase customer_id to match database column
+// Update the interface to include an index signature to satisfy Record<string, unknown>
 interface CustomerFilter {
   [key: string]: string | { in: string } | undefined;
-  customer_id?: string | { in: string };
+  customer_ID?: string | { in: string };
 }
 
 export const useTaskCounts = () => {
@@ -60,8 +60,7 @@ export const useTaskCounts = () => {
 
         if (assignedCustomers && assignedCustomers.length > 0) {
           const customerIds = assignedCustomers.map(ac => ac.customer_id);
-          // Fix: Use lowercase customer_id to match the database column name
-          customerFilter = { "customer_id": { in: customerIds.join(',') } };
+          customerFilter = { "customer_ID": { in: customerIds.join(',') } };
         } else {
           // No assigned customers, return empty counts
           return {
@@ -80,8 +79,7 @@ export const useTaskCounts = () => {
           .maybeSingle();
 
         if (userAssignment) {
-          // Fix: Use lowercase customer_id to match the database column name
-          customerFilter = { "customer_id": userAssignment.customer_id };
+          customerFilter = { "customer_ID": userAssignment.customer_id };
         } else {
           // No customer assignment, return empty counts
           return {
