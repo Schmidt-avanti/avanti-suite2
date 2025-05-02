@@ -90,7 +90,9 @@ const LiveAgentOverview = () => {
         let activeSessions: UserSession[] = [];
         
         try {
-          // Try the RPC call first
+          // Log that we're attempting to fetch sessions for debugging
+          console.log("Fetching user sessions...");
+          
           const { data, error: rpcError } = await supabase
             .from('user_sessions')
             .select('user_id, last_seen')
@@ -102,9 +104,16 @@ const LiveAgentOverview = () => {
           
           if (data) {
             activeSessions = data as UserSession[];
+            console.log("Active sessions found:", activeSessions.length);
           }
         } catch (sessionError) {
           console.error("Could not fetch session data:", sessionError);
+          // Show toast notification for session fetch error
+          toast({
+            title: "Warnung",
+            description: "Sitzungsdaten konnten nicht abgerufen werden.",
+            variant: "warning",
+          });
           // Continue without session data - activeSessions will remain an empty array
         }
 
@@ -117,8 +126,9 @@ const LiveAgentOverview = () => {
           .from('user_customer_assignments')
           .select('user_id, customer_id, customers(name)');
 
-        // Create a set of logged-in user IDs for quick lookup
+        // Make sure we're safely handling the case where activeSessions might be undefined
         const loggedInUserIds = new Set(activeSessions?.map(session => session.user_id) || []);
+        console.log("Logged in user IDs:", Array.from(loggedInUserIds));
 
         const formattedAgents: Agent[] = (profiles || []).map(profile => {
           const activeBreak = shortBreaks?.find(b => b.user_id === profile.id);
