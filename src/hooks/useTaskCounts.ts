@@ -16,7 +16,7 @@ interface TaskCounts {
 // Update the interface to include an index signature to satisfy Record<string, unknown>
 interface CustomerFilter {
   [key: string]: string | { in: string } | undefined;
-  customer_id?: string | { in: string };
+  customer_ID?: string | { in: string };
 }
 
 export const useTaskCounts = () => {
@@ -24,7 +24,6 @@ export const useTaskCounts = () => {
   
   const fetchTaskCounts = async () => {
     if (!user) {
-      console.log('No user found in useTaskCounts');
       return {
         new: 0,
         in_progress: 0,
@@ -35,36 +34,34 @@ export const useTaskCounts = () => {
     }
 
     try {
-      console.log('Fetching task counts for user:', user.id, 'with role:', user.role);
-      
       // Base query to apply common filters
       const createBaseQuery = () => {
         let query = supabase.from('tasks').select('*', { count: 'exact', head: true });
+        
+        // Apply user role-based filtering
+        if (user.role === 'agent') {
+          // For agents, we'll fetch the assigned customer IDs in the main function
+          // and then filter based on those
+        } else if (user.role === 'client') {
+          // Similarly, for clients, we'll handle this in the main function
+        }
+        
         return query;
       };
 
       // For role-based filtering, get the customer IDs first
-      let customerFilter = {};
+      let customerFilter: Record<string, unknown> = {};
       
       if (user.role === 'agent') {
-        console.log('User is agent, fetching assigned customers');
-        const { data: assignedCustomers, error: assignmentError } = await supabase
+        const { data: assignedCustomers } = await supabase
           .from('user_customer_assignments')
           .select('customer_id')
           .eq('user_id', user.id);
 
-        if (assignmentError) {
-          console.error('Error fetching assigned customers:', assignmentError);
-        }
-
-        console.log('Assigned customers data:', assignedCustomers);
-
         if (assignedCustomers && assignedCustomers.length > 0) {
           const customerIds = assignedCustomers.map(ac => ac.customer_id);
-          console.log('Customer IDs to filter by:', customerIds);
-          customerFilter = { customer_id: { in: customerIds.join(',') } };
+          customerFilter = { "customer_ID": { in: customerIds.join(',') } };
         } else {
-          console.log('No assigned customers found for this agent');
           // No assigned customers, return empty counts
           return {
             new: 0,
@@ -75,23 +72,15 @@ export const useTaskCounts = () => {
           };
         }
       } else if (user.role === 'client') {
-        console.log('User is client, fetching customer assignment');
-        const { data: userAssignment, error: assignmentError } = await supabase
+        const { data: userAssignment } = await supabase
           .from('user_customer_assignments')
           .select('customer_id')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (assignmentError) {
-          console.error('Error fetching client customer assignment:', assignmentError);
-        }
-
-        console.log('Client assignment data:', userAssignment);
-
         if (userAssignment) {
-          customerFilter = { customer_id: userAssignment.customer_id };
+          customerFilter = { "customer_ID": userAssignment.customer_id };
         } else {
-          console.log('No customer assignment found for this client');
           // No customer assignment, return empty counts
           return {
             new: 0,
@@ -102,8 +91,6 @@ export const useTaskCounts = () => {
           };
         }
       }
-
-      console.log('Final customer filter:', customerFilter);
 
       // Run count queries in parallel for better performance
       const [
@@ -147,15 +134,6 @@ export const useTaskCounts = () => {
           .select('*', { count: 'exact', head: true })
           .match(customerFilter)
       ]);
-
-      // Log results for debugging
-      console.log('Task counts results:', {
-        new: newCount,
-        in_progress: inProgressCount,
-        followup: followupCount,
-        completed: completedCount,
-        total: totalCount
-      });
 
       // Log any errors
       [newError, inProgressError, followupError, completedError, totalError].forEach(error => {
