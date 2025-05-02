@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +10,7 @@ import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog'
 import { TaskChat } from "@/components/tasks/TaskChat";
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
+import { EndkundeInfoLink } from '@/components/tasks/EndkundeInfoLink';
 import { EmailReplyPanel } from '@/components/tasks/EmailReplyPanel';
 import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
@@ -173,9 +173,18 @@ const TaskDetail = () => {
           {/* Left column with scroll area */}
           <ScrollArea className="h-[calc(100vh-280px)] lg:max-h-[700px]">
             <div className="flex flex-col space-y-6 pr-4">
+              {/* Task Info Section */}
               <TaskDetailInfo task={task} />
               
-              {/* Knowledge Article Manager - Add the component here */}
+              {/* Endkunde Info Link Section */}
+              {task.endkunde_id && (
+                <EndkundeInfoLink 
+                  endkundeId={task.endkunde_id} 
+                  customerId={task.customer_id} 
+                />
+              )}
+              
+              {/* Knowledge Article Manager Section */}
               <KnowledgeArticleManager 
                 customerId={task.customer_id} 
                 taskDescription={task.description}
