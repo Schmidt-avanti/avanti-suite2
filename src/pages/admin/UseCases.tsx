@@ -34,7 +34,10 @@ export default function UseCases() {
   const [selectedUseCase, setSelectedUseCase] = React.useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [useCaseToDelete, setUseCaseToDelete] = React.useState(null);
-  const [hasRelatedArticles, setHasRelatedArticles] = React.useState(false);
+  const [hasRelatedData, setHasRelatedData] = React.useState({
+    hasArticles: false,
+    hasTasks: false
+  });
   const queryClient = useQueryClient();
 
   const { data: useCases = [], isLoading } = useQuery({
@@ -49,42 +52,45 @@ export default function UseCases() {
     },
   });
 
-  const checkRelatedArticles = async (useCaseId) => {
-    const { data, error } = await supabase
+  const checkRelatedData = async (useCaseId) => {
+    // Check for related knowledge articles
+    const { data: articlesData, error: articlesError } = await supabase
       .from("knowledge_articles")
       .select("id")
       .eq("use_case_id", useCaseId);
 
-    if (error) {
-      console.error("Error checking related articles:", error);
-      return false;
+    if (articlesError) {
+      console.error("Error checking related articles:", articlesError);
     }
     
-    return data && data.length > 0;
+    // Check for related tasks
+    const { data: tasksData, error: tasksError } = await supabase
+      .from("tasks")
+      .select("id")
+      .eq("matched_use_case_id", useCaseId);
+
+    if (tasksError) {
+      console.error("Error checking related tasks:", tasksError);
+    }
+    
+    return {
+      hasArticles: articlesData && articlesData.length > 0,
+      hasTasks: tasksData && tasksData.length > 0
+    };
   };
 
   const handleDeleteClick = async (useCase) => {
     setUseCaseToDelete(useCase);
     
-    const hasArticles = await checkRelatedArticles(useCase.id);
-    setHasRelatedArticles(hasArticles);
+    const relatedData = await checkRelatedData(useCase.id);
+    setHasRelatedData(relatedData);
     setDeleteDialogOpen(true);
   };
 
   const { mutateAsync: deleteUseCase } = useMutation({
     mutationFn: async (id: string) => {
-      // Wenn verknüpfte Artikel existieren, entferne zuerst diese Verknüpfungen
-      if (hasRelatedArticles) {
-        const { error: updateError } = await supabase
-          .from("knowledge_articles")
-          .update({ use_case_id: null })
-          .eq("use_case_id", id);
-        
-        if (updateError) throw updateError;
-      }
-
-      // Dann den Use Case löschen
-      const { error } = await supabase.from("use_cases").delete().eq("id", id);
+      // Use the new database function to handle cascade deletion
+      const { error } = await supabase.rpc('delete_use_case_cascade', { use_case_id_param: id });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -185,17 +191,28 @@ export default function UseCases() {
               <AlertCircle className="text-red-500 mr-2 h-5 w-5" />
               Use Case löschen
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {hasRelatedArticles ? (
-                <span>
-                  Dieser Use Case hat verknüpfte Wissensartikel. Beim Löschen bleiben die Artikel erhalten, 
-                  aber die Verknüpfung wird aufgehoben. Möchten Sie fortfahren?
-                </span>
+            <AlertDialogDescription className="space-y-2">
+              {(hasRelatedData.hasArticles || hasRelatedData.hasTasks) ? (
+                <>
+                  <p>Dieser Use Case hat:</p>
+                  <ul className="list-disc pl-5">
+                    {hasRelatedData.hasArticles && (
+                      <li>Verknüpfte Wissensartikel, deren Verknüpfung aufgehoben wird</li>
+                    )}
+                    {hasRelatedData.hasTasks && (
+                      <li>Verknüpfte Aufgaben, deren Verknüpfung aufgehoben wird</li>
+                    )}
+                  </ul>
+                  <p>
+                    Beim Löschen bleiben die Artikel und Aufgaben erhalten, 
+                    aber die Verknüpfungen werden aufgehoben. Möchten Sie fortfahren?
+                  </p>
+                </>
               ) : (
-                <span>
+                <p>
                   Sind Sie sicher, dass Sie diesen Use Case löschen möchten? 
                   Diese Aktion kann nicht rückgängig gemacht werden.
-                </span>
+                </p>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>

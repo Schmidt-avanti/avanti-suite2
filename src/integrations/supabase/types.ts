@@ -1250,6 +1250,10 @@ export type Database = {
         Args: { customer_id_param: string }
         Returns: undefined
       }
+      delete_use_case_cascade: {
+        Args: { use_case_id_param: string }
+        Returns: undefined
+      }
       generate_avanti_email: {
         Args: { customer_name: string }
         Returns: string
