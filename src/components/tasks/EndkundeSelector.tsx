@@ -81,7 +81,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
           const result = await supabase
             .from('endkunden')
             .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
-            .eq('customer_id', customerId)
+            .eq('customer_ID', customerId)
             .order('Nachname', { ascending: true });
           
           data = result.data;
