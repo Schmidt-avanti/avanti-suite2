@@ -33,7 +33,7 @@ export const useTaskCounts = () => {
       console.log(`Fetching task counts for user role: ${user.role}, id: ${user.id}`);
       
       // For role-based filtering, get the customer IDs first
-      let customerFilter = {};
+      let customerIds: string[] = [];
       
       if (user.role === 'agent') {
         const { data: assignedCustomers, error: assignmentError } = await supabase
@@ -49,10 +49,8 @@ export const useTaskCounts = () => {
         console.log('Agent assigned customers:', assignedCustomers);
 
         if (assignedCustomers && assignedCustomers.length > 0) {
-          const customerIds = assignedCustomers.map(ac => ac.customer_id);
-          // Use the 'in' filter with an array directly, not a joined string
-          customerFilter = { customer_id: customerIds };
-          console.log('Using customer filter:', customerFilter);
+          customerIds = assignedCustomers.map(ac => ac.customer_id);
+          console.log('Using customer IDs:', customerIds);
         } else {
           // No assigned customers, return empty counts
           console.log('No assigned customers for this agent');
@@ -78,8 +76,8 @@ export const useTaskCounts = () => {
 
         console.log('Client assignment:', userAssignment);
 
-        if (userAssignment) {
-          customerFilter = { customer_id: userAssignment.customer_id };
+        if (userAssignment && userAssignment.customer_id) {
+          customerIds = [userAssignment.customer_id];
         } else {
           // No customer assignment, return empty counts
           console.log('No customer assignment for this client');
@@ -94,7 +92,6 @@ export const useTaskCounts = () => {
       }
 
       // Run count queries in parallel for better performance
-      // Fix the 'in' filter application
       async function runQuery(status = null) {
         let query = supabase
           .from('tasks')
@@ -104,11 +101,13 @@ export const useTaskCounts = () => {
           query = query.eq('status', status);
         }
         
-        // Apply the customer filter
-        if (user.role === 'agent' && Array.isArray(customerFilter.customer_id)) {
-          query = query.in('customer_id', customerFilter.customer_id);
-        } else if ((user.role === 'client' || user.role === 'agent') && !Array.isArray(customerFilter.customer_id)) {
-          query = query.eq('customer_id', customerFilter.customer_id);
+        // Apply the customer filter based on role
+        if (user.role === 'admin') {
+          // Admin sees all tasks, no customer filter needed
+        } else if (user.role === 'agent' && customerIds.length > 0) {
+          query = query.in('customer_id', customerIds);
+        } else if (user.role === 'client' && customerIds.length > 0) {
+          query = query.eq('customer_id', customerIds[0]);
         }
         
         return query;

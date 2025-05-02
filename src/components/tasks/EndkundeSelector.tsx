@@ -76,7 +76,9 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
         console.log('Query with customer_ID:', { data: dataWithUnderscoreID, error: errorWithUnderscoreID });
 
         // If first query fails or returns no results, try with customer_id (lowercase)
-        let data, error;
+        let data = null;
+        let error = null;
+        
         if (!dataWithUnderscoreID || dataWithUnderscoreID.length === 0) {
           const result = await supabase
             .from('endkunden')
@@ -99,6 +101,7 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
             description: error.message,
             variant: "destructive"
           });
+          setIsLoading(false);
           return;
         }
 
@@ -111,11 +114,8 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
           return;
         }
 
-        // Explicitly type the data before processing
-        const typedData = data as unknown as EndkundeResponse[];
-        
-        // Transform the typed data into our component format
-        const formattedData: EndkundeOption[] = typedData.map((ek) => {
+        // Transform the data into our component format
+        const formattedData: EndkundeOption[] = data.map((ek: EndkundeResponse) => {
           // Create a simpler display name with just name and surname
           const vorname = ek.Vorname ? `${ek.Vorname}` : '';
           
