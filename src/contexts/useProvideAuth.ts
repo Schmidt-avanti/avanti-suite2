@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserRole, User } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
@@ -76,6 +76,7 @@ export function useProvideAuth(): AuthState {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
+  const sessionRefreshInterval = useRef<number | null>(null);
 
   // Helper function to safely load profile data
   const loadProfileAndSetUser = async (session: Session) => {
@@ -97,6 +98,18 @@ export function useProvideAuth(): AuthState {
     }
   };
 
+  // Function to update session timestamp for presence tracking
+  const updateSessionTimestamp = async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      await supabase.rpc('refresh_session');
+      console.log("Session refreshed");
+    } catch (error) {
+      console.error("Error refreshing session:", error);
+    }
+  };
+
   // Initialize auth state and set up listeners
   useEffect(() => {
     console.log("Initializing auth state...");
@@ -112,6 +125,11 @@ export function useProvideAuth(): AuthState {
         // Process auth state changes
         if (event === 'SIGNED_OUT' || !newSession) {
           console.log("User signed out or session cleared");
+          // Clear session refresh interval
+          if (sessionRefreshInterval.current) {
+            clearInterval(sessionRefreshInterval.current);
+            sessionRefreshInterval.current = null;
+          }
           setUser(null);
           setSession(null);
           setIsLoading(false);
@@ -128,7 +146,15 @@ export function useProvideAuth(): AuthState {
             if (!mounted) return;
             
             try {
-              await loadProfileAndSetUser(newSession);
+              const mappedUser = await loadProfileAndSetUser(newSession);
+              
+              // Start session refresh interval only on successful login
+              if (mappedUser && !sessionRefreshInterval.current) {
+                updateSessionTimestamp(); // Initial update
+                sessionRefreshInterval.current = window.setInterval(() => {
+                  updateSessionTimestamp();
+                }, 5 * 60 * 1000); // Update every 5 minutes
+              }
             } catch (err) {
               console.error("Error loading profile after auth event:", err);
             } finally {
@@ -159,7 +185,15 @@ export function useProvideAuth(): AuthState {
         
         if (mounted) {
           try {
-            await loadProfileAndSetUser(initialSession);
+            const mappedUser = await loadProfileAndSetUser(initialSession);
+            
+            // Start session refresh interval if user is loaded successfully
+            if (mappedUser && !sessionRefreshInterval.current) {
+              updateSessionTimestamp(); // Initial update
+              sessionRefreshInterval.current = window.setInterval(() => {
+                updateSessionTimestamp();
+              }, 5 * 60 * 1000); // Update every 5 minutes
+            }
           } catch (err) {
             console.error("Error loading profile during initialization:", err);
             // We'll let the error propagate to be handled by the caller
@@ -178,6 +212,12 @@ export function useProvideAuth(): AuthState {
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      
+      // Clear interval on unmount
+      if (sessionRefreshInterval.current) {
+        clearInterval(sessionRefreshInterval.current);
+        sessionRefreshInterval.current = null;
+      }
     };
   }, [toast]);
 
@@ -223,6 +263,12 @@ export function useProvideAuth(): AuthState {
 
   const signOut = async () => {
     try {
+      // Clear the session refresh interval
+      if (sessionRefreshInterval.current) {
+        clearInterval(sessionRefreshInterval.current);
+        sessionRefreshInterval.current = null;
+      }
+      
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
