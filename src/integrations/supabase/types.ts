@@ -1012,6 +1012,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          id: string
+          last_seen: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_seen?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_seen?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_accounts: {
         Row: {
           api_key: string | null
@@ -1375,6 +1393,10 @@ export type Database = {
           steps: string
           similarity: number
         }[]
+      }
+      refresh_session: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       release_chat_session: {
         Args: { chat_id_param: string; user_id_param: string }

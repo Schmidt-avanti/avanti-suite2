@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
+import { AssignmentsDiagnostic } from '@/components/diagnostic/AssignmentsDiagnostic';
 
 const AgentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -42,11 +43,34 @@ const AgentDashboard: React.FC = () => {
     enabled: !!user?.id,
   });
 
+  // Log diagnostic information
+  useEffect(() => {
+    if (user) {
+      console.log('Agent Dashboard - Current user:', {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.firstName || user["Full Name"]
+      });
+    }
+    
+    if (!isCustomersLoading) {
+      console.log('Agent Dashboard - Assigned customers:', customers);
+    }
+    
+    if (!isTaskCountsLoading) {
+      console.log('Agent Dashboard - Task counts:', counts);
+    }
+  }, [user, customers, counts, isCustomersLoading, isTaskCountsLoading]);
+
   return (
     <div className="dashboard-container">
       <h1 className="text-2xl font-bold mb-6">Agent Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Add diagnostic component to help troubleshoot */}
+      <AssignmentsDiagnostic />
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 mt-6">
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Zugewiesene Kunden</CardTitle>
