@@ -99,7 +99,9 @@ const LiveAgentOverview = () => {
             throw rpcError;
           }
           
-          activeSessions = data as UserSession[] || [];
+          if (data) {
+            activeSessions = data as UserSession[];
+          }
         } catch (sessionError) {
           console.error("Could not fetch session data:", sessionError);
           // Continue without session data - activeSessions will remain an empty array
@@ -149,10 +151,10 @@ const LiveAgentOverview = () => {
     fetchAgents();
 
     // Set up realtime subscription
+    // Fix: Use the correct channel subscription pattern for Supabase
     const channel = supabase
       .channel('agent-status-changes')
-      .on(
-        'postgres_changes', 
+      .on('postgres_changes', 
         { 
           event: 'INSERT', 
           schema: 'public', 
@@ -173,8 +175,7 @@ const LiveAgentOverview = () => {
           });
         }
       )
-      .on(
-        'postgres_changes', 
+      .on('postgres_changes', 
         { 
           event: 'UPDATE', 
           schema: 'public', 
@@ -197,8 +198,7 @@ const LiveAgentOverview = () => {
           }
         }
       )
-      .on(
-        'postgres_changes',
+      .on('postgres_changes',
         {
           event: '*',
           schema: 'public',
