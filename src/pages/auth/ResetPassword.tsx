@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, ArrowLeft, Check, Key, Loader } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, Key, Loader, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -19,19 +18,65 @@ const ResetPassword: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [shake, setShake] = useState(false);
+  const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
+  const [isVerifying, setIsVerifying] = useState(true);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if we have the token from the URL
+  // Get token and type parameters from the URL
   const recoveryToken = searchParams.get('token');
   const type = searchParams.get('type');
 
+  // Verify token validity on component mount
   useEffect(() => {
-    // Verify that the token and type parameters are present
-    if (!recoveryToken || type !== 'recovery') {
-      setError('Ungültiger oder fehlender Wiederherstellungs-Token. Bitte fordere einen neuen Link an.');
-    }
+    const verifyToken = async () => {
+      try {
+        setIsVerifying(true);
+        setError(null);
+
+        // Check if we have the required parameters
+        if (!recoveryToken) {
+          setError('Fehlender Passwort-Reset-Token. Bitte fordere einen neuen Link an.');
+          setIsTokenValid(false);
+          return;
+        }
+
+        if (type !== 'recovery') {
+          setError('Ungültiger Token-Typ. Bitte fordere einen neuen Link an.');
+          setIsTokenValid(false);
+          return;
+        }
+
+        // Test token validity by attempting to get user
+        const { data, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          if (error.message.includes('token') || error.message.includes('expired')) {
+            console.error('Token validation error:', error);
+            setError('Der Link ist abgelaufen oder ungültig. Bitte fordere einen neuen Link an.');
+            setIsTokenValid(false);
+          } else {
+            // Other errors
+            console.error('Auth error:', error);
+            setError('Ein Fehler ist aufgetreten. Bitte versuche es später erneut.');
+            setIsTokenValid(false);
+          }
+          return;
+        }
+
+        // If we get here without errors, the token is likely valid
+        setIsTokenValid(true);
+      } catch (error) {
+        console.error('Token verification error:', error);
+        setError('Ein Fehler ist aufgetreten. Bitte versuche es später erneut.');
+        setIsTokenValid(false);
+      } finally {
+        setIsVerifying(false);
+      }
+    };
+
+    verifyToken();
   }, [recoveryToken, type]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,8 +127,9 @@ const ResetPassword: React.FC = () => {
       setTimeout(() => setShake(false), 600);
       
       if (typeof error.message === 'string') {
-        if (error.message.includes('invalid token')) {
+        if (error.message.includes('invalid token') || error.message.includes('expired')) {
           setError('Der Wiederherstellungs-Link ist abgelaufen oder ungültig. Bitte fordere einen neuen an.');
+          setIsTokenValid(false);
         } else {
           setError(error.message);
         }
@@ -93,6 +139,10 @@ const ResetPassword: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleRequestNewLink = async () => {
+    navigate('/auth/forgot-password');
   };
 
   return (
@@ -115,7 +165,7 @@ const ResetPassword: React.FC = () => {
           <CardHeader className="pb-4 space-y-2">
             <CardTitle className="text-2xl font-bold text-center">Passwort zurücksetzen</CardTitle>
             <CardDescription className="text-center">
-              Bitte gib ein neues Passwort ein
+              {isTokenValid ? 'Bitte gib ein neues Passwort ein' : 'Überprüfe deinen Link'}
             </CardDescription>
           </CardHeader>
 
@@ -138,7 +188,32 @@ const ResetPassword: React.FC = () => {
               </Alert>
             )}
             
-            {!success && (
+            {isVerifying && (
+              <div className="flex flex-col items-center justify-center py-8">
+                <Loader className="h-8 w-8 text-avanti-600 animate-spin mb-4" />
+                <p className="text-gray-600">Link wird überprüft...</p>
+              </div>
+            )}
+
+            {!isVerifying && isTokenValid === false && !success && (
+              <div className="space-y-6 py-4">
+                <div className="text-center">
+                  <p className="text-gray-600 mb-6">
+                    Der Link zum Zurücksetzen deines Passworts ist ungültig oder abgelaufen.
+                    Bitte fordere einen neuen Link an.
+                  </p>
+                  <Button
+                    onClick={handleRequestNewLink}
+                    className="w-full bg-gradient-to-r from-avanti-600 to-avanti-700 hover:from-avanti-700 hover:to-avanti-800 transition-all duration-200"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Neuen Link anfordern
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {!isVerifying && isTokenValid && !success && (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="password">Neues Passwort</Label>
@@ -179,7 +254,7 @@ const ResetPassword: React.FC = () => {
                     "w-full bg-gradient-to-r from-avanti-600 to-avanti-700 hover:from-avanti-700 hover:to-avanti-800 transition-all duration-200",
                     isSubmitting && "cursor-not-allowed opacity-80"
                   )}
-                  disabled={isSubmitting || !recoveryToken || type !== 'recovery'}
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <motion.div
@@ -194,19 +269,19 @@ const ResetPassword: React.FC = () => {
                     'Passwort aktualisieren'
                   )}
                 </Button>
-                
-                <div className="mt-4 text-center">
-                  <Button 
-                    variant="ghost"
-                    onClick={() => navigate('/auth/login')}
-                    className="text-avanti-600 hover:text-avanti-800 flex items-center justify-center gap-2 text-sm w-full"
-                  >
-                    <ArrowLeft size={16} />
-                    Zurück zur Anmeldung
-                  </Button>
-                </div>
               </form>
             )}
+
+            <div className="mt-4 text-center">
+              <Button 
+                variant="ghost"
+                onClick={() => navigate('/auth/login')}
+                className="text-avanti-600 hover:text-avanti-800 flex items-center justify-center gap-2 text-sm w-full"
+              >
+                <ArrowLeft size={16} />
+                Zurück zur Anmeldung
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
