@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, CircleCheck, CirclePause, CircleX, Clock } from 'lucide-react';
 import { format, formatDistance } from 'date-fns';
@@ -36,6 +37,33 @@ interface Agent {
 interface UserSession {
   user_id: string;
   last_seen: string;
+}
+
+// Define interfaces for the realtime subscription payloads
+interface UserSessionPayload {
+  new: {
+    user_id: string;
+    last_seen: string;
+  };
+  old?: {
+    user_id: string;
+    last_seen: string;
+  };
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+}
+
+interface ShortBreakPayload {
+  new: {
+    user_id: string;
+    start_time: string;
+    status: string;
+  };
+  old?: {
+    user_id: string;
+    start_time: string;
+    status: string;
+  };
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
 }
 
 const LiveAgentOverview = () => {
@@ -128,7 +156,7 @@ const LiveAgentOverview = () => {
         event: 'INSERT', 
         schema: 'public', 
         table: 'short_breaks' 
-      }, payload => {
+      }, (payload: ShortBreakPayload) => {
         setAgents(prev => {
           return prev.map(agent => {
             if (agent.id === payload.new.user_id) {
@@ -146,7 +174,7 @@ const LiveAgentOverview = () => {
         event: 'UPDATE', 
         schema: 'public', 
         table: 'short_breaks' 
-      }, payload => {
+      }, (payload: ShortBreakPayload) => {
         if (payload.new.status === 'completed') {
           setAgents(prev => {
             return prev.map(agent => {
@@ -166,7 +194,7 @@ const LiveAgentOverview = () => {
         event: '*',
         schema: 'public',
         table: 'user_sessions'
-      }, payload => {
+      }, (payload: UserSessionPayload) => {
         // Handle session changes (login/logout)
         const sessionUserId = payload.new?.user_id;
         
