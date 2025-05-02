@@ -35,10 +35,6 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  INSERT INTO public.user_sessions(user_id, last_seen)
-  VALUES (auth.uid(), now())
-  ON CONFLICT (user_id)
-  DO UPDATE SET last_seen = now();
   RETURN NEW;
 END;
 $$;
@@ -57,9 +53,6 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  INSERT INTO public.user_sessions(user_id, last_seen)
-  VALUES (auth.uid(), now())
-  ON CONFLICT (user_id)
-  DO UPDATE SET last_seen = now();
+  RETURN;
 END;
 $$;
