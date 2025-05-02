@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,12 +75,14 @@ const UsersAdminPage: React.FC = () => {
   const handleSave = async (user: User & { customers: Customer[]; is_active: boolean; name: string }) => {
     try {
       if (user.id) {
+        // Updating existing user
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
             role: user.role,
             "Full Name": user.name || '',
-            is_active: user.is_active
+            is_active: user.is_active,
+            email: user.email // Save email to profile table
           })
           .eq('id', user.id);
 
@@ -99,14 +102,17 @@ const UsersAdminPage: React.FC = () => {
           description: "Der Benutzer wurde aktualisiert.",
         });
       } else {
+        // Creating new user via edge function
         const { data, error } = await supabase.functions.invoke('create-user', {
           body: {
+            action: 'create',
             email: user.email,
             password: "W1llkommen@avanti",
             userData: {
               role: user.role,
               "Full Name": user.name,
-              needs_password_reset: true
+              needs_password_reset: true,
+              is_active: true
             }
           }
         });
@@ -114,17 +120,18 @@ const UsersAdminPage: React.FC = () => {
         if (error) throw error;
 
         if (data?.userId) {
+          // Make sure the profile has email stored
           const { error: profileError } = await supabase
             .from('profiles')
-            .insert({
-              id: data.userId,
-              role: user.role, 
-              "Full Name": user.name,
-              is_active: true
-            });
-            
-          if (profileError) throw profileError;
+            .update({
+              email: user.email
+            })
+            .eq('id', data.userId);
 
+          if (profileError) {
+            console.error("Error updating profile email:", profileError);
+          }
+            
           await saveCustomerAssignments(
             data.userId, 
             user.customers.map(c => c.id)
@@ -160,54 +167,6 @@ const UsersAdminPage: React.FC = () => {
       setEditUser(null);
     }
   };
-
-  const addTestData = async () => {
-    // Create a test admin user
-    const email = `admin${Date.now()}@test.com`;
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: {
-          email,
-          password: 'Testpassword123!',
-          role: 'admin',
-          fullName: 'Test Admin' // Use fullName instead of firstName
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        const newUser = {
-          id: data.id,
-          email: email,
-          role: 'admin' as UserRole,
-          createdAt: new Date().toISOString(),
-          customers: [] as Customer[],
-          is_active: true,
-          fullName: 'Test Admin' // Use fullName instead of firstName
-        };
-
-        setUsers(prevUsers => [...prevUsers, newUser]);
-        toast({
-          title: 'Test-Benutzer erstellt',
-          description: `Email: ${email}, Passwort: Testpassword123!`,
-        });
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: 'Fehler',
-        description: error.message || 'Unbekannter Fehler',
-      });
-    }
-  };
-
-  useEffect(() => {
-    addTestData();
-  }, []);
 
   return (
     <div>

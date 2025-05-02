@@ -9,15 +9,27 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
+interface UserData {
+  role: string
+  "Full Name": string
+  needs_password_reset: boolean
+  is_active: boolean
+  [key: string]: any
+}
+
 interface CreateUserRequest {
+  action: 'create'
   email: string
   password: string
-  userData: {
-    role: string
-    "Full Name": string
-    needs_password_reset: boolean
-  }
+  userData: UserData
 }
+
+interface DeleteUserRequest {
+  action: 'delete'
+  userId: string
+}
+
+type RequestBody = CreateUserRequest | DeleteUserRequest
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -66,7 +78,7 @@ serve(async (req) => {
     }
 
     // Parse the request body, with proper error handling for invalid JSON
-    let requestData: CreateUserRequest
+    let requestData: RequestBody
     try {
       requestData = JSON.parse(bodyText)
     } catch (parseError) {
@@ -79,54 +91,22 @@ serve(async (req) => {
         }
       )
     }
+
+    // Handle based on action type
+    if (requestData.action === 'create') {
+      return await handleCreateUser(requestData, supabaseAdmin, corsHeaders)
+    } else if (requestData.action === 'delete') {
+      return await handleDeleteUser(requestData, supabaseAdmin, corsHeaders)
+    } else {
+      return new Response(
+        JSON.stringify({ error: 'Invalid action specified' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
     
-    // Validate required fields
-    const { email, password, userData } = requestData
-    if (!email || !password || !userData) {
-      console.error('Missing required fields:', { email: !!email, password: !!password, userData: !!userData })
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    console.log(`Processing user creation request for email: ${email}`)
-
-    // Create the user
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: userData
-    })
-
-    if (error) {
-      console.error('Error creating user:', error)
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    console.log('User created successfully:', data.user.id)
-
-    // Return the user ID
-    return new Response(
-      JSON.stringify({ 
-        userId: data.user.id,
-        message: 'User created successfully' 
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    )
   } catch (err) {
     console.error('Unexpected error:', err)
     return new Response(
@@ -141,3 +121,108 @@ serve(async (req) => {
     )
   }
 })
+
+async function handleCreateUser(
+  requestData: CreateUserRequest, 
+  supabaseAdmin: any, 
+  corsHeaders: HeadersInit
+): Promise<Response> {
+  const { email, password, userData } = requestData
+  
+  // Validate required fields
+  if (!email || !password || !userData) {
+    console.error('Missing required fields:', { email: !!email, password: !!password, userData: !!userData })
+    return new Response(
+      JSON.stringify({ error: 'Missing required fields' }),
+      { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+
+  console.log(`Processing user creation request for email: ${email}`)
+
+  // Create the user
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: userData
+  })
+
+  if (error) {
+    console.error('Error creating user:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+
+  console.log('User created successfully:', data.user.id)
+
+  // Return the user ID
+  return new Response(
+    JSON.stringify({ 
+      userId: data.user.id,
+      message: 'User created successfully' 
+    }),
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  )
+}
+
+async function handleDeleteUser(
+  requestData: DeleteUserRequest, 
+  supabaseAdmin: any, 
+  corsHeaders: HeadersInit
+): Promise<Response> {
+  const { userId } = requestData
+  
+  // Validate required fields
+  if (!userId) {
+    console.error('Missing required userId')
+    return new Response(
+      JSON.stringify({ error: 'Missing required userId' }),
+      { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+
+  console.log(`Processing user deletion request for userId: ${userId}`)
+
+  // Delete the user
+  const { data, error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+  if (error) {
+    console.error('Error deleting user:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+
+  console.log('User deleted successfully:', userId)
+
+  // Return success response
+  return new Response(
+    JSON.stringify({ 
+      userId: userId,
+      message: 'User deleted successfully' 
+    }),
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  )
+}
