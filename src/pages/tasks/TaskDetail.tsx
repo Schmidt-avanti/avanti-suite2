@@ -145,7 +145,8 @@ const TaskDetail = () => {
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
   if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
 
-  const canAssignOrForward = user?.role === 'admin' || user?.id === task.assigned_to;
+  // Updated logic to allow agents to forward tasks
+  const canAssignOrForward = user?.role === 'admin' || user?.role === 'agent' || user?.id === task.assigned_to;
   const isUnassigned = !task.assigned_to;
 
   return (
