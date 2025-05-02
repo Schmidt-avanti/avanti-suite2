@@ -67,6 +67,7 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
 
       try {
         console.log(`Fetching tasks with statusFilter=${statusFilter}, includeAll=${includeAll}, filters=`, filters);
+        console.log('Current user role:', user.role);
 
         let query = supabase
           .from('tasks')
@@ -93,7 +94,7 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
           query = query.neq('status', 'completed');
         }
 
-        // Zusätzliche Filter
+        // Additional Filters
         if (filters) {
           if (filters.customerId) {
             query = query.eq('customer_id', filters.customerId);
@@ -108,7 +109,7 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
           }
           
           if (filters.toDate) {
-            // Setze das Datum auf Ende des Tages für den "bis" Filter
+            // Set the date to the end of the day for the "to" filter
             const endOfDay = new Date(filters.toDate);
             endOfDay.setHours(23, 59, 59, 999);
             query = query.lte('created_at', endOfDay.toISOString());
@@ -117,19 +118,33 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
 
         // Apply user role-based filtering
         if (user.role === 'agent') {
-          const { data: assignedCustomers } = await supabase
+          console.log('Fetching agent customer assignments');
+          const { data: assignedCustomers, error: assignmentError } = await supabase
             .from('user_customer_assignments')
             .select('customer_id')
             .eq('user_id', user.id);
+
+          if (assignmentError) {
+            console.error('Error fetching agent customer assignments:', assignmentError);
+            setTasks([]);
+            setIsLoading(false);
+            return;
+          }
 
           console.log('Agent assigned customers:', assignedCustomers);
 
           if (assignedCustomers && assignedCustomers.length > 0) {
             const customerIds = assignedCustomers.map(ac => ac.customer_id);
+            console.log('Agent has access to customer IDs:', customerIds);
             query = query.in('customer_id', customerIds);
+          } else {
+            console.warn('Agent has no assigned customers, showing no tasks');
+            setTasks([]);
+            setIsLoading(false);
+            return;
           }
         } else if (user.role === 'client') {
-          const { data: userAssignment } = await supabase
+          const { data: userAssignment, error: clientAssignmentError } = await supabase
             .from('user_customer_assignments')
             .select('customer_id')
             .eq('user_id', user.id)
@@ -137,9 +152,23 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             
           console.log('Client customer assignment:', userAssignment);
 
+          if (clientAssignmentError) {
+            console.error('Error fetching client customer assignment:', clientAssignmentError);
+            setTasks([]);
+            setIsLoading(false);
+            return;
+          }
+
           if (userAssignment) {
             query = query.eq('customer_id', userAssignment.customer_id);
+          } else {
+            console.warn('Client has no assigned customer, showing no tasks');
+            setTasks([]);
+            setIsLoading(false);
+            return;
           }
+        } else {
+          console.log('Admin user - showing all tasks');
         }
 
         // Execute the query

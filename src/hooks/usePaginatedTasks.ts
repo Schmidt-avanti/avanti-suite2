@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,6 +41,7 @@ export const usePaginatedTasks = (
       try {
         setIsLoading(true);
         console.log(`Fetching tasks with statusFilter=${statusFilter}, includeAll=${includeAll}, page=${page}, filters=`, filters);
+        console.log('Current user role:', user.role);
 
         // Calculate pagination ranges
         const from = (page - 1) * pageSize;
@@ -65,7 +65,60 @@ export const usePaginatedTasks = (
         }
 
         // Apply user role-based filtering
-        countQuery = await applyRoleBasedFiltering(countQuery, user);
+        let userHasAccessToTasks = true;
+        
+        if (user.role === 'agent') {
+          console.log('Agent role detected for pagination');
+          const { data: assignedCustomers, error: assignmentError } = await supabase
+            .from('user_customer_assignments')
+            .select('customer_id')
+            .eq('user_id', user.id);
+
+          if (assignmentError) {
+            console.error('Error fetching agent customer assignments:', assignmentError);
+            userHasAccessToTasks = false;
+          } else {
+            console.log('Agent assigned customers:', assignedCustomers);
+            
+            if (assignedCustomers && assignedCustomers.length > 0) {
+              const customerIds = assignedCustomers.map(ac => ac.customer_id);
+              console.log('Agent has access to customer IDs:', customerIds);
+              countQuery = countQuery.in('customer_id', customerIds);
+            } else {
+              console.warn('Agent has no assigned customers');
+              userHasAccessToTasks = false;
+            }
+          }
+        } else if (user.role === 'client') {
+          const { data: userAssignment, error: clientAssignmentError } = await supabase
+            .from('user_customer_assignments')
+            .select('customer_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+            
+          console.log('Client customer assignment:', userAssignment);
+
+          if (clientAssignmentError) {
+            console.error('Error fetching client customer assignment:', clientAssignmentError);
+            userHasAccessToTasks = false;
+          } else if (userAssignment) {
+            countQuery = countQuery.eq('customer_id', userAssignment.customer_id);
+          } else {
+            console.warn('Client has no assigned customer');
+            userHasAccessToTasks = false;
+          }
+        } else {
+          console.log('Admin role detected - showing all tasks');
+        }
+        
+        if (!userHasAccessToTasks) {
+          console.warn('User has no access to tasks, showing empty state');
+          setTotalCount(0);
+          setTotalPages(1);
+          setTasks([]);
+          setIsLoading(false);
+          return;
+        }
         
         const { count, error: countError } = await countQuery;
         
@@ -111,8 +164,36 @@ export const usePaginatedTasks = (
           query = applyFiltersToQuery(query, filters);
         }
 
-        // Apply user role-based filtering
-        query = await applyRoleBasedFiltering(query, user);
+        // Apply the same role-based filtering
+        if (user.role === 'agent') {
+          const { data: assignedCustomers } = await supabase
+            .from('user_customer_assignments')
+            .select('customer_id')
+            .eq('user_id', user.id);
+
+          if (assignedCustomers && assignedCustomers.length > 0) {
+            const customerIds = assignedCustomers.map(ac => ac.customer_id);
+            query = query.in('customer_id', customerIds);
+          } else {
+            setTasks([]);
+            setIsLoading(false);
+            return;
+          }
+        } else if (user.role === 'client') {
+          const { data: userAssignment } = await supabase
+            .from('user_customer_assignments')
+            .select('customer_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (userAssignment) {
+            query = query.eq('customer_id', userAssignment.customer_id);
+          } else {
+            setTasks([]);
+            setIsLoading(false);
+            return;
+          }
+        }
 
         // Execute the query
         const { data, error } = await query;

@@ -20,7 +20,7 @@ const fetchUserProfile = async (userId: string) => {
   console.log("Fetching profile for user ID:", userId);
   
   try {
-    // Direkte SQL-Abfrage ohne Rekursion zu verhindern
+    // Direct query to prevent recursion issues
     const { data: profile, error } = await supabase
       .from("profiles")
       .select("role, \"Full Name\"")
@@ -84,6 +84,7 @@ export function useProvideAuth(): AuthState {
     try {
       const profile = await fetchUserProfile(session.user.id);
       const mappedUser = createUserFromSessionAndProfile(session, profile);
+      console.log("Mapped user with role:", mappedUser.role);
       setUser(mappedUser);
       return mappedUser;
     } catch (error: any) {

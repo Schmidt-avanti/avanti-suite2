@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -54,6 +53,9 @@ const CreateTask = () => {
     if (!user) return;
     setIsMatching(true);
     try {
+      console.log('Creating new task with values:', values);
+      console.log('Current user:', user);
+      
       let matchResult = null;
 
       try {
@@ -73,20 +75,9 @@ const CreateTask = () => {
           title: "Kein Use Case erkannt",
           description: "Die Aufgabe wird trotzdem erstellt und an KVP weitergeleitet.",
         });
-
-        // Optional: Trigger a webhook/email notification to KVP team
-        await fetch('https://your-automation-endpoint/send-kvp-alert', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            customerId: values.customerId,
-            description: values.description,
-            createdBy: user.email,
-            reason: 'Kein Use Case erkannt',
-          }),
-        });
       }
 
+      // Insert the new task
       const { data: task, error: taskError } = await supabase
         .from('tasks')
         .insert({
@@ -106,7 +97,12 @@ const CreateTask = () => {
         .select()
         .single();
 
-      if (taskError) throw taskError;
+      if (taskError) {
+        console.error("Error creating task:", taskError);
+        throw taskError;
+      }
+
+      console.log("Task created successfully:", task);
 
       // Create an activity log entry for the assignment
       await supabase
