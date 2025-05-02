@@ -65,9 +65,9 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       try {
         setIsLoading(true);
         
-        console.log(`Fetching endkunden for customer ID: ${customerId}, User role: ${user?.role}`);
+        console.log(`Fetching endkunden for customer ID: ${customerId}, User role: ${user?.role}, User ID: ${user?.id}`);
         
-        // We know for certain that the column in the database is named 'customer_ID' (uppercase ID)
+        // First try querying with customer_ID (uppercase)
         const { data: endkundenData, error: endkundenError } = await supabase
           .from('endkunden')
           .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
@@ -76,8 +76,41 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
         console.log('Query with customer_ID (uppercase):', { 
           data: endkundenData?.length || 0, 
-          error: endkundenError?.message || 'none' 
+          error: endkundenError?.message || 'none',
+          status: endkundenError?.code || 'no-error'
         });
+        
+        // If error is permission related
+        if (endkundenError && (endkundenError.code === 'PGRST301' || endkundenError.message.includes('permission'))) {
+          console.error('Permission error fetching endkunden:', endkundenError);
+          
+          // For agents, verify if they have access to this customer
+          if (user?.role === 'agent') {
+            console.log("Checking if agent has access to this customer...");
+            const { data: assignments, error: assignmentError } = await supabase
+              .from('user_customer_assignments')
+              .select('customer_id')
+              .eq('user_id', user.id)
+              .eq('customer_id', customerId);
+              
+            console.log("Agent assignments check:", { 
+              assignments: assignments?.length || 0,
+              error: assignmentError?.message || 'none' 
+            });
+              
+            if (!assignments || assignments.length === 0) {
+              console.warn("Agent does not have access to this customer");
+              toast({
+                title: "Zugriffsfehler",
+                description: "Sie haben keine Berechtigung, auf Endkunden dieses Kunden zuzugreifen.",
+                variant: "destructive"
+              });
+            }
+          }
+          
+          setIsLoading(false);
+          return;
+        }
 
         if (endkundenError) {
           console.error('Error fetching endkunden:', endkundenError);
@@ -92,36 +125,32 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
 
         if (!endkundenData || endkundenData.length === 0) {
           console.log('No endkunden found for this customer ID');
-          setEndkunden([]);
+          
+          // As a fallback, try with lowercase customer_id
+          console.log("Trying fallback with lowercase customer_id...");
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('endkunden')
+            .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
+            .eq('customer_id', customerId)
+            .order('Nachname', { ascending: true });
+            
+          console.log('Fallback query results:', { 
+            data: fallbackData?.length || 0, 
+            error: fallbackError?.message || 'none' 
+          });
+          
+          if (fallbackData && fallbackData.length > 0) {
+            processEndkundenData(fallbackData);
+          } else {
+            setEndkunden([]);
+          }
           setIsLoading(false);
           return;
         }
 
         console.log(`Fetched ${endkundenData.length} endkunden records`);
-
-        // Process the data using a simple loop to avoid complex type inference
-        const formattedData: EndkundeOption[] = [];
+        processEndkundenData(endkundenData);
         
-        for (let i = 0; i < endkundenData.length; i++) {
-          const ek = endkundenData[i];
-          const vorname = ek.Vorname ? `${ek.Vorname}` : '';
-          
-          formattedData.push({
-            id: ek.id,
-            nachname: ek.Nachname,
-            vorname: ek.Vorname,
-            adresse: ek.Adresse,
-            wohnung: ek.Wohnung,
-            gebaeude: ek.Gebäude,
-            lage: ek.Lage,
-            postleitzahl: ek.Postleitzahl,
-            ort: ek.Ort,
-            // Simplified display for dropdown - just name and surname
-            display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
-          });
-        }
-
-        setEndkunden(formattedData);
       } catch (err) {
         console.error('Error fetching endkunden:', err);
         toast({
@@ -132,6 +161,33 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
       } finally {
         setIsLoading(false);
       }
+    };
+    
+    // Helper function to process the endkunden data
+    const processEndkundenData = (data: EndkundeResponse[]) => {
+      // Process the data using a simple loop to avoid complex type inference
+      const formattedData: EndkundeOption[] = [];
+      
+      for (let i = 0; i < data.length; i++) {
+        const ek = data[i];
+        const vorname = ek.Vorname ? `${ek.Vorname}` : '';
+        
+        formattedData.push({
+          id: ek.id,
+          nachname: ek.Nachname,
+          vorname: ek.Vorname,
+          adresse: ek.Adresse,
+          wohnung: ek.Wohnung,
+          gebaeude: ek.Gebäude,
+          lage: ek.Lage,
+          postleitzahl: ek.Postleitzahl,
+          ort: ek.Ort,
+          // Simplified display for dropdown - just name and surname
+          display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
+        });
+      }
+
+      setEndkunden(formattedData);
     };
 
     fetchEndkunden();
