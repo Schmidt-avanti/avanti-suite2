@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserRole, User } from "@/types";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Session } from "@supabase/supabase-js";
 
 export interface AuthState {
@@ -103,8 +103,21 @@ export function useProvideAuth(): AuthState {
     if (!session?.user?.id) return;
     
     try {
-      await supabase.rpc('refresh_session');
-      console.log("Session refreshed");
+      // Use direct database query with error handling
+      const { error } = await supabase
+        .from('user_sessions')
+        .upsert({ 
+          user_id: session.user.id,
+          last_seen: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+      
+      if (error) {
+        console.error("Error refreshing session:", error);
+      } else {
+        console.log("Session refreshed");
+      }
     } catch (error) {
       console.error("Error refreshing session:", error);
     }

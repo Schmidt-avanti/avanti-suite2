@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, CircleCheck, CirclePause, CircleX, Clock } from 'lucide-react';
 import { format, formatDistance } from 'date-fns';
@@ -33,6 +32,12 @@ interface Agent {
   isLoggedIn: boolean;
 }
 
+// Define the session interface to help TypeScript recognize the structure
+interface UserSession {
+  user_id: string;
+  last_seen: string;
+}
+
 const LiveAgentOverview = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -54,25 +59,23 @@ const LiveAgentOverview = () => {
         if (error) throw error;
 
         // Fetch active sessions to determine who's logged in
-        const { data: activeSessions, error: sessionError } = await supabase
-          .rpc('get_active_sessions');
+        let activeSessions: UserSession[] = [];
         
-        if (sessionError) {
-          console.warn("Could not fetch session data using RPC:", sessionError);
-          
-          // Fallback to direct query if RPC fails
-          const { data: sessionsData, error: fallbackError } = await supabase
+        try {
+          // Try the RPC call first
+          const { data, error: rpcError } = await supabase
             .from('user_sessions')
             .select('user_id, last_seen')
-            .gte('last_seen', new Date(Date.now() - 15 * 60 * 1000).toISOString()); // Consider active if seen in last 15 min
+            .gte('last_seen', new Date(Date.now() - 15 * 60 * 1000).toISOString());
             
-          if (fallbackError) {
-            console.error("Could not fetch session data:", fallbackError);
-            // Continue without session data
-          } else {
-            // Use the fallback data
-            activeSessions = sessionsData;
+          if (rpcError) {
+            throw rpcError;
           }
+          
+          activeSessions = data as UserSession[] || [];
+        } catch (sessionError) {
+          console.error("Could not fetch session data:", sessionError);
+          // Continue without session data - activeSessions will remain an empty array
         }
 
         const { data: shortBreaks } = await supabase
@@ -85,7 +88,7 @@ const LiveAgentOverview = () => {
           .select('user_id, customer_id, customers(name)');
 
         // Create a set of logged-in user IDs for quick lookup
-        const loggedInUserIds = new Set((activeSessions || []).map(session => session.user_id) || []);
+        const loggedInUserIds = new Set(activeSessions.map(session => session.user_id) || []);
 
         const formattedAgents: Agent[] = (profiles || []).map(profile => {
           const activeBreak = shortBreaks?.find(b => b.user_id === profile.id);
