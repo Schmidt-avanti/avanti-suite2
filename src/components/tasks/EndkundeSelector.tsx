@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Define a simple interface for the Endkunde option
 interface EndkundeOption {
   id: string;
   display: string;
@@ -31,7 +32,7 @@ interface EndkundeSelectorProps {
   disabled?: boolean;
 }
 
-// Define a plain interface for the database response to avoid type recursion
+// Define a plain interface for the database response
 interface EndkundeResponse {
   id: string;
   Nachname: string;
