@@ -103,23 +103,16 @@ export function useProvideAuth(): AuthState {
     if (!session?.user?.id) return;
     
     try {
-      // Use direct database query with error handling
-      const { error } = await supabase
-        .from('user_sessions')
-        .upsert({ 
-          user_id: session.user.id,
-          last_seen: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        });
+      // Call the refresh_session database function rather than directly updating
+      const { error } = await supabase.rpc('refresh_session');
       
       if (error) {
         console.error("Error refreshing session:", error);
       } else {
-        console.log("Session refreshed");
+        console.log("Session refreshed successfully");
       }
     } catch (error) {
-      console.error("Error refreshing session:", error);
+      console.error("Exception during session refresh:", error);
     }
   };
 
