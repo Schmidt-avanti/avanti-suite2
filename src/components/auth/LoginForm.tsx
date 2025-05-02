@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -127,9 +128,9 @@ const LoginForm = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Passwort</Label>
-                <a href="/auth/forgot-password" className="text-sm text-avanti-600 hover:text-avanti-800 transition-colors">
+                <Link to="/auth/forgot-password" className="text-sm text-avanti-600 hover:text-avanti-800 transition-colors">
                   Passwort vergessen?
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
