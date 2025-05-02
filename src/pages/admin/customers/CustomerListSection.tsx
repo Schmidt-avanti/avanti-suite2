@@ -57,7 +57,17 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
     setIsDeleting(true);
 
     try {
-      // Call our custom function to delete customer and all related data
+      // First, update tasks to null out matched_use_case_id references
+      const { error: nullifyError } = await supabase
+        .from("tasks")
+        .update({ matched_use_case_id: null })
+        .eq("customer_id", customerToDelete.id);
+
+      if (nullifyError) {
+        throw nullifyError;
+      }
+
+      // Now call our custom function to delete customer and all related data
       const { error } = await supabase
         .rpc('delete_customer_cascade', { customer_id_param: customerToDelete.id });
 
