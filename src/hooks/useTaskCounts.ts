@@ -14,10 +14,22 @@ interface TaskCounts {
   isLoading: boolean;
 }
 
+interface TaskCountResult {
+  new: number;
+  in_progress: number;
+  followup: number;
+  completed: number;
+  total: number;
+}
+
+interface CustomerAssignment {
+  customer_id: string;
+}
+
 export const useTaskCounts = () => {
   const { user } = useAuth();
   
-  const fetchTaskCounts = async () => {
+  const fetchTaskCounts = async (): Promise<TaskCountResult> => {
     if (!user) {
       console.log('No user found, returning zero counts');
       return {
@@ -49,7 +61,7 @@ export const useTaskCounts = () => {
         console.log('Agent assigned customers:', assignedCustomers);
 
         if (assignedCustomers && assignedCustomers.length > 0) {
-          customerIds = assignedCustomers.map(ac => ac.customer_id);
+          customerIds = assignedCustomers.map((ac: CustomerAssignment) => ac.customer_id);
           console.log('Using customer IDs:', customerIds);
         } else {
           // No assigned customers, return empty counts

@@ -114,12 +114,15 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
           return;
         }
 
-        // Transform the data into our component format
-        const formattedData: EndkundeOption[] = data.map((ek: EndkundeResponse) => {
-          // Create a simpler display name with just name and surname
+        // Transform the data into our component format with explicit typing
+        const formattedData: EndkundeOption[] = [];
+        
+        // Use a for loop instead of map to avoid complex type inference
+        for (let i = 0; i < data.length; i++) {
+          const ek = data[i] as EndkundeResponse;
           const vorname = ek.Vorname ? `${ek.Vorname}` : '';
           
-          return {
+          formattedData.push({
             id: ek.id,
             nachname: ek.Nachname,
             vorname: ek.Vorname,
@@ -131,8 +134,8 @@ export const EndkundeSelector: React.FC<EndkundeSelectorProps> = ({
             ort: ek.Ort,
             // Simplified display for dropdown - just name and surname
             display: vorname ? `${ek.Nachname}, ${vorname}` : ek.Nachname
-          };
-        });
+          });
+        }
 
         setEndkunden(formattedData);
       } catch (err) {
