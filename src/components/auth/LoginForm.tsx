@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Info, Mail, Lock, Loader } from "lucide-react";
@@ -169,6 +168,16 @@ const LoginForm = () => {
             </Button>
           </form>
         </CardContent>
+
+        <CardFooter className="flex flex-col space-y-4 pt-6">
+          <div className="bg-gray-50 text-sm p-4 rounded-md border w-full">
+            <p className="font-medium mb-2">Test-Zugangsdaten:</p>
+            <ul className="ml-4 list-disc text-gray-700">
+              <li><strong>E-Mail:</strong> aa.schmidt@ja-dialog.de</li>
+              <li><strong>Passwort:</strong> Passwort</li>
+            </ul>
+          </div>
+        </CardFooter>
       </Card>
 
       {showTransition && (
