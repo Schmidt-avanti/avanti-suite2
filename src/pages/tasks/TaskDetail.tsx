@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +35,6 @@ const TaskDetail = () => {
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
   
   const [isActive, setIsActive] = useState(true);
-  const { formattedTime } = useTaskTimer({ taskId: id || '', isActive });
   
   const {
     task,
@@ -48,6 +48,13 @@ const TaskDetail = () => {
     handleAssignTask
   } = useTaskDetail(id, user);
 
+  // Pass task status to timer hook if available
+  const { formattedTime } = useTaskTimer({ 
+    taskId: id || '', 
+    isActive,
+    status: task?.status
+  });
+  
   // Fetch task messages for chat history
   const { messages } = useTaskMessages(id || null);
   

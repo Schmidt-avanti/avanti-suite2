@@ -111,6 +111,11 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
     try {
+      if (!id || !task) return;
+      
+      const oldStatus = task.status as TaskStatus;
+      
+      // Update the database
       const { error } = await supabase
         .from('tasks')
         .update({ status: newStatus })
@@ -118,8 +123,66 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
       
       if (error) throw error;
       
-      await logTaskStatusChange(id!, task.status as TaskStatus, newStatus);
+      // Log the status change
+      await logTaskStatusChange(id!, oldStatus, newStatus);
       
+      // Create a task_times entry if moving to 'in_progress' and we don't have an active timer
+      if (newStatus === 'in_progress' && user?.id) {
+        // Check if there's an active timer session
+        const { data: activeSessions } = await supabase
+          .from('task_times')
+          .select('id')
+          .eq('task_id', id)
+          .eq('user_id', user.id)
+          .is('ended_at', null)
+          .limit(1);
+          
+        // If no active session found, create one
+        if (!activeSessions || activeSessions.length === 0) {
+          await supabase
+            .from('task_times')
+            .insert({
+              task_id: id,
+              user_id: user.id,
+              started_at: new Date().toISOString()
+            });
+          
+          console.log('Created new timer session for in_progress status change');
+        }
+      }
+      
+      // If we're moving to 'completed' or 'followup', make sure any open timers are stopped
+      if ((newStatus === 'completed' || newStatus === 'followup') && user?.id) {
+        const now = new Date().toISOString();
+        
+        // Find any active timer sessions
+        const { data: activeSessions } = await supabase
+          .from('task_times')
+          .select('id, started_at')
+          .eq('task_id', id)
+          .eq('user_id', user.id)
+          .is('ended_at', null);
+          
+        // Close any active sessions
+        if (activeSessions && activeSessions.length > 0) {
+          for (const session of activeSessions) {
+            const startTime = new Date(session.started_at).getTime();
+            const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
+            
+            await supabase
+              .from('task_times')
+              .update({
+                ended_at: now,
+                duration_seconds: durationSeconds > 0 ? durationSeconds : 0
+              })
+              .eq('id', session.id);
+          }
+          
+          console.log('Closed timer sessions for completed/followup status change');
+        }
+      }
+      
+      // Update local task state
       setTask({ ...task, status: newStatus });
       
       toast({

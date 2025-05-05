@@ -3,13 +3,15 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import type { TaskStatus } from '@/types';
 
 interface TaskTimerOptions {
   taskId: string;
   isActive: boolean;
+  status?: TaskStatus;
 }
 
-export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
+export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOptions) => {
   const { user } = useAuth();
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isTracking, setIsTracking] = useState(false);
@@ -17,6 +19,11 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
   const startTimeRef = useRef<number | null>(null);
   const taskTimeEntryRef = useRef<string | null>(null);
   const currentSessionTimeRef = useRef<number>(0);
+
+  // Determine if timer should be active based on task status
+  const shouldBeActive = (taskStatus: TaskStatus): boolean => {
+    return isActive && (taskStatus === 'new' || taskStatus === 'in_progress');
+  };
 
   // Fetch total time from the task_times table
   const fetchAccumulatedTime = async () => {
@@ -41,7 +48,8 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         maxAccumulatedTime,
         currentSession: currentSessionTimeRef.current,
         total: totalSeconds,
-        userId: user?.id
+        userId: user?.id,
+        status
       });
 
       return totalSeconds;
@@ -86,6 +94,50 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     };
   }, [taskId]);
 
+  // Check if there's an ongoing timer session that needs to be resumed
+  useEffect(() => {
+    if (!taskId || !user) return;
+    
+    const checkOngoingSession = async () => {
+      try {
+        // Check for any ongoing timer session that hasn't been ended
+        const { data, error } = await supabase
+          .from('task_times')
+          .select('id, started_at')
+          .eq('task_id', taskId)
+          .eq('user_id', user.id)
+          .is('ended_at', null)
+          .order('started_at', { ascending: false })
+          .limit(1);
+          
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Found an ongoing session, resume it
+          taskTimeEntryRef.current = data[0].id;
+          const startTime = new Date(data[0].started_at).getTime();
+          startTimeRef.current = startTime;
+          currentSessionTimeRef.current = Math.floor((Date.now() - startTime) / 1000);
+          setIsTracking(true);
+          
+          if (shouldBeActive(status)) {
+            startLocalTimer();
+          } else {
+            // If we shouldn't be active now, end the previous session
+            await stopTracking();
+          }
+        } else if (shouldBeActive(status)) {
+          // No ongoing session but we should be active
+          startTracking();
+        }
+      } catch (err) {
+        console.error('Error checking ongoing timer session:', err);
+      }
+    };
+    
+    checkOngoingSession();
+  }, [taskId, user, status]);
+
   // Handle the interval timer for the current user's session
   const startLocalTimer = () => {
     stopLocalTimer();
@@ -108,9 +160,11 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
   // Start tracking time
   const startTracking = async () => {
-    if (!user || isTracking) return;
+    if (!user || isTracking || !shouldBeActive(status)) return;
 
     try {
+      console.log(`Starting timer for task ${taskId} with status ${status}`);
+      
       const { data, error } = await supabase
         .from('task_times')
         .insert({
@@ -144,16 +198,19 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
 
       if (startTimeRef.current) {
         const finalSessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
-
-        const { error } = await supabase
-          .from('task_times')
-          .update({
-            ended_at: new Date().toISOString(),
-            duration_seconds: finalSessionTime
-          })
-          .eq('id', taskTimeEntryRef.current);
         
-        if (error) throw error;
+        // Only update if there was actual time spent
+        if (finalSessionTime > 0) {
+          const { error } = await supabase
+            .from('task_times')
+            .update({
+              ended_at: new Date().toISOString(),
+              duration_seconds: finalSessionTime
+            })
+            .eq('id', taskTimeEntryRef.current);
+          
+          if (error) throw error;
+        }
 
         currentSessionTimeRef.current = 0;
       }
@@ -180,11 +237,13 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Effect for handling active state changes
+  // Effect for handling active state and status changes
   useEffect(() => {
-    if (isActive && !isTracking && taskId) {
+    const timerShouldBeActive = shouldBeActive(status);
+    
+    if (timerShouldBeActive && !isTracking && taskId) {
       startTracking();
-    } else if (!isActive && isTracking) {
+    } else if (!timerShouldBeActive && isTracking) {
       stopTracking();
     }
 
@@ -193,7 +252,7 @@ export const useTaskTimer = ({ taskId, isActive }: TaskTimerOptions) => {
         stopTracking();
       }
     };
-  }, [isActive, taskId]);
+  }, [isActive, taskId, status]);
 
   return {
     elapsedTime,
