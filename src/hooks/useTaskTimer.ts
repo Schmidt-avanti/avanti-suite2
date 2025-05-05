@@ -25,31 +25,35 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
     return isActive && (taskStatus === 'new' || taskStatus === 'in_progress');
   };
 
-  // Fetch total time from the task_times table
+  // Fetch total time from the task_times table across ALL users
   const fetchAccumulatedTime = async () => {
     if (!taskId) return 0;
 
     try {
-      // Get the current maximum time_spent_task value
-      const { data: maxTimeEntry, error: maxTimeError } = await supabase
+      // Calculate total time by summing all durations for this task (across all users)
+      const { data: totalDurations, error: durationsError } = await supabase
         .from('task_times')
-        .select('time_spent_task')
+        .select('duration_seconds')
         .eq('task_id', taskId)
-        .order('time_spent_task', { ascending: false })
-        .limit(1);
+        .not('duration_seconds', 'is', null);
 
-      if (maxTimeError) throw maxTimeError;
+      if (durationsError) throw durationsError;
 
-      const maxAccumulatedTime = maxTimeEntry?.[0]?.time_spent_task || 0;
-      const totalSeconds = maxAccumulatedTime + currentSessionTimeRef.current;
+      // Calculate sum of all completed durations
+      const totalCompletedTime = totalDurations?.reduce((sum, entry) => 
+        sum + (entry.duration_seconds || 0), 0) || 0;
+
+      // Add current user's active session time (if any)
+      const totalSeconds = totalCompletedTime + currentSessionTimeRef.current;
       
-      console.log('Time calculation:', {
+      console.log('Total time calculation:', {
         taskId,
-        maxAccumulatedTime,
+        totalCompletedTime,
         currentSession: currentSessionTimeRef.current,
         total: totalSeconds,
         userId: user?.id,
-        status
+        status,
+        entriesCount: totalDurations?.length || 0
       });
 
       return totalSeconds;
