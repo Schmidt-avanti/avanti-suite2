@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   ArrowLeft, Clock, CheckCircle, Calendar, Mail, 
-  UserPlus, Forward, X, Pause, Play
+  UserPlus, Forward, X
 } from "lucide-react";
 import { TaskStatusBadge } from './TaskStatusBadge';
 import type { TaskStatus } from '@/types';
@@ -23,10 +23,6 @@ interface TaskDetailHeaderProps {
   setCloseTaskDialogOpen: (open: boolean) => void;
   setEmailToCustomerDialogOpen: (open: boolean) => void;
   handleStatusChange: (status: TaskStatus) => void;
-  // Add new timer control props
-  isTimerPaused?: boolean;
-  onTimerPause?: () => void;
-  onTimerResume?: () => void;
 }
 
 export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
@@ -42,11 +38,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   setFollowUpDialogOpen,
   setCloseTaskDialogOpen,
   setEmailToCustomerDialogOpen,
-  handleStatusChange,
-  // Add new timer control props with defaults
-  isTimerPaused = false,
-  onTimerPause = () => {},
-  onTimerResume = () => {}
+  handleStatusChange
 }) => {
   const isEmailTask = task.source === 'email';
   const isCompleted = task.status === 'completed';
@@ -68,23 +60,6 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           <div className="flex items-center text-gray-500 ml-4">
             <Clock className="h-4 w-4 mr-1" />
             <span className="text-sm font-medium">{formattedTime}</span>
-            
-            {/* Add timer controls */}
-            {!isCompleted && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-1 p-0 h-6 w-6"
-                onClick={isTimerPaused ? onTimerResume : onTimerPause}
-                title={isTimerPaused ? "Timer fortsetzen" : "Timer pausieren"}
-              >
-                {isTimerPaused ? (
-                  <Play className="h-3 w-3 text-green-600" />
-                ) : (
-                  <Pause className="h-3 w-3 text-gray-600" />
-                )}
-              </Button>
-            )}
           </div>
           
           <TaskStatusBadge status={task.status as TaskStatus} className="ml-4" />

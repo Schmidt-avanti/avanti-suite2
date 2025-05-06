@@ -4,9 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import type { TaskTimeSummary } from '@/types';
 import { toast } from 'sonner';
 
-// Maximum session duration in seconds (10 minutes)
-const MAX_SESSION_DURATION = 600;
-
 export const useTaskTimeSummaries = (taskIds: string[]) => {
   // Debug-Logging für den Input
   console.log('useTaskTimeSummaries called with taskIds:', taskIds);
@@ -75,29 +72,22 @@ export const useTaskTimeSummaries = (taskIds: string[]) => {
             if (entry.ended_at) {
               endTime = new Date(entry.ended_at).getTime();
             } else {
-              // For open sessions, use the current time but cap at MAX_SESSION_DURATION
-              const maxDurationMs = MAX_SESSION_DURATION * 1000;
+              // For open sessions, use the current time but cap at 30 minutes
+              const thirtyMinutesMs = 30 * 60 * 1000;
               const timeSinceStart = now.getTime() - startTime;
-              endTime = startTime + Math.min(timeSinceStart, maxDurationMs);
+              endTime = startTime + Math.min(timeSinceStart, thirtyMinutesMs);
               
               // Log this to help debug open sessions
-              console.log(`Open session for task ${entry.task_id}, started at ${entry.started_at}, capped duration: ${Math.floor(Math.min(timeSinceStart, maxDurationMs) / 1000)}s`);
+              console.log(`Open session for task ${entry.task_id}, started at ${entry.started_at}, capped duration: ${Math.floor(Math.min(timeSinceStart, thirtyMinutesMs) / 1000)}s`);
             }
             
             duration = Math.round((endTime - startTime) / 1000);
-            
-            // Cap duration at MAX_SESSION_DURATION
-            if (duration > MAX_SESSION_DURATION) {
-              console.log(`Duration for entry ${entry.id} capped from ${duration}s to ${MAX_SESSION_DURATION}s`);
-              duration = MAX_SESSION_DURATION;
-            }
+            console.log(`Calculated duration for entry ${entry.id}: ${duration}s`);
           }
           
-          // Addiere die Dauer nur, wenn sie positiv und nicht unrealistisch hoch ist
+          // Addiere die Dauer nur, wenn sie positiv ist
           if (duration && duration > 0) {
-            // Enforce maximum session duration
-            const cappedDuration = Math.min(duration, MAX_SESSION_DURATION);
-            summary.total_seconds += cappedDuration;
+            summary.total_seconds += duration;
             summary.total_hours = Number((summary.total_seconds / 3600).toFixed(2));
           }
         });
@@ -163,13 +153,13 @@ async function cleanupOrphanedSessions(taskIds: string[]) {
       
       // Only close sessions older than 1 hour
       if (startedAt < oneHourAgo) {
-        // Calculate duration - cap at MAX_SESSION_DURATION (10 minutes)
+        // Calculate duration - cap at 30 minutes for orphaned sessions
         const endTime = new Date(startedAt);
-        endTime.setSeconds(startedAt.getSeconds() + MAX_SESSION_DURATION);
+        endTime.setMinutes(startedAt.getMinutes() + 30); // Max 30 minutes
         
-        const durationSeconds = MAX_SESSION_DURATION;
+        const durationSeconds = Math.floor((endTime.getTime() - startedAt.getTime()) / 1000);
         
-        console.log(`Auto-closing orphaned session ${session.id} for task ${session.task_id} with max duration: ${durationSeconds}s`);
+        console.log(`Auto-closing orphaned session ${session.id} for task ${session.task_id} with duration: ${durationSeconds}s`);
         
         await supabase
           .from('task_times')
