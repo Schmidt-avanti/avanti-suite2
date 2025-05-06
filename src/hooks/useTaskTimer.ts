@@ -11,18 +11,111 @@ interface TaskTimerOptions {
   status?: TaskStatus;
 }
 
+// Maximum session duration in seconds (10 minutes)
+const MAX_SESSION_DURATION = 600;
+
+// How often to update active sessions (1 minute)
+const UPDATE_INTERVAL = 60 * 1000;
+
+// Storage keys
+const getSessionStorageKey = (taskId: string) => `task_timer_session_${taskId}`;
+const getStartTimeStorageKey = (taskId: string) => `task_timer_start_${taskId}`;
+
 export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOptions) => {
   const { user } = useAuth();
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isTracking, setIsTracking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  
+  // Refs for timer management
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const taskTimeEntryRef = useRef<string | null>(null);
   const currentSessionTimeRef = useRef<number>(0);
+  const lastActivityRef = useRef<number>(Date.now());
+  const visibilityPausedRef = useRef<boolean>(false);
 
   // Determine if timer should be active based on task status
   const shouldBeActive = (taskStatus: TaskStatus): boolean => {
     return isActive && (taskStatus === 'new' || taskStatus === 'in_progress');
+  };
+
+  // Check if user is active
+  const checkUserActivity = () => {
+    const now = Date.now();
+    const inactiveTime = now - lastActivityRef.current;
+    
+    // If user is inactive for more than 5 minutes, pause the timer
+    if (inactiveTime > 5 * 60 * 1000 && !isPaused) {
+      console.log('User inactive for 5 minutes, pausing timer');
+      pauseTracking();
+    }
+  };
+
+  // Handle user activity events
+  const handleUserActivity = () => {
+    lastActivityRef.current = Date.now();
+    
+    // Resume timer if it was paused due to inactivity
+    if (isPaused && !visibilityPausedRef.current && shouldBeActive(status)) {
+      resumeTracking();
+    }
+  };
+
+  // Handle page visibility changes
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      console.log('Page hidden, pausing timer');
+      visibilityPausedRef.current = true;
+      pauseTracking();
+    } else {
+      console.log('Page visible again, resuming timer if needed');
+      visibilityPausedRef.current = false;
+      if (shouldBeActive(status)) {
+        resumeTracking();
+      }
+    }
+  };
+
+  // Save session data to localStorage
+  const saveSessionToStorage = () => {
+    if (!taskId || !startTimeRef.current) return;
+    
+    try {
+      localStorage.setItem(getSessionStorageKey(taskId), taskTimeEntryRef.current || '');
+      localStorage.setItem(getStartTimeStorageKey(taskId), startTimeRef.current.toString());
+    } catch (err) {
+      console.error('Error saving session to localStorage:', err);
+    }
+  };
+
+  // Load session data from localStorage
+  const loadSessionFromStorage = (): { sessionId: string | null; startTime: number | null } => {
+    if (!taskId) return { sessionId: null, startTime: null };
+    
+    try {
+      const sessionId = localStorage.getItem(getSessionStorageKey(taskId));
+      const startTimeStr = localStorage.getItem(getStartTimeStorageKey(taskId));
+      const startTime = startTimeStr ? parseInt(startTimeStr, 10) : null;
+      
+      return { sessionId, startTime };
+    } catch (err) {
+      console.error('Error loading session from localStorage:', err);
+      return { sessionId: null, startTime: null };
+    }
+  };
+
+  // Clear session data from localStorage
+  const clearSessionFromStorage = () => {
+    if (!taskId) return;
+    
+    try {
+      localStorage.removeItem(getSessionStorageKey(taskId));
+      localStorage.removeItem(getStartTimeStorageKey(taskId));
+    } catch (err) {
+      console.error('Error clearing session from localStorage:', err);
+    }
   };
 
   // Fetch total time from the task_times table across ALL users
@@ -46,20 +139,54 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
       // Add current user's active session time (if any)
       const totalSeconds = totalCompletedTime + currentSessionTimeRef.current;
       
-      console.log('Total time calculation:', {
-        taskId,
-        totalCompletedTime,
-        currentSession: currentSessionTimeRef.current,
-        total: totalSeconds,
-        userId: user?.id,
-        status,
-        entriesCount: totalDurations?.length || 0
-      });
-
       return totalSeconds;
     } catch (err) {
       console.error('Error calculating total time:', err);
       return currentSessionTimeRef.current;
+    }
+  };
+
+  // Clean up orphaned sessions
+  const cleanupOrphanedSessions = async () => {
+    if (!taskId || !user) return;
+    
+    try {
+      // Fetch orphaned sessions for this user and task
+      const oneHourAgo = new Date();
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+      
+      const { data: orphanedSessions, error } = await supabase
+        .from('task_times')
+        .select('id, started_at')
+        .eq('task_id', taskId)
+        .eq('user_id', user.id)
+        .is('ended_at', null)
+        .lt('started_at', oneHourAgo.toISOString());
+        
+      if (error) throw error;
+      
+      if (orphanedSessions && orphanedSessions.length > 0) {
+        console.log(`Found ${orphanedSessions.length} orphaned sessions to clean up`);
+        
+        // Close each orphaned session, limiting duration to MAX_SESSION_DURATION
+        for (const session of orphanedSessions) {
+          const startedAt = new Date(session.started_at);
+          const endedAt = new Date(startedAt.getTime() + (MAX_SESSION_DURATION * 1000));
+          const durationSeconds = MAX_SESSION_DURATION;
+          
+          await supabase
+            .from('task_times')
+            .update({
+              ended_at: endedAt.toISOString(),
+              duration_seconds: durationSeconds
+            })
+            .eq('id', session.id);
+            
+          console.log(`Cleaned up orphaned session ${session.id} with max duration of ${MAX_SESSION_DURATION} seconds`);
+        }
+      }
+    } catch (err) {
+      console.error('Error cleaning up orphaned sessions:', err);
     }
   };
 
@@ -68,6 +195,7 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
     if (!taskId) return;
 
     const initializeTimer = async () => {
+      await cleanupOrphanedSessions();
       const totalSeconds = await fetchAccumulatedTime();
       setElapsedTime(totalSeconds);
     };
@@ -98,13 +226,57 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
     };
   }, [taskId]);
 
-  // Check if there's an ongoing timer session that needs to be resumed
+  // Check for ongoing session to resume
   useEffect(() => {
     if (!taskId || !user) return;
     
     const checkOngoingSession = async () => {
       try {
-        // Check for any ongoing timer session that hasn't been ended
+        // First, clean up any orphaned sessions
+        await cleanupOrphanedSessions();
+        
+        // Try to restore from localStorage first
+        const { sessionId, startTime } = loadSessionFromStorage();
+        
+        // If found in local storage, validate it exists in the database
+        if (sessionId && startTime) {
+          console.log(`Found session in localStorage: ${sessionId}, checking if valid`);
+          
+          const { data: sessionData, error: sessionError } = await supabase
+            .from('task_times')
+            .select('id, started_at')
+            .eq('id', sessionId)
+            .eq('user_id', user.id)
+            .is('ended_at', null)
+            .single();
+          
+          if (!sessionError && sessionData) {
+            console.log('Session found in database, resuming');
+            taskTimeEntryRef.current = sessionId;
+            startTimeRef.current = startTime;
+            
+            // Calculate duration, respecting MAX_SESSION_DURATION
+            const now = Date.now();
+            const sessionDuration = Math.floor((now - startTime) / 1000);
+            const capDuration = Math.min(sessionDuration, MAX_SESSION_DURATION);
+            
+            currentSessionTimeRef.current = capDuration;
+            setIsTracking(true);
+            
+            if (shouldBeActive(status)) {
+              startLocalTimer();
+            } else {
+              // If we shouldn't be active now, end the previous session
+              await stopTracking();
+            }
+            return;
+          } else {
+            console.log('Session not found in database, clearing local storage');
+            clearSessionFromStorage();
+          }
+        }
+        
+        // Check database for any ongoing timer session that hasn't been ended
         const { data, error } = await supabase
           .from('task_times')
           .select('id, started_at')
@@ -118,11 +290,24 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
         
         if (data && data.length > 0) {
           // Found an ongoing session, resume it
-          taskTimeEntryRef.current = data[0].id;
+          const sessionId = data[0].id;
           const startTime = new Date(data[0].started_at).getTime();
+          
+          console.log(`Found ongoing session ${sessionId} in database, resuming`);
+          
+          taskTimeEntryRef.current = sessionId;
           startTimeRef.current = startTime;
-          currentSessionTimeRef.current = Math.floor((Date.now() - startTime) / 1000);
+          
+          // Calculate duration, respecting MAX_SESSION_DURATION
+          const now = Date.now();
+          const sessionDuration = Math.floor((now - startTime) / 1000);
+          const cappedDuration = Math.min(sessionDuration, MAX_SESSION_DURATION);
+          
+          currentSessionTimeRef.current = cappedDuration;
           setIsTracking(true);
+          
+          // Save to localStorage
+          saveSessionToStorage();
           
           if (shouldBeActive(status)) {
             startLocalTimer();
@@ -142,23 +327,158 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
     checkOngoingSession();
   }, [taskId, user, status]);
 
+  // Set up event listeners for user activity and page visibility
+  useEffect(() => {
+    // Set up page visibility listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Set up user activity listeners
+    ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
+      document.addEventListener(event, handleUserActivity);
+    });
+    
+    // Set up beforeunload handler to save session state
+    const handleBeforeUnload = () => {
+      if (isTracking) {
+        saveSessionToStorage();
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Set up activity check interval
+    const activityCheckInterval = setInterval(checkUserActivity, 30000);  // Every 30 seconds
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
+      ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
+        document.removeEventListener(event, handleUserActivity);
+      });
+      
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      clearInterval(activityCheckInterval);
+    };
+  }, [isTracking, status]);
+
   // Handle the interval timer for the current user's session
   const startLocalTimer = () => {
     stopLocalTimer();
     
+    // Start time tracking interval
     timerRef.current = setInterval(async () => {
       if (startTimeRef.current) {
-        currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        const now = Date.now();
+        let sessionDuration = Math.floor((now - startTimeRef.current) / 1000);
+        
+        // Enforce maximum session duration
+        if (sessionDuration >= MAX_SESSION_DURATION) {
+          console.log(`Session reached maximum duration of ${MAX_SESSION_DURATION} seconds, ending session`);
+          stopLocalTimer();
+          await endCurrentSession();
+          await startTracking(); // Start a new session
+          return;
+        }
+        
+        currentSessionTimeRef.current = sessionDuration;
         const totalTime = await fetchAccumulatedTime();
         setElapsedTime(totalTime);
       }
     }, 1000);
+    
+    // Set up periodic updates to the database (every UPDATE_INTERVAL)
+    updateIntervalRef.current = setInterval(async () => {
+      if (isTracking && taskTimeEntryRef.current) {
+        await updateDatabaseSession();
+      }
+    }, UPDATE_INTERVAL);
   };
 
   const stopLocalTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+    
+    if (updateIntervalRef.current) {
+      clearInterval(updateIntervalRef.current);
+      updateIntervalRef.current = null;
+    }
+  };
+
+  // Update the current session in the database without ending it
+  const updateDatabaseSession = async () => {
+    if (!taskTimeEntryRef.current || !startTimeRef.current) return;
+    
+    try {
+      const now = Date.now();
+      const sessionDuration = Math.floor((now - startTimeRef.current) / 1000);
+      
+      // Don't update if session is very short
+      if (sessionDuration < 5) return;
+      
+      // Cap the duration at MAX_SESSION_DURATION
+      const cappedDuration = Math.min(sessionDuration, MAX_SESSION_DURATION);
+      
+      console.log(`Updating session ${taskTimeEntryRef.current} in database with current duration: ${cappedDuration}s`);
+      
+      await supabase
+        .from('task_times')
+        .update({
+          duration_seconds: cappedDuration
+        })
+        .eq('id', taskTimeEntryRef.current);
+    } catch (err) {
+      console.error('Error updating session in database:', err);
+    }
+  };
+
+  // End the current session in the database
+  const endCurrentSession = async () => {
+    if (!taskTimeEntryRef.current || !startTimeRef.current) return;
+    
+    try {
+      const now = Date.now();
+      const sessionDuration = Math.floor((now - startTimeRef.current) / 1000);
+      
+      // Cap the duration at MAX_SESSION_DURATION
+      const cappedDuration = Math.min(sessionDuration, MAX_SESSION_DURATION);
+      
+      console.log(`Ending session ${taskTimeEntryRef.current} with duration: ${cappedDuration}s`);
+      
+      await supabase
+        .from('task_times')
+        .update({
+          ended_at: new Date().toISOString(),
+          duration_seconds: cappedDuration > 0 ? cappedDuration : null
+        })
+        .eq('id', taskTimeEntryRef.current);
+      
+      // Clear local session data
+      clearSessionFromStorage();
+      currentSessionTimeRef.current = 0;
+      startTimeRef.current = null;
+      taskTimeEntryRef.current = null;
+    } catch (err) {
+      console.error('Error ending session:', err);
+    }
+  };
+
+  // Pause tracking (without ending the session)
+  const pauseTracking = () => {
+    if (isTracking && !isPaused) {
+      stopLocalTimer();
+      setIsPaused(true);
+      console.log('Timer paused');
+    }
+  };
+
+  // Resume tracking
+  const resumeTracking = () => {
+    if (isTracking && isPaused) {
+      startLocalTimer();
+      setIsPaused(false);
+      console.log('Timer resumed');
     }
   };
 
@@ -169,6 +489,32 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
     try {
       console.log(`Starting timer for task ${taskId} with status ${status}`);
       
+      // First, check if there's already an open session for this task/user
+      const { data: existingSessions, error: checkError } = await supabase
+        .from('task_times')
+        .select('id')
+        .eq('task_id', taskId)
+        .eq('user_id', user.id)
+        .is('ended_at', null);
+        
+      if (checkError) throw checkError;
+      
+      // Close any existing sessions
+      if (existingSessions && existingSessions.length > 0) {
+        for (const session of existingSessions) {
+          await supabase
+            .from('task_times')
+            .update({
+              ended_at: new Date().toISOString(),
+              duration_seconds: 0  // Zero duration for these orphaned sessions
+            })
+            .eq('id', session.id);
+        }
+        
+        console.log(`Closed ${existingSessions.length} orphaned sessions before starting new one`);
+      }
+      
+      // Create new session
       const { data, error } = await supabase
         .from('task_times')
         .insert({
@@ -185,6 +531,11 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
       startTimeRef.current = Date.now();
       currentSessionTimeRef.current = 0;
       setIsTracking(true);
+      setIsPaused(false);
+      
+      // Save to localStorage
+      saveSessionToStorage();
+      
       startLocalTimer();
 
     } catch (err) {
@@ -199,29 +550,9 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
 
     try {
       stopLocalTimer();
-
-      if (startTimeRef.current) {
-        const finalSessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        
-        // Only update if there was actual time spent
-        if (finalSessionTime > 0) {
-          const { error } = await supabase
-            .from('task_times')
-            .update({
-              ended_at: new Date().toISOString(),
-              duration_seconds: finalSessionTime
-            })
-            .eq('id', taskTimeEntryRef.current);
-          
-          if (error) throw error;
-        }
-
-        currentSessionTimeRef.current = 0;
-      }
-
+      setIsPaused(false);
+      await endCurrentSession();
       setIsTracking(false);
-      startTimeRef.current = null;
-      taskTimeEntryRef.current = null;
 
       // Update total time immediately after stopping
       const updatedTime = await fetchAccumulatedTime();
@@ -261,6 +592,9 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
   return {
     elapsedTime,
     formattedTime: formatTime(elapsedTime),
-    isTracking
+    isTracking,
+    isPaused,
+    pauseTracking,
+    resumeTracking
   };
 };

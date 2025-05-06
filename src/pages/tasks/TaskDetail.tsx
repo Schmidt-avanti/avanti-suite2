@@ -17,7 +17,7 @@ import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { useTaskMessages } from '@/hooks/useTaskMessages';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { KnowledgeArticleManager } from '@/components/tasks/KnowledgeArticleManager';
@@ -49,7 +49,7 @@ const TaskDetail = () => {
   } = useTaskDetail(id, user);
 
   // Pass task status to timer hook if available
-  const { formattedTime } = useTaskTimer({ 
+  const { formattedTime, isTracking, isPaused, pauseTracking, resumeTracking } = useTaskTimer({ 
     taskId: id || '', 
     isActive,
     status: task?.status
@@ -113,9 +113,8 @@ const TaskDetail = () => {
       setIsActive(false);
       await new Promise(resolve => setTimeout(resolve, 100)); // Give time for timer to stop
       navigate(`/tasks/${nextTaskId}`);
-      toast({
-        title: "Nächste Aufgabe",
-        description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
+      toast('Nächste Aufgabe', {
+        description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet."
       });
     } else {
       setIsActive(false);
@@ -144,9 +143,8 @@ const TaskDetail = () => {
   };
 
   const handleEmailSent = (emailDetails: { recipient: string, subject: string }) => {
-    toast({
-      title: "E-Mail gesendet",
-      description: `E-Mail wurde erfolgreich an ${emailDetails.recipient} gesendet.`,
+    toast('E-Mail gesendet', {
+      description: `E-Mail wurde erfolgreich an ${emailDetails.recipient} gesendet.`
     });
   };
 
@@ -174,6 +172,9 @@ const TaskDetail = () => {
           setCloseTaskDialogOpen={setCloseTaskDialogOpen}
           setEmailToCustomerDialogOpen={setEmailToCustomerDialogOpen}
           handleStatusChange={handleStatusChange}
+          isTimerPaused={isPaused}
+          onTimerPause={pauseTracking}
+          onTimerResume={resumeTracking}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
