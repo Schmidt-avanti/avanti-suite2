@@ -6,6 +6,7 @@ import AppSidebar from './AppSidebar';
 import { TwilioProvider } from '@/contexts/TwilioContext';
 import ActiveCallPanel from '@/components/call-center/ActiveCallPanel';
 import { Suspense, lazy, useState, useEffect } from 'react';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 // Lazy load components that might not be needed immediately
 const FloatingChatButton = lazy(() =>
@@ -64,20 +65,22 @@ const AppLayout = () => {
     
   // Create a layout with or without Twilio Provider based on route
   const renderContent = () => (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      <div className="flex min-h-screen">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 w-full">
-          <Navbar />
-          <main className="flex-1 p-4">
-            <Outlet />
-          </main>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 w-full">
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-col flex-1 w-full">
+            <Navbar />
+            <main className="flex-1 p-4">
+              <Outlet />
+            </main>
+          </div>
+          <Suspense fallback={null}>
+            <FloatingChatButton />
+          </Suspense>
+          {isTwilioNeededRoute && isTwilioLoaded && <ActiveCallPanel />}
         </div>
-        <Suspense fallback={null}>
-          <FloatingChatButton />
-        </Suspense>
-        {isTwilioNeededRoute && isTwilioLoaded && <ActiveCallPanel />}
-      </div>
+      </SidebarProvider>
     </div>
   );
   
