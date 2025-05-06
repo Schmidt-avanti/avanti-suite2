@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,49 +25,46 @@ const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Get token and type parameters from the URL
-  const recoveryToken = searchParams.get('token');
-  const type = searchParams.get('type');
-
-  // Verify token validity on component mount
   useEffect(() => {
     const verifyToken = async () => {
       try {
         setIsVerifying(true);
         setError(null);
 
+        const recoveryToken = searchParams.get('token');
+        const type = searchParams.get('type');
+
         // Check if we have the required parameters
         if (!recoveryToken) {
           setError('Fehlender Passwort-Reset-Token. Bitte fordere einen neuen Link an.');
           setIsTokenValid(false);
+          setIsVerifying(false);
           return;
         }
 
         if (type !== 'recovery') {
           setError('Ungültiger Token-Typ. Bitte fordere einen neuen Link an.');
           setIsTokenValid(false);
+          setIsVerifying(false);
           return;
         }
 
-        // Test token validity by attempting to get user
-        const { data, error } = await supabase.auth.getUser();
+        // Supabase automatically validates the token when loading the page with a valid token
+        // We only need to check if we're authenticated
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (error) {
-          if (error.message.includes('token') || error.message.includes('expired')) {
-            console.error('Token validation error:', error);
-            setError('Der Link ist abgelaufen oder ungültig. Bitte fordere einen neuen Link an.');
-            setIsTokenValid(false);
-          } else {
-            // Other errors
-            console.error('Auth error:', error);
-            setError('Ein Fehler ist aufgetreten. Bitte versuche es später erneut.');
-            setIsTokenValid(false);
-          }
-          return;
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          setError('Ein Fehler ist aufgetreten. Bitte versuche es später erneut.');
+          setIsTokenValid(false);
+        } else if (!session) {
+          console.log('No session found, token may be invalid');
+          setError('Der Link ist abgelaufen oder ungültig. Bitte fordere einen neuen Link an.');
+          setIsTokenValid(false);
+        } else {
+          console.log('Token appears valid, session is active');
+          setIsTokenValid(true);
         }
-
-        // If we get here without errors, the token is likely valid
-        setIsTokenValid(true);
       } catch (error) {
         console.error('Token verification error:', error);
         setError('Ein Fehler ist aufgetreten. Bitte versuche es später erneut.');
@@ -77,7 +75,7 @@ const ResetPassword: React.FC = () => {
     };
 
     verifyToken();
-  }, [recoveryToken, type]);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,10 +99,8 @@ const ResetPassword: React.FC = () => {
     setError(null);
 
     try {
-      // Update the password using the recovery token
-      const { error } = await supabase.auth.updateUser({ 
-        password 
-      });
+      // Update the password using the current session
+      const { error } = await supabase.auth.updateUser({ password });
 
       if (error) {
         throw error;
@@ -119,7 +115,10 @@ const ResetPassword: React.FC = () => {
 
       // Redirect to login after 3 seconds
       setTimeout(() => {
-        navigate('/auth/login');
+        // Sign out first to clear the recovery session
+        supabase.auth.signOut().then(() => {
+          navigate('/auth/login');
+        });
       }, 3000);
     } catch (error: any) {
       console.error('Password reset error:', error);
