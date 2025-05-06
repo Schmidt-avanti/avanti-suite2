@@ -1,34 +1,36 @@
 
-import React from 'react';
+// src/components/layout/AppLayout.tsx
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
-import { SidebarProvider } from '@/components/ui/sidebar';
 import AppSidebar from './AppSidebar';
-import FloatingChatButton from '../floating-chat/FloatingChatButton';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { TwilioProvider } from '@/contexts/TwilioContext';
+import ActiveCallPanel from '@/components/call-center/ActiveCallPanel';
+import { Suspense, lazy } from 'react';
 
-const AppLayout: React.FC = () => {
-  const isMobile = useIsMobile();
+// Lazy load components that might not be needed immediately
+const FloatingChatButton = lazy(() =>
+  import('@/components/floating-chat/FloatingChatButton')
+);
 
+const AppLayout = () => {
   return (
-    <SidebarProvider defaultOpen={!isMobile}>
-      <div className="flex h-screen w-full overflow-hidden">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col h-screen overflow-hidden">
-          <Navbar />
-          <main className="flex-1 overflow-auto">
-            <div className={`px-8 py-6 w-full max-w-screen-2xl mx-auto ${isMobile ? 'px-3 py-4' : ''}`}>
-              <div className={`rounded-2xl bg-white border border-gray-100 shadow-sm ${isMobile ? 'p-3' : 'p-6'} min-h-[300px] max-h-full overflow-auto`}>
-                <div className="w-full max-w-full overflow-auto">
-                  <Outlet />
-                </div>
-              </div>
-            </div>
-          </main>
+    <TwilioProvider>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+        <div className="flex min-h-screen">
+          <AppSidebar />
+          <div className="flex flex-col flex-1 w-full">
+            <Navbar />
+            <main className="flex-1 p-4">
+              <Outlet />
+            </main>
+          </div>
+          <Suspense fallback={null}>
+            <FloatingChatButton />
+          </Suspense>
+          <ActiveCallPanel />
         </div>
-        <FloatingChatButton />
       </div>
-    </SidebarProvider>
+    </TwilioProvider>
   );
 };
 
