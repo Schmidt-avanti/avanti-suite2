@@ -11,8 +11,7 @@ import { cn } from "@/lib/utils";
 
 interface TaskDetailHeaderProps {
   task: any;
-  formattedSessionTime: string;
-  formattedTotalTime: string;
+  formattedTime: string;
   isUnassigned: boolean;
   user: any;
   canAssignOrForward: boolean;
@@ -28,8 +27,7 @@ interface TaskDetailHeaderProps {
 
 export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   task,
-  formattedSessionTime,
-  formattedTotalTime,
+  formattedTime,
   isUnassigned,
   user,
   canAssignOrForward,
@@ -59,16 +57,9 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
             Zurück zur Übersicht
           </Button>
           
-          <div className="flex items-center space-x-4 text-gray-500 ml-4">
-            <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-1" />
-              <span className="text-sm font-medium">Sitzung: {formattedSessionTime}</span>
-            </div>
-            
-            <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-1" />
-              <span className="text-sm font-medium">Gesamt: {formattedTotalTime}</span>
-            </div>
+          <div className="flex items-center text-gray-500 ml-4">
+            <Clock className="h-4 w-4 mr-1" />
+            <span className="text-sm font-medium">{formattedTime}</span>
           </div>
           
           <TaskStatusBadge status={task.status as TaskStatus} className="ml-4" />
