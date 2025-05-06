@@ -1,15 +1,13 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   ArrowLeft, Clock, CheckCircle, Calendar, Mail, 
-  UserPlus, Forward, X, PhoneIcon
+  UserPlus, Forward, X
 } from "lucide-react";
 import { TaskStatusBadge } from './TaskStatusBadge';
 import type { TaskStatus } from '@/types';
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import PhoneInterface from '@/components/call-center/PhoneInterface';
 
 interface TaskDetailHeaderProps {
   task: any;
@@ -44,36 +42,6 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
 }) => {
   const isEmailTask = task.source === 'email';
   const isCompleted = task.status === 'completed';
-  const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
-  
-  // Extract phone number from endkunde data if available
-  const getPhoneNumber = () => {
-    if (task.endkunde_id) {
-      // Try to extract phone from endkunde info
-      if (task.endkunde && task.endkunde.Adresse) {
-        return task.endkunde.Adresse;
-      }
-    }
-    
-    // Fallback to customer phone if available
-    if (task.customer && task.customer.phone) {
-      return task.customer.phone;
-    }
-    
-    return '';
-  };
-
-  const getCustomerName = () => {
-    if (task.endkunde_id && task.endkunde) {
-      return `${task.endkunde.Vorname || ''} ${task.endkunde.Nachname || ''}`.trim();
-    }
-    
-    if (task.customer) {
-      return task.customer.name;
-    }
-    
-    return '';
-  };
   
   return (
     <div className="bg-blue-50 p-4 rounded-t-xl flex flex-col gap-2">
@@ -95,6 +63,8 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           </div>
           
           <TaskStatusBadge status={task.status as TaskStatus} className="ml-4" />
+          
+          {/* Removed readable_id display from here */}
         </div>
       </div>
       
@@ -131,16 +101,6 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
             Aufgabe abschließen
           </Button>
         )}
-        
-        {/* Call button - new addition */}
-        <Button
-          variant="outline"
-          className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200"
-          onClick={() => setPhoneDialogOpen(true)}
-        >
-          <PhoneIcon className="h-4 w-4 mr-2" />
-          Anrufen
-        </Button>
         
         {/* Email button */}
         <Button
@@ -188,17 +148,6 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           </Button>
         )}
       </div>
-      
-      {/* Phone dialog */}
-      <Dialog open={phoneDialogOpen} onOpenChange={setPhoneDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <PhoneInterface 
-            onClose={() => setPhoneDialogOpen(false)}
-            initialPhoneNumber={getPhoneNumber()}
-            customerName={getCustomerName()}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
