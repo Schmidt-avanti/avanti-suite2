@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SupervisorChatProvider } from "@/contexts/SupervisorChatContext";
+import { ThemeProvider } from "@/components/ui/theme";
 
 // Layout
 import AppLayout from "@/components/layout/AppLayout";
@@ -62,12 +62,14 @@ import Index from "@/pages/Index";
 import Knowledge from '@/pages/Knowledge';
 import KnowledgeArticleEdit from '@/components/knowledge/KnowledgeArticleEdit';
 import WhatsappPage from "@/pages/Whatsapp";
+import CallCenter from '@/pages/CallCenter';
 
+// Use a single instance of QueryClient for the entire app
 const queryClient = new QueryClient();
 
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
       <TooltipProvider>
         <AuthProvider>
           <SupervisorChatProvider>
@@ -309,6 +311,16 @@ const App = () => {
                     }
                   />
 
+                  {/* Call Center Integration */}
+                  <Route
+                    path="/call-center"
+                    element={
+                      <ProtectedRoute allowedRoles={["admin", "agent"]}>
+                        <CallCenter />
+                      </ProtectedRoute>
+                    }
+                  />
+
                   {/* Catch-all for unauthorized */}
                   <Route path="*" element={<NotFound />} />
                 </Route>
@@ -317,7 +329,7 @@ const App = () => {
           </SupervisorChatProvider>
         </AuthProvider>
       </TooltipProvider>
-    </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 
