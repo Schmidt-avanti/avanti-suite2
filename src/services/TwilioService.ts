@@ -1,3 +1,4 @@
+
 // src/services/TwilioService.ts
 import { supabase } from '@/integrations/supabase/client';
 import { Device } from 'twilio-client';
@@ -206,12 +207,11 @@ class TwilioService {
         error: null
       });
       
-      // Use a more explicit approach to handle the connect parameters
-      const connectParams = {
-        params: {
-          To: phoneNumber,
-          ...params
-        }
+      // Fix: Pass parameters directly as a Record<string, string>
+      // The Twilio Device.connect() expects a flat object with string values
+      const connectParams: Record<string, string> = {
+        To: phoneNumber,
+        ...params
       };
       
       console.log('Connecting with params:', connectParams);
