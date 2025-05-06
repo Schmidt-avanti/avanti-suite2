@@ -1,121 +1,201 @@
-import React from 'react';
-import {
-  HomeIcon,
-  UsersIcon,
-  SettingsIcon,
-  Building2Icon,
-  FileTextIcon, 
-  ListCheckIcon, 
-  FolderOpenIcon,
-  Timer
-} from 'lucide-react';
-import { NavLink } from 'react-router-dom';
 import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { LogOut } from "lucide-react";
+import { Home, ListChecks, Book, PhoneIcon } from 'lucide-react';
 
-const Sidebar: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
-  const sidebarClass = sidebarOpen ? 'translate-x-0' : '-translate-x-full';
-  const [openAdmin, setOpenAdmin] = useState(true);
+export function Sidebar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { pathname } = location;
+  const { user, signOut } = useAuth();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   return (
-    <aside className={`sidebar fixed top-0 left-0 z-40 h-full w-64 flex-none transition-transform duration-300 ease-in-out bg-white border-r border-gray-200 ${sidebarClass} md:translate-x-0`}>
-      <div className="flex flex-col h-full">
-        <div className="flex-grow p-4">
-          <nav className="space-y-1">
-            <div className="space-y-1">
-              <NavLink
-                to="/admin/dashboard"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
-                    isActive ? 'bg-gray-100 font-medium text-avanti-700' : 'text-gray-700'
-                  }`
-                }
-              >
-                <FolderOpenIcon className="h-5 w-5" />
-                <span>Admin</span>
-              </NavLink>
-              
-              {/* Submenu für Admin */}
-              <div className="ml-7 space-y-1">
-                <NavLink
-                  to="/admin/use-cases"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors
-                    ${isActive ? "bg-primary/10 font-medium text-primary" : "text-gray-600"}`
-                  }
-                >
-                  <ListCheckIcon className="h-4 w-4" />
-                  <span>Use Cases</span>
-                </NavLink>
-                <NavLink
-                  to="/admin/prompts"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors
-                    ${isActive ? "bg-primary/10 font-medium text-primary" : "text-gray-600"}`
-                  }
-                >
-                  <FileTextIcon className="h-4 w-4" />
-                  <span>Prompts</span>
-                </NavLink>
-              </div>
-              
-              <NavLink
-                to="/admin/users"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
-                    isActive ? 'bg-gray-100 font-medium text-avanti-700' : 'text-gray-700'
-                  }`
-                }
-              >
-                <UsersIcon className="h-5 w-5" />
-                <span>Benutzer</span>
-              </NavLink>
-            </div>
-
-            <div className="pt-4">
-              <NavLink
-                to="/admin/customers"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
-                    isActive ? 'bg-gray-100 font-medium text-avanti-700' : 'text-gray-700'
-                  }`
-                }
-              >
-                <Building2Icon className="h-5 w-5" />
-                <span>Kunden</span>
-              </NavLink>
-            </div>
-
-            {/* Add Short-Break settings to admin menu */}
-            <NavLink
-              to="/admin/short-breaks"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
-                  isActive ? 'bg-gray-100 font-medium text-avanti-700' : 'text-gray-700'
-                }`
-              }
-            >
-              <Timer className="h-5 w-5" />
-              <span>Short-Break Verwaltung</span>
-            </NavLink>
-          </nav>
-        </div>
-        
-        <div className="p-4 mt-auto border-t border-gray-200">
-          <NavLink
-            to="/admin/settings"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
-                isActive ? 'bg-gray-100 font-medium text-avanti-700' : 'text-gray-700'
-              }`
-            }
+    <>
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="md:hidden"
           >
-            <SettingsIcon className="h-5 w-5" />
-            <span>Einstellungen</span>
-          </NavLink>
+            <Menu />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-full sm:w-64">
+          <SheetHeader>
+            <SheetTitle>Navigation</SheetTitle>
+            <SheetDescription>
+              Menü
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-1">
+            <Button
+              variant={pathname === '/' ? 'secondary' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => navigate('/')}
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+
+            <Button
+              variant={pathname === '/tasks' ? 'secondary' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => navigate('/tasks')}
+            >
+              <ListChecks className="h-4 w-4 mr-2" />
+              Aufgaben
+            </Button>
+
+            <Button
+              variant={pathname === '/tasks/completed' ? 'secondary' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => navigate('/tasks/completed')}
+            >
+              <ListChecks className="h-4 w-4 mr-2" />
+              Erledigte Aufgaben
+            </Button>
+
+            <Button
+              variant={pathname === '/knowledge' ? 'secondary' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => navigate('/knowledge')}
+            >
+              <Book className="h-4 w-4 mr-2" />
+              Wissensdatenbank
+            </Button>
+            
+            <Button
+              variant={pathname === '/call-center' ? 'secondary' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => navigate('/call-center')}
+            >
+              <PhoneIcon className="h-4 w-4 mr-2" />
+              Call Center
+            </Button>
+          </div>
+          <SheetHeader>
+            <SheetDescription>
+              Dein Profil
+            </SheetDescription>
+          </SheetHeader>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="  w-full justify-start">
+                <Avatar className="mr-2 h-8 w-8">
+                  <AvatarImage src="https://github.com/shadcn.png" />
+                  <AvatarFallback>CN</AvatarFallback>
+                </Avatar>
+                {user?.email}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Profil</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => signOut()}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Abmelden
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SheetContent>
+      </Sheet>
+      <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-gray-100 border-r">
+        <div className="flex-1 flex flex-col space-y-2 p-4">
+          <div className="mb-4">
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+            >
+              <Avatar className="mr-2 h-8 w-8">
+                <AvatarImage src="https://github.com/shadcn.png" />
+                <AvatarFallback>CN</AvatarFallback>
+              </Avatar>
+              {user?.email}
+            </Button>
+          </div>
+          <div className="space-y-1">
+            <Button
+              variant={pathname === '/' ? 'secondary' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => navigate('/')}
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+
+            <Button
+              variant={pathname === '/tasks' ? 'secondary' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => navigate('/tasks')}
+            >
+              <ListChecks className="h-4 w-4 mr-2" />
+              Aufgaben
+            </Button>
+
+            <Button
+              variant={pathname === '/tasks/completed' ? 'secondary' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => navigate('/tasks/completed')}
+            >
+              <ListChecks className="h-4 w-4 mr-2" />
+              Erledigte Aufgaben
+            </Button>
+
+            <Button
+              variant={pathname === '/knowledge' ? 'secondary' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => navigate('/knowledge')}
+            >
+              <Book className="h-4 w-4 mr-2" />
+              Wissensdatenbank
+            </Button>
+            
+            <Button
+              variant={pathname === '/call-center' ? 'secondary' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => navigate('/call-center')}
+            >
+              <PhoneIcon className="h-4 w-4 mr-2" />
+              Call Center
+            </Button>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="mt-auto w-full justify-start">
+                <Avatar className="mr-2 h-8 w-8">
+                  <AvatarImage src="https://github.com/shadcn.png" />
+                  <AvatarFallback>CN</AvatarFallback>
+                </Avatar>
+                {user?.email}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Profil</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => signOut()}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Abmelden
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-    </aside>
+    </>
   );
-};
-
-export default Sidebar;
+}

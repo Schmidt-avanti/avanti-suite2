@@ -50,6 +50,29 @@ const CreateTask = () => {
     form.setValue('endkundeId', endkundeId);
   };
 
+  // Initialize a timer entry when a task is created
+  const initializeTaskTimer = async (taskId: string, userId: string) => {
+    try {
+      // Create a timer entry for the new task
+      const { error } = await supabase
+        .from('task_times')
+        .insert({
+          task_id: taskId,
+          user_id: userId,
+          started_at: new Date().toISOString(),
+        });
+        
+      if (error) {
+        console.error("Error initializing task timer:", error);
+        return;
+      }
+      
+      console.log('Timer initialized for new task:', taskId);
+    } catch (err) {
+      console.error("Failed to initialize task timer:", err);
+    }
+  };
+
   const onSubmit = async (values: TaskFormValues) => {
     if (!user) return;
     setIsMatching(true);
@@ -118,6 +141,9 @@ const CreateTask = () => {
           status_from: 'new',
           status_to: 'new'
         });
+
+      // Initialize a timer for the newly created task
+      await initializeTaskTimer(task.id, user.id);
 
       const { error: messageError } = await supabase
         .from('task_messages')

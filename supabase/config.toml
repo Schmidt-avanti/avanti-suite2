@@ -1,11 +1,19 @@
 
+# supabase/config.toml
 project_id = "knoevkvjyuchhcmzsdpq"
+services = [
+  {id = "gotrue", name = "GoTrue", port = 9999},
+  {id = "storage", name = "Storage", port = 5000},
+]
 
-[functions.whatsapp-webhook]
+[api]
+port = 54321
+types = "types"
+auto_update_types = true
+
+# Twilio Webhook functions should not require auth
+[functions.twilio-voice-webhook]
 verify_jwt = false
 
-[functions.sendgrid-webhook]
-verify_jwt = false
-
-[functions.supabase-setup]
+[functions.twilio-task-assignment]
 verify_jwt = false

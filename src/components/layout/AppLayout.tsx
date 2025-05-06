@@ -1,35 +1,99 @@
 
-import React from 'react';
-import { Outlet } from 'react-router-dom';
+// src/components/layout/AppLayout.tsx
+import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
-import { SidebarProvider } from '@/components/ui/sidebar';
 import AppSidebar from './AppSidebar';
-import FloatingChatButton from '../floating-chat/FloatingChatButton';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { TwilioProvider } from '@/contexts/TwilioContext';
+import ActiveCallPanel from '@/components/call-center/ActiveCallPanel';
+import { Suspense, lazy, useState, useEffect } from 'react';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
-const AppLayout: React.FC = () => {
-  const isMobile = useIsMobile();
+// Lazy load components that might not be needed immediately
+const FloatingChatButton = lazy(() =>
+  import('@/components/floating-chat/FloatingChatButton')
+);
 
-  return (
-    <SidebarProvider defaultOpen={!isMobile}>
-      <div className="flex h-screen w-full overflow-hidden">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col h-screen overflow-hidden">
-          <Navbar />
-          <main className="flex-1 overflow-auto">
-            <div className={`px-8 py-6 w-full max-w-screen-2xl mx-auto ${isMobile ? 'px-3 py-4' : ''}`}>
-              <div className={`rounded-2xl bg-white border border-gray-100 shadow-sm ${isMobile ? 'p-3' : 'p-6'} min-h-[300px] max-h-full overflow-auto`}>
-                <div className="w-full max-w-full overflow-auto">
-                  <Outlet />
-                </div>
-              </div>
-            </div>
-          </main>
+const AppLayout = () => {
+  const location = useLocation();
+  const [isTwilioLoaded, setIsTwilioLoaded] = useState<boolean>(false);
+  
+  // Check if we're on routes that need Twilio
+  const isTwilioNeededRoute = 
+    location.pathname === '/call-center' || 
+    location.pathname.startsWith('/tasks/') ||
+    location.pathname === '/tasks';
+  
+  // Load Twilio script only when needed  
+  useEffect(() => {
+    if (isTwilioNeededRoute && !isTwilioLoaded) {
+      // Ensure Twilio script is loaded before initializing
+      const loadTwilioScript = () => {
+        if (!document.getElementById('twilio-js')) {
+          const script = document.createElement('script');
+          script.id = 'twilio-js';
+          script.src = 'https://sdk.twilio.com/js/client/v1.14/twilio.js';
+          script.async = true;
+          script.onload = () => {
+            console.log('Twilio script loaded in AppLayout');
+            setIsTwilioLoaded(true);
+          };
+          script.onerror = (e) => {
+            console.error('Failed to load Twilio script:', e);
+          };
+          document.body.appendChild(script);
+        } else if (window.Twilio && window.Twilio.Device) {
+          // If Twilio is already loaded
+          setIsTwilioLoaded(true);
+        } else {
+          // Script tag exists but Twilio might not be fully loaded
+          // Check periodically for Twilio global object
+          const checkInterval = setInterval(() => {
+            if (window.Twilio && window.Twilio.Device) {
+              setIsTwilioLoaded(true);
+              clearInterval(checkInterval);
+            }
+          }, 100);
+          
+          // Clear interval after 10 seconds to avoid infinite checking
+          setTimeout(() => clearInterval(checkInterval), 10000);
+        }
+      };
+      
+      loadTwilioScript();
+    }
+  }, [isTwilioNeededRoute, isTwilioLoaded]);
+    
+  // Create a layout with or without Twilio Provider based on route
+  const renderContent = () => (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 w-full">
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <AppSidebar />
+          <div className="flex flex-col flex-1 w-full">
+            <Navbar />
+            <main className="flex-1 p-4">
+              <Outlet />
+            </main>
+          </div>
+          <Suspense fallback={null}>
+            <FloatingChatButton />
+          </Suspense>
+          {isTwilioNeededRoute && isTwilioLoaded && <ActiveCallPanel />}
         </div>
-        <FloatingChatButton />
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </div>
   );
+  
+  // Conditionally wrap in TwilioProvider only when needed and script is loaded
+  if (isTwilioNeededRoute && isTwilioLoaded) {
+    return (
+      <TwilioProvider>
+        {renderContent()}
+      </TwilioProvider>
+    );
+  }
+  
+  return renderContent();
 };
 
 export default AppLayout;
