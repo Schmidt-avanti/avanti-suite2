@@ -1,4 +1,3 @@
-
 // src/services/TwilioService.ts
 import { supabase } from '@/integrations/supabase/client';
 import { Device } from 'twilio-client';
@@ -70,18 +69,33 @@ class TwilioService {
       }
       
       // Initialize the device with the token
-      this.device = new Device(token, {
-        debug: true,
-        enableRingingState: true
-      });
+      if (typeof Device === 'undefined') {
+        console.error('Twilio Device is not defined. Script may not be loaded yet.');
+        return false;
+      }
       
-      // Register event handlers
-      this.device.on('ready', this.handleDeviceReady.bind(this));
-      this.device.on('error', this.handleDeviceError.bind(this));
-      this.device.on('incoming', this.handleIncomingCall.bind(this));
-      this.device.on('cancel', this.handleCancelledCall.bind(this));
-      
-      return true;
+      // Use a try-catch when creating the Device to catch any initialization issues
+      try {
+        this.device = new Device(token, {
+          debug: true,
+          enableRingingState: true
+        });
+        
+        // Register event handlers
+        this.device.on('ready', this.handleDeviceReady.bind(this));
+        this.device.on('error', this.handleDeviceError.bind(this));
+        this.device.on('incoming', this.handleIncomingCall.bind(this));
+        this.device.on('cancel', this.handleCancelledCall.bind(this));
+        
+        return true;
+      } catch (deviceError) {
+        console.error('Error initializing Twilio Device:', deviceError);
+        this.updateCallState({
+          status: 'idle',
+          error: deviceError.message || 'Error initializing Twilio device'
+        });
+        return false;
+      }
     } catch (error) {
       console.error('Error setting up Twilio device:', error);
       this.updateCallState({
@@ -192,13 +206,21 @@ class TwilioService {
         error: null
       });
       
-      // Fix the connect parameters by combining them with the phoneNumber
-      const connection = await this.device.connect({
+      // Use a more explicit approach to handle the connect parameters
+      const connectParams = {
         params: {
           To: phoneNumber,
           ...params
         }
-      } as any); // Use type assertion to avoid TypeScript error
+      };
+      
+      console.log('Connecting with params:', connectParams);
+      
+      const connection = await this.device.connect(connectParams);
+      
+      if (!connection) {
+        throw new Error('Failed to establish connection');
+      }
       
       this.setupConnectionHandlers(connection);
       this.updateCallState({
@@ -211,7 +233,7 @@ class TwilioService {
       console.error('Error making call:', error);
       this.updateCallState({
         status: 'failed',
-        error: error.message
+        error: error.message || 'Unknown error making call'
       });
       return false;
     }
@@ -328,7 +350,7 @@ class TwilioService {
     console.error('Twilio device error:', error);
     this.updateCallState({
       status: 'failed',
-      error: error.message
+      error: error.message || 'Unknown Twilio device error'
     });
   }
   
@@ -497,7 +519,11 @@ class TwilioService {
     this.callListeners.push(callback);
     
     // Immediately notify with current state
-    callback(this.callState);
+    try {
+      callback(this.callState);
+    } catch (error) {
+      console.error('Error in initial call state listener notification:', error);
+    }
     
     // Return unsubscribe function
     return () => {
@@ -540,6 +566,6 @@ class TwilioService {
 }
 
 // Make supabase public to be used in the class methods
-const twilioService = new TwilioService() as TwilioService & { supabase: any };
+const twilioService = new TwilioService();
 (twilioService as any).supabase = supabase;
 export default twilioService;

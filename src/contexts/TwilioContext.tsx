@@ -1,4 +1,3 @@
-
 // src/contexts/TwilioContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import twilioService, { CallState } from '@/services/TwilioService';
@@ -29,24 +28,52 @@ export const TwilioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [callState, setCallState] = useState<CallState>(twilioService.getCallState());
   const [isAvailable, setIsAvailable] = useState<boolean>(false);
   const [isSetup, setIsSetup] = useState<boolean>(false);
+  const [setupAttempted, setSetupAttempted] = useState<boolean>(false);
   
   // Set up Twilio device and subscribe to events
   const setupTwilio = useCallback(async () => {
-    if (!user) return false;
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'You must be logged in to use the phone system.',
+        variant: 'destructive'
+      });
+      return false;
+    }
     
     try {
+      setSetupAttempted(true);
+      
       // Make sure worker is registered
-      await twilioService.registerWorker();
+      const workerId = await twilioService.registerWorker();
+      
+      if (!workerId) {
+        toast({
+          title: 'Twilio Setup Error',
+          description: 'Failed to register as a Twilio worker. Please check your connection and try again.',
+          variant: 'destructive'
+        });
+        return false;
+      }
       
       // Set up the device
       const success = await twilioService.setupDevice();
       setIsSetup(success);
+      
+      if (!success) {
+        toast({
+          title: 'Twilio Setup Error',
+          description: 'Failed to set up the Twilio device. Please check browser permissions and try again.',
+          variant: 'destructive'
+        });
+      }
+      
       return success;
     } catch (error) {
       console.error('Error setting up Twilio:', error);
       toast({
         title: 'Twilio Setup Error',
-        description: `Failed to set up Twilio: ${error.message}`,
+        description: `Failed to set up Twilio: ${error.message || 'Unknown error'}`,
         variant: 'destructive'
       });
       return false;
@@ -55,25 +82,40 @@ export const TwilioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   
   // Toggle agent availability for calls
   const toggleAvailability = useCallback(async () => {
-    const newStatus = isAvailable ? 'offline' : 'available';
-    const success = await twilioService.updateVoiceStatus(newStatus);
-    
-    if (success) {
-      setIsAvailable(!isAvailable);
-      toast({
-        title: 'Status Updated',
-        description: `You are now ${newStatus} for calls.`,
-      });
-    } else {
-      toast({
-        title: 'Status Update Failed',
-        description: 'Failed to update your availability status.',
-        variant: 'destructive'
-      });
+    if (!isSetup && !setupAttempted) {
+      const setupSuccess = await setupTwilio();
+      if (!setupSuccess) return false;
     }
     
-    return success;
-  }, [isAvailable, toast]);
+    const newStatus = isAvailable ? 'offline' : 'available';
+    try {
+      const success = await twilioService.updateVoiceStatus(newStatus);
+      
+      if (success) {
+        setIsAvailable(!isAvailable);
+        toast({
+          title: 'Status Updated',
+          description: `You are now ${newStatus} for calls.`,
+        });
+      } else {
+        toast({
+          title: 'Status Update Failed',
+          description: 'Failed to update your availability status.',
+          variant: 'destructive'
+        });
+      }
+      
+      return success;
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      toast({
+        title: 'Status Update Failed',
+        description: `Error: ${error.message || 'Unknown error'}`,
+        variant: 'destructive'
+      });
+      return false;
+    }
+  }, [isAvailable, isSetup, setupAttempted, setupTwilio, toast]);
   
   // Fetch initial availability status from profile
   useEffect(() => {
