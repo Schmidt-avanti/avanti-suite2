@@ -69,15 +69,16 @@ class TwilioService {
         return false;
       }
       
-      // Initialize the device with the token
-      if (typeof Device === 'undefined') {
+      // Make sure Twilio script is loaded and Device is available
+      if (typeof window === 'undefined' || typeof window.Twilio === 'undefined' || typeof window.Twilio.Device === 'undefined') {
         console.error('Twilio Device is not defined. Script may not be loaded yet.');
         return false;
       }
       
       // Use a try-catch when creating the Device to catch any initialization issues
       try {
-        this.device = new Device(token, {
+        // Use window.Twilio.Device constructor directly instead of importing Device
+        this.device = new window.Twilio.Device(token, {
           debug: true,
           enableRingingState: true
         });
@@ -207,14 +208,27 @@ class TwilioService {
         error: null
       });
       
-      // Fix: Pass parameters directly as a Record<string, string>
-      // The Twilio Device.connect() expects a flat object with string values
+      // Make sure we pass the parameters correctly as a flat object with string keys and values
       const connectParams: Record<string, string> = {
-        To: phoneNumber,
-        ...params
+        To: phoneNumber
       };
       
+      // Add any additional parameters, ensuring they are string values
+      if (params && typeof params === 'object') {
+        Object.keys(params).forEach(key => {
+          const value = params[key];
+          if (value !== undefined && value !== null) {
+            connectParams[key] = String(value);
+          }
+        });
+      }
+      
       console.log('Connecting with params:', connectParams);
+      
+      // Make sure we have a Device instance before trying to connect
+      if (!this.device) {
+        throw new Error('Device is not initialized');
+      }
       
       const connection = await this.device.connect(connectParams);
       
