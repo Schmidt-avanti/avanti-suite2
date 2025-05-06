@@ -24,6 +24,11 @@ export function ShortBreakButton() {
         }
       } catch (error) {
         console.error("Failed to start break:", error);
+        toast({
+          title: "Fehler",
+          description: "Die Pause konnte nicht gestartet werden.",
+          variant: "destructive"
+        });
       }
     }
     setOpen(isOpen);

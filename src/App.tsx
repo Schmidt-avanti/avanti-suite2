@@ -64,6 +64,7 @@ import KnowledgeArticleEdit from '@/components/knowledge/KnowledgeArticleEdit';
 import WhatsappPage from "@/pages/Whatsapp";
 import CallCenter from '@/pages/CallCenter';
 
+// Use a single instance of QueryClient for the entire app
 const queryClient = new QueryClient();
 
 const App = () => {
