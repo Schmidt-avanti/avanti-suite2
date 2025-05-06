@@ -113,9 +113,18 @@ class TwilioService {
   // Register a worker with Twilio
   async registerWorker(attributes = {}): Promise<string | null> {
     try {
+      // Get user data first
+      const userResponse = await supabase.auth.getUser();
+      const userId = userResponse.data?.user?.id;
+
+      if (!userId) {
+        console.error('User not authenticated');
+        return null;
+      }
+      
       const { data, error } = await supabase.functions.invoke('twilio-register-worker', {
         body: {
-          userId: supabase.auth.getUser()?.data?.user?.id,
+          userId,
           attributes
         }
       });
@@ -183,12 +192,13 @@ class TwilioService {
         error: null
       });
       
+      // Fix the connect parameters by combining them with the phoneNumber
       const connection = await this.device.connect({
         params: {
           To: phoneNumber,
           ...params
         }
-      });
+      } as any); // Use type assertion to avoid TypeScript error
       
       this.setupConnectionHandlers(connection);
       this.updateCallState({
@@ -529,6 +539,7 @@ class TwilioService {
   }
 }
 
-// Create a singleton instance
-const twilioService = new TwilioService();
+// Make supabase public to be used in the class methods
+const twilioService = new TwilioService() as TwilioService & { supabase: any };
+(twilioService as any).supabase = supabase;
 export default twilioService;
