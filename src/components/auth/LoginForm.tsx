@@ -169,15 +169,7 @@ const LoginForm = () => {
           </form>
         </CardContent>
 
-        <CardFooter className="flex flex-col space-y-4 pt-6">
-          <div className="bg-gray-50 text-sm p-4 rounded-md border w-full">
-            <p className="font-medium mb-2">Test-Zugangsdaten:</p>
-            <ul className="ml-4 list-disc text-gray-700">
-              <li><strong>E-Mail:</strong> aa.schmidt@ja-dialog.de</li>
-              <li><strong>Passwort:</strong> Passwort</li>
-            </ul>
-          </div>
-        </CardFooter>
+      
       </Card>
 
       {showTransition && (
