@@ -59,13 +59,14 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
             Zurück zur Übersicht
           </Button>
           
-          <div className="flex flex-col text-gray-500 ml-4">
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
+          <div className="flex items-center space-x-4 text-gray-500 ml-4">
+            <div className="flex items-center">
+              <Clock className="h-4 w-4 mr-1" />
               <span className="text-sm font-medium">Sitzung: {formattedSessionTime}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
+            
+            <div className="flex items-center">
+              <Clock className="h-4 w-4 mr-1" />
               <span className="text-sm font-medium">Gesamt: {formattedTotalTime}</span>
             </div>
           </div>
