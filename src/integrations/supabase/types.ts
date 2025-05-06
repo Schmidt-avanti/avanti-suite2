@@ -9,89 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      call_sessions: {
-        Row: {
-          agent_id: string | null
-          call_notes: string | null
-          call_sid: string | null
-          created_at: string | null
-          customer_id: string | null
-          direction: string
-          duration_seconds: number | null
-          ended_at: string | null
-          endkunde_id: string | null
-          endkunde_phone: string | null
-          id: string
-          recording_url: string | null
-          started_at: string | null
-          status: string
-          task_id: string | null
-        }
-        Insert: {
-          agent_id?: string | null
-          call_notes?: string | null
-          call_sid?: string | null
-          created_at?: string | null
-          customer_id?: string | null
-          direction: string
-          duration_seconds?: number | null
-          ended_at?: string | null
-          endkunde_id?: string | null
-          endkunde_phone?: string | null
-          id?: string
-          recording_url?: string | null
-          started_at?: string | null
-          status: string
-          task_id?: string | null
-        }
-        Update: {
-          agent_id?: string | null
-          call_notes?: string | null
-          call_sid?: string | null
-          created_at?: string | null
-          customer_id?: string | null
-          direction?: string
-          duration_seconds?: number | null
-          ended_at?: string | null
-          endkunde_id?: string | null
-          endkunde_phone?: string | null
-          id?: string
-          recording_url?: string | null
-          started_at?: string | null
-          status?: string
-          task_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "call_sessions_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "call_sessions_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "call_sessions_endkunde_id_fkey"
-            columns: ["endkunde_id"]
-            isOneToOne: false
-            referencedRelation: "endkunden"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "call_sessions_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       customer_contacts: {
         Row: {
           created_at: string
@@ -589,9 +506,6 @@ export type Database = {
           id: string
           is_active: boolean
           role: string
-          twilio_worker_attributes: Json | null
-          twilio_worker_sid: string | null
-          voice_status: string | null
         }
         Insert: {
           created_at?: string
@@ -600,9 +514,6 @@ export type Database = {
           id: string
           is_active?: boolean
           role: string
-          twilio_worker_attributes?: Json | null
-          twilio_worker_sid?: string | null
-          voice_status?: string | null
         }
         Update: {
           created_at?: string
@@ -611,9 +522,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           role?: string
-          twilio_worker_attributes?: Json | null
-          twilio_worker_sid?: string | null
-          voice_status?: string | null
         }
         Relationships: []
       }
