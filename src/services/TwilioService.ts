@@ -1,4 +1,3 @@
-
 // src/services/TwilioService.ts
 import { supabase } from '@/integrations/supabase/client';
 import { Device } from 'twilio-client';
@@ -70,14 +69,14 @@ class TwilioService {
       }
       
       // Make sure Twilio script is loaded and Device is available
-      if (typeof window === 'undefined' || typeof window.Twilio === 'undefined' || typeof window.Twilio.Device === 'undefined') {
+      if (typeof window === 'undefined' || !window.Twilio || !window.Twilio.Device) {
         console.error('Twilio Device is not defined. Script may not be loaded yet.');
         return false;
       }
       
       // Use a try-catch when creating the Device to catch any initialization issues
       try {
-        // Use window.Twilio.Device constructor directly instead of importing Device
+        // Use window.Twilio.Device constructor directly
         this.device = new window.Twilio.Device(token, {
           debug: true,
           enableRingingState: true

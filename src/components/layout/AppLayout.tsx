@@ -40,8 +40,21 @@ const AppLayout = () => {
             console.error('Failed to load Twilio script:', e);
           };
           document.body.appendChild(script);
-        } else {
+        } else if (window.Twilio && window.Twilio.Device) {
+          // If Twilio is already loaded
           setIsTwilioLoaded(true);
+        } else {
+          // Script tag exists but Twilio might not be fully loaded
+          // Check periodically for Twilio global object
+          const checkInterval = setInterval(() => {
+            if (window.Twilio && window.Twilio.Device) {
+              setIsTwilioLoaded(true);
+              clearInterval(checkInterval);
+            }
+          }, 100);
+          
+          // Clear interval after 10 seconds to avoid infinite checking
+          setTimeout(() => clearInterval(checkInterval), 10000);
         }
       };
       
