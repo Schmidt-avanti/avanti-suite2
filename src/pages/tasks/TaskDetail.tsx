@@ -49,7 +49,7 @@ const TaskDetail = () => {
   } = useTaskDetail(id, user);
 
   // Pass task status to timer hook if available
-  const { formattedTime } = useTaskTimer({ 
+  const { formattedSessionTime, formattedTotalTime } = useTaskTimer({ 
     taskId: id || '', 
     isActive,
     status: task?.status
@@ -162,7 +162,8 @@ const TaskDetail = () => {
       <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-0">
         <TaskDetailHeader 
           task={task}
-          formattedTime={formattedTime}
+          formattedSessionTime={formattedSessionTime}
+          formattedTotalTime={formattedTotalTime}
           isUnassigned={isUnassigned}
           user={user}
           canAssignOrForward={canAssignOrForward}

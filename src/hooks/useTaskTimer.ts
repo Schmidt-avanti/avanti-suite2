@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,7 +12,8 @@ interface TaskTimerOptions {
 
 export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOptions) => {
   const { user } = useAuth();
-  const [elapsedTime, setElapsedTime] = useState(0);
+  const [totalTime, setTotalTime] = useState(0);
+  const [sessionTime, setSessionTime] = useState(0);
   const [isTracking, setIsTracking] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -42,24 +42,19 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
       // Calculate sum of all completed durations
       const totalCompletedTime = totalDurations?.reduce((sum, entry) => 
         sum + (entry.duration_seconds || 0), 0) || 0;
-
-      // Add current user's active session time (if any)
-      const totalSeconds = totalCompletedTime + currentSessionTimeRef.current;
       
       console.log('Total time calculation:', {
         taskId,
         totalCompletedTime,
-        currentSession: currentSessionTimeRef.current,
-        total: totalSeconds,
         userId: user?.id,
         status,
         entriesCount: totalDurations?.length || 0
       });
 
-      return totalSeconds;
+      return totalCompletedTime;
     } catch (err) {
       console.error('Error calculating total time:', err);
-      return currentSessionTimeRef.current;
+      return 0;
     }
   };
 
@@ -69,7 +64,7 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
 
     const initializeTimer = async () => {
       const totalSeconds = await fetchAccumulatedTime();
-      setElapsedTime(totalSeconds);
+      setTotalTime(totalSeconds);
     };
 
     initializeTimer();
@@ -87,7 +82,7 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
         async () => {
           console.log('Detected change in task_times - refreshing total time');
           const updatedTime = await fetchAccumulatedTime();
-          setElapsedTime(updatedTime);
+          setTotalTime(updatedTime);
         }
       )
       .subscribe();
@@ -122,6 +117,7 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
           const startTime = new Date(data[0].started_at).getTime();
           startTimeRef.current = startTime;
           currentSessionTimeRef.current = Math.floor((Date.now() - startTime) / 1000);
+          setSessionTime(currentSessionTimeRef.current);
           setIsTracking(true);
           
           if (shouldBeActive(status)) {
@@ -149,8 +145,10 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
     timerRef.current = setInterval(async () => {
       if (startTimeRef.current) {
         currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        const totalTime = await fetchAccumulatedTime();
-        setElapsedTime(totalTime);
+        setSessionTime(currentSessionTimeRef.current);
+        
+        // We don't need to update total time here as it's updated via subscription
+        // This keeps the UI responsive for the session time
       }
     }, 1000);
   };
@@ -184,6 +182,7 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
       taskTimeEntryRef.current = data.id;
       startTimeRef.current = Date.now();
       currentSessionTimeRef.current = 0;
+      setSessionTime(0);
       setIsTracking(true);
       startLocalTimer();
 
@@ -222,10 +221,11 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
       setIsTracking(false);
       startTimeRef.current = null;
       taskTimeEntryRef.current = null;
+      setSessionTime(0);
 
       // Update total time immediately after stopping
       const updatedTime = await fetchAccumulatedTime();
-      setElapsedTime(updatedTime);
+      setTotalTime(updatedTime);
 
     } catch (err) {
       console.error('Error stopping task timer:', err);
@@ -259,8 +259,10 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
   }, [isActive, taskId, status]);
 
   return {
-    elapsedTime,
-    formattedTime: formatTime(elapsedTime),
+    sessionTime,
+    totalTime,
+    formattedSessionTime: formatTime(sessionTime),
+    formattedTotalTime: formatTime(totalTime),
     isTracking
   };
 };
