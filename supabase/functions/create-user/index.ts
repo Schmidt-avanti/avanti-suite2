@@ -143,38 +143,111 @@ async function handleCreateUser(
 
   console.log(`Processing user creation request for email: ${email}`)
 
-  // Create the user
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: userData
-  })
+  // First check if a user with this email already exists
+  const { data: existingUser, error: getUserError } = await supabaseAdmin.auth.admin.listUsers({
+    filter: { email }
+  });
 
-  if (error) {
-    console.error('Error creating user:', error)
+  if (getUserError) {
+    console.error('Error checking existing user:', getUserError);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Failed to check for existing user: ' + getUserError.message }),
       { 
-        status: 400, 
+        status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    )
+    );
   }
 
-  console.log('User created successfully:', data.user.id)
+  // If user already exists, return a specific error
+  if (existingUser && existingUser.users && existingUser.users.length > 0) {
+    console.log('User already exists with email:', email);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits',
+        code: 'EMAIL_EXISTS' 
+      }),
+      { 
+        status: 409, // Conflict status code
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
 
-  // Return the user ID
-  return new Response(
-    JSON.stringify({ 
-      userId: data.user.id,
-      message: 'User created successfully' 
-    }),
-    { 
-      status: 200, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+  // Create the user
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: userData
+    });
+
+    if (error) {
+      console.error('Error creating user:', error);
+      // If it's a "user exists" error, return a more specific message
+      if (error.message && error.message.includes('already been registered')) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits',
+            code: 'EMAIL_EXISTS'
+          }),
+          { 
+            status: 409, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ error: error.message }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
-  )
+
+    console.log('User created successfully:', data.user.id);
+    
+    // No need to explicitly update the profile here since the DB trigger handles it
+    // Just make sure the email is stored in profile
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        email: email
+      })
+      .eq('id', data.user.id);
+
+    if (profileError) {
+      // Just log this error but continue - the user was created successfully
+      console.error("Error ensuring email in profile:", profileError);
+    }
+
+    // Return the user ID
+    return new Response(
+      JSON.stringify({ 
+        userId: data.user.id,
+        message: 'User created successfully' 
+      }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  } catch (createError: any) {
+    console.error('Error in user creation:', createError);
+    return new Response(
+      JSON.stringify({ 
+        error: createError.message || 'Failed to create user', 
+        details: createError.code || 'Unknown error code'
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
 }
 
 async function handleDeleteUser(

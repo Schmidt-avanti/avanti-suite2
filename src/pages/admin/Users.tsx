@@ -102,57 +102,80 @@ const UsersAdminPage: React.FC = () => {
           description: "Der Benutzer wurde aktualisiert.",
         });
       } else {
-        // Creating new user via edge function
-        const { data, error } = await supabase.functions.invoke('create-user', {
-          body: {
-            action: 'create',
-            email: user.email,
-            password: "W1llkommen@avanti",
-            userData: {
-              role: user.role,
-              "Full Name": user.name,
-              needs_password_reset: true,
-              is_active: true
+        try {
+          // Creating new user via edge function
+          const { data, error } = await supabase.functions.invoke('create-user', {
+            body: {
+              action: 'create',
+              email: user.email,
+              password: "W1llkommen@avanti",
+              userData: {
+                role: user.role,
+                "Full Name": user.name,
+                needs_password_reset: true,
+                is_active: true
+              }
+            }
+          });
+
+          if (error) {
+            throw error;
+          }
+
+          if (data?.error) {
+            // Handle API-level errors
+            if (data.code === 'EMAIL_EXISTS') {
+              toast({
+                variant: "destructive",
+                title: "Fehler bei der Benutzerregistrierung",
+                description: data.error || "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.",
+              });
+              return;
+            } else {
+              throw new Error(data.error);
             }
           }
-        });
 
-        if (error) throw error;
+          if (data?.userId) {
+            await saveCustomerAssignments(
+              data.userId, 
+              user.customers.map(c => c.id)
+            );
 
-        if (data?.userId) {
-          // Make sure the profile has email stored
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({
-              email: user.email
-            })
-            .eq('id', data.userId);
-
-          if (profileError) {
-            console.error("Error updating profile email:", profileError);
-          }
+            const newUser: User & { customers: Customer[], is_active: boolean } = {
+              id: data.userId,
+              email: user.email,
+              role: user.role,
+              createdAt: new Date().toISOString(),
+              customers: user.customers,
+              is_active: true,
+              firstName: user.name
+            };
             
-          await saveCustomerAssignments(
-            data.userId, 
-            user.customers.map(c => c.id)
-          );
-
-          const newUser: User & { customers: Customer[], is_active: boolean } = {
-            id: data.userId,
-            email: user.email,
-            role: user.role,
-            createdAt: new Date().toISOString(),
-            customers: user.customers,
-            is_active: true,
-            firstName: user.name
-          };
+            setUsers(prev => [...prev, newUser]);
+            
+            toast({
+              title: "Benutzer angelegt",
+              description: `Der Benutzer wurde erfolgreich angelegt. Passwort: W1llkommen@avanti`,
+            });
+          }
+        } catch (apiError: any) {
+          // Handle network or other errors
+          console.error("API error:", apiError);
           
-          setUsers(prev => [...prev, newUser]);
-          
-          toast({
-            title: "Benutzer angelegt",
-            description: `Der Benutzer wurde erfolgreich angelegt. Passwort: W1llkommen@avanti`,
-          });
+          // Check if it's an email exists error
+          if (apiError.message && (
+              apiError.message.includes('already been registered') ||
+              apiError.message.includes('existiert bereits')
+          )) {
+            toast({
+              variant: "destructive",
+              title: "E-Mail-Adresse existiert bereits",
+              description: "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.",
+            });
+          } else {
+            throw apiError;
+          }
         }
       }
     } catch (error: any) {

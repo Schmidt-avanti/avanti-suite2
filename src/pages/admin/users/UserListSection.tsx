@@ -137,7 +137,13 @@ const UserListSection: React.FC<UserListSectionProps> = ({
 
       if (error) throw error;
 
-      setUsers(users => users.filter(user => user.id !== id));
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      // Refresh the user list
+      fetchUsers();
+      
       toast({
         title: "Benutzer gelöscht",
         description: "Das Profil wurde gelöscht.",
