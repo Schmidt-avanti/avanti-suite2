@@ -11,9 +11,13 @@ port = 54321
 types = "types"
 auto_update_types = true
 
-# Twilio Webhook functions should not require auth
+# Webhook functions should not require auth
 [functions.twilio-voice-webhook]
 verify_jwt = false
 
 [functions.twilio-task-assignment]
+verify_jwt = false
+
+# Make the SendGrid webhook publicly accessible
+[functions.sendgrid-webhook]
 verify_jwt = false
