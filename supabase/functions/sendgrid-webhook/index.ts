@@ -86,6 +86,13 @@ serve(async (req) => {
         let messageId = null;
         let inReplyTo = null;
         let references = [];
+        let subjectIsReply = false;
+        
+        // Check if subject starts with Re: or RE: or similar
+        if (data.subject && /^re\s*:/i.test(data.subject.trim())) {
+          subjectIsReply = true;
+          console.log('Subject indicates this is a reply:', data.subject);
+        }
         
         // Try to extract message_id and in_reply_to from headers
         if (rawHeaders) {
@@ -99,6 +106,7 @@ serve(async (req) => {
           const inReplyToMatch = rawHeaders.match(/In-Reply-To:\s*<([^>]+)>/i);
           if (inReplyToMatch && inReplyToMatch[1]) {
             inReplyTo = inReplyToMatch[1];
+            console.log('Found In-Reply-To header:', inReplyTo);
           }
           
           // Extract References
@@ -106,6 +114,7 @@ serve(async (req) => {
           if (referencesMatch && referencesMatch[1]) {
             // Split references by spaces, but only keep message IDs (those that look like <something>)
             references = referencesMatch[1].split(/\s+/).filter(ref => /^<.+>$/.test(ref)).map(ref => ref.substring(1, ref.length - 1));
+            console.log('Found References header with', references.length, 'IDs');
           }
         }
         
@@ -113,6 +122,7 @@ serve(async (req) => {
         data.message_id = messageId || data.sg_message_id;
         data.in_reply_to = inReplyTo;
         data.reference_ids = references;
+        data.subject_is_reply = subjectIsReply;
       } catch (error) {
         console.error('Error extracting header information:', error);
       }
@@ -176,11 +186,13 @@ serve(async (req) => {
       
       console.log(`Looking for customer with avanti_email: ${actualToEmail}`);
 
-      // First try to find a related task if this is a reply
+      // Check if this is a reply to an existing task by looking up message_id
       let relatedTaskId = null;
+      let isReply = false;
       
+      // First, try to find a related task using the In-Reply-To header
       if (event.in_reply_to) {
-        // Try to find a related task by message_id
+        isReply = true;
         const { data: threadData, error: threadError } = await supabase
           .from('email_threads')
           .select('task_id')
@@ -188,10 +200,52 @@ serve(async (req) => {
           .maybeSingle();
         
         if (threadError) {
-          console.error('Error finding related thread:', threadError);
+          console.error('Error finding related thread by In-Reply-To:', threadError);
         } else if (threadData) {
           relatedTaskId = threadData.task_id;
-          console.log(`Found related task: ${relatedTaskId} for reply to: ${event.in_reply_to}`);
+          console.log(`Found related task: ${relatedTaskId} using In-Reply-To header: ${event.in_reply_to}`);
+        }
+      }
+      
+      // If we didn't find a task by In-Reply-To, try checking the References field
+      if (!relatedTaskId && event.reference_ids && event.reference_ids.length > 0) {
+        isReply = true;
+        for (const refId of event.reference_ids) {
+          const { data: refThreadData, error: refThreadError } = await supabase
+            .from('email_threads')
+            .select('task_id')
+            .eq('message_id', refId)
+            .maybeSingle();
+            
+          if (refThreadError) {
+            console.error(`Error finding thread by reference ID ${refId}:`, refThreadError);
+          } else if (refThreadData) {
+            relatedTaskId = refThreadData.task_id;
+            console.log(`Found related task: ${relatedTaskId} using References header: ${refId}`);
+            break;
+          }
+        }
+      }
+      
+      // If still no match, try to match by subject (if it looks like a reply)
+      if (!relatedTaskId && event.subject_is_reply) {
+        isReply = true;
+        // Extract the original subject without the "Re:" prefix
+        const originalSubject = event.subject.replace(/^re\s*:\s*/i, '').trim();
+        if (originalSubject) {
+          const { data: subjectThreads, error: subjectError } = await supabase
+            .from('email_threads')
+            .select('task_id')
+            .ilike('subject', originalSubject)
+            .order('created_at', { ascending: false })
+            .limit(1);
+            
+          if (subjectError) {
+            console.error('Error finding thread by subject:', subjectError);
+          } else if (subjectThreads && subjectThreads.length > 0) {
+            relatedTaskId = subjectThreads[0].task_id;
+            console.log(`Found related task: ${relatedTaskId} using subject match: "${originalSubject}"`);
+          }
         }
       }
       
@@ -212,7 +266,9 @@ serve(async (req) => {
         const customerName = customerData?.name || 'Unknown';
         
         if (relatedTaskId) {
-          // If this is a reply to an existing task, add it to the email_threads
+          console.log(`This is a reply to an existing task (${relatedTaskId}), adding to email_threads...`);
+          
+          // Generate a new UUID for this thread entry
           const newThreadId = uuidv4();
           
           const { error: threadInsertError } = await supabase
@@ -247,6 +303,8 @@ serve(async (req) => {
               .eq('id', emailId);
           }
         } else {
+          console.log(`No related task found, creating new task from email...`);
+          
           // Create a new task from this email
           const { data: newTask, error: taskError } = await supabase.from('tasks').insert({
             title: event.subject || 'Email ohne Betreff',
