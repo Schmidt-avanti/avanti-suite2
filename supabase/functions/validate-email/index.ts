@@ -38,15 +38,42 @@ serve(async (req) => {
       );
     }
 
-    // Query the profiles table to check if the email exists
-    const { data, error } = await supabase
+    // First check if the email exists in auth.users via our view
+    const { data: authData, error: authError } = await supabase
+      .from('auth_users_view')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (authError) {
+      console.error('Error querying auth_users_view:', authError);
+      // Continue checking profiles table since this is just a fallback
+    }
+
+    // If found in auth users, we can return immediately
+    if (authData) {
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          exists: true,
+          message: "Email exists" 
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200 
+        }
+      );
+    }
+
+    // Fallback to checking profiles table for the email
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('id')
       .eq('email', email)
       .maybeSingle();
 
-    if (error) {
-      console.error('Error validating email:', error);
+    if (profileError) {
+      console.error('Error validating email in profiles:', profileError);
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -59,12 +86,12 @@ serve(async (req) => {
       );
     }
 
-    // Return whether the email exists
+    // Return whether the email exists in either table
     return new Response(
       JSON.stringify({ 
         success: true, 
-        exists: !!data,
-        message: data ? "Email exists" : "Email not found" 
+        exists: !!profileData || !!authData,
+        message: (!!profileData || !!authData) ? "Email exists" : "Email not found" 
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
