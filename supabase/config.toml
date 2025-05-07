@@ -21,3 +21,7 @@ verify_jwt = false
 # Make the SendGrid webhook publicly accessible
 [functions.sendgrid-webhook]
 verify_jwt = false
+
+# Make the validate-email function publicly accessible with JWT verification
+[functions.validate-email]
+verify_jwt = true

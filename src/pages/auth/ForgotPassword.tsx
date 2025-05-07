@@ -32,6 +32,23 @@ const ForgotPassword = () => {
     setSuccess(null);
 
     try {
+      // First check if the email exists in our database
+      const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-email', {
+        body: { email }
+      });
+
+      if (validationError) {
+        throw new Error('Fehler bei der Validierung der E-Mail-Adresse.');
+      }
+
+      if (!validationData.exists) {
+        setError('Diese E-Mail-Adresse ist nicht registriert. Bitte kontaktiere deinen Administrator, wenn du Zugang benötigst.');
+        setShake(true);
+        setTimeout(() => setShake(false), 600);
+        return;
+      }
+
+      // If email exists, proceed with sending the magic link
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
