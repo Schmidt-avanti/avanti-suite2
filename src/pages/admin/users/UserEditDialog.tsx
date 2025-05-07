@@ -20,7 +20,7 @@ interface Props {
 const userRoles: { value: UserRole, label: string }[] = [
   { value: "admin", label: "Admin" },
   { value: "agent", label: "Agent" },
-  { value: "client", label: "Client" }
+  { value: "customer", label: "Client" }
 ];
 
 const UserEditDialog: React.FC<Props> = ({
@@ -51,15 +51,15 @@ const UserEditDialog: React.FC<Props> = ({
     }
   }, [defaultValues, open]);
 
-  // Nur ein Kunde für Client möglich
+  // Nur ein Kunde für Customer möglich
   useEffect(() => {
-    if (role === "client" && selectedCustomers.length > 1) {
+    if (role === "customer" && selectedCustomers.length > 1) {
       setSelectedCustomers([selectedCustomers[0]]);
     }
   }, [role, selectedCustomers]);
 
   const handleCustomerSelect = (customerId: string) => {
-    if (role === "client") {
+    if (role === "customer") {
       setSelectedCustomers((current) =>
         current[0] === customerId ? [] : [customerId]
       );
@@ -169,7 +169,7 @@ const UserEditDialog: React.FC<Props> = ({
           >
             {customers.map((cust) => {
               const checked = selectedCustomers.includes(cust.id);
-              const disabled = (role === "client"
+              const disabled = (role === "customer"
                 && selectedCustomers.length > 0
                 && !selectedCustomers.includes(cust.id)
               );
@@ -198,7 +198,7 @@ const UserEditDialog: React.FC<Props> = ({
           </div>
         )}
         <p className="mt-2 text-xs text-muted-foreground">
-          {role === "client"
+          {role === "customer"
             ? "Client kann nur einem Kunden zugeordnet sein"
             : "Mehrfachauswahl ist möglich"}
         </p>

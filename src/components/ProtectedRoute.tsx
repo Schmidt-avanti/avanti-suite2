@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
-  allowedRoles = ["admin", "agent", "client"],
+  allowedRoles = ["admin", "agent", "customer"],
 }) => {
   const { user, session, isLoading } = useAuth();
   const location = useLocation();
@@ -45,7 +45,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       return <Navigate to="/admin/dashboard" replace />;
     } else if (user.role === 'agent') {
       return <Navigate to="/agent/dashboard" replace />;
-    } else if (user.role === 'client') {
+    } else if (user.role === 'customer') {
       return <Navigate to="/client/dashboard" replace />;
     }
     return <Navigate to="/error" replace />;

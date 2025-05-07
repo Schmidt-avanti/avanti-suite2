@@ -1,4 +1,3 @@
-
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -71,8 +70,8 @@ export interface Task {
   assigned_to?: string;
 }
 
-// Add missing types that are causing errors
-export type UserRole = 'admin' | 'agent' | 'client';
+// Update UserRole type to match database constraint
+export type UserRole = 'admin' | 'agent' | 'customer';
 
 export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'comment' | 'assign';
 

@@ -19,7 +19,7 @@ const Index = () => {
       navigate("/admin/dashboard", { replace: true });
     } else if (user.role === "agent") {
       navigate("/agent/dashboard", { replace: true });
-    } else if (user.role === "client") {
+    } else if (user.role === "customer") {
       navigate("/meine-aufgaben", { replace: true });
     } else {
       navigate("/error", { replace: true });
