@@ -55,13 +55,19 @@ serve(async (req) => {
     const callSid = task?.call_sid;
     
     if (callSid) {
-      // Update the call session with agent info
+      // Update the call session with agent info and twilio_phone_number_id if present
+      const updateData: any = {
+        agent_id: agentId,
+        status: 'assigned'
+      };
+      
+      if (task.twilio_phone_number_id) {
+        updateData.twilio_phone_number_id = task.twilio_phone_number_id;
+      }
+      
       const { data, error } = await supabase
         .from('call_sessions')
-        .update({
-          agent_id: agentId,
-          status: 'assigned'
-        })
+        .update(updateData)
         .eq('call_sid', callSid)
         .select();
         
@@ -86,11 +92,25 @@ serve(async (req) => {
           taskId = existingCallSession.task_id;
         } else {
           // Create a new task for this call
+          let taskTitle = `Call from ${task.from || 'Unknown'}`;
+          let taskDescription = `Incoming call from ${task.from || 'Unknown'}`;
+          
+          // If we have customer info, use it in the title/description
+          if (task.customer_name) {
+            taskTitle += ` (${task.customer_name})`;
+            taskDescription += ` for ${task.customer_name}`;
+          }
+          
+          // If we have a phone number it was called on, add it
+          if (task.to) {
+            taskDescription += ` to ${task.to}`;
+          }
+          
           const { data: newTask, error: taskError } = await supabase
             .from('tasks')
             .insert({
-              title: `Call from ${task.from || 'Unknown'}`,
-              description: `Incoming call from ${task.from || 'Unknown'}${task.customer_name ? ' (' + task.customer_name + ')' : ''}`,
+              title: taskTitle,
+              description: taskDescription,
               status: 'in_progress',
               customer_id: task.customer_id,
               endkunde_id: task.endkunde_id || null,

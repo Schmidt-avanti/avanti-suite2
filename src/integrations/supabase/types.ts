@@ -26,6 +26,7 @@ export type Database = {
           started_at: string | null
           status: string
           task_id: string | null
+          twilio_phone_number_id: string | null
         }
         Insert: {
           agent_id?: string | null
@@ -43,6 +44,7 @@ export type Database = {
           started_at?: string | null
           status: string
           task_id?: string | null
+          twilio_phone_number_id?: string | null
         }
         Update: {
           agent_id?: string | null
@@ -60,6 +62,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           task_id?: string | null
+          twilio_phone_number_id?: string | null
         }
         Relationships: [
           {
@@ -88,6 +91,13 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_sessions_twilio_phone_number_id_fkey"
+            columns: ["twilio_phone_number_id"]
+            isOneToOne: false
+            referencedRelation: "twilio_phone_numbers"
             referencedColumns: ["id"]
           },
         ]
@@ -1022,6 +1032,47 @@ export type Database = {
             columns: ["source_email_id"]
             isOneToOne: false
             referencedRelation: "inbound_emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      twilio_phone_numbers: {
+        Row: {
+          created_at: string
+          customer_id: string
+          friendly_name: string
+          id: string
+          phone_number: string
+          status: string
+          twilio_sid: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          friendly_name: string
+          id?: string
+          phone_number: string
+          status?: string
+          twilio_sid: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          friendly_name?: string
+          id?: string
+          phone_number?: string
+          status?: string
+          twilio_sid?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "twilio_phone_numbers_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]

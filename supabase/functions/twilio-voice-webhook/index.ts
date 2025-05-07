@@ -41,11 +41,32 @@ serve(async (req) => {
     
     // Get the caller's phone number
     const from = twilioParams.From;
+    const to = twilioParams.To;
+    
     let customerInfo = null;
     let endkundeInfo = null;
+    let twilioPhoneInfo = null;
+
+    // First, try to identify the customer based on the called number (To)
+    if (to) {
+      const { data: phoneNumberData, error: phoneNumberError } = await supabase
+        .from('twilio_phone_numbers')
+        .select('*, customer:customer_id(*)')
+        .eq('phone_number', to)
+        .maybeSingle();
+        
+      if (!phoneNumberError && phoneNumberData) {
+        twilioPhoneInfo = phoneNumberData;
+        customerInfo = phoneNumberData.customer;
+        
+        console.log('Identified customer from phone number:', customerInfo.name);
+      } else if (phoneNumberError) {
+        console.error('Error finding phone number in database:', phoneNumberError);
+      }
+    }
     
-    // Try to find customer or endkunde based on phone number
-    if (from) {
+    // If we didn't find the customer by the called number, try the legacy methods
+    if (!customerInfo && from) {
       // Clean the phone number for comparison (remove spaces, etc.)
       const cleanedPhone = from.replace(/\s+/g, '');
       
@@ -96,12 +117,38 @@ serve(async (req) => {
       .workers
       .list({ available: true });
     
-    if (workers.length === 0) {
+    // Filter workers to find those assigned to this customer if we have a customer
+    let assignedWorkers = workers;
+    if (customerInfo?.id) {
+      const { data: assignments } = await supabase
+        .from('user_customer_assignments')
+        .select('user_id')
+        .eq('customer_id', customerInfo.id);
+        
+      if (assignments && assignments.length > 0) {
+        const assignedUserIds = assignments.map(a => a.user_id);
+        assignedWorkers = workers.filter(worker => {
+          try {
+            const attributes = JSON.parse(worker.attributes);
+            return assignedUserIds.includes(attributes.user_id);
+          } catch (e) {
+            return false;
+          }
+        });
+        
+        // If no assigned workers are available, fall back to all available workers
+        if (assignedWorkers.length === 0) {
+          assignedWorkers = workers;
+        }
+      }
+    }
+    
+    if (assignedWorkers.length === 0) {
       // No available workers, send to voicemail
       twiml.say({ voice: 'alice', language: 'de-DE' }, 
         'Derzeit sind alle Mitarbeiter beschäftigt. Bitte hinterlassen Sie eine Nachricht nach dem Signalton.');
       twiml.record({
-        action: `https://knoevkvjyuchhcmzsdpq.supabase.co/functions/v1/twilio-voicemail-handler`,
+        action: `${supabaseUrl}/functions/v1/twilio-voicemail-handler`,
         transcribe: true,
         maxLength: 120,
         playBeep: true,
@@ -114,9 +161,10 @@ serve(async (req) => {
         direction,
         call_sid: twilioParams.CallSid,
         from: from,
-        to: twilioParams.To,
+        to: to,
         customer_id: customerInfo?.id,
         endkunde_id: endkundeInfo?.id,
+        twilio_phone_number_id: twilioPhoneInfo?.id,
         customer_name: customerInfo?.name || 'Unknown Customer',
         endkunde_name: endkundeInfo ? `${endkundeInfo.Vorname || ''} ${endkundeInfo.Nachname || ''}`.trim() : null,
         call_type: 'voice'
@@ -140,12 +188,18 @@ serve(async (req) => {
           started_at: new Date().toISOString(),
           customer_id: customerInfo?.id || null,
           endkunde_id: endkundeInfo?.id || null,
-          endkunde_phone: from
+          endkunde_phone: from,
+          twilio_phone_number_id: twilioPhoneInfo?.id
         });
       
-      // Place the caller in a queue
-      twiml.say({ voice: 'alice', language: 'de-DE' }, 
-        'Willkommen bei Avanti. Bitte warten Sie, während wir Sie mit dem nächsten verfügbaren Mitarbeiter verbinden.');
+      // Place the caller in a queue with a customized greeting
+      let greeting = 'Willkommen bei Avanti. Bitte warten Sie, während wir Sie mit dem nächsten verfügbaren Mitarbeiter verbinden.';
+      
+      if (customerInfo?.name) {
+        greeting = `Willkommen bei ${customerInfo.name}. Bitte warten Sie, während wir Sie mit dem nächsten verfügbaren Mitarbeiter verbinden.`;
+      }
+      
+      twiml.say({ voice: 'alice', language: 'de-DE' }, greeting);
       twiml.enqueue({
         workflowSid: TWILIO_WORKFLOW_SID,
       }, twilioParams.CallSid);

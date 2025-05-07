@@ -20,9 +20,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { PhoneIcon, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
+import { PhoneIcon, PhoneIncoming, PhoneOutgoing, Building } from 'lucide-react';
 import { useTwilio } from '@/contexts/TwilioContext';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface CallSession {
   id: string;
@@ -44,6 +46,10 @@ interface CallSession {
     Vorname: string;
     Nachname: string;
   };
+  twilio_phone_number?: {
+    phone_number: string;
+    friendly_name: string;
+  }
 }
 
 const CallHistoryList: React.FC = () => {
@@ -51,56 +57,88 @@ const CallHistoryList: React.FC = () => {
   const { makeCall } = useTwilio();
   const [calls, setCalls] = useState<CallSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'incoming' | 'outgoing'>('all');
+  const [customerFilter, setCustomerFilter] = useState<string>('all');
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
-    const fetchCalls = async () => {
-      if (!user) return;
-      
-      setIsLoading(true);
-      
-      try {
-        const { data, error } = await supabase
-          .from('call_sessions')
-          .select(`
-            *,
-            customer:customer_id (*),
-            endkunde:endkunde_id (*)
-          `)
-          .eq('agent_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(20);
-          
-        if (error) throw error;
-        
-        setCalls(data || []);
-      } catch (error) {
-        console.error('Error fetching call history:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchCalls();
-    
-    // Set up a subscription for real-time updates
-    const channel = supabase
-      .channel('call_history_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'call_sessions',
-          filter: `agent_id=eq.${user?.id}`
-        },
-        fetchCalls
-      )
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    if (user) {
+      fetchCustomers();
+    }
   }, [user]);
+  
+  useEffect(() => {
+    fetchCalls();
+  }, [user, filter, customerFilter]);
+
+  const fetchCustomers = async () => {
+    try {
+      let query = supabase.from('customers').select('id, name').order('name');
+      
+      // If not admin, only fetch assigned customers
+      if (user?.role !== 'admin') {
+        const { data: assignments } = await supabase
+          .from('user_customer_assignments')
+          .select('customer_id')
+          .eq('user_id', user.id);
+          
+        if (assignments && assignments.length > 0) {
+          const customerIds = assignments.map(a => a.customer_id);
+          query = query.in('id', customerIds);
+        }
+      }
+      
+      const { data } = await query;
+      setCustomers(data || []);
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+    }
+  };
+
+  const fetchCalls = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    
+    try {
+      let query = supabase
+        .from('call_sessions')
+        .select(`
+          *,
+          customer:customer_id (*),
+          endkunde:endkunde_id (*),
+          twilio_phone_number:twilio_phone_number_id (phone_number, friendly_name)
+        `);
+
+      // Apply filters
+      if (filter === 'incoming') {
+        query = query.eq('direction', 'inbound');
+      } else if (filter === 'outgoing') {
+        query = query.eq('direction', 'outbound');
+      }
+      
+      if (customerFilter !== 'all') {
+        query = query.eq('customer_id', customerFilter);
+      }
+      
+      // If not admin, only show calls for assigned agent
+      if (user.role !== 'admin') {
+        query = query.eq('agent_id', user.id);
+      }
+      
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .limit(50);
+        
+      if (error) throw error;
+      
+      setCalls(data || []);
+    } catch (error) {
+      console.error('Error fetching call history:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return '-';
@@ -136,6 +174,7 @@ const CallHistoryList: React.FC = () => {
       case 'in-progress':
         variant = 'success';
         break;
+      case 'assigned':
       case 'ringing':
         variant = 'warning';
         break;
@@ -151,12 +190,46 @@ const CallHistoryList: React.FC = () => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Recent Calls</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle>Call History</CardTitle>
+        <div className="flex space-x-2">
+          <Select value={filter} onValueChange={(value: 'all' | 'incoming' | 'outgoing') => setFilter(value)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Filter by direction" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Calls</SelectItem>
+              <SelectItem value="incoming">Incoming</SelectItem>
+              <SelectItem value="outgoing">Outgoing</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {customers.length > 0 && (
+            <Select value={customerFilter} onValueChange={setCustomerFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by customer" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Customers</SelectItem>
+                {customers.map((customer) => (
+                  <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
+          <Button variant="outline" size="sm" onClick={fetchCalls}>
+            Refresh
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex justify-center py-4">Loading call history...</div>
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="w-full h-12" />
+            ))}
+          </div>
         ) : calls.length === 0 ? (
           <div className="text-center py-4 text-muted-foreground">No call history available</div>
         ) : (
@@ -165,6 +238,8 @@ const CallHistoryList: React.FC = () => {
               <TableRow>
                 <TableHead>Direction</TableHead>
                 <TableHead>Contact</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Phone Number</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Status</TableHead>
@@ -184,6 +259,26 @@ const CallHistoryList: React.FC = () => {
                   <TableCell>
                     <div className="font-medium">{getCallerName(call)}</div>
                     <div className="text-xs text-muted-foreground">{call.endkunde_phone}</div>
+                  </TableCell>
+                  <TableCell>
+                    {call.customer ? (
+                      <div className="flex items-center">
+                        <Building className="h-3 w-3 mr-1 text-muted-foreground" />
+                        <span>{call.customer.name}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {call.twilio_phone_number ? (
+                      <div>
+                        <div className="text-sm">{call.twilio_phone_number.phone_number}</div>
+                        <div className="text-xs text-muted-foreground">{call.twilio_phone_number.friendly_name}</div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div>{format(new Date(call.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}</div>

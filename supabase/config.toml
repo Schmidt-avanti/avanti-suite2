@@ -22,6 +22,10 @@ verify_jwt = false
 [functions.sendgrid-webhook]
 verify_jwt = false
 
+# Twilio number management function requires auth
+[functions.twilio-number-manager]
+verify_jwt = true
+
 # Make the validate-email function publicly accessible with JWT verification
 [functions.validate-email]
 verify_jwt = true

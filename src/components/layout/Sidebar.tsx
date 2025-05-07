@@ -1,201 +1,155 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+  LayoutDashboard,
+  ListChecks,
+  MessageSquare,
+  Settings,
+  Users,
+  Calendar,
+  Phone,
+} from "lucide-react";
+import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { LogOut } from "lucide-react";
-import { Home, ListChecks, Book, PhoneIcon } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-export function Sidebar() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { pathname } = location;
-  const { user, signOut } = useAuth();
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+interface NavItem {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+  role?: "admin" | "agent" | "customer";
+}
+
+const Sidebar = () => {
+  const { user } = useAuth();
+  const [assignedCustomer, setAssignedCustomer] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAssignedCustomer = async () => {
+      if (user?.role === "agent") {
+        const { data, error } = await supabase
+          .from("user_customer_assignments")
+          .select("customer_id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching assigned customer:", error);
+        } else if (data) {
+          setAssignedCustomer(data.customer_id);
+        }
+      }
+    };
+
+    fetchAssignedCustomer();
+  }, [user]);
+
+  const navItems: NavItem[] = [
+    {
+      to: "/",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      label: "Dashboard",
+    },
+    {
+      to: "/tasks",
+      icon: <ListChecks className="h-5 w-5" />,
+      label: "Aufgaben",
+    },
+    {
+      to: "/meine-aufgaben",
+      icon: <ListChecks className="h-5 w-5" />,
+      label: "Meine Aufgaben",
+      role: "customer",
+    },
+    {
+      to: "/termine",
+      icon: <Calendar className="h-5 w-5" />,
+      label: "Termine",
+      role: "customer",
+    },
+    {
+      to: "/call-center",
+      icon: <Phone className="h-5 w-5" />,
+      label: "Call Center",
+      role: "agent",
+    },
+    {
+      to: "/admin/dashboard",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      label: "Admin Dashboard",
+      role: "admin",
+    },
+    {
+      to: "/admin/customers",
+      icon: <Users className="h-5 w-5" />,
+      label: "Kunden",
+      role: "admin",
+    },
+    {
+      to: "/admin/whatsapp-accounts",
+      icon: <MessageSquare className="h-5 w-5" />,
+      label: "WhatsApp Konten",
+      role: "admin",
+    },
+    {
+      to: "/admin/phone-numbers",
+      icon: <Phone className="h-5 w-5" />,
+      label: "Phone Numbers",
+      role: "admin"
+    },
+    {
+      to: "/admin/settings",
+      icon: <Settings className="h-5 w-5" />,
+      label: "Einstellungen",
+      role: "admin",
+    },
+  ];
 
   return (
-    <>
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="md:hidden"
-          >
-            <Menu />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-full sm:w-64">
-          <SheetHeader>
-            <SheetTitle>Navigation</SheetTitle>
-            <SheetDescription>
-              Menü
-            </SheetDescription>
-          </SheetHeader>
-          <div className="space-y-1">
-            <Button
-              variant={pathname === '/' ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => navigate('/')}
-            >
-              <Home className="h-4 w-4 mr-2" />
-              Dashboard
-            </Button>
-
-            <Button
-              variant={pathname === '/tasks' ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => navigate('/tasks')}
-            >
-              <ListChecks className="h-4 w-4 mr-2" />
-              Aufgaben
-            </Button>
-
-            <Button
-              variant={pathname === '/tasks/completed' ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => navigate('/tasks/completed')}
-            >
-              <ListChecks className="h-4 w-4 mr-2" />
-              Erledigte Aufgaben
-            </Button>
-
-            <Button
-              variant={pathname === '/knowledge' ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => navigate('/knowledge')}
-            >
-              <Book className="h-4 w-4 mr-2" />
-              Wissensdatenbank
-            </Button>
-            
-            <Button
-              variant={pathname === '/call-center' ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => navigate('/call-center')}
-            >
-              <PhoneIcon className="h-4 w-4 mr-2" />
-              Call Center
-            </Button>
-          </div>
-          <SheetHeader>
-            <SheetDescription>
-              Dein Profil
-            </SheetDescription>
-          </SheetHeader>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="  w-full justify-start">
-                <Avatar className="mr-2 h-8 w-8">
-                  <AvatarImage src="https://github.com/shadcn.png" />
-                  <AvatarFallback>CN</AvatarFallback>
-                </Avatar>
-                {user?.email}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Profil</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => signOut()}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Abmelden
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SheetContent>
-      </Sheet>
-      <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-gray-100 border-r">
-        <div className="flex-1 flex flex-col space-y-2 p-4">
-          <div className="mb-4">
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-            >
-              <Avatar className="mr-2 h-8 w-8">
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>CN</AvatarFallback>
-              </Avatar>
-              {user?.email}
-            </Button>
-          </div>
-          <div className="space-y-1">
-            <Button
-              variant={pathname === '/' ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => navigate('/')}
-            >
-              <Home className="h-4 w-4 mr-2" />
-              Dashboard
-            </Button>
-
-            <Button
-              variant={pathname === '/tasks' ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => navigate('/tasks')}
-            >
-              <ListChecks className="h-4 w-4 mr-2" />
-              Aufgaben
-            </Button>
-
-            <Button
-              variant={pathname === '/tasks/completed' ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => navigate('/tasks/completed')}
-            >
-              <ListChecks className="h-4 w-4 mr-2" />
-              Erledigte Aufgaben
-            </Button>
-
-            <Button
-              variant={pathname === '/knowledge' ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => navigate('/knowledge')}
-            >
-              <Book className="h-4 w-4 mr-2" />
-              Wissensdatenbank
-            </Button>
-            
-            <Button
-              variant={pathname === '/call-center' ? 'secondary' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => navigate('/call-center')}
-            >
-              <PhoneIcon className="h-4 w-4 mr-2" />
-              Call Center
-            </Button>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="mt-auto w-full justify-start">
-                <Avatar className="mr-2 h-8 w-8">
-                  <AvatarImage src="https://github.com/shadcn.png" />
-                  <AvatarFallback>CN</AvatarFallback>
-                </Avatar>
-                {user?.email}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Profil</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => signOut()}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Abmelden
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+    <div className="flex flex-col h-full bg-gray-50 border-r py-4">
+      <div className="px-4 mb-6">
+        <img
+          alt="avanti suite"
+          className="h-10"
+          src="/lovable-uploads/eff651fc-49c9-4b51-b5bc-d14c401b3934.png"
+        />
       </div>
-    </>
+      <div className="flex-grow flex flex-col justify-between">
+        <nav className="space-y-1">
+          {navItems.map((item) => {
+            if (item.role && user?.role !== item.role) {
+              return null;
+            }
+            if (item.role === "customer" && assignedCustomer) {
+              return null;
+            }
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-gray-200 ${
+                    isActive
+                      ? "bg-gray-200 text-gray-900"
+                      : "text-gray-700"
+                  }`
+                }
+              >
+                {item.icon}
+                <span className="ml-2">{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+        {user && (
+          <div className="p-4">
+            <p className="text-sm text-gray-500">
+              Eingeloggt als {user.email} ({user.role})
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
-}
+};
+
+export default Sidebar;
