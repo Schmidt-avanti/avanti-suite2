@@ -233,14 +233,14 @@ export const usePaginatedTasks = (
         const customerIds = assignedCustomers.map(ac => ac.customer_id);
         modifiedQuery = modifiedQuery.in('customer_id', customerIds);
       }
-    } else if (user.role === 'client') {
+    } else if (user.role === 'customer') {
       const { data: userAssignment } = await supabase
         .from('user_customer_assignments')
         .select('customer_id')
         .eq('user_id', user.id)
         .maybeSingle();
         
-      console.log('Client customer assignment:', userAssignment);
+      console.log('Customer customer assignment:', userAssignment);
 
       if (userAssignment) {
         modifiedQuery = modifiedQuery.eq('customer_id', userAssignment.customer_id);

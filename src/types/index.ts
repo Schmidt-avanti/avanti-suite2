@@ -1,3 +1,6 @@
+// Update UserRole type to match database constraint
+export type UserRole = 'admin' | 'agent' | 'customer';
+
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -69,11 +72,6 @@ export interface Task {
   created_by?: string;
   assigned_to?: string;
 }
-
-// Update UserRole type to match database constraint
-export type UserRole = 'admin' | 'agent' | 'customer';
-
-export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'comment' | 'assign';
 
 export interface User {
   id: string;

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -91,7 +92,7 @@ const App = () => {
                   <Route
                     path="/dashboard"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
                         <Dashboard />
                       </ProtectedRoute>
                     }
@@ -195,7 +196,7 @@ const App = () => {
                   <Route
                     path="/knowledge"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
                         <Knowledge />
                       </ProtectedRoute>
                     }
@@ -204,7 +205,7 @@ const App = () => {
                   <Route
                     path="/knowledge/edit/:id"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "client"]}>
+                      <ProtectedRoute allowedRoles={["admin", "customer"]}>
                         <KnowledgeArticleEdit />
                       </ProtectedRoute>
                     }
@@ -231,7 +232,7 @@ const App = () => {
                   <Route
                     path="/accounting/payment-data"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "client"]}>
+                      <ProtectedRoute allowedRoles={["admin", "customer"]}>
                         <PaymentDataPage />
                       </ProtectedRoute>
                     }
@@ -241,7 +242,7 @@ const App = () => {
                   <Route
                     path="/reports"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
                         <Reports />
                       </ProtectedRoute>
                     }
@@ -261,7 +262,7 @@ const App = () => {
                   <Route
                     path="/client/dashboard"
                     element={
-                      <ProtectedRoute allowedRoles={["client"]}>
+                      <ProtectedRoute allowedRoles={["customer"]}>
                         <ClientDashboard />
                       </ProtectedRoute>
                     }
@@ -269,7 +270,7 @@ const App = () => {
                   <Route
                     path="/meine-aufgaben"
                     element={
-                      <ProtectedRoute allowedRoles={["client"]}>
+                      <ProtectedRoute allowedRoles={["customer"]}>
                         <Navigate to="/client/dashboard" replace />
                       </ProtectedRoute>
                     }
@@ -279,7 +280,7 @@ const App = () => {
                   <Route
                     path="/tasks/completed"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
                         <CompletedTasks />
                       </ProtectedRoute>
                     }
@@ -287,7 +288,7 @@ const App = () => {
                   <Route
                     path="/tasks/create"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
                         <CreateTask />
                       </ProtectedRoute>
                     }
@@ -295,7 +296,7 @@ const App = () => {
                   <Route
                     path="/tasks"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
                         <Tasks />
                       </ProtectedRoute>
                     }
@@ -303,7 +304,7 @@ const App = () => {
                   <Route
                     path="/tasks/:id"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
+                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
                         <TaskDetail />
                       </ProtectedRoute>
                     }

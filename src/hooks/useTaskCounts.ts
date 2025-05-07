@@ -42,7 +42,7 @@ export const useTaskCounts = () => {
         if (user.role === 'agent') {
           // For agents, we'll fetch the assigned customer IDs in the main function
           // and then filter based on those
-        } else if (user.role === 'client') {
+        } else if (user.role === 'customer') {
           // Similarly, for clients, we'll handle this in the main function
         }
         
@@ -72,7 +72,7 @@ export const useTaskCounts = () => {
             total: 0
           };
         }
-      } else if (user.role === 'client') {
+      } else if (user.role === 'customer') {
         const { data: userAssignment } = await supabase
           .from('user_customer_assignments')
           .select('customer_id')

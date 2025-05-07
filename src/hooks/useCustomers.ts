@@ -66,8 +66,8 @@ export const useCustomers = () => {
           }
         } 
         // For clients, fetch their own customer
-        else if (user.role === 'client') {
-          console.log('useCustomers: User is a client, fetching assigned customer');
+        else if (user.role === 'customer') {
+          console.log('useCustomers: User is a customer, fetching assigned customer');
           
           const { data: userAssignment, error: clientError } = await supabase
             .from('user_customer_assignments')
@@ -76,7 +76,7 @@ export const useCustomers = () => {
             .single();
 
           if (clientError) {
-            console.error('Error fetching client customer assignment:', clientError);
+            console.error('Error fetching customer assignment:', clientError);
             toast({
               variant: "destructive",
               title: "Fehler beim Laden der Kundenzuweisung",
@@ -86,7 +86,7 @@ export const useCustomers = () => {
             return;
           }
 
-          console.log('useCustomers: Client customer assignment data:', userAssignment);
+          console.log('useCustomers: Customer assignment data:', userAssignment);
 
           if (userAssignment && userAssignment.customers) {
             setCustomers([{
@@ -97,7 +97,7 @@ export const useCustomers = () => {
               created_at: '' // We set an empty date, as it's not needed here
             }]);
           } else {
-            console.log('useCustomers: No customer assignment found for client');
+            console.log('useCustomers: No customer assignment found for customer');
             setCustomers([]);
           }
         } 

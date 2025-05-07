@@ -128,14 +128,14 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             const customerIds = assignedCustomers.map(ac => ac.customer_id);
             query = query.in('customer_id', customerIds);
           }
-        } else if (user.role === 'client') {
+        } else if (user.role === 'customer') {
           const { data: userAssignment } = await supabase
             .from('user_customer_assignments')
             .select('customer_id')
             .eq('user_id', user.id)
             .maybeSingle();
             
-          console.log('Client customer assignment:', userAssignment);
+          console.log('Customer assignment:', userAssignment);
 
           if (userAssignment) {
             query = query.eq('customer_id', userAssignment.customer_id);
