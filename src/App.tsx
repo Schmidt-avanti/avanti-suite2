@@ -195,7 +195,7 @@ const App = () => {
                   <Route
                     path="/knowledge"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "agent"]}>
+                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
                         <Knowledge />
                       </ProtectedRoute>
                     }
@@ -241,7 +241,7 @@ const App = () => {
                   <Route
                     path="/reports"
                     element={
-                      <ProtectedRoute allowedRoles={["admin", "agent"]}>
+                      <ProtectedRoute allowedRoles={["admin", "agent", "client"]}>
                         <Reports />
                       </ProtectedRoute>
                     }
@@ -259,10 +259,18 @@ const App = () => {
 
                   {/* Client routes */}
                   <Route
-                    path="/meine-aufgaben"
+                    path="/client/dashboard"
                     element={
                       <ProtectedRoute allowedRoles={["client"]}>
                         <ClientDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/meine-aufgaben"
+                    element={
+                      <ProtectedRoute allowedRoles={["client"]}>
+                        <Navigate to="/client/dashboard" replace />
                       </ProtectedRoute>
                     }
                   />

@@ -20,7 +20,7 @@ const fetchUserProfile = async (userId: string) => {
   console.log("Fetching profile for user ID:", userId);
   
   try {
-    // Direkte SQL-Abfrage ohne Rekursion zu verhindern
+    // Direct SQL query to prevent recursion
     const { data: profile, error } = await supabase
       .from("profiles")
       .select("role, \"Full Name\"")

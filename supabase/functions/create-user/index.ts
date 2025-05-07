@@ -128,13 +128,25 @@ async function handleCreateUser(
   supabaseAdmin: any, 
   corsHeaders: HeadersInit
 ): Promise<Response> {
-  const { email, password, userData, skipDuplicateCheck } = requestData
+  const { email, password, userData, skipDuplicateCheck } = requestData;
   
   // Validate required fields
   if (!email || !password || !userData) {
     console.error('Missing required fields:', { email: !!email, password: !!password, userData: !!userData })
     return new Response(
       JSON.stringify({ error: 'Missing required fields' }),
+      { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+
+  // Validate role value to ensure it matches allowed values in the database
+  if (userData.role && !['admin', 'agent', 'client'].includes(userData.role)) {
+    console.error('Invalid role value:', userData.role);
+    return new Response(
+      JSON.stringify({ error: 'Invalid role value. Must be admin, agent, or client' }),
       { 
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

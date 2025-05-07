@@ -46,7 +46,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     } else if (user.role === 'agent') {
       return <Navigate to="/agent/dashboard" replace />;
     } else if (user.role === 'client') {
-      return <Navigate to="/meine-aufgaben" replace />;
+      return <Navigate to="/client/dashboard" replace />;
     }
     return <Navigate to="/error" replace />;
   }
