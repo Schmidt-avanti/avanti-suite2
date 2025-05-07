@@ -2,13 +2,19 @@
 import React from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { FileText, User, Calendar, Tag, MessageSquare } from 'lucide-react';
+import { FileText, User, Calendar, Tag, MessageSquare, Paperclip } from 'lucide-react';
 
 interface TaskDetailInfoProps {
   task: any;
 }
 
 export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
+  // Helper function to extract filename from URL
+  const getFilenameFromUrl = (url: string): string => {
+    const urlParts = url.split('/');
+    return urlParts[urlParts.length - 1] || 'Anhang';
+  };
+
   return (
     <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
       <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center">
@@ -86,6 +92,33 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
             <div>
               <span className="text-gray-500">Quelle: </span>
               <span className="font-medium capitalize">{task.source}</span>
+            </div>
+          </div>
+        )}
+
+        {/* New section to display attachments */}
+        {task.attachments && task.attachments.length > 0 && (
+          <div className="flex items-start mt-2">
+            <Paperclip className="h-4 w-4 mr-2 mt-0.5 text-gray-500" />
+            <div>
+              <span className="text-gray-500">Anhänge: </span>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {task.attachments.map((url: string, i: number) => {
+                  const filename = getFilenameFromUrl(url);
+                  return (
+                    <a
+                      key={i}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-sm text-blue-600"
+                    >
+                      <Paperclip className="h-3 w-3 mr-1.5 flex-shrink-0" />
+                      <span className="truncate max-w-[150px]">{filename}</span>
+                    </a>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
