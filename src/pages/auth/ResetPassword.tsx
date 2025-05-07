@@ -1,148 +1,58 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, ArrowLeft, Check, Key, Loader, RefreshCw } from 'lucide-react';
+import { AlertCircle, Check, Loader } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/components/ui/use-toast';
 
 const ResetPassword: React.FC = () => {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [shake, setShake] = useState(false);
-  const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
-  const [searchParams] = useSearchParams();
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    const verifyToken = async () => {
+    const handleTokenVerification = async () => {
       try {
         setIsVerifying(true);
         setError(null);
 
-        const recoveryToken = searchParams.get('token');
+        // Get token from URL
+        const token = searchParams.get('token');
         const type = searchParams.get('type');
 
         // Check if we have the required parameters
-        if (!recoveryToken) {
-          setError('Fehlender Passwort-Reset-Token. Bitte fordere einen neuen Link an.');
-          setIsTokenValid(false);
+        if (!token) {
+          setError('Fehlender Token. Bitte fordere einen neuen Magic Link an.');
           setIsVerifying(false);
           return;
         }
 
-        if (type !== 'recovery') {
-          setError('Ungültiger Token-Typ. Bitte fordere einen neuen Link an.');
-          setIsTokenValid(false);
-          setIsVerifying(false);
-          return;
-        }
+        console.log("Token detected:", { token, type });
 
-        // Supabase automatically validates the token when loading the page with a valid token
-        // We only need to check if we're authenticated
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // Let the Auth state change handler handle the actual session
+        // Just show a success message and redirect soon
+        setSuccess(true);
         
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          setError('Ein Fehler ist aufgetreten. Bitte versuche es später erneut.');
-          setIsTokenValid(false);
-        } else if (!session) {
-          console.log('No session found, token may be invalid');
-          setError('Der Link ist abgelaufen oder ungültig. Bitte fordere einen neuen Link an.');
-          setIsTokenValid(false);
-        } else {
-          console.log('Token appears valid, session is active');
-          setIsTokenValid(true);
-        }
-      } catch (error) {
+        // Redirect to home after 3 seconds
+        setTimeout(() => {
+          navigate('/', { replace: true });
+        }, 3000);
+        
+      } catch (error: any) {
         console.error('Token verification error:', error);
         setError('Ein Fehler ist aufgetreten. Bitte versuche es später erneut.');
-        setIsTokenValid(false);
       } finally {
         setIsVerifying(false);
       }
     };
 
-    verifyToken();
-  }, [searchParams]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate input
-    if (!password || password.length < 8) {
-      setError('Das Passwort muss mindestens 8 Zeichen lang sein.');
-      setShake(true);
-      setTimeout(() => setShake(false), 600);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Die Passwörter stimmen nicht überein.');
-      setShake(true);
-      setTimeout(() => setShake(false), 600);
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      // Update the password using the current session
-      const { error } = await supabase.auth.updateUser({ password });
-
-      if (error) {
-        throw error;
-      }
-
-      // Password update successful
-      setSuccess(true);
-      toast({
-        title: "Passwort aktualisiert",
-        description: "Dein Passwort wurde erfolgreich aktualisiert.",
-      });
-
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        // Sign out first to clear the recovery session
-        supabase.auth.signOut().then(() => {
-          navigate('/auth/login');
-        });
-      }, 3000);
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-      setShake(true);
-      setTimeout(() => setShake(false), 600);
-      
-      if (typeof error.message === 'string') {
-        if (error.message.includes('invalid token') || error.message.includes('expired')) {
-          setError('Der Wiederherstellungs-Link ist abgelaufen oder ungültig. Bitte fordere einen neuen an.');
-          setIsTokenValid(false);
-        } else {
-          setError(error.message);
-        }
-      } else {
-        setError('Es ist ein Fehler aufgetreten. Bitte versuche es später erneut.');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRequestNewLink = async () => {
-    navigate('/auth/forgot-password');
-  };
+    handleTokenVerification();
+  }, [searchParams, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -157,14 +67,11 @@ const ResetPassword: React.FC = () => {
           </h1>
         </div>
         
-        <Card className={cn(
-          "shadow-xl rounded-2xl p-8 bg-white border-t border-avanti-100/20",
-          shake && "animate-[shake_0.6s_cubic-bezier(0.36,0.07,0.19,0.97)_both]"
-        )}>
+        <Card className="shadow-xl rounded-2xl p-8 bg-white border-t border-avanti-100/20">
           <CardHeader className="pb-4 space-y-2">
-            <CardTitle className="text-2xl font-bold text-center">Passwort zurücksetzen</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">Magic Link</CardTitle>
             <CardDescription className="text-center">
-              {isTokenValid ? 'Bitte gib ein neues Passwort ein' : 'Überprüfe deinen Link'}
+              Dein Magic Link wird verarbeitet
             </CardDescription>
           </CardHeader>
 
@@ -177,110 +84,30 @@ const ResetPassword: React.FC = () => {
               </Alert>
             )}
             
-            {success && (
-              <Alert className="mb-4 bg-green-50 border-green-200">
-                <Check className="h-4 w-4 text-green-600" />
-                <AlertTitle className="text-green-700">Erfolg</AlertTitle>
-                <AlertDescription className="text-green-600">
-                  Dein Passwort wurde erfolgreich zurückgesetzt. Du wirst zur Anmeldeseite weitergeleitet...
-                </AlertDescription>
-              </Alert>
-            )}
-            
             {isVerifying && (
               <div className="flex flex-col items-center justify-center py-8">
                 <Loader className="h-8 w-8 text-avanti-600 animate-spin mb-4" />
-                <p className="text-gray-600">Link wird überprüft...</p>
+                <p className="text-gray-600">Magic Link wird verarbeitet...</p>
               </div>
             )}
 
-            {!isVerifying && isTokenValid === false && !success && (
-              <div className="space-y-6 py-4">
-                <div className="text-center">
-                  <p className="text-gray-600 mb-6">
-                    Der Link zum Zurücksetzen deines Passworts ist ungültig oder abgelaufen.
-                    Bitte fordere einen neuen Link an.
-                  </p>
-                  <Button
-                    onClick={handleRequestNewLink}
-                    className="w-full bg-gradient-to-r from-avanti-600 to-avanti-700 hover:from-avanti-700 hover:to-avanti-800 transition-all duration-200"
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Neuen Link anfordern
-                  </Button>
-                </div>
-              </div>
-            )}
-            
-            {!isVerifying && isTokenValid && !success && (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="password">Neues Passwort</Label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      className="pl-10 focus:ring-2 focus:ring-avanti-200 focus:border-avanti-300"
-                      required
-                      minLength={8}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Passwort bestätigen</Label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      className="pl-10 focus:ring-2 focus:ring-avanti-200 focus:border-avanti-300"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className={cn(
-                    "w-full bg-gradient-to-r from-avanti-600 to-avanti-700 hover:from-avanti-700 hover:to-avanti-800 transition-all duration-200",
-                    isSubmitting && "cursor-not-allowed opacity-80"
-                  )}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <motion.div
-                      initial={{ scale: 0.8 }}
-                      animate={{ scale: 1 }}
-                      className="flex items-center gap-2"
-                    >
-                      <Loader className="animate-spin" />
-                      Wird aktualisiert...
-                    </motion.div>
-                  ) : (
-                    'Passwort aktualisieren'
-                  )}
-                </Button>
-              </form>
-            )}
-
-            <div className="mt-4 text-center">
-              <Button 
-                variant="ghost"
-                onClick={() => navigate('/auth/login')}
-                className="text-avanti-600 hover:text-avanti-800 flex items-center justify-center gap-2 text-sm w-full"
+            {success && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center py-8"
               >
-                <ArrowLeft size={16} />
-                Zurück zur Anmeldung
-              </Button>
-            </div>
+                <div className="rounded-full bg-green-100 p-3 mb-4">
+                  <Check className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-green-700 mb-2">
+                  Login erfolgreich!
+                </h3>
+                <p className="text-gray-600 text-center">
+                  Du wirst in Kürze zur Startseite weitergeleitet...
+                </p>
+              </motion.div>
+            )}
           </CardContent>
         </Card>
       </div>

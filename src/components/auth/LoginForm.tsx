@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { AlertCircle, Info, Mail, Lock, Loader } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import LoginTransition from './LoginTransition';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from '@/integrations/supabase/client';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -20,6 +22,8 @@ const LoginForm = () => {
   const [shake, setShake] = useState(false);
   const [showTransition, setShowTransition] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<'password' | 'magic'>('password');
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
 
@@ -30,7 +34,7 @@ const LoginForm = () => {
     }
   }, [user, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Bitte gib E-Mail und Passwort ein.');
@@ -66,6 +70,48 @@ const LoginForm = () => {
       if (!loginSuccess) {
         setIsSubmitting(false);
       }
+    }
+  };
+
+  const handleMagicLinkSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !email.includes('@')) {
+      setError('Bitte gib eine gültige E-Mail-Adresse ein.');
+      setShake(true);
+      setTimeout(() => setShake(false), 600);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    setInfo(null);
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}`
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setMagicLinkSent(true);
+      setInfo(`Ein Magic-Link wurde an ${email} gesendet. Bitte klicke auf den Link in der E-Mail, um dich anzumelden.`);
+    } catch (error: any) {
+      console.error('Magic link error:', error);
+      setShake(true);
+      setTimeout(() => setShake(false), 600);
+      
+      if (typeof error.message === 'string') {
+        setError(error.message);
+      } else {
+        setError('Es ist ein Fehler aufgetreten. Bitte versuche es später erneut.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -107,69 +153,136 @@ const LoginForm = () => {
             </Alert>
           )}
           
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">E-Mail</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="pl-10 focus:ring-2 focus:ring-avanti-200 focus:border-avanti-300"
-                  required
-                />
-              </div>
-            </div>
+          <Tabs defaultValue="password" value={loginMethod} onValueChange={(value) => setLoginMethod(value as 'password' | 'magic')}>
+            <TabsList className="grid grid-cols-2 w-full mb-4">
+              <TabsTrigger value="password">Passwort</TabsTrigger>
+              <TabsTrigger value="magic">Magic Link</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="password">
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-Mail</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="pl-10 focus:ring-2 focus:ring-avanti-200 focus:border-avanti-300"
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Passwort</Label>
-                <a href="/auth/forgot-password" className="text-sm text-avanti-600 hover:text-avanti-800 transition-colors">
-                  Passwort vergessen?
-                </a>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="pl-10 focus:ring-2 focus:ring-avanti-200 focus:border-avanti-300"
-                  required
-                />
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Passwort</Label>
+                    <a href="/auth/forgot-password" className="text-sm text-avanti-600 hover:text-avanti-800 transition-colors">
+                      Passwort vergessen?
+                    </a>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      className="pl-10 focus:ring-2 focus:ring-avanti-200 focus:border-avanti-300"
+                      required
+                    />
+                  </div>
+                </div>
 
-            <Button
-              type="submit"
-              className={cn(
-                "w-full bg-gradient-to-r from-avanti-600 to-avanti-700 hover:from-avanti-700 hover:to-avanti-800 transition-all duration-200",
-                isSubmitting && "cursor-not-allowed opacity-80"
-              )}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <motion.div
-                  initial={{ scale: 0.8 }}
-                  animate={{ scale: 1 }}
-                  className="flex items-center gap-2"
+                <Button
+                  type="submit"
+                  className={cn(
+                    "w-full bg-gradient-to-r from-avanti-600 to-avanti-700 hover:from-avanti-700 hover:to-avanti-800 transition-all duration-200",
+                    isSubmitting && "cursor-not-allowed opacity-80"
+                  )}
+                  disabled={isSubmitting}
                 >
-                  <Loader className="animate-spin" />
-                  Wird angemeldet...
-                </motion.div>
-              ) : (
-                'Anmelden'
-              )}
-            </Button>
-          </form>
-        </CardContent>
+                  {isSubmitting ? (
+                    <motion.div
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      className="flex items-center gap-2"
+                    >
+                      <Loader className="animate-spin" />
+                      Wird angemeldet...
+                    </motion.div>
+                  ) : (
+                    'Anmelden'
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="magic">
+              <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="magic-email">E-Mail</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                    <Input
+                      id="magic-email"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="pl-10 focus:ring-2 focus:ring-avanti-200 focus:border-avanti-300"
+                      required
+                    />
+                  </div>
+                </div>
 
-      
+                <Button
+                  type="submit"
+                  className={cn(
+                    "w-full bg-gradient-to-r from-avanti-600 to-avanti-700 hover:from-avanti-700 hover:to-avanti-800 transition-all duration-200",
+                    isSubmitting && "cursor-not-allowed opacity-80"
+                  )}
+                  disabled={isSubmitting || magicLinkSent}
+                >
+                  {isSubmitting ? (
+                    <motion.div
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      className="flex items-center gap-2"
+                    >
+                      <Loader className="animate-spin" />
+                      Magic-Link wird versendet...
+                    </motion.div>
+                  ) : magicLinkSent ? (
+                    'Magic-Link gesendet'
+                  ) : (
+                    'Magic-Link senden'
+                  )}
+                </Button>
+                
+                {magicLinkSent && (
+                  <div className="text-center mt-2 text-sm">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="p-0 h-auto text-avanti-600"
+                      onClick={() => {
+                        setMagicLinkSent(false);
+                        setInfo(null);
+                      }}
+                    >
+                      Erneut senden
+                    </Button>
+                  </div>
+                )}
+              </form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
       </Card>
 
       {showTransition && (

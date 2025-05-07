@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,34 +10,49 @@ const Index = () => {
   useEffect(() => {
     if (isLoading) return;
 
-    // Check if this is a password recovery session by checking for token and type
+    // Check if this is coming from a magic link authentication
+    // Magic links typically have the token in the URL
+    const accessToken = searchParams.get('access_token');
+    const refreshToken = searchParams.get('refresh_token');
+    
+    // Standard password reset token check (keep for backward compatibility)
     const token = searchParams.get('token');
     const type = searchParams.get('type');
-    const isRecoverySession = token && type === 'recovery';
     
-    // If this is a recovery session, redirect to reset password page
-    if (isRecoverySession) {
-      // Pass along the token and type as search params
-      navigate(`/auth/reset-password?token=${token}&type=${type}`, { replace: true });
+    // For debugging
+    if (accessToken || refreshToken || token) {
+      console.log("Auth tokens detected in URL", { 
+        accessToken: !!accessToken, 
+        refreshToken: !!refreshToken,
+        token: !!token,
+        type
+      });
+    }
+
+    // If the user is already authenticated, proceed with role-based routing
+    if (user) {
+      // Routing basierend auf Rollen aus profile
+      if (user.role === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (user.role === "agent") {
+        navigate("/agent/dashboard", { replace: true });
+      } else if (user.role === "customer") {
+        navigate("/meine-aufgaben", { replace: true });
+      } else {
+        navigate("/error", { replace: true });
+      }
       return;
     }
 
-    // Normal authentication flow
-    if (!user) {
+    // If not authenticated and no tokens, redirect to login
+    if (!user && !accessToken && !token) {
       navigate("/auth/login", { replace: true });
       return;
     }
-
-    // Routing basierend auf Rollen aus profile
-    if (user.role === "admin") {
-      navigate("/admin/dashboard", { replace: true });
-    } else if (user.role === "agent") {
-      navigate("/agent/dashboard", { replace: true });
-    } else if (user.role === "customer") {
-      navigate("/meine-aufgaben", { replace: true });
-    } else {
-      navigate("/error", { replace: true });
-    }
+    
+    // If tokens are present but no user yet, let the auth context handle it
+    // The auth state listener will kick in once the tokens are processed
+    
   }, [user, isLoading, navigate, searchParams]);
 
   if (isLoading) {

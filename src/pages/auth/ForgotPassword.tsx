@@ -32,17 +32,20 @@ const ForgotPassword = () => {
     setSuccess(null);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}`
+        }
       });
 
       if (error) {
         throw error;
       }
 
-      setSuccess(`Eine E-Mail mit einem Link zum Zurücksetzen des Passworts wurde an ${email} gesendet.`);
+      setSuccess(`Eine E-Mail mit einem Magic-Link wurde an ${email} gesendet. Bitte klicke auf den Link in der E-Mail, um dich anzumelden.`);
     } catch (error: any) {
-      console.error('Password reset error:', error);
+      console.error('Magic link error:', error);
       setShake(true);
       setTimeout(() => setShake(false), 600);
       
@@ -74,9 +77,9 @@ const ForgotPassword = () => {
           shake && "animate-[shake_0.6s_cubic-bezier(0.36,0.07,0.19,0.97)_both]"
         )}>
           <CardHeader className="pb-4 space-y-2">
-            <CardTitle className="text-2xl font-bold text-center">Passwort vergessen</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">Anmeldung via Magic-Link</CardTitle>
             <CardDescription className="text-center">
-              Gib deine E-Mail-Adresse ein, um dein Passwort zurückzusetzen
+              Gib deine E-Mail-Adresse ein, um einen Magic-Link zu erhalten
             </CardDescription>
           </CardHeader>
 
@@ -129,10 +132,10 @@ const ForgotPassword = () => {
                     className="flex items-center gap-2"
                   >
                     <Loader className="animate-spin" />
-                    Link wird versendet...
+                    Magic-Link wird versendet...
                   </motion.div>
                 ) : (
-                  'Link zum Zurücksetzen senden'
+                  'Magic-Link senden'
                 )}
               </Button>
               
