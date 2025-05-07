@@ -1,3 +1,4 @@
+
 // Add to existing types
 export interface TaskTime {
   id: string;
@@ -97,6 +98,17 @@ export interface Customer {
   billing_address?: string;
   contact_person?: string;
   avanti_email?: string; // Add this field for the custom email
+  
+  // Adding the missing properties that were causing TypeScript errors
+  street?: string;
+  zip?: string;
+  city?: string;
+  email?: string;
+  industry?: string;
+  has_invoice_address?: boolean;
+  invoice_street?: string;
+  invoice_zip?: string;
+  invoice_city?: string;
 }
 
 export type Notification = {
