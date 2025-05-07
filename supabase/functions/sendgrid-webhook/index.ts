@@ -137,29 +137,35 @@ serve(async (req) => {
         continue;
       }
       
-      // Store the email in inbound_emails
-      const { data: emailData, error: emailError } = await supabase.from('inbound_emails').insert({
-        from_email: fromEmail,
-        from_name: fromName || event.from_name || event.sender_name || '',
-        subject: event.subject || '',
-        body_text: event.text || event.plain || event.body || '',
-        body_html: event.html || '',
-        to_emails: Array.isArray(event.to) ? event.to : [event.to || ''],
-        received_at: new Date().toISOString(),
-        processed: false,
-        attachments: attachments.length > 0 ? attachments : null,
-        message_id: event.message_id,
-        in_reply_to: event.in_reply_to,
-        reference_ids: event.reference_ids?.length > 0 ? event.reference_ids.join(' ') : null,
-        raw_headers: typeof event.headers === 'string' ? event.headers : JSON.stringify(event.headers || {})
-      }).select();
-      
-      if (emailError) {
-        console.error('Error storing email:', emailError);
-        throw emailError;
+      // Store the email in inbound_emails - Declare emailId here at the top of loop scope
+      let emailId;
+      try {
+        const { data: emailData, error: emailError } = await supabase.from('inbound_emails').insert({
+          from_email: fromEmail,
+          from_name: fromName || event.from_name || event.sender_name || '',
+          subject: event.subject || '',
+          body_text: event.text || event.plain || event.body || '',
+          body_html: event.html || '',
+          to_emails: Array.isArray(event.to) ? event.to : [event.to || ''],
+          received_at: new Date().toISOString(),
+          processed: false,
+          attachments: attachments.length > 0 ? attachments : null,
+          message_id: event.message_id,
+          in_reply_to: event.in_reply_to,
+          reference_ids: event.reference_ids?.length > 0 ? event.reference_ids.join(' ') : null,
+          raw_headers: typeof event.headers === 'string' ? event.headers : JSON.stringify(event.headers || {})
+        }).select();
+        
+        if (emailError) {
+          console.error('Error storing email:', emailError);
+          throw emailError;
+        }
+        
+        emailId = emailData?.[0]?.id;
+      } catch (err) {
+        console.error('Error in email insertion:', err);
+        continue; // Skip to next event if we can't store this email
       }
-      
-      const emailId = emailData?.[0]?.id;
       
       // Get the actual recipient email (the 'to' address)
       const toEmail = event.to;
