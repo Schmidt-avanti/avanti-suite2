@@ -1,5 +1,9 @@
+
 // Update UserRole type to match database constraint
 export type UserRole = 'admin' | 'agent' | 'customer';
+
+// Define TaskActivityAction type that was missing
+export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'assign' | 'comment';
 
 // Add to existing types
 export interface TaskTime {

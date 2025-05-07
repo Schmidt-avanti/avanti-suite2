@@ -52,7 +52,8 @@ export const useReportData = () => {
             const customerIds = assignedCustomers.map(ac => ac.customer_id);
             query = query.in('id', customerIds);
           }
-        } else if (user?.role === 'client') {
+        } else if (user?.role === 'customer') {
+          // Changed from 'client' to 'customer' to fix the type error
           const { data: userAssignment } = await supabase
             .from('user_customer_assignments')
             .select('customer_id')
