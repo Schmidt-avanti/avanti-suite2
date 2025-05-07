@@ -15,6 +15,7 @@ const UsersAdminPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [editUser, setEditUser] = useState<(User & { customers: Customer[], is_active: boolean })|null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
+  const [forceSkipDuplicateCheck, setForceSkipDuplicateCheck] = useState(false);
   const { toast } = useToast();
 
   const { customers: realCustomers, loading: loadingCustomers } = useFetchCustomers();
@@ -27,6 +28,7 @@ const UsersAdminPage: React.FC = () => {
   const handleCreate = () => {
     setEditUser(null);
     setDialogOpen(true);
+    setForceSkipDuplicateCheck(false); // Reset this when opening the dialog
   };
 
   const saveCustomerAssignments = async (userId: string, customerIds: string[]) => {
@@ -109,6 +111,7 @@ const UsersAdminPage: React.FC = () => {
               action: 'create',
               email: user.email,
               password: "W1llkommen@avanti",
+              skipDuplicateCheck: forceSkipDuplicateCheck, // Use the flag to bypass duplicate check if needed
               userData: {
                 role: user.role,
                 "Full Name": user.name,
@@ -130,6 +133,64 @@ const UsersAdminPage: React.FC = () => {
                 title: "Fehler bei der Benutzerregistrierung",
                 description: data.error || "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.",
               });
+              
+              // Provide option to force creation
+              const shouldForce = confirm(
+                "Es scheint ein Problem mit der E-Mail-Prüfung zu geben. Möchten Sie versuchen, den Benutzer trotzdem anzulegen?"
+              );
+              
+              if (shouldForce) {
+                setForceSkipDuplicateCheck(true);
+                // Retry immediately with skip flag
+                const { data: retryData, error: retryError } = await supabase.functions.invoke('create-user', {
+                  body: {
+                    action: 'create',
+                    email: user.email,
+                    password: "W1llkommen@avanti",
+                    skipDuplicateCheck: true,
+                    userData: {
+                      role: user.role,
+                      "Full Name": user.name,
+                      needs_password_reset: true,
+                      is_active: true
+                    }
+                  }
+                });
+                
+                if (retryError) throw retryError;
+                
+                if (retryData?.error) {
+                  throw new Error(retryData.error);
+                }
+                
+                if (retryData?.userId) {
+                  await saveCustomerAssignments(
+                    retryData.userId, 
+                    user.customers.map(c => c.id)
+                  );
+
+                  const newUser: User & { customers: Customer[], is_active: boolean } = {
+                    id: retryData.userId,
+                    email: user.email,
+                    role: user.role,
+                    createdAt: new Date().toISOString(),
+                    customers: user.customers,
+                    is_active: true,
+                    firstName: user.name
+                  };
+                  
+                  setUsers(prev => [...prev, newUser]);
+                  
+                  toast({
+                    title: "Benutzer angelegt (Duplikatsprüfung übersprungen)",
+                    description: `Der Benutzer wurde erfolgreich angelegt. Passwort: W1llkommen@avanti`,
+                  });
+                  
+                  setDialogOpen(false);
+                  setEditUser(null);
+                  return;
+                }
+              }
               return;
             } else {
               throw new Error(data.error);
@@ -173,6 +234,17 @@ const UsersAdminPage: React.FC = () => {
               title: "E-Mail-Adresse existiert bereits",
               description: "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.",
             });
+            
+            // Provide option to force creation
+            const shouldForce = confirm(
+              "Es scheint ein Problem mit der E-Mail-Prüfung zu geben. Möchten Sie versuchen, den Benutzer trotzdem anzulegen?"
+            );
+            
+            if (shouldForce) {
+              setForceSkipDuplicateCheck(true);
+              // Don't automatically retry - let the user click save again
+              return;
+            }
           } else {
             throw apiError;
           }
@@ -186,8 +258,10 @@ const UsersAdminPage: React.FC = () => {
         description: error.message || "Änderung konnte nicht gespeichert werden.",
       });
     } finally {
-      setDialogOpen(false);
-      setEditUser(null);
+      if (!forceSkipDuplicateCheck) {
+        setDialogOpen(false);
+        setEditUser(null);
+      }
     }
   };
 
@@ -214,7 +288,10 @@ const UsersAdminPage: React.FC = () => {
       </Card>
       <UserEditSection
         open={isDialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setForceSkipDuplicateCheck(false);
+        }}
         onSave={handleSave}
         defaultValues={editUser ?? undefined}
       />

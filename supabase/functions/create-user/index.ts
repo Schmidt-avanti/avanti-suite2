@@ -22,6 +22,7 @@ interface CreateUserRequest {
   email: string
   password: string
   userData: UserData
+  skipDuplicateCheck?: boolean // New option to skip duplicate check
 }
 
 interface DeleteUserRequest {
@@ -127,7 +128,7 @@ async function handleCreateUser(
   supabaseAdmin: any, 
   corsHeaders: HeadersInit
 ): Promise<Response> {
-  const { email, password, userData } = requestData
+  const { email, password, userData, skipDuplicateCheck } = requestData
   
   // Validate required fields
   if (!email || !password || !userData) {
@@ -142,40 +143,65 @@ async function handleCreateUser(
   }
 
   console.log(`Processing user creation request for email: ${email}`)
+  console.log(`Skip duplicate check: ${skipDuplicateCheck ? 'Yes' : 'No'}`)
 
-  // First check if a user with this email already exists
-  const { data: existingUser, error: getUserError } = await supabaseAdmin.auth.admin.listUsers({
-    filter: { email }
-  });
+  // Only perform duplicate check if not explicitly skipped
+  if (!skipDuplicateCheck) {
+    try {
+      // Use direct database query to check for existing user by email
+      // This is more reliable than using the Auth API
+      const { count, error: countError } = await supabaseAdmin
+        .from('auth_users_view')  // Using a view that maps to auth.users
+        .select('email', { count: 'exact', head: true })
+        .eq('email', email);
+      
+      if (countError) {
+        console.error('Error checking existing user via DB:', countError);
+        // Fall back to regular auth check
+        const { data: existingUsers, error: getUserError } = await supabaseAdmin.auth.admin.listUsers({
+          filter: { email }
+        });
 
-  if (getUserError) {
-    console.error('Error checking existing user:', getUserError);
-    return new Response(
-      JSON.stringify({ error: 'Failed to check for existing user: ' + getUserError.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        if (getUserError) {
+          console.error('Error with fallback check:', getUserError);
+          // Continue anyway since we failed to check
+        } else if (existingUsers && existingUsers.users && existingUsers.users.length > 0) {
+          console.log('User already exists (fallback check):', email);
+          return new Response(
+            JSON.stringify({ 
+              error: 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits',
+              code: 'EMAIL_EXISTS' 
+            }),
+            { 
+              status: 409,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+      } else if (count && count > 0) {
+        console.log('User already exists (db check):', email, 'count:', count);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits',
+            code: 'EMAIL_EXISTS' 
+          }),
+          { 
+            status: 409,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      } else {
+        console.log('No existing user found with email:', email);
       }
-    );
-  }
-
-  // If user already exists, return a specific error
-  if (existingUser && existingUser.users && existingUser.users.length > 0) {
-    console.log('User already exists with email:', email);
-    return new Response(
-      JSON.stringify({ 
-        error: 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits',
-        code: 'EMAIL_EXISTS' 
-      }),
-      { 
-        status: 409, // Conflict status code
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    } catch (checkError) {
+      console.error('Error during existence check:', checkError);
+      // Continue anyway since we failed to check
+    }
   }
 
   // Create the user
   try {
+    console.log('Creating new user with email:', email);
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -185,7 +211,8 @@ async function handleCreateUser(
 
     if (error) {
       console.error('Error creating user:', error);
-      // If it's a "user exists" error, return a more specific message
+      
+      // Handle specific error types
       if (error.message && error.message.includes('already been registered')) {
         return new Response(
           JSON.stringify({ 
@@ -210,8 +237,7 @@ async function handleCreateUser(
 
     console.log('User created successfully:', data.user.id);
     
-    // No need to explicitly update the profile here since the DB trigger handles it
-    // Just make sure the email is stored in profile
+    // Ensure the email is stored in profile
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({
