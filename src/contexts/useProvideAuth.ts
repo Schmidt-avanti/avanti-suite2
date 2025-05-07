@@ -54,17 +54,17 @@ const fetchUserProfile = async (userId: string) => {
  * Maps a Supabase session user and profile data to our application User type
  */
 const createUserFromSessionAndProfile = (session: Session, profileData: any): User & { role: UserRole } => {
-  const role = (profileData.role || "client") as UserRole;
+  const role = (profileData.role || "customer") as UserRole;
   
   // Ensure role is one of our allowed types
-  if (!['admin', 'agent', 'client'].includes(role)) {
-    console.warn(`Invalid role found in profile: ${role}, defaulting to 'client'`);
+  if (!['admin', 'agent', 'customer'].includes(role)) {
+    console.warn(`Invalid role found in profile: ${role}, defaulting to 'customer'`);
   }
   
   return {
     id: session.user.id,
     email: session.user.email ?? "",
-    role: (['admin', 'agent', 'client'].includes(role) ? role : 'client') as UserRole,
+    role: (['admin', 'agent', 'customer'].includes(role) ? role : 'customer') as UserRole,
     createdAt: session.user.created_at,
     firstName: profileData["Full Name"] || undefined,
     lastName: undefined,

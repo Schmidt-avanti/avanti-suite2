@@ -17,6 +17,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Special handling for reset password page
+  const isResetPasswordPath = location.pathname === "/auth/reset-password";
+
   useEffect(() => {
     // Double-check session validity
     if (!isLoading && !session) {
@@ -30,6 +33,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-avanti-600"></div>
       </div>
     );
+  }
+
+  // Special handling for reset password page - allow access even without auth
+  if (isResetPasswordPath) {
+    return <>{children}</>;
   }
 
   if (!session || !user) {

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -82,7 +81,10 @@ const App = () => {
                 <Route path="/" element={<Index />} />
                 <Route path="/auth/login" element={<Login />} />
                 <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+                
+                {/* Important: The reset password route must be outside of the protected routes */}
                 <Route path="/auth/reset-password" element={<ResetPassword />} />
+                
                 {/* Entferne Registrierung, leite ggf. weiter */}
                 <Route path="/auth/register" element={<Navigate to="/auth/login" replace />} />
 
