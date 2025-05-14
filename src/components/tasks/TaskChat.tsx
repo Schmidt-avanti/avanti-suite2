@@ -9,7 +9,7 @@ import { TaskChatMessage } from './TaskChatMessage';
 import { TaskChatInput } from './TaskChatInput';
 import { TaskChatStatus } from './TaskChatStatus';
 import { TaskChatScrollButton } from './TaskChatScrollButton';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 
 interface TaskChatProps {
   taskId: string;
@@ -99,7 +99,11 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           console.log("Initial message sent successfully");
         } catch (error) {
           console.error("Failed to auto-start chat:", error);
-          toast.error("Chat konnte nicht automatisch gestartet werden. Bitte versuchen Sie es später erneut.");
+          toast({
+            variant: "destructive",
+            title: "Fehler",
+            description: "Chat konnte nicht automatisch gestartet werden. Bitte versuchen Sie es später erneut."
+          });
         }
       }
     };

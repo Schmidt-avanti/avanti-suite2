@@ -63,24 +63,45 @@ export const useTaskMessages = (taskId: string | null, initialMessages: Message[
       isFetchingRef.current = true;
       setLoading(true);
       
-      // Fetch messages with their creator information
-      const { data, error } = await supabase
+      // First fetch messages
+      const { data: messagesData, error: messagesError } = await supabase
         .from('task_messages')
-        .select('*, creator:created_by("Full Name")')
+        .select('*')
         .eq('task_id', taskId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (messagesError) throw messagesError;
 
-      if (data) {
+      // If we have messages with creator IDs, fetch their info separately
+      let creatorInfo = new Map();
+      if (messagesData) {
+        const creatorIds = messagesData
+          .filter(msg => msg.created_by)
+          .map(msg => msg.created_by);
+          
+        if (creatorIds.length > 0) {
+          const { data: creators, error: creatorsError } = await supabase
+            .from('profiles')
+            .select('id, "Full Name"')
+            .in('id', creatorIds);
+            
+          if (!creatorsError && creators) {
+            creators.forEach(creator => {
+              creatorInfo.set(creator.id, creator["Full Name"]);
+            });
+          }
+        }
+      }
+
+      if (messagesData) {
         // Map the data to our Message interface, adding creator name when available
-        const typedMessages: Message[] = data.map(msg => ({
+        const typedMessages: Message[] = messagesData.map(msg => ({
           id: msg.id,
           role: msg.role as "assistant" | "user",
           content: msg.content,
           created_at: msg.created_at,
           created_by: msg.created_by,
-          creatorName: msg.creator?.["Full Name"] || null
+          creatorName: msg.created_by ? creatorInfo.get(msg.created_by) : null
         }));
         
         setMessages(typedMessages);
