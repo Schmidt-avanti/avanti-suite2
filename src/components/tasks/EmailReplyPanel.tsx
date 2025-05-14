@@ -1,4 +1,3 @@
-
 import React, { useState, FormEvent, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { EmailThreadHistory } from './EmailThreadHistory';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { TaskStatus } from '@/types';
 
 interface EmailReplyPanelProps {
   taskId: string;

@@ -1,4 +1,3 @@
-
 // Fix the imports and type issues
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -133,16 +132,18 @@ const TaskDetail = () => {
     };
   }, []);
 
-  const handleBack = async () => {
+  const handleBack = () => {
     setIsActive(false);
-    await new Promise(resolve => setTimeout(resolve, 100));
     
-    // Check if the task is completed and navigate accordingly
-    if (task && task.status === 'completed') {
-      navigate('/tasks/completed');
-    } else {
-      navigate('/tasks');
-    }
+    // Use a setTimeout to ensure state updates before navigation
+    setTimeout(() => {
+      // Check if the task is completed and navigate accordingly
+      if (task && task.status === 'completed') {
+        navigate('/tasks/completed');
+      } else {
+        navigate('/tasks');
+      }
+    }, 100);
   };
 
   const handleEmailSent = (emailDetails: { recipient: string, subject: string }) => {
