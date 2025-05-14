@@ -1,3 +1,4 @@
+
 // src/components/call-center/TwilioSetupStatus.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -65,19 +66,22 @@ const TwilioSetupStatus: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Use a raw query approach to bypass TypeScript constraints
-      const { data: twilioConfigData, error: twilioConfigError } = await supabase
-        .from('system_settings')
-        .select('key, value, description')
-        .in('key', [
-          'TWILIO_ACCOUNT_SID', 
-          'TWILIO_AUTH_TOKEN', 
-          'TWILIO_TWIML_APP_SID', 
-          'TWILIO_WORKSPACE_SID', 
-          'TWILIO_WORKFLOW_SID'
-        ]) as { data: SystemSetting[] | null, error: any };
+      // Use direct fetch API to bypass TypeScript constraints with Supabase client
+      const session = await supabase.auth.getSession();
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/system_settings?select=key,value,description&key=in.(TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_TWIML_APP_SID,TWILIO_WORKSPACE_SID,TWILIO_WORKFLOW_SID)`, {
+        method: 'GET',
+        headers: {
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${session.data.session?.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
-      if (twilioConfigError) throw twilioConfigError;
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const twilioConfigData = await response.json() as SystemSetting[];
       
       // Create a map of configured settings
       const configuredSettings = new Map<string, boolean>();
