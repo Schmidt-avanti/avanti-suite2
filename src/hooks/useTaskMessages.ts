@@ -8,6 +8,8 @@ export interface Message {
   role: "assistant" | "user";
   content: string;
   created_at: string;
+  created_by?: string;
+  creatorName?: string;
 }
 
 export const useTaskMessages = (taskId: string | null, initialMessages: Message[] = []) => {
@@ -61,21 +63,26 @@ export const useTaskMessages = (taskId: string | null, initialMessages: Message[
       isFetchingRef.current = true;
       setLoading(true);
       
+      // Fetch messages with their creator information
       const { data, error } = await supabase
         .from('task_messages')
-        .select('*')
+        .select('*, creator:created_by("Full Name")')
         .eq('task_id', taskId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
 
       if (data) {
+        // Map the data to our Message interface, adding creator name when available
         const typedMessages: Message[] = data.map(msg => ({
           id: msg.id,
           role: msg.role as "assistant" | "user",
           content: msg.content,
-          created_at: msg.created_at
+          created_at: msg.created_at,
+          created_by: msg.created_by,
+          creatorName: msg.creator?.["Full Name"] || null
         }));
+        
         setMessages(typedMessages);
         
         const newSelectedOptions = new Set<string>();

@@ -8,6 +8,7 @@ import { SpellChecker } from '@/components/ui/spell-checker';
 import { v4 as uuidv4 } from "uuid";
 import { EmailConfirmationBubble } from './EmailConfirmationBubble';
 import { EmailThread } from "@/types";
+import type { TaskStatus } from '@/types';
 
 interface EmailReplyPanelProps {
   taskId: string;

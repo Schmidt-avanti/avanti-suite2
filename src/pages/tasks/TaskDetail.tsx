@@ -21,6 +21,7 @@ import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { KnowledgeArticleManager } from '@/components/tasks/KnowledgeArticleManager';
+import type { TaskStatus } from '@/types';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -131,9 +132,8 @@ const TaskDetail = () => {
     };
   }, []);
 
-  const handleBack = async () => {
+  const handleBack = () => {
     setIsActive(false);
-    await new Promise(resolve => setTimeout(resolve, 100));
     
     // Check if the task is completed and navigate accordingly
     if (task && task.status === 'completed') {

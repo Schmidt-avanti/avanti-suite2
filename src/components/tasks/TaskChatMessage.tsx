@@ -81,6 +81,9 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   };
 
   const displayText = cleanupText(text);
+  
+  // Use the message's creator name if available, otherwise fallback to current user
+  const displayName = message.creatorName || (message.role === "assistant" ? "Assistentin" : (user?.fullName || user?.email || "Benutzer"));
 
   return (
     <div className={`flex flex-col mb-4 ${message.role === "assistant" ? "items-start" : "items-end"}`}>
@@ -94,7 +97,7 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
       `}>
         <div className="flex items-center gap-2 mb-1">
           <span className="font-semibold text-sm">
-            {message.role === "assistant" ? "Assistentin" : user?.fullName || user?.email || "Benutzer"}
+            {displayName}
           </span>
         </div>
         <div className="text-sm whitespace-pre-wrap">
