@@ -49,11 +49,15 @@ export const TwilioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Make sure worker is registered
       try {
         // Direct API call rather than using the edge function
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-register-worker`, {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://knoevkvjyuchhcmzsdpq.supabase.co';
+        const session = await supabase.auth.getSession();
+        const accessToken = session.data.session?.access_token;
+        
+        const response = await fetch(`${supabaseUrl}/functions/v1/twilio-register-worker`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+            'Authorization': `Bearer ${accessToken}`
           },
           body: JSON.stringify({
             userId: user.id,

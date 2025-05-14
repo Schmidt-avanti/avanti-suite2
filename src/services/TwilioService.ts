@@ -111,7 +111,9 @@ class TwilioService {
     try {
       // Direct API call to avoid edge function errors
       const session = await supabase.auth.getSession();
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-voice-token`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://knoevkvjyuchhcmzsdpq.supabase.co';
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/twilio-voice-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

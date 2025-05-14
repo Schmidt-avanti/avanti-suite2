@@ -66,16 +66,19 @@ const TwilioSetupStatus: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // We'll make a direct HTTP request to our edge function to get the system settings
-      // This bypasses the typed client limitations
+      // We'll make a direct HTTP request to get the system settings
       const { data: session } = await supabase.auth.getSession();
       const accessToken = session?.session?.access_token;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://knoevkvjyuchhcmzsdpq.supabase.co';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub2V2a3ZqeXVjaGhjbXpzZHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyMTEzMzcsImV4cCI6MjA2MDc4NzMzN30.gKCh5BUGsQJKCRW0JDxDEWA2M9uL3q20Wiqt8ePfoi8';
       
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/system_settings?select=key,value,description&key=in.(TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_TWIML_APP_SID,TWILIO_WORKSPACE_SID,TWILIO_WORKFLOW_SID)`, {
+      console.log('Fetching from URL:', supabaseUrl);
+      
+      const response = await fetch(`${supabaseUrl}/rest/v1/system_settings?select=key,value,description&key=in.(TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_TWIML_APP_SID,TWILIO_WORKSPACE_SID,TWILIO_WORKFLOW_SID)`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'apikey': supabaseAnonKey,
           'Authorization': `Bearer ${accessToken}`
         }
       });
@@ -126,7 +129,9 @@ const TwilioSetupStatus: React.FC = () => {
     try {
       // Call the workspace setup function with proper error handling
       const { data: session } = await supabase.auth.getSession();
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-workspace-setup`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://knoevkvjyuchhcmzsdpq.supabase.co';
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/twilio-workspace-setup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
