@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -73,7 +73,7 @@ const CustomerFormWizard = () => {
       console.log('Fetched Twilio settings:', settingsData);
       
       // Convert array of settings to object
-      const settings = settingsData.reduce((acc, setting) => {
+      const settings = settingsData.reduce((acc: any, setting: any) => {
         acc[setting.key] = setting.value || '';
         return acc;
       }, {});
@@ -138,7 +138,7 @@ const CustomerFormWizard = () => {
         title: "Success",
         description: "Twilio settings saved successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving Twilio settings:', error);
       toast({
         title: "Error",
@@ -151,7 +151,7 @@ const CustomerFormWizard = () => {
   };
 
   // Load Twilio settings when the tab changes to 'twilio'
-  React.useEffect(() => {
+  useEffect(() => {
     if (activeTab === 'twilio') {
       fetchTwilioSettings();
     }
@@ -166,15 +166,15 @@ const CustomerFormWizard = () => {
       />
     },
     {
-      title: "Contacts",
-      component: <CustomerContactsStep 
+      title: "Tools",
+      component: <CustomerToolsStep 
         customer={customer}
         setCustomer={setCustomer}
       />
     },
     {
-      title: "Tools",
-      component: <CustomerToolsStep 
+      title: "Contacts",
+      component: <CustomerContactsStep 
         customer={customer}
         setCustomer={setCustomer}
       />
@@ -197,12 +197,12 @@ const CustomerFormWizard = () => {
     <Card className="w-full">
       <CardHeader>
         <CardTitle>
-          {formState === 'create' ? 'Create Customer' : 'Edit Customer'}
+          {formState === 'edit' ? 'Edit Customer' : 'Create Customer'}
         </CardTitle>
         <CardDescription>
-          {formState === 'create' 
-            ? 'Fill in the customer information to add a new customer' 
-            : 'Update the information for this customer'}
+          {formState === 'edit' 
+            ? 'Update the information for this customer' 
+            : 'Fill in the customer information to add a new customer'}
         </CardDescription>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -213,9 +213,9 @@ const CustomerFormWizard = () => {
           
           <TabsContent value="customer">
             <Stepper 
-              steps={steps.map(step => step.title)} 
               currentStep={currentStep} 
               setCurrentStep={setCurrentStep} 
+              steps={steps.map(step => step.title)}
             />
           </TabsContent>
           
