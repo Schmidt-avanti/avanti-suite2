@@ -12,10 +12,9 @@ import {
   MaximizeIcon,
   PhoneIcon
 } from 'lucide-react';
-import PhoneInterface from './PhoneInterface';
 
 const ActiveCallPanel = () => {
-  const { callState, endCall, toggleMute } = useTwilio();
+  const { callState, endCall, toggleMute, acceptIncomingCall, rejectIncomingCall } = useTwilio();
   const [isMinimized, setIsMinimized] = useState(false);
 
   // Don't render anything when no active call
@@ -74,8 +73,29 @@ const ActiveCallPanel = () => {
             )}
           </div>
 
-          <div className="flex space-x-2">
-            {callState.status === 'in-progress' && (
+          {/* Incoming Call Controls - for agents to accept or reject calls */}
+          {callState.status === 'ringing' && callState.direction === 'inbound' && (
+            <div className="flex justify-center space-x-4 my-4">
+              <Button 
+                variant="destructive"
+                className="rounded-full w-12 h-12 p-0"
+                onClick={rejectIncomingCall}
+              >
+                <PhoneOffIcon className="h-5 w-5" />
+              </Button>
+              <Button 
+                variant="default"
+                className="rounded-full w-12 h-12 p-0 bg-green-500 hover:bg-green-600"
+                onClick={acceptIncomingCall}
+              >
+                <PhoneIcon className="h-5 w-5" />
+              </Button>
+            </div>
+          )}
+
+          {/* Active Call Controls */}
+          {callState.status === 'in-progress' && (
+            <div className="flex space-x-2">
               <Button
                 variant={callState.muted ? 'destructive' : 'outline'}
                 className="flex-1"
@@ -93,10 +113,7 @@ const ActiveCallPanel = () => {
                   </>
                 )}
               </Button>
-            )}
 
-            {(callState.status === 'in-progress' ||
-              callState.status === 'ringing') && (
               <Button
                 variant="destructive"
                 className="flex-1"
@@ -105,15 +122,20 @@ const ActiveCallPanel = () => {
                 <PhoneOffIcon className="h-4 w-4 mr-2" />
                 End Call
               </Button>
-            )}
+            </div>
+          )}
 
+          {/* Outbound Ringing Controls */}
+          {callState.status === 'ringing' && callState.direction === 'outbound' && (
             <Button
-              variant="outline"
-              onClick={() => setIsMinimized(false)}
+              variant="destructive"
+              className="w-full"
+              onClick={endCall}
             >
-              <MaximizeIcon className="h-4 w-4" />
+              <PhoneOffIcon className="h-4 w-4 mr-2" />
+              Cancel Call
             </Button>
-          </div>
+          )}
         </div>
       </Card>
     </div>

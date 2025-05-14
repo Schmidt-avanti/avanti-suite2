@@ -1,20 +1,21 @@
 
 // src/pages/CallCenter.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import PhoneInterface from '@/components/call-center/PhoneInterface';
 import VoiceStatusButton from '@/components/call-center/VoiceStatusButton';
 import CallHistoryList from '@/components/call-center/CallHistoryList';
-import TwilioSetupStatus from '@/components/call-center/TwilioSetupStatus'; // Add this import
+import TwilioSetupStatus from '@/components/call-center/TwilioSetupStatus';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from '@/components/ui/card';
 import { useTwilio } from '@/contexts/TwilioContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InfoIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import ActiveCallPanel from '@/components/call-center/ActiveCallPanel';
 
 const CallCenter: React.FC = () => {
   const { isSetup, setupTwilio } = useTwilio();
-  const [activeTab, setActiveTab] = useState('dialer');
+  const [activeTab, setActiveTab] = React.useState('dialer');
   const { user } = useAuth();
   
   const isAdmin = user?.role === 'admin';
@@ -64,6 +65,9 @@ const CallCenter: React.FC = () => {
           <TwilioSetupStatus />
         </div>
       </div>
+      
+      {/* This component will show when there's an active call */}
+      <ActiveCallPanel />
     </div>
   );
 };

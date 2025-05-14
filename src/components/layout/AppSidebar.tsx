@@ -18,7 +18,8 @@ import {
   ChevronDown,
   ChevronRight,
   Receipt,
-  CreditCard
+  CreditCard,
+  Phone
 } from 'lucide-react';
 
 import {
@@ -53,6 +54,9 @@ const AppSidebar = () => {
   }, [location.pathname, isMobile, setOpen]);
 
   if (!user) return null;
+
+  // Check if user is admin or agent
+  const showCallCenter = user.role === 'admin' || user.role === 'agent';
 
   return (
     <Sidebar>
@@ -143,6 +147,25 @@ const AppSidebar = () => {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                
+                {/* Call Center Navigation Item - visible to admin and agent roles */}
+                {showCallCenter && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/call-center"
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                            isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                          }`
+                        }
+                      >
+                        <Phone className="h-5 w-5 text-sidebar-primary" />
+                        <span className="truncate">Call Center</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
