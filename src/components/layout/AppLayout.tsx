@@ -62,8 +62,8 @@ const AppLayout = () => {
       loadTwilioScript();
     }
   }, [isTwilioNeededRoute, isTwilioLoaded]);
-    
-  // Create a layout with or without Twilio Provider based on route
+  
+  // Create the content layout that will be wrapped with or without TwilioProvider
   const renderContent = () => (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 w-full">
       <SidebarProvider>
@@ -78,14 +78,14 @@ const AppLayout = () => {
           <Suspense fallback={null}>
             <FloatingChatButton />
           </Suspense>
-          {isTwilioNeededRoute && isTwilioLoaded && <ActiveCallPanel />}
         </div>
       </SidebarProvider>
     </div>
   );
   
-  // Conditionally wrap in TwilioProvider only when needed and script is loaded
-  if (isTwilioNeededRoute && isTwilioLoaded) {
+  // Always wrap the entire application with TwilioProvider if on a route that needs it
+  // The provider itself will handle checking if Twilio is actually loaded before using it
+  if (isTwilioNeededRoute) {
     return (
       <TwilioProvider>
         {renderContent()}

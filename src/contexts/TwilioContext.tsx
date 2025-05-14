@@ -1,4 +1,3 @@
-
 // src/contexts/TwilioContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import twilioService, { CallState } from '@/services/TwilioService';
@@ -38,6 +37,17 @@ export const TwilioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       toast({
         title: 'Authentication Required',
         description: 'You must be logged in to use the phone system.',
+        variant: 'destructive'
+      });
+      return false;
+    }
+    
+    // Make sure the Twilio script is actually loaded
+    if (!window.Twilio || !window.Twilio.Device) {
+      console.log("Twilio not loaded yet, can't setup");
+      toast({
+        title: 'Initialization Error',
+        description: 'Twilio is still loading. Please try again in a moment.',
         variant: 'destructive'
       });
       return false;

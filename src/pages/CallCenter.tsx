@@ -1,24 +1,52 @@
 
 // src/pages/CallCenter.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import PhoneInterface from '@/components/call-center/PhoneInterface';
 import VoiceStatusButton from '@/components/call-center/VoiceStatusButton';
 import CallHistoryList from '@/components/call-center/CallHistoryList';
 import TwilioSetupStatus from '@/components/call-center/TwilioSetupStatus';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card } from '@/components/ui/card';
-import { useTwilio } from '@/contexts/TwilioContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { InfoIcon } from 'lucide-react';
+import { InfoIcon, Loader2 } from 'lucide-react';
+import { useTwilio } from '@/contexts/TwilioContext';
 import { useAuth } from '@/contexts/AuthContext';
-import ActiveCallPanel from '@/components/call-center/ActiveCallPanel';
 
 const CallCenter: React.FC = () => {
   const { isSetup, setupTwilio } = useTwilio();
   const [activeTab, setActiveTab] = React.useState('dialer');
+  const [isLoading, setIsLoading] = React.useState(true);
   const { user } = useAuth();
   
   const isAdmin = user?.role === 'admin';
+  
+  useEffect(() => {
+    // Check if Twilio is loaded and set up
+    const checkTwilioSetup = async () => {
+      try {
+        if (!isSetup && window.Twilio && window.Twilio.Device) {
+          await setupTwilio();
+        }
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error setting up Twilio:", error);
+        setIsLoading(false);
+      }
+    };
+    
+    checkTwilioSetup();
+  }, [isSetup, setupTwilio]);
+  
+  // Show a loading indicator while we're initializing
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <p className="text-lg font-medium">Twilio wird initialisiert...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="container mx-auto py-6 max-w-4xl">
@@ -65,9 +93,6 @@ const CallCenter: React.FC = () => {
           <TwilioSetupStatus />
         </div>
       </div>
-      
-      {/* This component will show when there's an active call */}
-      <ActiveCallPanel />
     </div>
   );
 };
