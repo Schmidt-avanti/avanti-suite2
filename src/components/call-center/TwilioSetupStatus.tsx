@@ -66,25 +66,25 @@ const TwilioSetupStatus: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Use a direct SQL query to fetch the settings
-      // This bypasses the type restrictions in the generated Supabase types
-      const { data: rawData, error } = await supabase
-        .from('system_settings')
-        .select('key, value, description')
-        .in('key', [
-          'TWILIO_ACCOUNT_SID',
-          'TWILIO_AUTH_TOKEN',
-          'TWILIO_TWIML_APP_SID',
-          'TWILIO_WORKSPACE_SID',
-          'TWILIO_WORKFLOW_SID'
-        ]);
+      // We'll make a direct HTTP request to our edge function to get the system settings
+      // This bypasses the typed client limitations
+      const { data: session } = await supabase.auth.getSession();
+      const accessToken = session?.session?.access_token;
       
-      if (error) {
-        throw error;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/system_settings?select=key,value,description&key=in.(TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_TWIML_APP_SID,TWILIO_WORKSPACE_SID,TWILIO_WORKFLOW_SID)`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      // Type assertion to match our SystemSetting interface
-      const twilioConfigData = rawData as SystemSetting[];
+      const twilioConfigData = await response.json() as SystemSetting[];
       
       // Create a map of configured settings
       const configuredSettings = new Map<string, boolean>();
@@ -125,11 +125,12 @@ const TwilioSetupStatus: React.FC = () => {
     
     try {
       // Call the workspace setup function with proper error handling
+      const { data: session } = await supabase.auth.getSession();
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-workspace-setup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${session?.session?.access_token}`
         }
       });
       
