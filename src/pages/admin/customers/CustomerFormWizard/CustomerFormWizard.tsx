@@ -1,67 +1,374 @@
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/sonner";
-import { supabase } from "@/integrations/supabase/client";
-import CustomerMasterDataStep from "../CustomerMasterDataStep";
-import CustomerToolsStep from "../CustomerToolsStep";
-import CustomerContactsStep from "../CustomerContactsStep";
-import Stepper from "./Stepper";
-import useCustomerForm from "./useCustomerForm";
-import { Customer } from "@/types";
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import CustomerMasterDataStep from '../CustomerMasterDataStep';
+import CustomerContactsStep from '../CustomerContactsStep';
+import CustomerToolsStep from '../CustomerToolsStep';
+import Stepper from './Stepper';
+import useCustomerForm from './useCustomerForm';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2Icon, PhoneIcon, SaveIcon, ServerIcon } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-interface Props {
-  customer?: Customer;
-  onFinish: () => void;
-  setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
-}
+const CustomerFormWizard = () => {
+  const { formState, customer, setCustomer, handleFormSubmit, isSubmitting } = useCustomerForm();
+  const [currentStep, setCurrentStep] = useState(0);
+  const [activeTab, setActiveTab] = useState('customer');
+  const { toast } = useToast();
+  const [twilioSettings, setTwilioSettings] = useState({
+    TWILIO_ACCOUNT_SID: '',
+    TWILIO_AUTH_TOKEN: '',
+    TWILIO_TWIML_APP_SID: '',
+    TWILIO_WORKSPACE_SID: '',
+    TWILIO_WORKFLOW_SID: ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-const CustomerFormWizard: React.FC<Props> = ({ customer, onFinish, setCustomers }) => {
-  const {
-    step,
-    setStep,
-    form,
-    setForm,
-    isLoading,
-    isEditing,
-    validateStep1,
-    validateStep2,
-    handleSave,
-    handleNext,
-    handlePrev
-  } = useCustomerForm({ customer, setCustomers, onFinish });
+  // Function to fetch current Twilio settings
+  const fetchTwilioSettings = async () => {
+    setIsLoading(true);
+    try {
+      // Get the current session for authentication
+      const { data: session } = await supabase.auth.getSession();
+      const accessToken = session?.session?.access_token;
+      
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to view Twilio settings",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://knoevkvjyuchhcmzsdpq.supabase.co';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub2V2a3ZqeXVjaGhjbXpzZHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyMTEzMzcsImV4cCI6MjA2MDc4NzMzN30.gKCh5BUGsQJKCRW0JDxDEWA2M9uL3q20Wiqt8ePfoi8';
+      
+      console.log('Fetching Twilio settings from URL:', `${supabaseUrl}/rest/v1/system_settings`);
+      
+      // Direct REST API call to get the system settings (bypassing typing issues)
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/system_settings?select=key,value,description&key=in.(TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_TWIML_APP_SID,TWILIO_WORKSPACE_SID,TWILIO_WORKFLOW_SID)`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const settingsData = await response.json();
+      console.log('Fetched Twilio settings:', settingsData);
+      
+      // Convert array of settings to object
+      const settings = settingsData.reduce((acc, setting) => {
+        acc[setting.key] = setting.value || '';
+        return acc;
+      }, {});
+      
+      setTwilioSettings({
+        TWILIO_ACCOUNT_SID: settings.TWILIO_ACCOUNT_SID || '',
+        TWILIO_AUTH_TOKEN: settings.TWILIO_AUTH_TOKEN || '',
+        TWILIO_TWIML_APP_SID: settings.TWILIO_TWIML_APP_SID || '',
+        TWILIO_WORKSPACE_SID: settings.TWILIO_WORKSPACE_SID || '',
+        TWILIO_WORKFLOW_SID: settings.TWILIO_WORKFLOW_SID || ''
+      });
+    } catch (error) {
+      console.error('Error fetching Twilio settings:', error);
+      toast({
+        title: "Error",
+        description: "Could not fetch Twilio settings",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Function to save Twilio settings
+  const saveTwilioSettings = async () => {
+    setIsSaving(true);
+    try {
+      // Get the current session for authentication
+      const { data: session } = await supabase.auth.getSession();
+      const accessToken = session?.session?.access_token;
+      
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to update Twilio settings",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      // Format the settings into an array for upsert
+      const settingsArray = Object.entries(twilioSettings).map(([key, value]) => ({
+        key,
+        value,
+        updated_at: new Date().toISOString()
+      }));
+      
+      // Perform upserts one by one
+      for (const setting of settingsArray) {
+        const { error } = await supabase
+          .from('system_settings')
+          .upsert(setting, { onConflict: 'key' });
+          
+        if (error) {
+          console.error(`Error saving setting ${setting.key}:`, error);
+          throw new Error(`Error saving ${setting.key}: ${error.message}`);
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: "Twilio settings saved successfully",
+      });
+    } catch (error) {
+      console.error('Error saving Twilio settings:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Could not save Twilio settings",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Load Twilio settings when the tab changes to 'twilio'
+  React.useEffect(() => {
+    if (activeTab === 'twilio') {
+      fetchTwilioSettings();
+    }
+  }, [activeTab]);
+
+  const steps = [
+    {
+      title: "Master Data",
+      component: <CustomerMasterDataStep 
+        customer={customer}
+        setCustomer={setCustomer}
+      />
+    },
+    {
+      title: "Contacts",
+      component: <CustomerContactsStep 
+        customer={customer}
+        setCustomer={setCustomer}
+      />
+    },
+    {
+      title: "Tools",
+      component: <CustomerToolsStep 
+        customer={customer}
+        setCustomer={setCustomer}
+      />
+    }
+  ];
+  
+  const nextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+  
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
 
   return (
-    <form className="space-y-8" onSubmit={e => { e.preventDefault(); handleSave(); }}>
-      <Stepper step={step} setStep={setStep} />
-      {step === 1 && (
-        <CustomerMasterDataStep form={form} setForm={setForm} />
-      )}
-      {step === 2 && (
-        <CustomerToolsStep tools={form.tools} setTools={tools => setForm(f => ({ ...f, tools }))} />
-      )}
-      {step === 3 && (
-        <CustomerContactsStep contacts={form.contacts} setContacts={contacts => setForm(f => ({ ...f, contacts }))} />
-      )}
-
-      <div className="flex gap-2 justify-end pt-6">
-        {step > 1 && <Button type="button" variant="outline" onClick={handlePrev} disabled={isLoading}>Zurück</Button>}
-        {step < 3 && (
-          <Button
-            type="button"
-            onClick={handleNext}
-            disabled={
-              isLoading ||
-              (step === 1 && !validateStep1()) ||
-              (step === 2 && !validateStep2())
-            }
-          >
-            Weiter
-          </Button>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>
+          {formState === 'create' ? 'Create Customer' : 'Edit Customer'}
+        </CardTitle>
+        <CardDescription>
+          {formState === 'create' 
+            ? 'Fill in the customer information to add a new customer' 
+            : 'Update the information for this customer'}
+        </CardDescription>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="customer">Customer Information</TabsTrigger>
+            <TabsTrigger value="twilio">Twilio Settings</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="customer">
+            <Stepper 
+              steps={steps.map(step => step.title)} 
+              currentStep={currentStep} 
+              setCurrentStep={setCurrentStep} 
+            />
+          </TabsContent>
+          
+          <TabsContent value="twilio">
+            <div className="flex items-center">
+              <PhoneIcon className="h-5 w-5 mr-2" />
+              <h3 className="text-lg font-medium">Twilio Integration Settings</h3>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </CardHeader>
+      
+      <CardContent>
+        {activeTab === 'customer' ? (
+          <>
+            {steps[currentStep].component}
+            
+            <div className="flex justify-between mt-6">
+              <Button 
+                variant="outline" 
+                onClick={prevStep} 
+                disabled={currentStep === 0}
+              >
+                Previous
+              </Button>
+              
+              {currentStep < steps.length - 1 ? (
+                <Button onClick={nextStep}>Next</Button>
+              ) : (
+                <Button 
+                  onClick={handleFormSubmit} 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <SaveIcon className="mr-2 h-4 w-4" />
+                      Save
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="space-y-4">
+            {isLoading ? (
+              <div className="flex justify-center items-center h-40">
+                <Loader2Icon className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4">
+                  <div>
+                    <Label htmlFor="accountSid">Account SID</Label>
+                    <Input
+                      id="accountSid"
+                      value={twilioSettings.TWILIO_ACCOUNT_SID}
+                      onChange={(e) => setTwilioSettings({
+                        ...twilioSettings,
+                        TWILIO_ACCOUNT_SID: e.target.value
+                      })}
+                      placeholder="Twilio Account SID"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="authToken">Auth Token</Label>
+                    <Input
+                      id="authToken"
+                      type="password"
+                      value={twilioSettings.TWILIO_AUTH_TOKEN}
+                      onChange={(e) => setTwilioSettings({
+                        ...twilioSettings,
+                        TWILIO_AUTH_TOKEN: e.target.value
+                      })}
+                      placeholder="Twilio Auth Token"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="twimlAppSid">TwiML App SID</Label>
+                    <Input
+                      id="twimlAppSid"
+                      value={twilioSettings.TWILIO_TWIML_APP_SID}
+                      onChange={(e) => setTwilioSettings({
+                        ...twilioSettings,
+                        TWILIO_TWIML_APP_SID: e.target.value
+                      })}
+                      placeholder="Twilio TwiML App SID"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="workspaceSid">Workspace SID</Label>
+                    <Input
+                      id="workspaceSid"
+                      value={twilioSettings.TWILIO_WORKSPACE_SID}
+                      onChange={(e) => setTwilioSettings({
+                        ...twilioSettings,
+                        TWILIO_WORKSPACE_SID: e.target.value
+                      })}
+                      placeholder="TaskRouter Workspace SID"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="workflowSid">Workflow SID</Label>
+                    <Input
+                      id="workflowSid"
+                      value={twilioSettings.TWILIO_WORKFLOW_SID}
+                      onChange={(e) => setTwilioSettings({
+                        ...twilioSettings,
+                        TWILIO_WORKFLOW_SID: e.target.value
+                      })}
+                      placeholder="TaskRouter Workflow SID"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={saveTwilioSettings}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                        Saving Settings...
+                      </>
+                    ) : (
+                      <>
+                        <ServerIcon className="mr-2 h-4 w-4" />
+                        Save Twilio Settings
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="text-sm text-muted-foreground mt-4">
+                  <p>These settings are required for the Twilio integration to work properly.</p>
+                  <p>You can find these values in your Twilio account dashboard.</p>
+                </div>
+              </>
+            )}
+          </div>
         )}
-        {step === 3 && <Button type="submit" disabled={isLoading}>{isEditing ? "Aktualisieren" : "Speichern"}</Button>}
-      </div>
-    </form>
+      </CardContent>
+    </Card>
   );
 };
 

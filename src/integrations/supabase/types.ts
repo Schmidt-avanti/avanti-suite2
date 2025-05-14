@@ -793,6 +793,33 @@ export type Database = {
           },
         ]
       }
+      system_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
       task_activities: {
         Row: {
           action: string
@@ -1595,6 +1622,14 @@ export type Database = {
         Args: { chat_id_param: string }
         Returns: {
           user_id: string
+        }[]
+      }
+      get_system_settings: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          key: string
+          value: string
+          description: string
         }[]
       }
       get_user_role: {
