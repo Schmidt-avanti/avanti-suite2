@@ -20,6 +20,7 @@ interface TwilioCredentialStatus {
 interface SystemSetting {
   key: string;
   value: string | null;
+  description?: string;
 }
 
 const TwilioSetupStatus: React.FC = () => {
@@ -65,9 +66,17 @@ const TwilioSetupStatus: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Use the custom query method to access the system_settings table directly
+      // Use a raw POST request to access the function directly instead of using rpc()
       const { data: twilioConfigData, error: twilioConfigError } = await supabase
-        .rpc('get_system_settings') as { data: SystemSetting[] | null, error: any };
+        .from('system_settings')
+        .select('key, value, description')
+        .in('key', [
+          'TWILIO_ACCOUNT_SID', 
+          'TWILIO_AUTH_TOKEN', 
+          'TWILIO_TWIML_APP_SID', 
+          'TWILIO_WORKSPACE_SID', 
+          'TWILIO_WORKFLOW_SID'
+        ]) as { data: SystemSetting[] | null, error: any };
       
       if (twilioConfigError) throw twilioConfigError;
       
