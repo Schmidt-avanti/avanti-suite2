@@ -66,18 +66,29 @@ const TwilioSetupStatus: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Using supabase RPC function which should have proper permissions
-      const { data: twilioConfigData, error } = await supabase
-        .rpc('get_system_settings')
-        .eq('key', 'in.(TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_TWIML_APP_SID,TWILIO_WORKSPACE_SID,TWILIO_WORKFLOW_SID)');
+      // Use a direct SQL query to fetch the settings
+      // This bypasses the type restrictions in the generated Supabase types
+      const { data: rawData, error } = await supabase
+        .from('system_settings')
+        .select('key, value, description')
+        .in('key', [
+          'TWILIO_ACCOUNT_SID',
+          'TWILIO_AUTH_TOKEN',
+          'TWILIO_TWIML_APP_SID',
+          'TWILIO_WORKSPACE_SID',
+          'TWILIO_WORKFLOW_SID'
+        ]);
       
       if (error) {
         throw error;
       }
       
+      // Type assertion to match our SystemSetting interface
+      const twilioConfigData = rawData as SystemSetting[];
+      
       // Create a map of configured settings
       const configuredSettings = new Map<string, boolean>();
-      twilioConfigData?.forEach((setting: SystemSetting) => {
+      twilioConfigData.forEach(setting => {
         configuredSettings.set(setting.key, !!setting.value);
       });
       
