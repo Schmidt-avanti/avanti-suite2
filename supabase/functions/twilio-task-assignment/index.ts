@@ -3,146 +3,135 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-// This endpoint needs to be public to receive webhooks from Twilio
-serve(async (req) => {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': '*',
-  };
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
+// This function needs to be public to receive webhooks from Twilio
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Parse form data from Twilio
     const formData = await req.formData();
-    const taskAttributes = formData.get('TaskAttributes');
-    const workerAttributes = formData.get('WorkerAttributes');
-    const taskSid = formData.get('TaskSid');
-    const workspaceSid = formData.get('WorkspaceSid');
-    const reservationSid = formData.get('ReservationSid');
-    
-    console.log('Task assignment webhook received:', {
-      taskSid,
-      workspaceSid,
-      reservationSid
-    });
-    
-    if (!taskAttributes) {
-      return new Response(
-        JSON.stringify({ error: 'Missing task attributes' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Parse the JSON attributes
-    const task = JSON.parse(taskAttributes.toString());
-    const worker = workerAttributes ? JSON.parse(workerAttributes.toString()) : null;
-    
-    console.log('Task attributes:', task);
-    console.log('Worker attributes:', worker);
-    
+    const twilioParams = Object.fromEntries(formData.entries());
+    console.log('Received TaskRouter webhook:', twilioParams);
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // Get agent ID from worker attributes
-    const agentId = worker?.user_id;
-    
-    // Get call SID from task attributes
-    const callSid = task?.call_sid;
-    
-    if (callSid) {
-      // Update the call session with agent info and twilio_phone_number_id if present
-      const updateData: any = {
-        agent_id: agentId,
-        status: 'assigned'
-      };
-      
-      if (task.twilio_phone_number_id) {
-        updateData.twilio_phone_number_id = task.twilio_phone_number_id;
-      }
-      
-      const { data, error } = await supabase
-        .from('call_sessions')
-        .update(updateData)
-        .eq('call_sid', callSid)
-        .select();
-        
-      if (error) {
-        console.error('Error updating call session:', error);
-      } else {
-        console.log('Call session updated:', data);
-      }
-      
-      // If the call is linked to a customer, create or update a task for it
-      if (task?.customer_id) {
-        // Check if there's an existing task for this call
-        let taskId = null;
-        const { data: existingCallSession } = await supabase
-          .from('call_sessions')
-          .select('task_id')
-          .eq('call_sid', callSid)
-          .not('task_id', 'is', null)
-          .single();
-          
-        if (existingCallSession?.task_id) {
-          taskId = existingCallSession.task_id;
-        } else {
-          // Create a new task for this call
-          let taskTitle = `Call from ${task.from || 'Unknown'}`;
-          let taskDescription = `Incoming call from ${task.from || 'Unknown'}`;
-          
-          // If we have customer info, use it in the title/description
-          if (task.customer_name) {
-            taskTitle += ` (${task.customer_name})`;
-            taskDescription += ` for ${task.customer_name}`;
-          }
-          
-          // If we have a phone number it was called on, add it
-          if (task.to) {
-            taskDescription += ` to ${task.to}`;
-          }
-          
-          const { data: newTask, error: taskError } = await supabase
-            .from('tasks')
-            .insert({
-              title: taskTitle,
-              description: taskDescription,
-              status: 'in_progress',
-              customer_id: task.customer_id,
-              endkunde_id: task.endkunde_id || null,
-              source: 'call',
-              assigned_to: agentId
-            })
-            .select()
-            .single();
-            
-          if (taskError) {
-            console.error('Error creating task for call:', taskError);
-          } else {
-            taskId = newTask.id;
-            
-            // Update the call session with the task ID
-            await supabase
-              .from('call_sessions')
-              .update({ task_id: taskId })
-              .eq('call_sid', callSid);
-          }
-        }
+    // Extract task attributes if available
+    let taskAttributes = {};
+    if (twilioParams.TaskAttributes) {
+      try {
+        taskAttributes = JSON.parse(twilioParams.TaskAttributes);
+        console.log('Task attributes:', taskAttributes);
+      } catch (e) {
+        console.error('Error parsing task attributes:', e);
       }
     }
     
-    // Return an acknowledgement to Twilio
-    return new Response(
-      JSON.stringify({ success: true }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // Extract worker attributes if available
+    let workerAttributes = {};
+    if (twilioParams.WorkerAttributes) {
+      try {
+        workerAttributes = JSON.parse(twilioParams.WorkerAttributes);
+        console.log('Worker attributes:', workerAttributes);
+      } catch (e) {
+        console.error('Error parsing worker attributes:', e);
+      }
+    }
+    
+    // Handle different TaskRouter event types
+    if (twilioParams.EventType === 'reservation.created') {
+      // A new task has been assigned to a worker
+      if (taskAttributes.call_sid) {
+        // Update call session with the worker assignment
+        if (workerAttributes.user_id) {
+          const { error: updateError } = await supabase
+            .from('call_sessions')
+            .update({ agent_id: workerAttributes.user_id })
+            .eq('call_sid', taskAttributes.call_sid);
+            
+          if (updateError) {
+            console.error('Error updating call session:', updateError);
+          }
+        }
+        
+        // If there's a task_id in the attributes, update the task assignment
+        if (taskAttributes.task_id) {
+          const { error: taskError } = await supabase
+            .from('tasks')
+            .update({ 
+              assigned_to: workerAttributes.user_id,
+              status: 'in_progress' 
+            })
+            .eq('id', taskAttributes.task_id);
+            
+          if (taskError) {
+            console.error('Error updating task assignment:', taskError);
+          }
+        } else if (workerAttributes.user_id && taskAttributes.customer_id) {
+          // If there's no task_id but we have customer_id, create a new task for this call
+          // This happens for incoming calls
+          try {
+            const { data: taskData, error: taskError } = await supabase
+              .from('tasks')
+              .insert({
+                title: `Incoming call from ${taskAttributes.from || 'unknown'}`,
+                description: `Call from ${taskAttributes.from || 'unknown'} to ${taskAttributes.to || 'unknown'}`,
+                customer_id: taskAttributes.customer_id,
+                endkunde_id: taskAttributes.endkunde_id,
+                assigned_to: workerAttributes.user_id,
+                status: 'in_progress',
+                source: 'voice_call'
+              })
+              .select()
+              .single();
+              
+            if (taskError) {
+              console.error('Error creating task for call:', taskError);
+            } else if (taskData) {
+              // Link the call session to the new task
+              await supabase
+                .from('call_sessions')
+                .update({ task_id: taskData.id })
+                .eq('call_sid', taskAttributes.call_sid);
+            }
+          } catch (e) {
+            console.error('Error handling task creation:', e);
+          }
+        }
+      }
+    } else if (twilioParams.EventType === 'reservation.accepted') {
+      // Worker accepted the task
+      console.log('Reservation accepted');
+    } else if (twilioParams.EventType === 'reservation.rejected') {
+      // Worker rejected the task
+      console.log('Reservation rejected');
+    } else if (twilioParams.EventType === 'reservation.timeout') {
+      // Reservation timed out
+      console.log('Reservation timed out');
+    } else if (twilioParams.EventType === 'reservation.canceled') {
+      // Reservation was canceled
+      console.log('Reservation canceled');
+    } else if (twilioParams.EventType === 'task.completed') {
+      // Task was completed
+      console.log('Task completed');
+    }
+    
+    // Return a 200 OK response to Twilio
+    return new Response('OK', {
+      status: 200,
+      headers: corsHeaders
+    });
     
   } catch (error) {
-    console.error('Error handling task assignment:', error);
+    console.error('Error handling TaskRouter webhook:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

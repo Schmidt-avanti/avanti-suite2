@@ -15,17 +15,60 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Check for bearer token
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const token = authHeader.split(' ')[1];
+  
+  // Initialize Supabase client
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  
+  // Verify token and get user
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  
+  if (authError || !user) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+  
   try {
-    // Get request body
-    const { userId, friendlyName, attributes } = await req.json();
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'User ID is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Parse request body if it exists
+    let attributes = {};
+    if (req.body) {
+      try {
+        const body = await req.json();
+        if (body.attributes) {
+          attributes = body.attributes;
+        }
+        
+        // If userId is provided in the body, use that (for admin creating workers)
+        if (body.userId) {
+          const { data: adminProfile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+            
+          // Only admins can create workers for other users
+          if (adminProfile?.role === 'admin') {
+            user.id = body.userId;
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing request body:', e);
+      }
     }
-
+    
     // Get Twilio credentials
     const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID');
     const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN');
@@ -37,112 +80,101 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Initialize Twilio client
+    
     const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
     
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // Get user profile
-    const { data: profileData, error: profileError } = await supabase
+    // Check if this user already has a worker assigned
+    const { data: userProfile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single();
-      
-    if (profileError || !profileData) {
+    
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
       return new Response(
-        JSON.stringify({ error: 'User not found' }),
+        JSON.stringify({ error: 'User profile not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Check if worker already exists in Twilio
-    if (profileData.twilio_worker_sid) {
+    let workerId = userProfile.twilio_worker_sid;
+    let workerName = userProfile["Full Name"] || `User-${user.id.substring(0, 8)}`;
+    
+    // Merge user_id into attributes
+    attributes = {
+      ...attributes,
+      user_id: user.id
+    };
+    
+    // If user already has a worker SID, try to fetch it first
+    if (workerId) {
       try {
-        // Try to fetch the worker to see if it's still valid
-        const worker = await client.taskrouter.v1
-          .workspaces(TWILIO_WORKSPACE_SID)
-          .workers(profileData.twilio_worker_sid)
-          .fetch();
-          
-        // Update worker attributes if needed
-        const workerAttributes = {
-          skills: ['voice', 'customer_service'],
-          languages: ['german'],
-          voice_status: profileData.voice_status || 'offline',
-          user_id: userId,
-          ...attributes
-        };
-        
         await client.taskrouter.v1
           .workspaces(TWILIO_WORKSPACE_SID)
-          .workers(profileData.twilio_worker_sid)
-          .update({
-            attributes: JSON.stringify(workerAttributes)
-          });
-        
+          .workers(workerId)
+          .fetch();
+          
+        // Worker exists, return it
         return new Response(
-          JSON.stringify({
-            success: true,
-            message: 'Worker updated',
-            workerId: profileData.twilio_worker_sid
+          JSON.stringify({ 
+            success: true, 
+            workerId, 
+            message: 'Worker already registered' 
           }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
-      } catch (error) {
-        // Worker doesn't exist anymore, create a new one
-        console.log('Existing worker not found, creating new one');
+      } catch (err) {
+        // Worker doesn't exist anymore, we'll create a new one
+        console.log('Worker not found, creating new one');
       }
     }
     
     // Create a new worker
-    const name = profileData["Full Name"] || `Agent ${userId.substring(0, 6)}`;
-    const workerAttributes = {
-      skills: ['voice', 'customer_service'],
-      languages: ['german'],
-      voice_status: 'offline',
-      user_id: userId,
-      ...attributes
-    };
-    
-    const worker = await client.taskrouter.v1
-      .workspaces(TWILIO_WORKSPACE_SID)
-      .workers
-      .create({
-        friendlyName: friendlyName || name,
-        attributes: JSON.stringify(workerAttributes)
-      });
+    try {
+      const worker = await client.taskrouter.v1
+        .workspaces(TWILIO_WORKSPACE_SID)
+        .workers
+        .create({
+          friendlyName: workerName,
+          attributes: JSON.stringify(attributes)
+        });
       
-    // Update the user profile with the worker SID
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        twilio_worker_sid: worker.sid,
-        twilio_worker_attributes: workerAttributes
-      })
-      .eq('id', userId);
+      workerId = worker.sid;
       
-    if (updateError) {
-      console.error('Error updating profile:', updateError);
+      // Update user profile with worker SID
+      await supabase
+        .from('profiles')
+        .update({ 
+          twilio_worker_sid: workerId,
+          voice_status: 'offline'
+        })
+        .eq('id', user.id);
+        
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          workerId,
+          message: 'Worker registered successfully' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+      
+    } catch (err) {
+      console.error('Error creating worker:', err);
+      return new Response(
+        JSON.stringify({ 
+          error: err.message, 
+          success: false 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: 'Worker created',
-        workerId: worker.sid
-      }),
-      { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-    
   } catch (error) {
-    console.error('Error registering worker:', error);
+    console.error('Unhandled error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message, success: false }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

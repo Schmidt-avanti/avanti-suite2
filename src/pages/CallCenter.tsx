@@ -4,15 +4,20 @@ import React, { useState } from 'react';
 import PhoneInterface from '@/components/call-center/PhoneInterface';
 import VoiceStatusButton from '@/components/call-center/VoiceStatusButton';
 import CallHistoryList from '@/components/call-center/CallHistoryList';
+import TwilioSetupStatus from '@/components/call-center/TwilioSetupStatus'; // Add this import
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from '@/components/ui/card';
 import { useTwilio } from '@/contexts/TwilioContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InfoIcon } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CallCenter: React.FC = () => {
   const { isSetup, setupTwilio } = useTwilio();
   const [activeTab, setActiveTab] = useState('dialer');
+  const { user } = useAuth();
+  
+  const isAdmin = user?.role === 'admin';
   
   return (
     <div className="container mx-auto py-6 max-w-4xl">
@@ -25,32 +30,40 @@ const CallCenter: React.FC = () => {
       {!isSetup && (
         <Alert className="mb-6">
           <InfoIcon className="h-5 w-5" />
-          <AlertTitle>Phone system not initialized</AlertTitle>
+          <AlertTitle>Telefonsystem nicht initialisiert</AlertTitle>
           <AlertDescription>
-            The phone system needs to be initialized before you can make or receive calls.
-            Please make sure your browser allows microphone access.
+            Das Telefonsystem muss initialisiert werden, bevor Sie Anrufe tätigen oder empfangen können.
+            Bitte stellen Sie sicher, dass Ihr Browser den Zugriff auf das Mikrofon erlaubt.
           </AlertDescription>
         </Alert>
       )}
       
-      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="dialer">Dialer</TabsTrigger>
-          <TabsTrigger value="history">Call History</TabsTrigger>
-        </TabsList>
-        <TabsContent value="dialer">
-          <div className="flex justify-center mt-4">
-            <div className="w-full max-w-md">
-              <PhoneInterface />
-            </div>
-          </div>
-        </TabsContent>
-        <TabsContent value="history">
-          <div className="mt-4">
-            <CallHistoryList />
-          </div>
-        </TabsContent>
-      </Tabs>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="dialer">Dialer</TabsTrigger>
+              <TabsTrigger value="history">Anrufhistorie</TabsTrigger>
+            </TabsList>
+            <TabsContent value="dialer">
+              <div className="flex justify-center mt-4">
+                <div className="w-full max-w-md">
+                  <PhoneInterface />
+                </div>
+              </div>
+            </TabsContent>
+            <TabsContent value="history">
+              <div className="mt-4">
+                <CallHistoryList />
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+        
+        <div className="lg:col-span-2">
+          <TwilioSetupStatus />
+        </div>
+      </div>
     </div>
   );
 };
