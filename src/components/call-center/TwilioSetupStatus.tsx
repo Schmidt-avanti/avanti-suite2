@@ -66,27 +66,18 @@ const TwilioSetupStatus: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Use direct fetch API to bypass TypeScript constraints with Supabase client
-      const session = await supabase.auth.getSession();
-      // Use the SUPABASE_URL from env and the anon key instead of accessing protected property
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/system_settings?select=key,value,description&key=in.(TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_TWIML_APP_SID,TWILIO_WORKSPACE_SID,TWILIO_WORKFLOW_SID)`, {
-        method: 'GET',
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub2V2a3ZqeXVjaGhjbXpzZHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyMTEzMzcsImV4cCI6MjA2MDc4NzMzN30.gKCh5BUGsQJKCRW0JDxDEWA2M9uL3q20Wiqt8ePfoi8',
-          'Authorization': `Bearer ${session.data.session?.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Using supabase RPC function which should have proper permissions
+      const { data: twilioConfigData, error } = await supabase
+        .rpc('get_system_settings')
+        .eq('key', 'in.(TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_TWIML_APP_SID,TWILIO_WORKSPACE_SID,TWILIO_WORKFLOW_SID)');
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (error) {
+        throw error;
       }
-      
-      const twilioConfigData = await response.json() as SystemSetting[];
       
       // Create a map of configured settings
       const configuredSettings = new Map<string, boolean>();
-      twilioConfigData?.forEach(setting => {
+      twilioConfigData?.forEach((setting: SystemSetting) => {
         configuredSettings.set(setting.key, !!setting.value);
       });
       
