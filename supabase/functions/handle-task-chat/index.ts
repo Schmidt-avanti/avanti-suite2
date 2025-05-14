@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
@@ -145,15 +144,37 @@ serve(async (req) => {
     
     if (messagesError) throw messagesError;
 
-    // Task-Daten abrufen
+    // Task-Daten abrufen with expanded user info
     const { data: task, error: taskError } = await supabase
       .from('tasks')
-      .select('*, messages:task_messages(*), customer:customers(*)')
+      .select(`
+        *, 
+        messages:task_messages(*), 
+        customer:customers(*),
+        assigned_to_user:assigned_to(id, email, "Full Name")
+      `)
       .eq('id', taskId)
       .maybeSingle();
 
     if (taskError) throw taskError;
     if (!task) throw new Error('Task not found');
+
+    // Improved task message creation with user information
+    const addMessageWithUserInfo = async (role, content, userId = null) => {
+      const { data: insertedMessage, error } = await supabase
+        .from('task_messages')
+        .insert({
+          task_id: taskId,
+          role: role,
+          content: content,
+          created_by: userId
+        })
+        .select('id')
+        .single();
+        
+      if (error) throw error;
+      return insertedMessage;
+    };
 
     // Wenn es bereits Nachrichten gibt und es sich um eine automatische Initiierung handelt, dann nichts tun
     const hasAssistantMessages = existingMessages && existingMessages.some(msg => msg.role === 'assistant');
@@ -294,7 +315,7 @@ Nutze nur die direkte Anrede.`;
     
     console.log("Assistant response generated successfully");
     
-    // Insert the assistant's response
+    // Insert the assistant's response with expanded user info
     const { data: insertedMessage, error: insertError } = await supabase
       .from('task_messages')
       .insert({

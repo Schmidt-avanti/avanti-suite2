@@ -1,181 +1,217 @@
 
-import React, { useEffect, useState } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTaskMessages, Message } from '@/hooks/useTaskMessages';
-import { useTaskChatMessages } from '@/hooks/useTaskChatMessages';
-import { useChatScroll } from '@/hooks/useChatScroll';
 import { TaskChatMessage } from './TaskChatMessage';
 import { TaskChatInput } from './TaskChatInput';
 import { TaskChatStatus } from './TaskChatStatus';
 import { TaskChatScrollButton } from './TaskChatScrollButton';
-import { toast } from 'sonner';
+import { useTaskMessages } from '@/hooks/useTaskMessages';
+import { useChatScroll } from '@/hooks/useChatScroll';
+import { toast } from '@/components/ui/use-toast';
 
 interface TaskChatProps {
   taskId: string;
-  useCaseId?: string;
-  initialMessages?: Message[];
+  useCaseId: string | null;
 }
 
-export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatProps) {
+export const TaskChat: React.FC<TaskChatProps> = ({ taskId, useCaseId }) => {
   const { user } = useAuth();
-  const isMobile = useIsMobile();
-  const [emailJustSent, setEmailJustSent] = useState(false);
-  
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
   const { 
     messages, 
-    selectedOptions, 
-    setSelectedOptions,
-    hasNewMessages,
-    setHasNewMessages,
-    fetchMessages,
-    initialMessageSent,
-    setInitialMessageSent
-  } = useTaskMessages(taskId, initialMessages);
+    isLoading: messagesLoading, 
+    addUserMessage, 
+    selectedOptions,
+    handleButtonClick 
+  } = useTaskMessages(taskId);
 
-  const {
-    chatContainerRef,
-    messagesEndRef,
-    showScrollButton,
-    handleScroll,
-    scrollToBottom,
-    autoScroll,
-    setAutoScroll
-  } = useChatScroll({
-    hasNewMessages,
-    setHasNewMessages,
-    isLoading: false
-  });
+  const { showScrollButton, scrollToBottom } = useChatScroll(
+    messagesContainerRef,
+    messages
+  );
 
-  const {
-    isLoading,
-    isRateLimited,
-    inputValue,
-    setInputValue,
-    sendMessage,
-    handleRetry
-  } = useTaskChatMessages(taskId, useCaseId, fetchMessages);
-
-  // Listen for email notification events
+  // Auto-initialize chat if there are no messages
   useEffect(() => {
-    // Simple event listener to detect when an email has been sent
-    const handleCustomEvent = (event: CustomEvent) => {
-      setEmailJustSent(true);
-      
-      // If this event contains task_id and it matches our current task, we can be specific
-      if (event.detail?.task_id === taskId) {
-        console.log('Email sent for current task');
-      }
-      
-      // Hide the notification after 5 seconds
-      setTimeout(() => setEmailJustSent(false), 5000);
-    };
-
-    window.addEventListener('email-sent', handleCustomEvent as EventListener);
+    const shouldInitializeChat = !messagesLoading && messages?.length === 0 && useCaseId;
     
-    return () => {
-      window.removeEventListener('email-sent', handleCustomEvent as EventListener);
-    };
-  }, [taskId]);
-
-  // Automatische Nachricht senden, wenn ein Use-Case zugeordnet ist und noch keine Nachrichten vorhanden sind
-  useEffect(() => {
-    const initializeChat = async () => {
-      // Nur eine automatische Nachricht senden, wenn:
-      // 1. Eine Use-Case-ID vorhanden ist
-      // 2. Keine Nachrichten vorhanden sind oder nur eine Benutzernachricht
-      // 3. Die initiale Nachricht noch nicht gesendet wurde
-      // 4. Nicht bereits lädt
-      const hasOnlyUserMessages = messages.length > 0 && !messages.some(msg => msg.role === 'assistant');
-      
-      if (useCaseId && (messages.length === 0 || hasOnlyUserMessages) && !initialMessageSent && !isLoading) {
-        console.log("Auto-starting chat for task with use case:", useCaseId, "Current messages:", messages.length);
-        try {
-          // Warten, um sicherzustellen, dass der Task erstellt ist
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          await sendMessage("", null, new Set<string>());
-          setInitialMessageSent(true);
-          console.log("Initial message sent successfully");
-        } catch (error) {
-          console.error("Failed to auto-start chat:", error);
-          toast.error("Chat konnte nicht automatisch gestartet werden. Bitte versuchen Sie es später erneut.");
-        }
-      }
-    };
-
-    // Nach kurzer Verzögerung ausführen, um sicherzustellen, dass die Komponente geladen ist
-    const timer = setTimeout(() => {
+    if (shouldInitializeChat) {
+      console.log('Auto-initializing chat for task:', taskId);
       initializeChat();
-    }, 1000);
+    }
+  }, [messagesLoading, messages, useCaseId, taskId]);
 
-    return () => clearTimeout(timer);
-  }, [useCaseId, messages, sendMessage, initialMessageSent, isLoading, setInitialMessageSent]);
+  const initializeChat = async () => {
+    try {
+      setIsLoading(true);
+      setIsTyping(true);
+      setError(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim() && !isLoading) {
-      sendMessage(inputValue, null, selectedOptions);
-      // Enable auto-scroll when user sends a message
-      setAutoScroll(true);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/handle-task-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ 
+          taskId, 
+          useCaseId, 
+          isAutoInitialization: true
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Fehler beim Initialisieren des Chats');
+      }
+
+      const data = await response.json();
+      setPreviousResponseId(data.response_id);
+
+    } catch (err) {
+      console.error('Error initializing chat:', err);
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
+      setIsTyping(false);
     }
   };
 
-  const handleOptionSelect = (option: string) => {
-    sendMessage("", option, selectedOptions);
-    setAutoScroll(true);
+  const handleSendMessage = async (message: string) => {
+    if (!message.trim()) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Add user message to the database
+      await addUserMessage(message);
+      
+      setIsTyping(true);
+
+      // Generate AI response
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/handle-task-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ 
+          taskId, 
+          useCaseId, 
+          message, 
+          previousResponseId,
+          selectedOptions
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        // Special handling for rate limit errors
+        if (errorData.is_rate_limit) {
+          toast({
+            title: "API-Limit erreicht",
+            description: "Bitte versuchen Sie es in einigen Sekunden erneut.",
+            variant: "destructive"
+          });
+        } else {
+          throw new Error(errorData.error || 'Fehler bei der Kommunikation');
+        }
+      } else {
+        const data = await response.json();
+        setPreviousResponseId(data.response_id);
+      }
+
+    } catch (err) {
+      console.error('Error in chat:', err);
+      setError((err as Error).message);
+      
+      toast({
+        title: "Fehler",
+        description: (err as Error).message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+      setIsTyping(false);
+    }
+  };
+
+  const handleButtonClickInChat = async (buttonText: string, messageId: string) => {
+    if (selectedOptions.includes(buttonText)) return;
+    
+    handleButtonClick(buttonText, messageId);
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      setIsTyping(true);
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/handle-task-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ 
+          taskId, 
+          useCaseId, 
+          buttonChoice: buttonText,
+          previousResponseId: messageId,
+          selectedOptions: [...selectedOptions, buttonText]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Fehler bei der Kommunikation');
+      }
+
+      const data = await response.json();
+      setPreviousResponseId(data.response_id);
+
+    } catch (err) {
+      console.error('Error handling button click:', err);
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
+      setIsTyping(false);
+    }
   };
 
   return (
-    <div className="w-full h-full flex flex-col rounded-2xl relative bg-white overflow-hidden">
-      {/* Chat messages container */}
-      <div 
-        ref={chatContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-20"
-        style={{ 
-          maxHeight: isMobile ? 'calc(100vh - 8rem)' : '400px',  // Reduzierte feste Höhe
-          height: '400px', // Feste Höhe für den Chat-Bereich
-          overflowY: 'auto' // Sicherstellen, dass Scrolling aktiviert ist
-        }}
-        onScroll={handleScroll}
+    <div className="flex flex-col h-full">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4"
       >
-        {messages.length === 0 && !isLoading && (
-          <div className="flex items-center justify-center h-32 text-gray-400">
-            {useCaseId ? "Starte Chat..." : "Starten Sie die Konversation..."}
-          </div>
-        )}
-
-        {messages.map((message) => (
-          <TaskChatMessage 
+        {messages?.map((message) => (
+          <TaskChatMessage
             key={message.id}
             message={message}
+            onButtonClick={handleButtonClickInChat}
             selectedOptions={selectedOptions}
-            onOptionSelect={handleOptionSelect}
           />
         ))}
-
-        <TaskChatStatus 
-          isLoading={isLoading}
-          isRateLimited={isRateLimited}
-          handleRetry={handleRetry}
-        />
-        
-        {/* Hidden div for intersection observer */}
-        <div ref={messagesEndRef} className="h-1" />
+        {isTyping && <TaskChatStatus />}
       </div>
+      
+      {showScrollButton && (
+        <TaskChatScrollButton onClick={scrollToBottom} />
+      )}
 
-      <TaskChatScrollButton 
-        show={showScrollButton} 
-        onClick={scrollToBottom} 
-      />
-
-      <TaskChatInput
-        inputValue={inputValue}
-        setInputValue={setInputValue}
-        handleSubmit={handleSubmit}
-        isLoading={isLoading}
-        emailSent={emailJustSent}
-      />
+      <div className="border-t p-4">
+        <TaskChatInput 
+          onSendMessage={handleSendMessage} 
+          isLoading={isLoading}
+          error={error}
+        />
+      </div>
     </div>
   );
-}
+};
