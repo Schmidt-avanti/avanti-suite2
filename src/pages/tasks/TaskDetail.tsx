@@ -1,5 +1,4 @@
 
-// Fix the imports and type issues
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +21,6 @@ import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { KnowledgeArticleManager } from '@/components/tasks/KnowledgeArticleManager';
-import { TaskStatus } from '@/types';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -54,7 +52,7 @@ const TaskDetail = () => {
   const { formattedTime } = useTaskTimer({ 
     taskId: id || '', 
     isActive,
-    status: task?.status as TaskStatus
+    status: task?.status
   });
   
   // Fetch task messages for chat history
@@ -113,19 +111,16 @@ const TaskDetail = () => {
     const nextTaskId = await findNextTask();
     if (nextTaskId) {
       setIsActive(false);
-      // Use setTimeout instead of Promise to avoid type mismatch
-      setTimeout(() => {
-        navigate(`/tasks/${nextTaskId}`);
-        toast({
-          title: "Nächste Aufgabe",
-          description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
-        });
-      }, 100);
+      await new Promise(resolve => setTimeout(resolve, 100)); // Give time for timer to stop
+      navigate(`/tasks/${nextTaskId}`);
+      toast({
+        title: "Nächste Aufgabe",
+        description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
+      });
     } else {
       setIsActive(false);
-      setTimeout(() => {
-        navigate('/tasks');
-      }, 100);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      navigate('/tasks');
     }
   };
 
@@ -136,18 +131,16 @@ const TaskDetail = () => {
     };
   }, []);
 
-  const handleBack = () => {
+  const handleBack = async () => {
     setIsActive(false);
+    await new Promise(resolve => setTimeout(resolve, 100));
     
-    // Use a setTimeout to ensure state updates before navigation
-    setTimeout(() => {
-      // Check if the task is completed and navigate accordingly
-      if (task && task.status === 'completed') {
-        navigate('/tasks/completed');
-      } else {
-        navigate('/tasks');
-      }
-    }, 100);
+    // Check if the task is completed and navigate accordingly
+    if (task && task.status === 'completed') {
+      navigate('/tasks/completed');
+    } else {
+      navigate('/tasks');
+    }
   };
 
   const handleEmailSent = (emailDetails: { recipient: string, subject: string }) => {
@@ -219,7 +212,7 @@ const TaskDetail = () => {
                 <EmailReplyPanel
                   taskId={task.id}
                   replyTo={replyTo}
-                  setReplyTo={(value) => setReplyTo(value)}
+                  setReplyTo={setReplyTo}
                 />
               ) : (
                 <>
@@ -248,7 +241,7 @@ const TaskDetail = () => {
       <FollowUpDialog
         open={followUpDialogOpen}
         onOpenChange={setFollowUpDialogOpen}
-        onSave={(date, comment) => handleFollowUp(date, comment)}
+        onSave={handleFollowUp}
       />
 
       <CloseTaskDialog

@@ -1,3 +1,4 @@
+
 // Update UserRole type to match database constraint
 export type UserRole = 'admin' | 'agent' | 'customer';
 
@@ -136,16 +137,4 @@ export interface PaymentMethod {
   billing_address?: string;
   billing_zip?: string;
   billing_city?: string;
-}
-
-// Update TaskMessage interface to include creator information
-export interface TaskMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  created_at: string;
-  task_id: string;
-  created_by?: string | null;
-  creator_name?: string | null; 
-  creator_email?: string | null;
 }

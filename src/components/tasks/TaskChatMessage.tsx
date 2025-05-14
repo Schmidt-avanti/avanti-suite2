@@ -4,10 +4,16 @@ import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
-import { TaskMessage } from "@/types";
 
 interface TaskChatMessageProps {
-  message: TaskMessage;
+  message: {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    created_at: string;
+    creator_name?: string;
+    creator_email?: string;
+  };
   onButtonClick?: (buttonText: string, messageId: string) => void;
   selectedOptions?: string[];
 }

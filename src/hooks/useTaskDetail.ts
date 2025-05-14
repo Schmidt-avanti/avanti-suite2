@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/ui/use-toast";
@@ -7,7 +6,7 @@ import type { TaskStatus } from "@/types";
 
 export const useTaskDetail = (id: string | undefined, user: any) => {
   const queryClient = useQueryClient();
-  const [replyTo, setReplyTo] = useState<{ email: string; name?: string } | null>(null);
+  const [replyTo, setReplyTo] = useState<{ email: string; name: string } | null>(null);
 
   const { data: task, isLoading, error, refetch } = useQuery({
     queryKey: ["task-detail", id],
@@ -67,12 +66,9 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
   const handleFollowUp = async (followUpDate: Date, comment: string) => {
     if (!task) return;
 
-    // Convert Date to ISO string for database storage
-    const followUpDateString = followUpDate.toISOString();
-
     const { data, error } = await supabase
       .from("tasks")
-      .update({ follow_up_date: followUpDateString, follow_up_comment: comment })
+      .update({ follow_up_date: followUpDate, follow_up_comment: comment })
       .eq("id", task.id)
       .select();
 
@@ -97,7 +93,7 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
 
     const { data, error } = await supabase
       .from("tasks")
-      .update({ status: 'completed' as TaskStatus, close_comment: comment })
+      .update({ status: 'completed', close_comment: comment })
       .eq("id", task.id)
       .select();
 

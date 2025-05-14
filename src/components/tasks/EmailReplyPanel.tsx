@@ -8,7 +8,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { EmailThreadHistory } from './EmailThreadHistory';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { TaskStatus } from '@/types';
 
 interface EmailReplyPanelProps {
   taskId: string;
@@ -16,7 +15,7 @@ interface EmailReplyPanelProps {
   setReplyTo: (replyTo: { email: string; name?: string } | null) => void;
 }
 
-export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyTo, setReplyTo }: EmailReplyPanelProps) => {
+export const EmailReplyPanel = ({ taskId, replyTo, setReplyTo }: EmailReplyPanelProps) => {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -61,7 +60,6 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
         task_id: taskId,
         role: "user",
         content: body,
-        created_by: user?.id,
         metadata: { 
           is_email: true,
           subject,
@@ -122,7 +120,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       if (taskData?.status === 'new') {
         await supabase
           .from('tasks')
-          .update({ status: 'in_progress' as TaskStatus })
+          .update({ status: 'in_progress' })
           .eq('id', taskId);
       }
       

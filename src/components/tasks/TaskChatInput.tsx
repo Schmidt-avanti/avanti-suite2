@@ -1,60 +1,76 @@
 
-// Make sure the TaskChatInput component accepts the onSendMessage prop
-import React, { useState, FormEvent } from 'react';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Send } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import React from 'react';
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Send, Loader2 } from "lucide-react";
+import { SpellChecker } from '@/components/ui/spell-checker';
+import { EmailConfirmationBubble } from './EmailConfirmationBubble';
 
-export interface TaskChatInputProps {
-  onSendMessage: (message: string) => Promise<void>;
+interface TaskChatInputProps {
+  inputValue: string;
+  setInputValue: (value: string) => void;
+  handleSubmit: (e: React.FormEvent) => void;
   isLoading: boolean;
-  error: string | null;
+  emailSent?: boolean;
 }
 
 export const TaskChatInput: React.FC<TaskChatInputProps> = ({
-  onSendMessage,
+  inputValue,
+  setInputValue,
+  handleSubmit,
   isLoading,
-  error
+  emailSent = false
 }) => {
-  const [message, setMessage] = useState('');
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!message.trim() || isLoading) return;
-
-    await onSendMessage(message);
-    setMessage('');
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertTitle>Fehler</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      <div className="flex">
-        <Textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Schreiben Sie eine Nachricht..."
-          className="min-h-[80px] focus-visible:ring-blue-400 flex-1 mr-2"
-          disabled={isLoading}
-        />
-        <Button 
-          type="submit" 
-          className="self-end"
-          disabled={isLoading || !message.trim()}
-        >
-          {isLoading ? (
-            <div className="loader h-4 w-4" /> // Simple loading indicator
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-    </form>
+    <div className="sticky bottom-0 w-full px-6 pb-6 pt-4 bg-white shadow-md border-t border-gray-100 z-20">
+      {/* Email confirmation bubble */}
+      <EmailConfirmationBubble visible={emailSent} />
+      
+      <form
+        onSubmit={handleSubmit}
+        className="w-full flex flex-col gap-2 border border-gray-200 p-4 bg-white rounded-md shadow-sm"
+      >
+        {/* Input area with send button */}
+        <div className="relative mb-2">
+          <Textarea
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ihre Nachricht..."
+            className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base px-3 py-2"
+            style={{ fontSize: '1rem', padding: '12px' }}
+            disabled={isLoading}
+          />
+          <div className="absolute bottom-2 right-2">
+            <Button
+              type="submit"
+              disabled={isLoading || !inputValue.trim()}
+              className="bg-blue-500 hover:bg-blue-600 text-white rounded-md h-11 w-11 flex items-center justify-center shadow transition-all"
+              tabIndex={0}
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
+        </div>
+        
+        {/* Always show spell checker when there's text */}
+        {inputValue.trim().length > 0 && (
+          <div className="mt-4">
+            <SpellChecker text={inputValue} onCorrect={setInputValue} />
+          </div>
+        )}
+      </form>
+    </div>
   );
-};
+}
