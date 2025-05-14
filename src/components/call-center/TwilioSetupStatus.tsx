@@ -59,20 +59,40 @@ const TwilioSetupStatus: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('twilio-voice-token');
+      // Instead of calling the edge function directly, check if the credentials exist in the database
+      const { data: twilioConfigData, error: twilioConfigError } = await supabase
+        .from('system_settings')
+        .select('key, value')
+        .in('key', [
+          'TWILIO_ACCOUNT_SID', 
+          'TWILIO_AUTH_TOKEN', 
+          'TWILIO_TWIML_APP_SID', 
+          'TWILIO_WORKSPACE_SID', 
+          'TWILIO_WORKFLOW_SID'
+        ]);
       
-      // The mere presence of data indicates some credentials are configured
-      if (!error && data) {
-        // Update each credential's status based on response
-        const updatedStatus = credentialStatus.map(cred => ({
-          ...cred,
-          configured: data.hasOwnProperty(cred.key) ? !!data[cred.key] : false
-        }));
-        
-        setCredentialStatus(updatedStatus);
-      }
+      if (twilioConfigError) throw twilioConfigError;
+      
+      // Create a map of configured settings
+      const configuredSettings = new Map();
+      twilioConfigData?.forEach(setting => {
+        configuredSettings.set(setting.key, !!setting.value);
+      });
+      
+      // Update the credential status based on database values
+      const updatedStatus = credentialStatus.map(cred => ({
+        ...cred,
+        configured: configuredSettings.has(cred.key) ? configuredSettings.get(cred.key) : false
+      }));
+      
+      setCredentialStatus(updatedStatus);
     } catch (error) {
       console.error('Error checking Twilio credentials:', error);
+      toast({
+        title: "Fehler",
+        description: "Konnte Twilio-Konfiguration nicht abrufen.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -91,9 +111,20 @@ const TwilioSetupStatus: React.FC = () => {
     setIsRunningSetup(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('twilio-workspace-setup');
+      // Call the workspace setup function with proper error handling
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-workspace-setup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        }
+      });
       
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
       
       if (data?.success) {
         toast({
@@ -110,7 +141,7 @@ const TwilioSetupStatus: React.FC = () => {
       console.error('Error setting up Twilio workspace:', error);
       toast({
         title: "Twilio-Einrichtung fehlgeschlagen",
-        description: error.message || "Ein unbekannter Fehler ist aufgetreten.",
+        description: error instanceof Error ? error.message : "Ein unbekannter Fehler ist aufgetreten.",
         variant: "destructive"
       });
     } finally {

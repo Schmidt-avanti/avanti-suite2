@@ -5,6 +5,7 @@ import twilioService, { CallState } from '@/services/TwilioService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TwilioContextType {
   callState: CallState;
@@ -46,12 +47,45 @@ export const TwilioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setSetupAttempted(true);
       
       // Make sure worker is registered
-      const workerId = await twilioService.registerWorker();
-      
-      if (!workerId) {
+      try {
+        // Direct API call rather than using the edge function
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-register-worker`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            attributes: {}
+          })
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to register worker:', response.status);
+          toast({
+            title: 'Worker Registration Failed',
+            description: 'Could not register as a Twilio worker. Please try again.',
+            variant: 'destructive'
+          });
+          return false;
+        }
+        
+        const data = await response.json();
+        if (!data.workerId) {
+          console.error('No worker ID returned from registration');
+          toast({
+            title: 'Worker Registration Failed',
+            description: 'Failed to register as a Twilio worker. Please check your connection and try again.',
+            variant: 'destructive'
+          });
+          return false;
+        }
+      } catch (registerError) {
+        console.error('Error registering worker:', registerError);
         toast({
-          title: 'Twilio Setup Error',
-          description: 'Failed to register as a Twilio worker. Please check your connection and try again.',
+          title: 'Worker Registration Failed',
+          description: 'Could not register as a Twilio worker. Please try again later.',
           variant: 'destructive'
         });
         return false;
@@ -74,7 +108,7 @@ export const TwilioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.error('Error setting up Twilio:', error);
       toast({
         title: 'Twilio Setup Error',
-        description: `Failed to set up Twilio: ${error.message || 'Unknown error'}`,
+        description: `Failed to set up Twilio: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive'
       });
       return false;
@@ -111,7 +145,7 @@ export const TwilioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.error('Error updating availability:', error);
       toast({
         title: 'Status Update Failed',
-        description: `Error: ${error.message || 'Unknown error'}`,
+        description: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive'
       });
       return false;
@@ -124,7 +158,7 @@ export const TwilioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!user) return;
       
       try {
-        const { data: profile, error } = await twilioService['supabase']
+        const { data: profile, error } = await supabase
           .from('profiles')
           .select('voice_status')
           .eq('id', user.id)
@@ -178,7 +212,7 @@ export const TwilioProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Helper function to check for a task linked to this call
   const checkForLinkedTask = useCallback(async (callSid: string) => {
     try {
-      const { data, error } = await twilioService['supabase']
+      const { data, error } = await supabase
         .from('call_sessions')
         .select('task_id')
         .eq('call_sid', callSid)
