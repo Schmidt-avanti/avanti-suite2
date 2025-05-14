@@ -1,4 +1,5 @@
 
+// Fix the imports and type issues
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { KnowledgeArticleManager } from '@/components/tasks/KnowledgeArticleManager';
+import { TaskStatus } from '@/types';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -52,7 +54,7 @@ const TaskDetail = () => {
   const { formattedTime } = useTaskTimer({ 
     taskId: id || '', 
     isActive,
-    status: task?.status
+    status: task?.status as TaskStatus
   });
   
   // Fetch task messages for chat history
@@ -212,7 +214,7 @@ const TaskDetail = () => {
                 <EmailReplyPanel
                   taskId={task.id}
                   replyTo={replyTo}
-                  setReplyTo={setReplyTo}
+                  setReplyTo={(value) => setReplyTo(value)}
                 />
               ) : (
                 <>
@@ -241,7 +243,7 @@ const TaskDetail = () => {
       <FollowUpDialog
         open={followUpDialogOpen}
         onOpenChange={setFollowUpDialogOpen}
-        onSave={handleFollowUp}
+        onSave={(date, comment) => handleFollowUp(date, comment)}
       />
 
       <CloseTaskDialog

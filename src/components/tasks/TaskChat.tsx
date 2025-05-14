@@ -14,6 +14,23 @@ interface TaskChatProps {
   useCaseId: string | null;
 }
 
+interface TaskChatStatusProps {
+  isLoading: boolean;
+  isRateLimited: boolean;
+  handleRetry: () => void;
+}
+
+interface TaskChatScrollButtonProps {
+  onClick: () => void;
+  show: boolean;
+}
+
+interface TaskChatInputProps {
+  onSendMessage: (message: string) => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
+}
+
 export const TaskChat: React.FC<TaskChatProps> = ({ taskId, useCaseId }) => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -198,11 +215,11 @@ export const TaskChat: React.FC<TaskChatProps> = ({ taskId, useCaseId }) => {
             selectedOptions={selectedOptions}
           />
         ))}
-        {isTyping && <TaskChatStatus />}
+        {isTyping && <TaskChatStatus isLoading={true} isRateLimited={false} handleRetry={() => {}} />}
       </div>
       
       {showScrollButton && (
-        <TaskChatScrollButton onClick={scrollToBottom} />
+        <TaskChatScrollButton onClick={scrollToBottom} show={true} />
       )}
 
       <div className="border-t p-4">

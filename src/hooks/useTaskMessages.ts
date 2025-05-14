@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { TaskMessage } from "@/types";
 
 export const useTaskMessages = (taskId: string | null) => {
   const queryClient = useQueryClient();
@@ -26,9 +27,9 @@ export const useTaskMessages = (taskId: string | null) => {
       // Add creator information to each message
       return data.map(message => ({
         ...message,
-        creator_name: message.creator?.["Full Name"] || null,
-        creator_email: message.creator?.email || null
-      }));
+        creator_name: message.creator ? message.creator["Full Name"] : null,
+        creator_email: message.creator ? message.creator.email : null
+      })) as TaskMessage[];
     },
     enabled: !!taskId,
   });

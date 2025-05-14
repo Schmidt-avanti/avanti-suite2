@@ -1,3 +1,4 @@
+
 import React, { useState, FormEvent, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +16,7 @@ interface EmailReplyPanelProps {
   setReplyTo: (replyTo: { email: string; name?: string } | null) => void;
 }
 
-export const EmailReplyPanel = ({ taskId, replyTo, setReplyTo }: EmailReplyPanelProps) => {
+export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyTo, setReplyTo }: EmailReplyPanelProps) => {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -60,6 +61,7 @@ export const EmailReplyPanel = ({ taskId, replyTo, setReplyTo }: EmailReplyPanel
         task_id: taskId,
         role: "user",
         content: body,
+        created_by: user?.id,
         metadata: { 
           is_email: true,
           subject,
@@ -120,7 +122,7 @@ export const EmailReplyPanel = ({ taskId, replyTo, setReplyTo }: EmailReplyPanel
       if (taskData?.status === 'new') {
         await supabase
           .from('tasks')
-          .update({ status: 'in_progress' })
+          .update({ status: 'in_progress' as TaskStatus })
           .eq('id', taskId);
       }
       
