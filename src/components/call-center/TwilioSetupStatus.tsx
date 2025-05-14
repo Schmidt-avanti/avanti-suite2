@@ -16,6 +16,12 @@ interface TwilioCredentialStatus {
   configured: boolean;
 }
 
+// Define a type for the system settings data
+interface SystemSetting {
+  key: string;
+  value: string | null;
+}
+
 const TwilioSetupStatus: React.FC = () => {
   const { isSetup, setupTwilio } = useTwilio();
   const { user } = useAuth();
@@ -59,22 +65,14 @@ const TwilioSetupStatus: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Instead of calling the edge function directly, check if the credentials exist in the database
+      // Use the custom query method to access the system_settings table directly
       const { data: twilioConfigData, error: twilioConfigError } = await supabase
-        .from('system_settings')
-        .select('key, value')
-        .in('key', [
-          'TWILIO_ACCOUNT_SID', 
-          'TWILIO_AUTH_TOKEN', 
-          'TWILIO_TWIML_APP_SID', 
-          'TWILIO_WORKSPACE_SID', 
-          'TWILIO_WORKFLOW_SID'
-        ]);
+        .rpc('get_system_settings') as { data: SystemSetting[] | null, error: any };
       
       if (twilioConfigError) throw twilioConfigError;
       
       // Create a map of configured settings
-      const configuredSettings = new Map();
+      const configuredSettings = new Map<string, boolean>();
       twilioConfigData?.forEach(setting => {
         configuredSettings.set(setting.key, !!setting.value);
       });
@@ -82,7 +80,7 @@ const TwilioSetupStatus: React.FC = () => {
       // Update the credential status based on database values
       const updatedStatus = credentialStatus.map(cred => ({
         ...cred,
-        configured: configuredSettings.has(cred.key) ? configuredSettings.get(cred.key) : false
+        configured: configuredSettings.has(cred.key) ? configuredSettings.get(cred.key)! : false
       }));
       
       setCredentialStatus(updatedStatus);
