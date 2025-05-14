@@ -24,12 +24,18 @@ export const useTaskMessages = (taskId: string | null) => {
 
       if (error) throw error;
 
-      // Add creator information to each message
-      return data.map(message => ({
-        ...message,
-        creator_name: message.creator ? message.creator["Full Name"] : null,
-        creator_email: message.creator ? message.creator.email : null
-      })) as TaskMessage[];
+      // Add creator information to each message, safely handling possible null values
+      return data.map(message => {
+        // Safely extract creator info if it exists
+        const creatorName = message.creator ? message.creator["Full Name"] : null;
+        const creatorEmail = message.creator ? message.creator.email : null;
+        
+        return {
+          ...message,
+          creator_name: creatorName,
+          creator_email: creatorEmail
+        };
+      }) as TaskMessage[];
     },
     enabled: !!taskId,
   });

@@ -1,3 +1,4 @@
+
 // Fix the imports and type issues
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -112,16 +113,19 @@ const TaskDetail = () => {
     const nextTaskId = await findNextTask();
     if (nextTaskId) {
       setIsActive(false);
-      await new Promise(resolve => setTimeout(resolve, 100)); // Give time for timer to stop
-      navigate(`/tasks/${nextTaskId}`);
-      toast({
-        title: "Nächste Aufgabe",
-        description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
-      });
+      // Use setTimeout instead of Promise to avoid type mismatch
+      setTimeout(() => {
+        navigate(`/tasks/${nextTaskId}`);
+        toast({
+          title: "Nächste Aufgabe",
+          description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
+        });
+      }, 100);
     } else {
       setIsActive(false);
-      await new Promise(resolve => setTimeout(resolve, 100));
-      navigate('/tasks');
+      setTimeout(() => {
+        navigate('/tasks');
+      }, 100);
     }
   };
 
