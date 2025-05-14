@@ -1,4 +1,3 @@
-
 // src/components/call-center/TwilioSetupStatus.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -66,7 +65,7 @@ const TwilioSetupStatus: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Use a raw POST request to access the function directly instead of using rpc()
+      // Use a raw query approach to bypass TypeScript constraints
       const { data: twilioConfigData, error: twilioConfigError } = await supabase
         .from('system_settings')
         .select('key, value, description')
