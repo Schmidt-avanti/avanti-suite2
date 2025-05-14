@@ -1,95 +1,120 @@
 
 import React from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { de } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Message } from '@/hooks/useTaskMessages';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskChatMessageProps {
-  message: {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    created_at: string;
-    creator_name?: string;
-    creator_email?: string;
-  };
-  onButtonClick?: (buttonText: string, messageId: string) => void;
-  selectedOptions?: string[];
+  message: Message;
+  selectedOptions: Set<string>;
+  onOptionSelect: (option: string) => void;
 }
 
 export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({ 
   message, 
-  onButtonClick,
-  selectedOptions = []
+  selectedOptions, 
+  onOptionSelect 
 }) => {
-  const isAssistant = message.role === 'assistant';
-  
-  // Parse options from content for assistant messages
-  let parsedContent = message.content;
-  let options: string[] = [];
-  
-  if (isAssistant) {
-    try {
-      const parsed = JSON.parse(message.content);
-      parsedContent = parsed.text || message.content;
-      options = parsed.options || [];
-    } catch (e) {
-      // If parsing fails, use the raw content
-      console.error("Failed to parse message content", e);
-    }
-  }
+  const isMobile = useIsMobile();
+  const { user } = useAuth();
 
-  const timeAgo = formatDistanceToNow(new Date(message.created_at), {
-    addSuffix: true,
-    locale: de
-  });
-  
-  // Check if any button text is in the selected options
-  const isButtonSelected = (buttonText: string) => {
-    return selectedOptions.includes(buttonText);
+  // Parse JSON content and extract text and options
+  const parseMessageContent = () => {
+    if (message.role !== "assistant") {
+      return { text: message.content, options: [] };
+    }
+    
+    try {
+      // Try to parse the content as JSON
+      const parsedContent = JSON.parse(message.content);
+      return { 
+        text: parsedContent.text || message.content, 
+        options: Array.isArray(parsedContent.options) ? parsedContent.options : [] 
+      };
+    } catch (e) {
+      // Not valid JSON, try to extract options from text
+      const content = message.content;
+      const optionsMatch = content.match(/\[(.*?)\]/);
+      
+      if (optionsMatch) {
+        try {
+          const optionsText = optionsMatch[1];
+          const options = optionsText.split(',').map(o => 
+            o.trim().replace(/"/g, '').replace(/^\[|\]$/g, '')
+          );
+          
+          return { text: content, options };
+        } catch (err) {
+          return { text: content, options: [] };
+        }
+      } else {
+        // Check for key list patterns that might contain key options
+        const listMatch = content.match(/(?:\d+\.\s+(.*?)(?:\n|$))+/g);
+        if (listMatch && content.toLowerCase().includes('schlüssel')) {
+          const defaultOptions = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
+          return { text: content, options: defaultOptions };
+        }
+        
+        return { text: content, options: [] };
+      }
+    }
   };
 
+  const { text, options } = parseMessageContent();
+  
+  // Filter out options that have already been selected
+  const availableOptions = options.filter(option => !selectedOptions.has(option));
+
+  // Für Assistentennachrichten, entferne JSON-artige Formatierung, wenn vorhanden
+  const cleanupText = (text: string) => {
+    if (message.role !== "assistant") return text;
+    
+    // Entferne JSON-Artefakte aus dem Text
+    return text
+      .replace(/^\s*{/, '') // Öffnende Klammer am Anfang entfernen
+      .replace(/}\s*$/, '') // Schließende Klammer am Ende entfernen
+      .replace(/"text"\s*:\s*"/, '') // "text": " entfernen
+      .replace(/"options"\s*:\s*\[.*?\]/, '') // "options": [...] entfernen
+      .replace(/",\s*$/, '') // ", am Ende entfernen
+      .trim();
+  };
+
+  const displayText = cleanupText(text);
+
   return (
-    <div className={`flex flex-col mb-4 ${isAssistant ? 'items-start' : 'items-end'}`}>
-      <div className={`rounded-2xl p-4 max-w-[80%] shadow-sm ${
-        isAssistant 
-          ? 'bg-blue-50 text-blue-900' 
-          : 'bg-gray-100 text-gray-900'
-      }`}>
-        <div className="font-medium mb-1">
-          {isAssistant ? (
-            'Assistentin'
-          ) : (
-            // Show the creator's name if available, otherwise email
-            message.creator_name || message.creator_email || 'Sie'
-          )}
+    <div className={`flex flex-col mb-4 ${message.role === "assistant" ? "items-start" : "items-end"}`}>
+      <div className={`
+        ${isMobile ? 'max-w-[90%]' : 'max-w-[80%]'} p-4 rounded
+        ${message.role === "assistant"
+          ? "bg-blue-100 text-gray-900"
+          : "bg-gray-100 text-gray-900"
+        }
+        border border-blue-50/40
+      `}>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-semibold text-sm">
+            {message.role === "assistant" ? "Assistentin" : user?.fullName || user?.email || "Benutzer"}
+          </span>
         </div>
-        <div className="whitespace-pre-wrap">{parsedContent}</div>
-        
-        {isAssistant && options.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {options.map((option, i) => (
+        <div className="text-sm whitespace-pre-wrap">
+          {displayText}
+        </div>
+        {availableOptions.length > 0 && (
+          <div className={`flex flex-wrap gap-2 mt-3 ${isMobile ? 'flex-col' : ''}`}>
+            {availableOptions.map((option, idx) => (
               <Button
-                key={i}
-                size="sm"
+                key={idx}
                 variant="outline"
-                className={`bg-white text-blue-600 border border-blue-200 relative ${
-                  isButtonSelected(option) ? 'bg-blue-50 border-blue-400' : ''
-                }`}
-                onClick={() => onButtonClick?.(option, message.id)}
+                onClick={() => onOptionSelect(option)}
+                className="rounded text-sm px-4 py-1 hover:bg-blue-100"
+                size={isMobile ? "sm" : "default"}
               >
                 {option}
-                {isButtonSelected(option) && (
-                  <Check className="h-3 w-3 ml-1.5 text-green-600" />
-                )}
               </Button>
             ))}
           </div>
         )}
-      </div>
-      <div className={`text-xs mt-1 text-gray-500 ${isAssistant ? 'ml-2' : 'mr-2'}`}>
-        {timeAgo}
       </div>
     </div>
   );
