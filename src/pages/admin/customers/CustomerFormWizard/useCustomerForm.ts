@@ -28,6 +28,7 @@ export interface CustomerData {
   invoiceAddress: Address;
   tools: Record<"taskManagement" | "knowledgeBase" | "crm", string>;
   contacts: Person[];
+  avanti_email?: string;
 }
 
 const initialCustomer: CustomerData = {
@@ -47,13 +48,48 @@ const initialCustomer: CustomerData = {
   ]
 };
 
+// Helper function to convert Customer from API to CustomerData format
+const customerToFormData = (customer: Customer | null): CustomerData => {
+  if (!customer) return initialCustomer;
+  
+  return {
+    id: customer.id,
+    name: customer.name || "",
+    branch: customer.industry || "",
+    email: customer.email || "",
+    address: {
+      street: customer.street || "",
+      zip: customer.zip || "",
+      city: customer.city || ""
+    },
+    hasInvoiceAddress: customer.has_invoice_address || false,
+    invoiceAddress: {
+      street: customer.invoice_street || "",
+      zip: customer.invoice_zip || "",
+      city: customer.invoice_city || ""
+    },
+    tools: {
+      taskManagement: "",
+      knowledgeBase: "",
+      crm: ""
+    },
+    contacts: [],
+    avanti_email: customer.avanti_email || ""
+  };
+};
+
 interface UseCustomerFormProps {
-  initialCustomer?: Customer;
+  initialCustomer?: Customer | null;
 }
 
 const useCustomerForm = (props?: UseCustomerFormProps) => {
   const { toast } = useToast();
-  const [customer, setCustomer] = useState<CustomerData>(props?.initialCustomer || initialCustomer);
+  // Convert API Customer to our internal CustomerData format
+  const initialFormData = props?.initialCustomer 
+    ? customerToFormData(props.initialCustomer) 
+    : initialCustomer;
+  
+  const [customer, setCustomer] = useState<CustomerData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Determine if we're creating or editing
@@ -71,7 +107,8 @@ const useCustomerForm = (props?: UseCustomerFormProps) => {
         hasInvoiceAddress,
         invoiceAddress,
         tools,
-        contacts
+        contacts,
+        avanti_email
       } = customer;
       
       let customerId: string;
@@ -91,6 +128,7 @@ const useCustomerForm = (props?: UseCustomerFormProps) => {
             invoice_street: invoiceAddress.street,
             invoice_zip: invoiceAddress.zip,
             invoice_city: invoiceAddress.city,
+            avanti_email: avanti_email
           })
           .eq("id", customer.id)
           .select();
@@ -111,7 +149,8 @@ const useCustomerForm = (props?: UseCustomerFormProps) => {
             invoice_street: invoiceAddress.street,
             invoice_zip: invoiceAddress.zip,
             invoice_city: invoiceAddress.city,
-            is_active: true
+            is_active: true,
+            avanti_email: avanti_email || `${name.toLowerCase().replace(/\s+/g, '-')}@inbox.avanti.cx`
           })
           .select();
           
