@@ -10,6 +10,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InfoIcon, Loader2 } from 'lucide-react';
 import { useTwilio } from '@/contexts/TwilioContext';
 import { useAuth } from '@/contexts/AuthContext';
+import PhoneNumberSetup from '@/components/call-center/PhoneNumberSetup';
+import ActiveCallPanel from '@/components/call-center/ActiveCallPanel';
 
 const CallCenter: React.FC = () => {
   const { isSetup, setupTwilio } = useTwilio();
@@ -89,10 +91,17 @@ const CallCenter: React.FC = () => {
           </Tabs>
         </div>
         
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <TwilioSetupStatus />
+          
+          {isAdmin && (
+            <PhoneNumberSetup />
+          )}
         </div>
       </div>
+      
+      {/* This component will appear when there's an active call */}
+      <ActiveCallPanel />
     </div>
   );
 };

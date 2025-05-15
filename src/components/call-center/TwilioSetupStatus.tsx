@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useTwilio } from '@/contexts/TwilioContext';
-import { Loader2Icon, AlertCircleIcon, CheckCircleIcon, RefreshCwIcon, WrenchIcon } from 'lucide-react';
+import { AlertCircleIcon, CheckCircleIcon, RefreshCwIcon, WrenchIcon, PhoneIcon } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -66,28 +66,15 @@ const TwilioSetupStatus: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // We'll make a direct HTTP request to get the system settings
-      const { data: session } = await supabase.auth.getSession();
-      const accessToken = session?.session?.access_token;
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://knoevkvjyuchhcmzsdpq.supabase.co';
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub2V2a3ZqeXVjaGhjbXpzZHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyMTEzMzcsImV4cCI6MjA2MDc4NzMzN30.gKCh5BUGsQJKCRW0JDxDEWA2M9uL3q20Wiqt8ePfoi8';
+      // Direct query to the system_settings table
+      const { data: twilioConfigData, error } = await supabase
+        .from('system_settings')
+        .select('key, value, description')
+        .in('key', ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_TWIML_APP_SID', 'TWILIO_WORKSPACE_SID', 'TWILIO_WORKFLOW_SID']);
       
-      console.log('Fetching from URL:', supabaseUrl);
-      
-      const response = await fetch(`${supabaseUrl}/rest/v1/system_settings?select=key,value,description&key=in.(TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_TWIML_APP_SID,TWILIO_WORKSPACE_SID,TWILIO_WORKFLOW_SID)`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (error) {
+        throw error;
       }
-      
-      const twilioConfigData = await response.json() as SystemSetting[];
       
       // Create a map of configured settings
       const configuredSettings = new Map<string, boolean>();
@@ -140,7 +127,8 @@ const TwilioSetupStatus: React.FC = () => {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
       
       const data = await response.json();
@@ -181,7 +169,7 @@ const TwilioSetupStatus: React.FC = () => {
     if (isLoading) {
       return (
         <div className="flex items-center text-muted-foreground">
-          <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+          <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
           Status wird überprüft...
         </div>
       );
@@ -204,6 +192,7 @@ const TwilioSetupStatus: React.FC = () => {
     );
   };
 
+  // Only show this component to admins
   if (!isAdmin) {
     return null;
   }
@@ -250,27 +239,72 @@ const TwilioSetupStatus: React.FC = () => {
           <>
             <Alert className="mt-4">
               <AlertCircleIcon className="h-4 w-4" />
-              <AlertTitle>Fehlende Konfiguration</AlertTitle>
-              <AlertDescription>
-                Einige Twilio-Einstellungen sind noch nicht vollständig konfiguriert. 
-                Für eingehende und ausgehende Anrufe benötigen Sie eine vollständige Konfiguration.
+              <AlertTitle>Einrichtungsschritte</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>Für eine vollständige Twilio-Einrichtung sind folgende Schritte notwendig:</p>
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li>Die Twilio-API-Zugangsschlüssel müssen in den Supabase-Secrets konfiguriert sein.</li>
+                  <li>Ein TwiML-App muss in Ihrem Twilio-Konto erstellt sein.</li>
+                  <li>Führen Sie die Workspace-Einrichtung aus, um die TaskRouter-Komponenten zu erstellen.</li>
+                  <li>Konfigurieren Sie mindestens eine Telefonnummer in Twilio für eingehende Anrufe.</li>
+                  <li>Die Telefonnummer muss auf den Webhook <code>{import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-voice-webhook</code> verweisen.</li>
+                </ol>
               </AlertDescription>
             </Alert>
             
-            {!credentialStatus[3].configured && (
-              <Button 
-                className="mt-4 w-full" 
-                onClick={handleSetupWorkspace}
-                disabled={isRunningSetup}
-              >
-                {isRunningSetup ? (
-                  <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <WrenchIcon className="h-4 w-4 mr-2" />
-                )}
-                Twilio-Arbeitsbereich einrichten
-              </Button>
-            )}
+            <div className="mt-4 space-y-3">
+              {!credentialStatus.slice(0, 3).every(cred => cred.configured) && (
+                <Alert className="bg-amber-50">
+                  <AlertCircleIcon className="h-4 w-4" />
+                  <AlertTitle>API-Konfiguration fehlt</AlertTitle>
+                  <AlertDescription>
+                    Die grundlegenden Twilio-API-Schlüssel sind nicht konfiguriert. 
+                    Bitte stellen Sie sicher, dass TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN und 
+                    TWILIO_TWIML_APP_SID in den Supabase-Secrets und in der system_settings-Tabelle eingerichtet sind.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {!credentialStatus[3].configured && credentialStatus.slice(0, 3).every(cred => cred.configured) && (
+                <Button 
+                  className="w-full" 
+                  onClick={handleSetupWorkspace}
+                  disabled={isRunningSetup}
+                >
+                  {isRunningSetup ? (
+                    <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <WrenchIcon className="h-4 w-4 mr-2" />
+                  )}
+                  Twilio-Arbeitsbereich einrichten
+                </Button>
+              )}
+              
+              {credentialStatus.slice(0, 4).every(cred => cred.configured) && !credentialStatus[4].configured && (
+                <Alert className="bg-amber-50">
+                  <AlertCircleIcon className="h-4 w-4" />
+                  <AlertTitle>Workflow-Konfiguration</AlertTitle>
+                  <AlertDescription>
+                    Der Workspace wurde erfolgreich erstellt, aber der Workflow fehlt noch.
+                    Führen Sie die Workspace-Einrichtung erneut aus, um den Workflow zu erstellen.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {credentialStatus.every(cred => cred.configured) && (
+                <Alert className="bg-green-50">
+                  <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                  <AlertTitle>Konfiguration vollständig</AlertTitle>
+                  <AlertDescription>
+                    Alle Twilio-Komponenten sind korrekt konfiguriert. 
+                    Stellen Sie sicher, dass Ihre Twilio-Telefonnummern auf den Webhook verweisen:
+                    <code className="block mt-1 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                      {import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-voice-webhook
+                    </code>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
           </>
         )}
       </CardContent>
