@@ -2,10 +2,7 @@
 // supabase/functions/twilio-register-worker/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { load } from "https://deno.land/std@0.190.0/dotenv/mod.ts";
-
-// Load environment variables
-const env = await load();
+import twilio from 'https://esm.sh/twilio@4.19.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,71 +14,34 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-
-  // Check for bearer token
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  const token = authHeader.split(' ')[1];
-  
-  // Initialize Supabase client
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
-  
-  // Verify token and get user
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  
-  if (authError || !user) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
   
   try {
-    // Parse request body if it exists
-    let requestAttributes = {};
-    let requestUserId = user.id;
+    // Get request data
+    const { userId, attributes = {} } = await req.json();
     
-    if (req.body) {
-      try {
-        const body = await req.json();
-        if (body.attributes) {
-          requestAttributes = body.attributes;
-        }
-        
-        // If userId is provided in the body, use that (for admin creating workers)
-        if (body.userId) {
-          const { data: adminProfile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-            
-          // Only admins can create workers for other users
-          if (adminProfile?.role === 'admin') {
-            requestUserId = body.userId;
-          }
-        }
-      } catch (e) {
-        console.error('Error parsing request body:', e);
-      }
+    // Validate input
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'User ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
-    // Get user profile data to include in the worker attributes
-    const { data: userProfile, error: profileError } = await supabase
+    console.log(`Registering worker for user: ${userId}`);
+    
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Get user profile
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', requestUserId)
+      .eq('id', userId)
       .single();
-    
-    if (profileError) {
+      
+    if (profileError || !profile) {
       console.error('Error fetching user profile:', profileError);
       return new Response(
         JSON.stringify({ error: 'User profile not found' }),
@@ -92,145 +52,122 @@ serve(async (req) => {
     // Get Twilio credentials from system_settings
     const { data: settings, error: settingsError } = await supabase
       .from('system_settings')
-      .select('key, value')
-      .in('key', ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_WORKSPACE_SID']);
+      .select('*')
+      .in('key', ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_WORKSPACE_SID'])
+      .order('key');
       
     if (settingsError) {
       console.error('Error fetching Twilio settings:', settingsError);
       return new Response(
-        JSON.stringify({ error: 'Failed to load Twilio settings' }),
+        JSON.stringify({ error: 'Failed to fetch Twilio settings' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
     // Convert settings array to object for easier access
-    const twilioSettings: Record<string, string> = {};
-    settings.forEach(setting => {
-      if (setting.value) {
-        twilioSettings[setting.key] = setting.value;
+    const twilioSettings = settings.reduce((acc: Record<string, string>, setting) => {
+      if (setting.key && setting.value) {
+        acc[setting.key] = setting.value;
       }
-    });
+      return acc;
+    }, {});
     
     // Fallback to environment variables if settings not found in database
-    const TWILIO_ACCOUNT_SID = twilioSettings.TWILIO_ACCOUNT_SID || Deno.env.get('TWILIO_ACCOUNT_SID');
-    const TWILIO_AUTH_TOKEN = twilioSettings.TWILIO_AUTH_TOKEN || Deno.env.get('TWILIO_AUTH_TOKEN');
-    const TWILIO_WORKSPACE_SID = twilioSettings.TWILIO_WORKSPACE_SID || Deno.env.get('TWILIO_WORKSPACE_SID');
+    const TWILIO_ACCOUNT_SID = twilioSettings['TWILIO_ACCOUNT_SID'] || Deno.env.get('TWILIO_ACCOUNT_SID')!;
+    const TWILIO_AUTH_TOKEN = twilioSettings['TWILIO_AUTH_TOKEN'] || Deno.env.get('TWILIO_AUTH_TOKEN')!;
+    const TWILIO_WORKSPACE_SID = twilioSettings['TWILIO_WORKSPACE_SID'] || Deno.env.get('TWILIO_WORKSPACE_SID')!;
     
+    // Validate Twilio credentials
     if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WORKSPACE_SID) {
+      console.error('Missing Twilio credentials:', { 
+        hasAccountSid: !!TWILIO_ACCOUNT_SID,
+        hasAuthToken: !!TWILIO_AUTH_TOKEN,
+        hasWorkspaceSid: !!TWILIO_WORKSPACE_SID
+      });
       return new Response(
-        JSON.stringify({ 
-          error: 'Twilio credentials not fully configured',
-          missing: {
-            accountSid: !TWILIO_ACCOUNT_SID,
-            authToken: !TWILIO_AUTH_TOKEN,
-            workspaceSid: !TWILIO_WORKSPACE_SID
-          }
-        }),
+        JSON.stringify({ error: 'Twilio configuration incomplete' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Create a Twilio client
-    const twilio = await import("https://esm.sh/twilio@4.19.0");
-    const client = twilio.default(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+    // Initialize Twilio client
+    const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
     
-    let workerId = userProfile.twilio_worker_sid;
-    const workerName = userProfile["Full Name"] || `User-${requestUserId.substring(0, 8)}`;
-    
-    // Create worker attributes object - properly formatted for TaskRouter
+    // Prepare worker attributes
     const workerAttributes = {
-      user_id: requestUserId,
-      name: workerName,
-      email: userProfile.email || "",
-      role: userProfile.role || "agent",
-      ...requestAttributes
+      user_id: userId,
+      name: profile['Full Name'] || 'Agent',
+      contact_uri: `client:${userId}`,
+      ...attributes
     };
     
-    // Store the JSON string representation of attributes
-    const attributesString = JSON.stringify(workerAttributes);
+    console.log('Worker attributes:', workerAttributes);
     
-    // If user already has a worker SID, try to fetch it first
-    if (workerId) {
+    // Check if worker already exists
+    if (profile.twilio_worker_sid) {
       try {
+        // Try to fetch the worker to see if it exists
         const worker = await client.taskrouter.v1
           .workspaces(TWILIO_WORKSPACE_SID)
-          .workers(workerId)
+          .workers(profile.twilio_worker_sid)
           .fetch();
           
-        // Update worker attributes if needed
-        if (worker.attributes !== attributesString) {
-          await worker.update({ attributes: attributesString });
-          console.log('Updated worker attributes');
-        }
+        if (worker) {
+          console.log('Worker already exists, updating attributes');
+          // Update the worker attributes
+          await worker.update({
+            attributes: JSON.stringify(workerAttributes)
+          });
           
-        // Worker exists, return it
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            workerId, 
-            message: 'Worker already registered',
-            attributes: workerAttributes
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      } catch (err) {
-        console.log('Worker not found or error fetching worker, creating new one:', err);
-        // Continue to create a new worker
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: 'Worker updated', 
+              workerId: profile.twilio_worker_sid,
+              attributes: workerAttributes
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (error) {
+        // Worker not found or other error, we'll create a new one
+        console.log('Error fetching worker, will create new one:', error);
       }
     }
     
     // Create a new worker
-    try {
-      console.log(`Creating new worker with name: ${workerName}`);
-      console.log(`Worker attributes: ${attributesString}`);
+    console.log('Creating new worker with attributes:', workerAttributes);
+    const worker = await client.taskrouter.v1
+      .workspaces(TWILIO_WORKSPACE_SID)
+      .workers
+      .create({
+        friendlyName: profile['Full Name'] || `Agent-${userId.substring(0, 8)}`,
+        attributes: JSON.stringify(workerAttributes)
+      });
       
-      const worker = await client.taskrouter.v1
-        .workspaces(TWILIO_WORKSPACE_SID)
-        .workers
-        .create({
-          friendlyName: workerName,
-          attributes: attributesString
-        });
-      
-      workerId = worker.sid;
-      
-      console.log(`Worker created with SID: ${workerId}`);
-      
-      // Update user profile with worker SID
+    // Update the user profile with the worker SID
+    if (worker && worker.sid) {
       await supabase
         .from('profiles')
         .update({ 
-          twilio_worker_sid: workerId,
-          voice_status: 'offline',
+          twilio_worker_sid: worker.sid,
           twilio_worker_attributes: workerAttributes
         })
-        .eq('id', requestUserId);
-        
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          workerId,
-          message: 'Worker registered successfully',
-          attributes: workerAttributes
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-      
-    } catch (err) {
-      console.error('Error creating worker:', err);
-      return new Response(
-        JSON.stringify({ 
-          error: err instanceof Error ? err.message : 'Unknown error creating worker', 
-          success: false 
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+        .eq('id', userId);
     }
     
-  } catch (error) {
-    console.error('Unhandled error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error', success: false }),
+      JSON.stringify({ 
+        success: true, 
+        workerId: worker.sid,
+        attributes: workerAttributes
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error registering worker:', error);
+    return new Response(
+      JSON.stringify({ error: `Failed to register worker: ${error.message || 'Unknown error'}` }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -6,17 +6,19 @@ import {
   PhoneIcon, 
   PhoneOffIcon,
   Loader2,
-  AlertCircleIcon
+  AlertCircleIcon,
+  InfoIcon
 } from 'lucide-react';
 import { useTwilio } from '@/contexts/TwilioContext';
 import { useToast } from '@/components/ui/use-toast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const VoiceStatusButton = () => {
   const { isAvailable, isSetup, toggleAvailability, setupTwilio, callState } = useTwilio();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
   const [setupError, setSetupError] = React.useState<string | null>(null);
+  const [setupStarted, setSetupStarted] = React.useState(false);
   
   const handleToggle = async () => {
     setIsLoading(true);
@@ -24,6 +26,7 @@ const VoiceStatusButton = () => {
     
     try {
       if (!isSetup) {
+        setSetupStarted(true);
         const success = await setupTwilio();
         if (!success) {
           setSetupError('Konnte das Telefonsystem nicht initialisieren. Bitte stellen Sie sicher, dass alle Konfigurationen richtig eingestellt sind.');
@@ -83,7 +86,7 @@ const VoiceStatusButton = () => {
         ) : (
           <PhoneOffIcon className="h-4 w-4 mr-2" />
         )}
-        {isAvailable ? 'Verfügbar für Anrufe' : 'Nicht verfügbar'}
+        {isLoading ? 'Verbinden...' : isAvailable ? 'Verfügbar für Anrufe' : 'Nicht verfügbar'}
       </Button>
     );
   };
@@ -95,7 +98,17 @@ const VoiceStatusButton = () => {
       {setupError && (
         <Alert variant="destructive" className="mt-2">
           <AlertCircleIcon className="h-4 w-4" />
+          <AlertTitle>Fehler beim Setup</AlertTitle>
           <AlertDescription>{setupError}</AlertDescription>
+        </Alert>
+      )}
+      
+      {setupStarted && !isSetup && !setupError && (
+        <Alert className="mt-2">
+          <InfoIcon className="h-4 w-4" />
+          <AlertDescription>
+            Telefonsystem wird initialisiert. Bitte geben Sie die Berechtigung für das Mikrofon, wenn Ihr Browser danach fragt.
+          </AlertDescription>
         </Alert>
       )}
     </div>
