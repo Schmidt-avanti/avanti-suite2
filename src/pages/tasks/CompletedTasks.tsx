@@ -114,7 +114,7 @@ const CompletedTasks = () => {
 
       <Card>
         {isLoading ? (
-          <TableSkeleton columnCount={6} rowCount={pageSize > 10 ? 10 : pageSize} />
+          <TableSkeleton columnCount={7} rowCount={pageSize > 10 ? 10 : pageSize} />
         ) : (
           <>
             <TasksTable tasks={tasks} isLoading={isLoading} />
