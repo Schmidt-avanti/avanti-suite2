@@ -181,6 +181,19 @@ serve(async (req) => {
       useCase = fetchedUseCase;
     }
 
+    // Endkunde-Daten abrufen, wenn vorhanden
+    let endkundeData = null;
+    if (task.endkunde_id) {
+      const { data: fetchedEndkunde, error: endkundeError } = await supabase
+        .from('endkunden')
+        .select('*')
+        .eq('id', task.endkunde_id)
+        .maybeSingle();
+        
+      if (endkundeError) throw endkundeError;
+      endkundeData = fetchedEndkunde;
+    }
+
     // Nachrichten abrufen
     const { data: messages, error: messagesError2 } = await supabase
       .from('task_messages')
@@ -200,6 +213,23 @@ Beginne stattdessen sofort mit der Hauptinformation oder Frage, ohne Begrüßung
 WICHTIG: Sprich den Kunden immer direkt an. Verwende "Sie" und "Ihre" für den Kunden, nicht "der Kunde" oder den Namen des Kunden in der dritten Person.
 Beispiel: Sage "Wie Ihre Bestellung versendet wird" und NICHT "wie die Bestellung von Herr/Frau X versendet wird".
 Nutze nur die direkte Anrede.`;
+    
+    // Add endkunde information to the system prompt if available
+    if (endkundeData) {
+      systemPrompt += `\n\nEin Endkunde ist bereits ausgewählt. Hier sind die Daten:
+      Vorname: ${endkundeData.Vorname || 'Nicht angegeben'}
+      Nachname: ${endkundeData.Nachname}
+      Adresse: ${endkundeData.Adresse}
+      PLZ: ${endkundeData.Postleitzahl}
+      Ort: ${endkundeData.Ort}
+      ${endkundeData.Gebäude ? `Gebäude: ${endkundeData.Gebäude}` : ''}
+      ${endkundeData.Wohnung ? `Wohnung: ${endkundeData.Wohnung}` : ''}
+      ${endkundeData.Lage ? `Lage: ${endkundeData.Lage}` : ''}
+      
+WICHTIG: Frage NICHT erneut nach dem Namen oder der Adresse des Endkunden, da diese Informationen bereits bekannt sind. 
+Gehe direkt zum Kern des Problems über. Solltest du dennoch spezifischere Informationen zur Wohnung oder zum Gebäude benötigen, 
+die nicht in den angegebenen Daten enthalten sind, kannst du gezielt danach fragen.`;
+    }
     
     if (useCase) {
       systemPrompt += `\n\nFolge diesem Use Case für die Aufgabe:
@@ -249,11 +279,19 @@ Nutze nur die direkte Anrede.`;
     if (isAutoInitialization || (!message && !buttonChoice && messages.length === 0)) {
       const customerName = task.customer?.name || "der Kunde";
       
+      let autoInitPrompt = `Der Chat wurde automatisch initiiert. Starte direkt mit der konkreten Frage oder Information ohne Begrüßung wie "Guten Tag" oder "Hallo". 
+      Fokussiere auf den Use Case "${useCase?.title || 'Unbekannt'}". Die Aufgabe betrifft: "${task.description || 'Keine Beschreibung'}". 
+      Spreche den Kunden direkt an mit "Sie" und "Ihre", nicht als "${customerName}" in der dritten Person.`;
+      
+      // Zusätzliche Anweisungen für Endkunde
+      if (endkundeData) {
+        autoInitPrompt += `\nDer Endkunde ${endkundeData.Vorname} ${endkundeData.Nachname} wurde bereits identifiziert. 
+        Frage NICHT erneut nach Namen oder Adresse. Gehe direkt zum nächsten relevanten Schritt im Prozess über.`;
+      }
+      
       conversationMessages.push({
         role: "system",
-        content: `Der Chat wurde automatisch initiiert. Starte direkt mit der konkreten Frage oder Information ohne Begrüßung wie "Guten Tag" oder "Hallo". 
-        Fokussiere auf den Use Case "${useCase?.title || 'Unbekannt'}". Die Aufgabe betrifft: "${task.description || 'Keine Beschreibung'}". 
-        Spreche den Kunden direkt an mit "Sie" und "Ihre", nicht als "${customerName}" in der dritten Person.`
+        content: autoInitPrompt
       });
     }
     
