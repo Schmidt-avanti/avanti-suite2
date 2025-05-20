@@ -22,7 +22,8 @@ interface TaskDetailHeaderProps {
   setAssignTaskDialogOpen: (open: boolean) => void;
   setForwardTaskDialogOpen: (open: boolean) => void;
   setFollowUpDialogOpen: (open: boolean) => void;
-  setCloseTaskDialogOpen: (open: boolean) => void;
+  handleCloseWithoutAvaClick: () => void;
+  handleCloseWithAvaClick: () => void;
   setEmailToCustomerDialogOpen: (open: boolean) => void;
   handleStatusChange: (status: TaskStatus) => void;
 }
@@ -38,7 +39,8 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   setAssignTaskDialogOpen,
   setForwardTaskDialogOpen,
   setFollowUpDialogOpen,
-  setCloseTaskDialogOpen,
+  handleCloseWithoutAvaClick,
+  handleCloseWithAvaClick,
   setEmailToCustomerDialogOpen,
   handleStatusChange
 }) => {
@@ -114,7 +116,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
         <Button 
           variant="outline" 
           className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
-          onClick={() => setCloseTaskDialogOpen(true)}
+          onClick={handleCloseWithoutAvaClick}
         >
           <X className="h-4 w-4 mr-2" />
           Beenden ohne Ava
@@ -125,7 +127,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           <Button 
             variant="outline" 
             className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
-            onClick={() => handleStatusChange('completed' as TaskStatus)}
+            onClick={handleCloseWithAvaClick}
           >
             <CheckCircle className="h-4 w-4 mr-2" />
             Aufgabe abschließen

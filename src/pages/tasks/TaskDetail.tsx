@@ -6,6 +6,7 @@ import { useTaskTimer } from '@/hooks/useTaskTimer';
 import { useAuth } from '@/contexts/AuthContext';
 import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
 import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
+import { AvaTaskSummaryDialog } from '@/components/tasks/AvaTaskSummaryDialog';
 import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
 import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog';
 import { TaskChat } from "@/components/tasks/TaskChat";
@@ -31,9 +32,11 @@ const TaskDetail = () => {
   // Task status dialogs
   const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
   const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
+  const [isClosingWithoutAva, setIsClosingWithoutAva] = useState(false);
   const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
   const [forwardTaskDialogOpen, setForwardTaskDialogOpen] = useState(false);
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
+  const [avaSummaryDialogOpen, setAvaSummaryDialogOpen] = useState(false);
   
   const [isActive, setIsActive] = useState(true);
   
@@ -105,32 +108,94 @@ const TaskDetail = () => {
     }
   };
 
-  const handleTaskClose = async (comment: string) => {
-    await handleCloseWithoutAva(comment);
+  const handleTaskClose = (comment: string) => {
+    console.log("Task close handler called with comment:", comment);
     
-    // Find and navigate to next task
-    const nextTaskId = await findNextTask();
-    if (nextTaskId) {
-      setIsActive(false);
-      await new Promise(resolve => setTimeout(resolve, 100)); // Give time for timer to stop
-      navigate(`/tasks/${nextTaskId}`);
-      toast({
-        title: "Nächste Aufgabe",
-        description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
+    if (isClosingWithoutAva) {
+      // Close task directly without AVA summary if coming from "Beenden ohne Ava"
+      handleCloseWithoutAva(comment).then(() => {
+        // After closing, find and navigate to next task
+        findNextTask().then(nextTaskId => {
+          if (nextTaskId) {
+            console.log("Navigating to next task:", nextTaskId);
+            setIsActive(false);
+            setTimeout(() => navigate(`/tasks/${nextTaskId}`), 100);
+          } else {
+            console.log("No next task found, navigating to tasks list");
+            setIsActive(false);
+            setTimeout(() => navigate('/tasks'), 100);
+          }
+        });
       });
     } else {
-      setIsActive(false);
-      await new Promise(resolve => setTimeout(resolve, 100));
-      navigate('/tasks');
+      // Open AVA summary dialog for normal task closing flow
+      console.log("Opening AVA summary dialog with initial comment:", comment);
+      setAvaSummaryDialogOpen(true);
     }
   };
+  
+  const handleCloseSummary = () => {
+    console.log("Closing AVA summary dialog without completing task");
+    setAvaSummaryDialogOpen(false);
+  };
+  
+  const handleCloseWithoutAvaClick = () => {
+    console.log("Opening close dialog without AVA");
+    setIsClosingWithoutAva(true);
+    setCloseTaskDialogOpen(true);
+  };
+  
+  const handleCloseWithAvaClick = () => {
+    console.log("Opening close dialog with AVA");
+    setIsClosingWithoutAva(false);
+    setCloseTaskDialogOpen(true);
+  };
+  
+  const handleCloseTaskFromSummary = async (comment: string) => {
+    console.log("Closing task from AVA summary dialog with comment:", comment);
+    
+    try {
+      // Close the task with the comment provided in the summary dialog
+      // This is where we actually update the task status to completed
+      await handleCloseWithoutAva(comment);
+      console.log("Task closed successfully");
+      setAvaSummaryDialogOpen(false);
+      
+      // Find and navigate to next task
+      const nextTaskId = await findNextTask();
+      if (nextTaskId) {
+        console.log("Navigating to next task:", nextTaskId);
+        setIsActive(false);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Give time for timer to stop
+        navigate(`/tasks/${nextTaskId}`);
+      } else {
+        console.log("No next task found, navigating to tasks list");
+        setIsActive(false);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        navigate('/tasks');
+      }
+    } catch (error) {
+      console.error("Error closing task:", error);
+    }
+  };
+  
+
 
   useEffect(() => {
+    // TEST: Force the dialog to show when component mounts
+    if (task?.status === 'completed') {
+      console.log('TEST: Forcing AVA summary dialog to show');
+      setTimeout(() => {
+        // Just open the dialog without setting comment, as comment is now in the dialog itself
+        setAvaSummaryDialogOpen(true);
+      }, 500);
+    }
+    
     return () => {
       console.log('TaskDetail unmounting, setting isActive to false');
       setIsActive(false);
     };
-  }, []);
+  }, [task]);
 
   const handleBack = () => {
     setIsActive(false);
@@ -171,7 +236,8 @@ const TaskDetail = () => {
           setAssignTaskDialogOpen={setAssignTaskDialogOpen}
           setForwardTaskDialogOpen={setForwardTaskDialogOpen}
           setFollowUpDialogOpen={setFollowUpDialogOpen}
-          setCloseTaskDialogOpen={setCloseTaskDialogOpen}
+          handleCloseWithoutAvaClick={handleCloseWithoutAvaClick}
+          handleCloseWithAvaClick={handleCloseWithAvaClick}
           setEmailToCustomerDialogOpen={setEmailToCustomerDialogOpen}
           handleStatusChange={handleStatusChange}
         />
@@ -248,6 +314,19 @@ const TaskDetail = () => {
         open={closeTaskDialogOpen}
         onOpenChange={setCloseTaskDialogOpen}
         onClose={handleTaskClose}
+        isWithoutAva={isClosingWithoutAva}
+      />
+      
+      <AvaTaskSummaryDialog
+        open={avaSummaryDialogOpen}
+        onOpenChange={setAvaSummaryDialogOpen}
+        taskId={task.id}
+        readableId={task.readable_id}
+        taskTitle={task.title}
+        initialComment={task.closing_comment || ""}
+        onCancel={handleCloseSummary}
+        onContinue={handleCloseSummary}
+        onCloseTask={handleCloseTaskFromSummary}
       />
 
       <AssignTaskDialog
