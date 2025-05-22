@@ -24,6 +24,7 @@ interface AvaTaskSummaryDialogProps {
   onContinue: () => void;
   onCancel: () => void;
   onCloseTask: (comment: string) => Promise<void>;
+  isTaskCreation?: boolean;
 }
 
 interface AvaMessage {
@@ -46,7 +47,8 @@ export function AvaTaskSummaryDialog({
   initialComment = "",
   onContinue,
   onCancel,
-  onCloseTask
+  onCloseTask,
+  isTaskCreation = false
 }: AvaTaskSummaryDialogProps) {
   const [avaMessages, setAvaMessages] = useState<AvaMessage[]>([]);
   const [summaryItems, setSummaryItems] = useState<SummaryItem[]>([]);
@@ -56,11 +58,11 @@ export function AvaTaskSummaryDialog({
   
   // Fetch AVA's messages from the task chat history
   useEffect(() => {
-    if (open && taskId) {
+    if (open && taskId && !isTaskCreation) {
       fetchAvaMessages();
       setComment(initialComment);
     }
-  }, [open, taskId, initialComment]);
+  }, [open, taskId, initialComment, isTaskCreation]);
   
   const fetchAvaMessages = async () => {
     if (!taskId) return;
@@ -213,6 +215,7 @@ export function AvaTaskSummaryDialog({
             <p className="text-base text-gray-700">{taskTitle}</p>
           </div>
           
+          {!isTaskCreation && (
           <Card className="p-4 bg-blue-50 border-blue-200">
             <div className="space-y-4">              
               <div>
@@ -262,6 +265,7 @@ export function AvaTaskSummaryDialog({
               </div>
             </div>
           </Card>
+          )}
         </div>
 
         <DialogFooter className="flex justify-between">

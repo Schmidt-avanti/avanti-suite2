@@ -108,30 +108,25 @@ const TaskDetail = () => {
     }
   };
 
+  // This function is only used for direct closing without AVA
   const handleTaskClose = (comment: string) => {
-    console.log("Task close handler called with comment:", comment);
+    console.log("Task close handler called with comment (direct closing):", comment);
     
-    if (isClosingWithoutAva) {
-      // Close task directly without AVA summary if coming from "Beenden ohne Ava"
-      handleCloseWithoutAva(comment).then(() => {
-        // After closing, find and navigate to next task
-        findNextTask().then(nextTaskId => {
-          if (nextTaskId) {
-            console.log("Navigating to next task:", nextTaskId);
-            setIsActive(false);
-            setTimeout(() => navigate(`/tasks/${nextTaskId}`), 100);
-          } else {
-            console.log("No next task found, navigating to tasks list");
-            setIsActive(false);
-            setTimeout(() => navigate('/tasks'), 100);
-          }
-        });
+    // Close task directly without AVA summary
+    handleCloseWithoutAva(comment).then(() => {
+      // After closing, find and navigate to next task
+      findNextTask().then(nextTaskId => {
+        if (nextTaskId) {
+          console.log("Navigating to next task:", nextTaskId);
+          setIsActive(false);
+          setTimeout(() => navigate(`/tasks/${nextTaskId}`), 100);
+        } else {
+          console.log("No next task found, navigating to tasks list");
+          setIsActive(false);
+          setTimeout(() => navigate('/tasks'), 100);
+        }
       });
-    } else {
-      // Open AVA summary dialog for normal task closing flow
-      console.log("Opening AVA summary dialog with initial comment:", comment);
-      setAvaSummaryDialogOpen(true);
-    }
+    });
   };
   
   const handleCloseSummary = () => {
@@ -146,9 +141,10 @@ const TaskDetail = () => {
   };
   
   const handleCloseWithAvaClick = () => {
-    console.log("Opening close dialog with AVA");
+    console.log("Opening AVA summary dialog directly");
     setIsClosingWithoutAva(false);
-    setCloseTaskDialogOpen(true);
+    // Open the AVA summary dialog directly instead of the close task dialog
+    setAvaSummaryDialogOpen(true);
   };
   
   const handleCloseTaskFromSummary = async (comment: string) => {
@@ -182,20 +178,12 @@ const TaskDetail = () => {
 
 
   useEffect(() => {
-    // TEST: Force the dialog to show when component mounts
-    if (task?.status === 'completed') {
-      console.log('TEST: Forcing AVA summary dialog to show');
-      setTimeout(() => {
-        // Just open the dialog without setting comment, as comment is now in the dialog itself
-        setAvaSummaryDialogOpen(true);
-      }, 500);
-    }
-    
+    // Return function for cleanup when TaskDetail unmounts
     return () => {
       console.log('TaskDetail unmounting, setting isActive to false');
       setIsActive(false);
     };
-  }, [task]);
+  }, []); // Empty dependency array if it only needs to run on unmount, or add specific dependencies if needed for other logic within.
 
   const handleBack = () => {
     setIsActive(false);
@@ -323,7 +311,7 @@ const TaskDetail = () => {
         taskId={task.id}
         readableId={task.readable_id}
         taskTitle={task.title}
-        initialComment={task.closing_comment || ""}
+        initialComment={""} // Empty by default when opening directly
         onCancel={handleCloseSummary}
         onContinue={handleCloseSummary}
         onCloseTask={handleCloseTaskFromSummary}
