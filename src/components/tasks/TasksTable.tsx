@@ -80,6 +80,9 @@ const TaskRow = memo(({ task, isMobile, onRowClick }: {
       {!isMobile && (
         <TableCell>{task.customer?.name || 'Unbekannt'}</TableCell>
       )}
+      {!isMobile && (
+        <TableCell>{task.assignee?.["Full Name"] || 'Nicht zugewiesen'}</TableCell>
+      )}
       <TableCell>
         {getSourceLabel(task.source)}
       </TableCell>
@@ -128,6 +131,7 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
             <TableHead>Titel</TableHead>
             <TableHead>Status</TableHead>
             {!isMobile && <TableHead>Kunde</TableHead>}
+            {!isMobile && <TableHead>Agent</TableHead>}
             <TableHead>Quelle</TableHead>
             <TableHead className="text-right">Erstellt</TableHead>
           </TableRow>

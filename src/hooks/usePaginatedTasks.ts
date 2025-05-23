@@ -93,6 +93,7 @@ export const usePaginatedTasks = (
             attachments, 
             created_at,
             created_by,
+            assigned_to,
             customer_id,
             customer:customer_id(id, name)
           `)
@@ -133,28 +134,51 @@ export const usePaginatedTasks = (
           return;
         }
         
-        // In a separate step, fetch creator information for tasks
-        const tasksWithCreator = await Promise.all(data.map(async (task) => {
+        // In a separate step, fetch creator and assignee information for tasks
+        const tasksWithAdditionalInfo = await Promise.all(data.map(async (task) => {
+          // For creators
+          let creator = null;
           if (task.created_by) {
             const { data: creatorData } = await supabase
               .from('profiles')
               .select('id, "Full Name"')
               .eq('id', task.created_by)
               .maybeSingle();
-
-            return {
-              ...task,
-              creator: creatorData ? { 
+            
+            if (creatorData) {
+              creator = { 
                 id: creatorData.id,
                 "Full Name": creatorData["Full Name"]
-              } : null
-            };
+              };
+            }
           }
-          return task;
+          
+          // For assignees
+          let assignee = null;
+          if (task.assigned_to) {
+            const { data: assigneeData } = await supabase
+              .from('profiles')
+              .select('id, "Full Name"')
+              .eq('id', task.assigned_to)
+              .maybeSingle();
+            
+            if (assigneeData) {
+              assignee = {
+                id: assigneeData.id,
+                "Full Name": assigneeData["Full Name"]
+              };
+            }
+          }
+
+          return {
+            ...task,
+            creator,
+            assignee
+          };
         }));
         
         // Transform the data with proper type safety
-        const transformedTasks: Task[] = tasksWithCreator.map((rawTask: any): Task => {
+        const transformedTasks: Task[] = tasksWithAdditionalInfo.map((rawTask: any): Task => {
           return {
             id: rawTask.id,
             title: rawTask.title,
@@ -166,7 +190,8 @@ export const usePaginatedTasks = (
             endkunde_email: rawTask.endkunde_email,
             from_email: rawTask.from_email,
             customer: rawTask.customer,
-            creator: rawTask.creator, 
+            creator: rawTask.creator,
+            assignee: rawTask.assignee,
             attachments: rawTask.attachments,
             description: rawTask.description,
             matched_use_case_id: rawTask.matched_use_case_id,

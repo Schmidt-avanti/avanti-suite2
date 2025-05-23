@@ -38,6 +38,7 @@ const ReportTasksTable: React.FC<ReportTasksTableProps> = ({ tasks }) => {
               <TableRow>
                 <TableHead>Titel</TableHead>
                 <TableHead>Kunde</TableHead>
+                <TableHead>Agent</TableHead>
                 <TableHead>Erstellungsdatum</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Erstellt von</TableHead>
@@ -53,6 +54,7 @@ const ReportTasksTable: React.FC<ReportTasksTableProps> = ({ tasks }) => {
                   >
                     <TableCell className="font-medium">{task.title}</TableCell>
                     <TableCell>{task.customer?.name || '-'}</TableCell>
+                    <TableCell>{task.assignee?.["Full Name"] || 'Nicht zugewiesen'}</TableCell>
                     <TableCell>
                       {format(parseISO(task.created_at), 'dd.MM.yyyy HH:mm')}
                     </TableCell>
@@ -64,7 +66,7 @@ const ReportTasksTable: React.FC<ReportTasksTableProps> = ({ tasks }) => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4">
+                  <TableCell colSpan={6} className="text-center py-4">
                     Keine Aufgaben gefunden
                   </TableCell>
                 </TableRow>
