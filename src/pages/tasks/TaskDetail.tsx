@@ -9,6 +9,7 @@ import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
 import { AvaTaskSummaryDialog } from '@/components/tasks/AvaTaskSummaryDialog';
 import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
 import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog';
+import { NoUseCaseDialog } from '@/components/tasks/NoUseCaseDialog';
 import { TaskChat } from "@/components/tasks/TaskChat";
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
@@ -37,6 +38,7 @@ const TaskDetail = () => {
   const [forwardTaskDialogOpen, setForwardTaskDialogOpen] = useState(false);
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
   const [avaSummaryDialogOpen, setAvaSummaryDialogOpen] = useState(false);
+  const [noUseCaseDialogOpen, setNoUseCaseDialogOpen] = useState(false);
   
   const [isActive, setIsActive] = useState(true);
   
@@ -185,6 +187,26 @@ const TaskDetail = () => {
     };
   }, []); // Empty dependency array if it only needs to run on unmount, or add specific dependencies if needed for other logic within.
 
+  const handleReopenTask = async () => {
+    if (task && task.status === 'completed') {
+      try {
+        // Change the task status back to in_progress
+        await handleStatusChange('in_progress');
+        toast({
+          title: "Task Re-opened",
+          description: `Task ${task.readable_id} has been re-opened.`,
+        });
+      } catch (error) {
+        console.error("Error re-opening task:", error);
+        toast({
+          title: "Error",
+          description: "Failed to re-open the task. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
   const handleBack = () => {
     setIsActive(false);
     
@@ -228,6 +250,8 @@ const TaskDetail = () => {
           handleCloseWithAvaClick={handleCloseWithAvaClick}
           setEmailToCustomerDialogOpen={setEmailToCustomerDialogOpen}
           handleStatusChange={handleStatusChange}
+          handleReopenTask={handleReopenTask}
+          setNoUseCaseDialogOpen={setNoUseCaseDialogOpen}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
@@ -331,6 +355,16 @@ const TaskDetail = () => {
         currentAssignee={task.assigned_to}
         isForwarding={true}
       />
+      
+      {task && (
+        <NoUseCaseDialog
+          open={noUseCaseDialogOpen}
+          onOpenChange={setNoUseCaseDialogOpen}
+          taskId={task.id}
+          customerId={task.customer_id}
+          taskTitle={task.title}
+        />
+      )}
     </div>
   );
 };
