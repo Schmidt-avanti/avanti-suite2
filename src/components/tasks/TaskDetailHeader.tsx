@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   ArrowLeft, Clock, CheckCircle, Calendar, Mail, 
-  UserPlus, Forward, X, PhoneIcon, RefreshCw, AlertTriangle
+  UserPlus, Forward, X, PhoneIcon
 } from "lucide-react";
 import { TaskStatusBadge } from './TaskStatusBadge';
 import type { TaskStatus } from '@/types';
@@ -22,12 +22,9 @@ interface TaskDetailHeaderProps {
   setAssignTaskDialogOpen: (open: boolean) => void;
   setForwardTaskDialogOpen: (open: boolean) => void;
   setFollowUpDialogOpen: (open: boolean) => void;
-  handleCloseWithoutAvaClick: () => void;
-  handleCloseWithAvaClick: () => void;
+  setCloseTaskDialogOpen: (open: boolean) => void;
   setEmailToCustomerDialogOpen: (open: boolean) => void;
   handleStatusChange: (status: TaskStatus) => void;
-  handleReopenTask: () => Promise<void>;
-  setNoUseCaseDialogOpen?: (open: boolean) => void;
 }
 
 export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
@@ -41,12 +38,9 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   setAssignTaskDialogOpen,
   setForwardTaskDialogOpen,
   setFollowUpDialogOpen,
-  handleCloseWithoutAvaClick,
-  handleCloseWithAvaClick,
+  setCloseTaskDialogOpen,
   setEmailToCustomerDialogOpen,
-  handleStatusChange,
-  handleReopenTask,
-  setNoUseCaseDialogOpen
+  handleStatusChange
 }) => {
   const isEmailTask = task.source === 'email';
   const isCompleted = task.status === 'completed';
@@ -106,35 +100,11 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
       
       {/* Action buttons row - all in one row */}
       <div className="flex flex-wrap gap-2 mt-1 justify-end">
-        {/* Re-open Task button - only show for completed tasks */}
-        {isCompleted && (
-          <Button 
-            variant="outline" 
-            className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200"
-            onClick={handleReopenTask}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Aufgabe wieder öffnen
-          </Button>
-        )}
-        
-        {/* No Use Case Actions button - only show for tasks without a use case */}
-        {!task.matched_use_case_id && setNoUseCaseDialogOpen && (
-          <Button 
-            variant="outline" 
-            className="bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200"
-            onClick={() => setNoUseCaseDialogOpen(true)}
-          >
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            Keine Use Case Aktionen
-          </Button>
-        )}
         {/* Follow up button */}
         <Button 
           variant="outline" 
           className="bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200"
           onClick={() => setFollowUpDialogOpen(true)}
-          disabled={isCompleted}
         >
           <Calendar className="h-4 w-4 mr-2" />
           Wiedervorlage
@@ -144,8 +114,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
         <Button 
           variant="outline" 
           className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
-          onClick={handleCloseWithoutAvaClick}
-          disabled={isCompleted}
+          onClick={() => setCloseTaskDialogOpen(true)}
         >
           <X className="h-4 w-4 mr-2" />
           Beenden ohne Ava
@@ -156,7 +125,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           <Button 
             variant="outline" 
             className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
-            onClick={handleCloseWithAvaClick}
+            onClick={() => handleStatusChange('completed' as TaskStatus)}
           >
             <CheckCircle className="h-4 w-4 mr-2" />
             Aufgabe abschließen
@@ -168,7 +137,6 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           variant="outline"
           className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200"
           onClick={() => setPhoneDialogOpen(true)}
-          disabled={isCompleted}
         >
           <PhoneIcon className="h-4 w-4 mr-2" />
           Anrufen
@@ -179,7 +147,6 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           variant="outline"
           className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
           onClick={() => setEmailToCustomerDialogOpen(true)}
-          disabled={isCompleted}
         >
           <Mail className="h-4 w-4 mr-2" />
           E-Mail an Kunde
@@ -203,7 +170,6 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
             variant="outline"
             className="bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
             onClick={() => setForwardTaskDialogOpen(true)}
-            disabled={isCompleted}
           >
             <Forward className="h-4 w-4 mr-2" />
             Weiterleiten

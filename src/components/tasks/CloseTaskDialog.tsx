@@ -11,56 +11,34 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, Bot, X } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 interface CloseTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onClose: (comment: string) => void;
-  isWithoutAva?: boolean;
 }
 
-export function CloseTaskDialog({ open, onOpenChange, onClose, isWithoutAva = false }: CloseTaskDialogProps) {
+export function CloseTaskDialog({ open, onOpenChange, onClose }: CloseTaskDialogProps) {
   const [comment, setComment] = useState("");
   const commentMinLength = 10;
 
-  const handleClose = async () => {
+  const handleClose = () => {
     if (comment.trim().length < commentMinLength) return;
     
-    try {
-      console.log("CloseTaskDialog: Submitting comment", comment);
-      await onClose(comment);
-      console.log("CloseTaskDialog: Comment submitted successfully");
-      
-      // Don't reset the comment or close the dialog until the callback completes
-      setComment(""); // Reset the comment field
-      onOpenChange(false);
-    } catch (error) {
-      console.error("CloseTaskDialog: Error submitting comment", error);
-    }
+    onClose(comment);
+    setComment(""); // Reset the comment field
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-full">
-              {isWithoutAva ? (
-                <X className="h-5 w-5 text-red-700" />
-              ) : (
-                <Bot className="h-5 w-5 text-blue-700" />
-              )}
-            </div>
-            <DialogTitle>
-              {isWithoutAva ? "Aufgabe direkt abschließen" : "Aufgabe abschließen mit Ava"}
-            </DialogTitle>
-          </div>
+          <DialogTitle>Aufgabe abschließen ohne Ava</DialogTitle>
           <DialogDescription>
             Bitte dokumentieren Sie den Kundenkontakt, um die Aufgabe abzuschließen.
-            {isWithoutAva ? 
-              "Die Aufgabe wird direkt abgeschlossen ohne Ava-Zusammenfassung." :
-              "Ava wird eine Zusammenfassung erstellen und Sie werden zur nächsten verfügbaren Aufgabe weitergeleitet."}
+            Sie werden danach automatisch zur nächsten verfügbaren Aufgabe weitergeleitet.
           </DialogDescription>
         </DialogHeader>
         

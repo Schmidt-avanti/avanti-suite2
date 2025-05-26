@@ -192,9 +192,19 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
           newStatus === 'followup' ? 'Wiedervorlage' : 'Neu'}" markiert.`,
       });
       
-      // Remove automatic navigation for completed tasks
-      // This allows the TaskDetail component to handle the navigation flow
-      // with AVA summary integration
+      // If task was completed, find and navigate to next task
+      if (newStatus === 'completed') {
+        const nextTaskId = await findNextTask();
+        if (nextTaskId) {
+          navigate(`/tasks/${nextTaskId}`);
+          toast({
+            title: "Nächste Aufgabe",
+            description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
+          });
+        } else {
+          navigate('/tasks');
+        }
+      }
     } catch (error: any) {
       console.error("Error changing status:", error);
       toast({
