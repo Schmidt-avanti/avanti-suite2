@@ -270,6 +270,47 @@ export type Database = {
         }
         Relationships: []
       }
+      endkunden_contacts: {
+        Row: {
+          id: string
+          name: string
+          role: string
+          phone: string | null
+          email: string | null
+          created_at: string
+          updated_at: string | null
+          endkunde_id: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          role?: string
+          phone?: string | null
+          email?: string | null
+          created_at?: string
+          updated_at?: string | null
+          endkunde_id?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          role?: string
+          phone?: string | null
+          email?: string | null
+          created_at?: string
+          updated_at?: string | null
+          endkunde_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endkunden_contacts_endkunde_id_fkey"
+            columns: ["endkunde_id"]
+            isOneToOne: false
+            referencedRelation: "endkunden"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       email_threads: {
         Row: {
           attachments: Json | null
@@ -345,6 +386,7 @@ export type Database = {
           updated_at: string
           Vorname: string | null
           Wohnung: string | null
+          endkunden_contacts: string | null
         }
         Insert: {
           Adresse: string
@@ -360,6 +402,7 @@ export type Database = {
           updated_at?: string
           Vorname?: string | null
           Wohnung?: string | null
+          endkunden_contacts?: string | null
         }
         Update: {
           Adresse?: string
@@ -375,6 +418,7 @@ export type Database = {
           updated_at?: string
           Vorname?: string | null
           Wohnung?: string | null
+          endkunden_contacts?: string | null
         }
         Relationships: [
           {

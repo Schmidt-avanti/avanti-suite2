@@ -1,3 +1,7 @@
+/// <reference path="../types/deno.d.ts" />
+/// <reference path="../types/http-server.d.ts" />
+/// <reference path="../types/supabase.d.ts" />
+/// <reference path="../types/uuid.d.ts" />
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.0";
@@ -96,8 +100,9 @@ serve(async (req) => {
         console.error('Error fetching referenced thread:', threadError);
       } else if (previousThread && previousThread.message_id) {
         referencedMessageId = previousThread.message_id;
-        headers["In-Reply-To"] = referencedMessageId;
-        headers["References"] = referencedMessageId;
+        // Use non-null assertion since we've verified message_id exists
+        headers["In-Reply-To"] = referencedMessageId!;
+        headers["References"] = referencedMessageId!;
         console.log(`Using reference message ID: ${referencedMessageId}`);
       }
     }

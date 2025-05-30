@@ -66,14 +66,14 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
     const fetchTemplate = async () => {
       try {
         const { data, error } = await supabase
-          .from('templates')
+          .from('prompt_templates')
           .select('content')
           .eq('type', 'no_use_case_client_query')
           .single();
 
         if (error) throw error;
         
-        if (data) {
+        if (data && data.content) {
           const templateText = data.content
             .replace('{{task_title}}', taskTitle)
             .replace('{{task_id}}', taskId);

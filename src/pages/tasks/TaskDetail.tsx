@@ -25,6 +25,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { KnowledgeArticleManager } from '@/components/tasks/KnowledgeArticleManager';
 import type { TaskStatus } from '@/types';
 
+// Interface for endkunde contact information
+interface EndkundeContact {
+  role: string | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -39,6 +47,9 @@ const TaskDetail = () => {
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
   const [avaSummaryDialogOpen, setAvaSummaryDialogOpen] = useState(false);
   const [noUseCaseDialogOpen, setNoUseCaseDialogOpen] = useState(false);
+  
+  // Store the contacts from EndkundeInfoLink
+  const [endkundeContacts, setEndkundeContacts] = useState<EndkundeContact[]>([]);
   
   const [isActive, setIsActive] = useState(true);
   
@@ -262,13 +273,13 @@ const TaskDetail = () => {
               <TaskDetailInfo task={task} />
               
               {/* Endkunde Info Link Section */}
-              {task.endkunde_id && (
-                <EndkundeInfoLink 
-                  endkundeId={task.endkunde_id} 
-                  customerId={task.customer_id} 
-                />
-              )}
-              
+              <EndkundeInfoLink 
+                endkundeId={task.endkunde_id} 
+                customerId={task.customer_id}
+                taskTitle={task.title}
+                taskSummary={task.description}
+                onContactsLoaded={setEndkundeContacts}
+              />  
               {/* Knowledge Article Manager Section */}
               <KnowledgeArticleManager 
                 customerId={task.customer_id} 
@@ -339,6 +350,9 @@ const TaskDetail = () => {
         onCancel={handleCloseSummary}
         onContinue={handleCloseSummary}
         onCloseTask={handleCloseTaskFromSummary}
+        endkundeOrt={task?.endkunde?.Ort || task?.customer?.address?.city || ""}
+        endkundeContacts={endkundeContacts} // Pass the contacts loaded from EndkundeInfoLink
+        customerName={task?.customer?.name || ''} // Pass the customer name to check for specific clients
       />
 
       <AssignTaskDialog

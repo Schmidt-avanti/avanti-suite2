@@ -1,3 +1,7 @@
+/// <reference path="../types/deno.d.ts" />
+/// <reference path="../types/http-server.d.ts" />
+/// <reference path="../types/supabase.d.ts" />
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -103,17 +107,40 @@ serve(async (req) => {
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error processing request:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Unknown error occurred' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error occurred' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 });
 
+// Define types for task and admin
+interface Task {
+  id: string;
+  readable_id: string;
+  title: string;
+  description?: string;
+  customer_id: string;
+  created_at: string;
+  team?: string;
+  project?: string;
+  matched_use_case_id?: string;
+  status?: string;
+}
+
+interface Admin {
+  id: string;
+  email: string;
+}
+
+interface SupabaseClient {
+  from: (table: string) => any;
+}
+
 // Function to notify admin users about tasks without use cases
-async function notifyAdmins(supabaseClient, task) {
+async function notifyAdmins(supabaseClient: SupabaseClient, task: Task) {
   try {
     // Get all admin users
     const { data: adminUsers, error: adminError } = await supabaseClient
@@ -127,7 +154,7 @@ async function notifyAdmins(supabaseClient, task) {
     }
 
     // Create notifications for each admin
-    const notificationPromises = adminUsers.map(admin => {
+    const notificationPromises = adminUsers.map((admin: Admin) => {
       return supabaseClient
         .from('notifications')
         .insert({
@@ -153,7 +180,7 @@ async function notifyAdmins(supabaseClient, task) {
 }
 
 // Function to handle discarding a task
-async function handleDiscardTask(supabaseClient, taskId) {
+async function handleDiscardTask(supabaseClient: SupabaseClient, taskId: string) {
   // Update task status to 'discarded'
   const { error } = await supabaseClient
     .from('tasks')
@@ -173,7 +200,7 @@ async function handleDiscardTask(supabaseClient, taskId) {
 }
 
 // Function to handle manual processing
-async function handleManualProcessing(supabaseClient, taskId, message) {
+async function handleManualProcessing(supabaseClient: SupabaseClient, taskId: string, message?: string) {
   // Add a message to the task indicating manual processing
   const { error: messageError } = await supabaseClient
     .from('task_messages')
@@ -207,7 +234,7 @@ async function handleManualProcessing(supabaseClient, taskId, message) {
 }
 
 // Function to create a new use case based on the task
-async function createNewUseCase(supabaseClient, taskId, customerId, task, rememberAction) {
+async function createNewUseCase(supabaseClient: SupabaseClient, taskId: string, customerId: string, task: Task, rememberAction: boolean) {
   try {
     // Create a new use case based on the task
     const { data: useCase, error: useCaseError } = await supabaseClient
