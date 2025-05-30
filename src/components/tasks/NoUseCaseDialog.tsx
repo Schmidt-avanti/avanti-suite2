@@ -35,9 +35,8 @@ interface NoUseCaseDialogProps {
 }
 
 interface FormValues {
-  action: 'discard' | 'manual' | 'create_use_case';
   message: string;
-  rememberAction: boolean;
+  recipient: string;
 }
 
 export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
@@ -53,13 +52,12 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
 
   const form = useForm<FormValues>({
     defaultValues: {
-      action: 'manual',
       message: '',
-      rememberAction: false
+      recipient: 's.huebner@ja-dialog.de' // Default recipient email
     }
   });
 
-  const action = form.watch('action');
+
 
   // Fetch template for client communication
   useEffect(() => {
@@ -85,7 +83,8 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
           const defaultTemplate = 
             `Bezüglich Ihrer Anfrage "${taskTitle}" (ID: ${taskId}):\n\n` +
             `Wir benötigen weitere Informationen, um Ihre Anfrage korrekt zu bearbeiten. ` +
-            `Bitte teilen Sie uns mit, wie wir Ihnen am besten weiterhelfen können.`;
+            `Was genau wünschen Sie von uns bezüglich dieser Anfrage? ` +
+            `Sollen wir für diesen Anfragetyp einen neuen Standard-Prozess (Use Case) erstellen?`;
           
           setClientTemplate(defaultTemplate);
           form.setValue('message', defaultTemplate);
@@ -95,7 +94,9 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
         // Set a fallback template
         const fallbackTemplate = 
           `Bezüglich Ihrer Anfrage "${taskTitle}":\n\n` +
-          `Wir benötigen weitere Informationen, um Ihre Anfrage korrekt zu bearbeiten.`;
+          `Wir benötigen weitere Informationen, um Ihre Anfrage korrekt zu bearbeiten. ` +
+          `Was genau wünschen Sie von uns bezüglich dieser Anfrage? ` +
+          `Sollen wir für diesen Anfragetyp einen neuen Standard-Prozess erstellen?`;
         
         setClientTemplate(fallbackTemplate);
         form.setValue('message', fallbackTemplate);
@@ -110,44 +111,54 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
-      const response = await supabase.functions.invoke('handle-no-use-case', {
-        body: {
-          taskId,
-          action: values.action,
-          message: values.message,
-          customerId,
-          rememberId: values.rememberAction
-        }
+      // Create a request body for the send-email function
+      const requestBody = {
+        to: values.recipient, // Use the recipient from the form
+        subject: `Rückfrage zu Aufgabe ohne Use Case: ${taskTitle} (${taskId})`,
+        text: values.message,
+        taskId,
+        readableId: taskId.substring(0, 8), // Use taskId as readableId if actual readableId isn't available
+        fromName: 'Avanti Service'
+      };
+      
+      console.log('Sending email to customer:', JSON.stringify(requestBody));
+      
+      // Use send-email function instead of handle-no-use-case
+      const response = await supabase.functions.invoke('send-email', {
+        body: requestBody
       });
 
       if (response.error) throw new Error(response.error.message);
 
-      // Show success message based on the chosen action
-      let successMessage = '';
-      switch (values.action) {
-        case 'discard':
-          successMessage = 'Task has been discarded successfully.';
-          break;
-        case 'manual':
-          successMessage = 'Task has been marked for manual processing.';
-          break;
-        case 'create_use_case':
-          successMessage = 'New use case created and assigned to this task.';
-          break;
+      // No longer storing customer preferences - removed as requested
+
+      // Update task status to indicate waiting for customer
+      try {
+        await supabase
+          .from('tasks')
+          .update({ 
+            status: 'waiting_on_customer',
+            last_customer_contact: new Date().toISOString()
+          })
+          .eq('id', taskId);
+      } catch (taskError) {
+        console.error('Error updating task status:', taskError);
+        // Continue even if task status update fails
       }
 
+      // Success message
       toast({
-        title: "Action Completed",
-        description: successMessage
+        title: "E-Mail gesendet",
+        description: "Anfrage wurde an den Kunden gesendet."
       });
 
       onOpenChange(false);
     } catch (error) {
-      console.error('Error processing task without use case:', error);
+      console.error('Error sending email to customer:', error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message || 'Failed to process the task. Please try again.'
+        title: "Fehler",
+        description: error.message || 'Die E-Mail konnte nicht gesendet werden. Bitte versuchen Sie es erneut.'
       });
     } finally {
       setIsSubmitting(false);
@@ -158,10 +169,10 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Task Without Use Case</DialogTitle>
+          <DialogTitle>Aufgabe ohne Use Case</DialogTitle>
           <DialogDescription>
-            Task "{taskTitle}" was created without an associated use case. 
-            Please decide how to proceed with this task.
+            Die Aufgabe "{taskTitle}" wurde ohne zugeordneten Use Case erstellt.
+            Bitte senden Sie eine Anfrage, um weitere Informationen zu erhalten.
           </DialogDescription>
         </DialogHeader>
 
@@ -169,85 +180,48 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
-              name="action"
+              name="recipient"
               render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Select an action</FormLabel>
+                <FormItem>
+                  <FormLabel>E-Mail-Empfänger</FormLabel>
                   <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex flex-col space-y-1"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="discard" id="discard" />
-                        <Label htmlFor="discard">Discard the task</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="manual" id="manual" />
-                        <Label htmlFor="manual">Proceed manually</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="create_use_case" id="create_use_case" />
-                        <Label htmlFor="create_use_case">Create a new use case</Label>
-                      </div>
-                    </RadioGroup>
+                    <input
+                      type="email"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="E-Mail-Adresse des Empfängers"
+                      {...field}
+                    />
                   </FormControl>
                   <FormDescription>
-                    {action === 'discard' && 'The task will be marked as completed and discarded.'}
-                    {action === 'manual' && 'The task will be processed manually without a use case.'}
-                    {action === 'create_use_case' && 'A new use case will be created based on this task.'}
+                    Die E-Mail wird an diese Adresse gesendet.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {action === 'manual' && (
-              <FormField
-                control={form.control}
-                name="message"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Client Communication Message</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter a message to send to the client"
-                        className="min-h-[150px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      This message will be used to ask the client for more information.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
             <FormField
               control={form.control}
-              name="rememberAction"
+              name="message"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormItem>
+                  <FormLabel>Nachricht an den Kunden</FormLabel>
                   <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
+                    <Textarea
+                      placeholder="Geben Sie eine Nachricht ein, die an den Kunden gesendet werden soll"
+                      className="min-h-[150px]"
+                      {...field}
                     />
                   </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Remember this action for future tasks from this customer
-                    </FormLabel>
-                    <FormDescription>
-                      The system will automatically apply this action to future tasks without use cases from this customer.
-                    </FormDescription>
-                  </div>
+                  <FormDescription>
+                    Diese Nachricht wird verwendet, um den Kunden nach weiteren Informationen zu fragen und ob ein neuer Use Case erstellt werden soll.
+                  </FormDescription>
+                  <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Checkbox for remembering action removed as requested */}
 
             <DialogFooter>
               <Button
@@ -256,11 +230,11 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
-                Cancel
+                Abbrechen
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmitting ? 'Processing...' : 'Confirm'}
+                {isSubmitting ? 'Wird verarbeitet...' : 'Bestätigen'}
               </Button>
             </DialogFooter>
           </form>

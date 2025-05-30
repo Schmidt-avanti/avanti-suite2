@@ -47,6 +47,7 @@ const TaskDetail = () => {
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
   const [avaSummaryDialogOpen, setAvaSummaryDialogOpen] = useState(false);
   const [noUseCaseDialogOpen, setNoUseCaseDialogOpen] = useState(false);
+  const [isNewTask, setIsNewTask] = useState(false);
   
   // Store the contacts from EndkundeInfoLink
   const [endkundeContacts, setEndkundeContacts] = useState<EndkundeContact[]>([]);
@@ -71,6 +72,12 @@ const TaskDetail = () => {
     isActive,
     status: task?.status
   });
+
+  // Check URL parameters for the 'new' flag
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    setIsNewTask(urlParams.get('new') === 'true');
+  }, []);
   
   // Fetch task messages for chat history
   const { messages } = useTaskMessages(id || null);
@@ -197,6 +204,14 @@ const TaskDetail = () => {
       setIsActive(false);
     };
   }, []); // Empty dependency array if it only needs to run on unmount, or add specific dependencies if needed for other logic within.
+  
+  // Auto-open NoUseCaseDialog for new tasks without a use case
+  useEffect(() => {
+    if (task && isNewTask && !task.matched_use_case_id) {
+      console.log('Auto-opening NoUseCaseDialog for new task without use case');
+      setNoUseCaseDialogOpen(true);
+    }
+  }, [task, isNewTask]);
 
   const handleReopenTask = async () => {
     if (task && task.status === 'completed') {

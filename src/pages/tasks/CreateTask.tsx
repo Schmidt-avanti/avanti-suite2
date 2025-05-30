@@ -176,6 +176,51 @@ const CreateTask = () => {
           console.error("Failed to auto-initialize chat:", chatError);
           // Fehler beim Chat-Start beeinträchtigt nicht den Task-Erstellungsprozess
         }
+      } else {
+        // Create a system-wide notification for tasks without a use case
+        try {
+          // Get all admin users to notify them
+          const { data: adminUsers } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('role', 'admin');
+          
+          if (adminUsers && adminUsers.length > 0) {
+            // Create notifications for each admin
+            const notifications = adminUsers.map(admin => ({
+              user_id: admin.id,
+              task_id: task.id,
+              message: `Aufgabe ${task.readable_id || task.id.substring(0, 8)} ohne Use Case erstellt: "${task.title}"`,
+              created_at: new Date().toISOString(),
+              read_at: null
+            }));
+            
+            // Also notify the current user if they're not an admin
+            if (!adminUsers.some(admin => admin.id === user.id)) {
+              notifications.push({
+                user_id: user.id,
+                task_id: task.id,
+                message: `Aufgabe ${task.readable_id || task.id.substring(0, 8)} ohne Use Case erstellt: "${task.title}"`,
+                created_at: new Date().toISOString(),
+                read_at: null
+              });
+            }
+            
+            // Insert all notifications
+            const { error: notificationError } = await supabase
+              .from('notifications')
+              .insert(notifications);
+              
+            if (notificationError) {
+              console.error("Error creating notifications for task without use case:", notificationError);
+            } else {
+              console.log("Notifications created for task without use case:", task.id);
+            }
+          }
+        } catch (notificationError) {
+          console.error("Failed to create notifications for task without use case:", notificationError);
+          // Notification errors shouldn't block the task creation process
+        }
       }
 
       await logTaskOpen(task.id);
@@ -187,7 +232,12 @@ const CreateTask = () => {
           : `Aufgabe ${task.readable_id || ''} ohne Use Case erstellt und Ihnen zugewiesen – KVP benachrichtigt.`,
       });
 
-      navigate(`/tasks/${task.id}`);
+      // Navigate to task detail with 'new' flag to trigger NoUseCaseDialog for tasks without a use case
+      if (matchResult?.matched_use_case_id) {
+        navigate(`/tasks/${task.id}`);
+      } else {
+        navigate(`/tasks/${task.id}?new=true`);
+      }
 
     } catch (error: any) {
       console.error("Submit error:", error);

@@ -861,12 +861,36 @@ export function AvaTaskSummaryDialog({
         throw new Error(data.error || 'Failed to send email');
       }
       
-      // Close dialog and show success message
+      // Close email dialog
       setEmailDialogOpen(false);
-      toast({
-        title: "E-Mail gesendet",
-        description: "Die E-Mail wurde erfolgreich versendet.",
-      });
+      
+      // Also close the task after sending the email
+      try {
+        // Use the current comment or add a default comment about email forwarding
+        const finalComment = comment.trim().length >= commentMinLength 
+          ? comment 
+          : `E-Mail an ${emailTo} weitergeleitet. Betreff: ${emailSubject}`;
+        
+        // Call the onCloseTask function to close the task
+        await onCloseTask(finalComment);
+        
+        // Continue with normal task closing flow
+        setComment("");
+        onContinue();
+        
+        // Show combined success message
+        toast({
+          title: "Aufgabe abgeschlossen",
+          description: "Die E-Mail wurde gesendet und die Aufgabe erfolgreich abgeschlossen.",
+        });
+      } catch (closeError) {
+        console.error("Error closing task after email:", closeError);
+        // Still show email success even if task closing fails
+        toast({
+          title: "E-Mail gesendet",
+          description: "Die E-Mail wurde erfolgreich versendet, aber die Aufgabe konnte nicht automatisch abgeschlossen werden.",
+        });
+      }
     } catch (error) {
       console.error('Error sending email:', error);
       toast({

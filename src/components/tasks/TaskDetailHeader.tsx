@@ -124,6 +124,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
             variant="outline" 
             className="bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200"
             onClick={() => setNoUseCaseDialogOpen(true)}
+            disabled={isCompleted}
           >
             <AlertTriangle className="h-4 w-4 mr-2" />
             Keine Use Case Aktionen

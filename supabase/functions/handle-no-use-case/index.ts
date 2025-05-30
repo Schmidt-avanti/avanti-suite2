@@ -26,7 +26,29 @@ serve(async (req) => {
       }
     );
 
-    const { taskId, action, rememberId, customerId, message } = await req.json() as TaskWithoutUseCaseRequest;
+    // Safely parse JSON with error handling
+    let requestData: TaskWithoutUseCaseRequest;
+    try {
+      const bodyText = await req.text();
+      console.log('Received request body:', bodyText);
+      
+      if (!bodyText || bodyText.trim() === '') {
+        return new Response(
+          JSON.stringify({ error: 'Empty request body' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      requestData = JSON.parse(bodyText) as TaskWithoutUseCaseRequest;
+    } catch (parseError: unknown) {
+      console.error('JSON parse error:', parseError);
+      return new Response(
+        JSON.stringify({ error: `Invalid JSON in request body: ${parseError instanceof Error ? parseError.message : String(parseError)}` }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { taskId, action, rememberId, customerId, message } = requestData;
 
     if (!taskId) {
       return new Response(
