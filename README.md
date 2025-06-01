@@ -1,33 +1,117 @@
-# Welcome to your Lovable project
+# Avanti Suite
 
-## Project info
+Avanti Suite is a comprehensive customer service and task management platform featuring AVA, an AI-powered assistant for service agents.
 
-**URL**: https://lovable.dev/projects/942bb8b4-2212-43ab-a451-62e99e391cfe
+## Key Features
 
-## How can I edit this code?
+- **Intelligent Task Management**: Create, assign, and track customer service tasks
+- **AI-Powered Assistance**: AVA provides context-aware suggestions to agents based on use cases
+- **Knowledge Base Integration**: Access and utilize knowledge articles for consistent service
+- **Customer Communication**: Handle customer inquiries via email, chat, and other channels
+- **Analytics & Reporting**: Track performance metrics and gain insights
 
-There are several ways of editing your application.
+## Technical Overview
 
-**Use Lovable**
+- **Frontend**: React with TypeScript, Shadcn UI components
+- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **AI Integration**: OpenAI for embeddings and response generation
+- **Communication**: Twilio integration for voice/messaging
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/942bb8b4-2212-43ab-a451-62e99e391cfe) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
+- Node.js (v16 or higher)
+- npm (v8 or higher)
+- Supabase account (for backend services)
+- OpenAI API key (for AI features)
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone the repository
+git clone <REPOSITORY_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to project directory
+cd avanti-suite
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+
+### Environment Setup
+
+Create a `.env` file with the following variables:
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+## Core Workflows
+
+### 1. Task Creation
+
+Agents can create tasks through multiple entry points:
+- **Manual Creation**: Service agents create tasks via the web interface by:
+  - Selecting a customer
+  - Optionally selecting an end customer (Endkunde)
+  - Entering a detailed task description
+  - Submitting the form to create the task
+
+- **Automated Sources**:
+  - **Email Integration**: Incoming customer emails are automatically converted to tasks
+  - **Call Center Integration**: Phone calls can generate associated tasks
+  - **Chat/WhatsApp**: Conversations can be escalated to tasks
+
+Each task is assigned a unique ID, timestamps, and is initially assigned to the creating agent with a "new" status.
+
+### 2. Use Case Matching
+
+When a task is created, the system automatically analyzes it to find the most relevant use case:
+
+- **Text Analysis**: The task description is processed and converted to an embedding vector
+- **Similarity Search**: The system performs a vector similarity search against the use case database
+- **Confidence Scoring**: Each potential match is assigned a confidence score
+- **Selection**: The highest-scoring use case above the threshold is selected and linked to the task
+- **Fallback Handling**: If no suitable match is found, the system can route the task to a special queue (e.g., KVP team)
+
+The match result includes the selected use case ID, confidence score, and reasoning for the match.
+
+### 3. AI Assistance (AVA)
+
+Once a use case is matched, AVA provides contextual assistance:
+
+- **Initial Response**: AVA automatically generates an initial response based on the matched use case
+- **Contextual Guidance**: AVA suggests next steps and questions based on the use case's requirements
+- **Information Retrieval**: For knowledge-based requests, AVA pulls relevant information from the knowledge base
+- **Structured Flow**: AVA guides the agent through the appropriate workflow based on use case type:
+  - Direct handling (for straightforward tasks)
+  - Knowledge requests (for information-seeking tasks)
+  - Forwarding workflows (when escalation is needed)
+  
+- **Dynamic Adaptation**: As the agent interacts with the customer, AVA continues to provide relevant suggestions
+
+### 4. Task Resolution
+
+Agents work through tasks to completion:
+
+- **Information Collection**: Agents gather required information from the customer
+- **Action Taking**: Agents perform necessary actions guided by AVA's suggestions
+- **Documentation**: Key actions and information are recorded in the task history
+- **Status Updates**: Task status is updated throughout the process (new → in progress → completed)
+- **Handoff (when needed)**: Tasks can be reassigned or forwarded to other teams with contextual information
+- **Closure**: When the customer's needs are met, the agent closes the task with appropriate documentation
+- **Time Tracking**: The system logs handling time and other metrics for reporting
+
+### 5. Analytics and Learning
+
+The system continuously improves:
+
+- **Performance Metrics**: Track agent efficiency, resolution times, and customer satisfaction
+- **Use Case Refinement**: Identify gaps in use case coverage and refine existing use cases
+- **AI Improvement**: AVA's responses are refined based on agent feedback and usage patterns
 
 # Step 3: Install the necessary dependencies.
 npm i

@@ -29,6 +29,37 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// Hook to access and use the global search field
+const useGlobalSearch = () => {
+  const [searchQuery, setSearchQuery] = React.useState("");
+
+  React.useEffect(() => {
+    // Get the global search input element
+    const globalSearchInput = document.querySelector('input[type="search"]') as HTMLInputElement;
+    
+    if (globalSearchInput) {
+      // Set initial value from global search if it exists
+      if (globalSearchInput.value) {
+        setSearchQuery(globalSearchInput.value);
+      }
+      
+      // Add event listener to update our state when global search changes
+      const handleSearchChange = (e: Event) => {
+        setSearchQuery((e.target as HTMLInputElement).value);
+      };
+      
+      globalSearchInput.addEventListener('input', handleSearchChange);
+      
+      // Clean up event listener on unmount
+      return () => {
+        globalSearchInput.removeEventListener('input', handleSearchChange);
+      };
+    }
+  }, []);
+  
+  return { searchQuery };
+};
+
 export default function UseCases() {
   const [open, setOpen] = React.useState(false);
   const [selectedUseCase, setSelectedUseCase] = React.useState(null);
@@ -39,6 +70,9 @@ export default function UseCases() {
     hasTasks: false
   });
   const queryClient = useQueryClient();
+  
+  // Use the global search field
+  const { searchQuery } = useGlobalSearch();
 
   const { data: useCases = [], isLoading } = useQuery({
     queryKey: ["use_cases"],
@@ -104,6 +138,87 @@ export default function UseCases() {
     },
   });
 
+  // Filter and score use cases based on search query
+  const filteredUseCases = React.useMemo(() => {
+    if (!searchQuery.trim()) return useCases;
+    
+    const normalizedQuery = searchQuery.toLowerCase().trim();
+    const searchTerms = normalizedQuery.split(/\s+/).filter(term => term.length > 1);
+    
+    // If no valid search terms, return all use cases
+    if (searchTerms.length === 0) return useCases;
+    
+    // Calculate a relevance score for each use case
+    const scoredUseCases = useCases.map(useCase => {
+      let score = 0;
+      let matches = false;
+      
+      // Function to check and score matches in a field
+      const scoreField = (fieldValue: string | null | undefined, fieldWeight: number) => {
+        if (!fieldValue) return 0;
+        
+        const normalizedField = fieldValue.toLowerCase();
+        let fieldScore = 0;
+        
+        // Check for exact matches of each search term
+        for (const term of searchTerms) {
+          // Exact match as a whole word
+          const wholeWordRegex = new RegExp(`\\b${term}\\b`, 'i');
+          if (wholeWordRegex.test(normalizedField)) {
+            fieldScore += fieldWeight * 2;
+            matches = true;
+          }
+          // Partial match
+          else if (normalizedField.includes(term)) {
+            fieldScore += fieldWeight;
+            matches = true;
+          }
+          
+          // Bonus for matches in the beginning of the field
+          if (normalizedField.indexOf(term) === 0) {
+            fieldScore += fieldWeight * 0.5;
+          }
+        }
+        
+        // Bonus for exact match of the entire query
+        if (normalizedField.includes(normalizedQuery)) {
+          fieldScore += fieldWeight * 1.5;
+        }
+        
+        return fieldScore;
+      };
+      
+      // Score different fields with different weights
+      score += scoreField(useCase.title, 10);              // Title is most important
+      score += scoreField(useCase.type, 8);                // Type is very important
+      score += scoreField(useCase.expected_result, 6);     // Expected result is important
+      score += scoreField(useCase.information_needed, 5);  // Information needed is somewhat important
+      score += scoreField(useCase.steps, 4);               // Steps are somewhat important
+      score += scoreField(useCase.typical_activities, 3);  // Activities are less important
+      score += scoreField(useCase.next_question, 3);       // Next question is less important
+      
+      // Score chat_response if it's stringifiable
+      try {
+        if (useCase.chat_response) {
+          const chatResponseStr = typeof useCase.chat_response === 'string' 
+            ? useCase.chat_response 
+            : JSON.stringify(useCase.chat_response);
+          score += scoreField(chatResponseStr, 2);  // Chat response is least important
+        }
+      } catch (e) {
+        // Ignore errors in JSON stringification
+      }
+      
+      return { useCase, score, matches };
+    });
+    
+    // Filter to only cases with matches and sort by score (highest first)
+    return scoredUseCases
+      .filter(item => item.matches)
+      .sort((a, b) => b.score - a.score)
+      .map(item => item.useCase);
+  }, [useCases, searchQuery]);
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
@@ -118,6 +233,14 @@ export default function UseCases() {
           </Button>
         </div>
       </div>
+      {/* Display search results count when searching */}
+      {searchQuery && (
+        <div className="mb-4">
+          <p className="text-sm text-muted-foreground">
+            {filteredUseCases.length} Ergebnisse für "{searchQuery}"
+          </p>
+        </div>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
@@ -134,14 +257,14 @@ export default function UseCases() {
                 Loading...
               </TableCell>
             </TableRow>
-          ) : useCases.length === 0 ? (
+          ) : filteredUseCases.length === 0 ? (
             <TableRow>
               <TableCell colSpan={4} className="text-center">
-                Keine Use Cases gefunden.
+                {searchQuery ? `Keine Use Cases für "${searchQuery}" gefunden.` : 'Keine Use Cases gefunden.'}
               </TableCell>
             </TableRow>
           ) : (
-            useCases.map((useCase) => (
+            filteredUseCases.map((useCase) => (
               <TableRow key={useCase.id}>
                 <TableCell className="max-w-[300px] truncate">{useCase.title}</TableCell>
                 <TableCell>{useCase.type}</TableCell>

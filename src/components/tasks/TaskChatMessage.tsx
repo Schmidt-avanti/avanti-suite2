@@ -1,24 +1,37 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Message } from '@/hooks/useTaskMessages';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
+import { Mail } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TaskChatMessageProps {
-  message: Message;
+  message: any;
   selectedOptions: Set<string>;
   onOptionSelect: (option: string) => void;
+  taskId?: string;
+  taskTitle?: string;
+  readableId?: string;
+  endkundeOrt?: string;
 }
 
 export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({ 
   message, 
   selectedOptions, 
-  onOptionSelect 
+  onOptionSelect,
+  taskId = "",
+  taskTitle = "",
+  readableId = "",
+  endkundeOrt = ""
 }) => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
-
+  
   // Parse JSON content and extract text and options
   const parseMessageContent = () => {
     if (message.role !== "assistant") {
@@ -79,7 +92,7 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
       .replace(/",\s*$/, '') // ", am Ende entfernen
       .trim();
   };
-
+  
   const displayText = cleanupText(text);
   
   // Use the message's creator name if available, otherwise fallback to current user
@@ -118,7 +131,11 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
             ))}
           </div>
         )}
+        
+
       </div>
+      
+
     </div>
   );
 };

@@ -6,8 +6,10 @@ import { useTaskTimer } from '@/hooks/useTaskTimer';
 import { useAuth } from '@/contexts/AuthContext';
 import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
 import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
+import { AvaTaskSummaryDialog } from '@/components/tasks/AvaTaskSummaryDialog';
 import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
 import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog';
+import { NoUseCaseDialog } from '@/components/tasks/NoUseCaseDialog';
 import { TaskChat } from "@/components/tasks/TaskChat";
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
@@ -23,6 +25,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { KnowledgeArticleManager } from '@/components/tasks/KnowledgeArticleManager';
 import type { TaskStatus } from '@/types';
 
+// Interface for endkunde contact information
+interface EndkundeContact {
+  role: string | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -31,9 +41,16 @@ const TaskDetail = () => {
   // Task status dialogs
   const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
   const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
+  const [isClosingWithoutAva, setIsClosingWithoutAva] = useState(false);
   const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
   const [forwardTaskDialogOpen, setForwardTaskDialogOpen] = useState(false);
   const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
+  const [avaSummaryDialogOpen, setAvaSummaryDialogOpen] = useState(false);
+  const [noUseCaseDialogOpen, setNoUseCaseDialogOpen] = useState(false);
+  const [isNewTask, setIsNewTask] = useState(false);
+  
+  // Store the contacts from EndkundeInfoLink
+  const [endkundeContacts, setEndkundeContacts] = useState<EndkundeContact[]>([]);
   
   const [isActive, setIsActive] = useState(true);
   
@@ -55,6 +72,12 @@ const TaskDetail = () => {
     isActive,
     status: task?.status
   });
+
+  // Check URL parameters for the 'new' flag
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    setIsNewTask(urlParams.get('new') === 'true');
+  }, []);
   
   // Fetch task messages for chat history
   const { messages } = useTaskMessages(id || null);
@@ -105,32 +128,110 @@ const TaskDetail = () => {
     }
   };
 
-  const handleTaskClose = async (comment: string) => {
-    await handleCloseWithoutAva(comment);
+  // This function is only used for direct closing without AVA
+  const handleTaskClose = (comment: string) => {
+    console.log("Task close handler called with comment (direct closing):", comment);
     
-    // Find and navigate to next task
-    const nextTaskId = await findNextTask();
-    if (nextTaskId) {
-      setIsActive(false);
-      await new Promise(resolve => setTimeout(resolve, 100)); // Give time for timer to stop
-      navigate(`/tasks/${nextTaskId}`);
-      toast({
-        title: "Nächste Aufgabe",
-        description: "Sie wurden zur nächsten verfügbaren Aufgabe weitergeleitet.",
+    // Close task directly without AVA summary
+    handleCloseWithoutAva(comment).then(() => {
+      // After closing, find and navigate to next task
+      findNextTask().then(nextTaskId => {
+        if (nextTaskId) {
+          console.log("Navigating to next task:", nextTaskId);
+          setIsActive(false);
+          setTimeout(() => navigate(`/tasks/${nextTaskId}`), 100);
+        } else {
+          console.log("No next task found, navigating to tasks list");
+          setIsActive(false);
+          setTimeout(() => navigate('/tasks'), 100);
+        }
       });
-    } else {
-      setIsActive(false);
-      await new Promise(resolve => setTimeout(resolve, 100));
-      navigate('/tasks');
+    });
+  };
+  
+  const handleCloseSummary = () => {
+    console.log("Closing AVA summary dialog without completing task");
+    setAvaSummaryDialogOpen(false);
+  };
+  
+  const handleCloseWithoutAvaClick = () => {
+    console.log("Opening close dialog without AVA");
+    setIsClosingWithoutAva(true);
+    setCloseTaskDialogOpen(true);
+  };
+  
+  const handleCloseWithAvaClick = () => {
+    console.log("Opening AVA summary dialog directly");
+    setIsClosingWithoutAva(false);
+    // Open the AVA summary dialog directly instead of the close task dialog
+    setAvaSummaryDialogOpen(true);
+  };
+  
+  const handleCloseTaskFromSummary = async (comment: string) => {
+    console.log("Closing task from AVA summary dialog with comment:", comment);
+    
+    try {
+      // Close the task with the comment provided in the summary dialog
+      // This is where we actually update the task status to completed
+      await handleCloseWithoutAva(comment);
+      console.log("Task closed successfully");
+      setAvaSummaryDialogOpen(false);
+      
+      // Find and navigate to next task
+      const nextTaskId = await findNextTask();
+      if (nextTaskId) {
+        console.log("Navigating to next task:", nextTaskId);
+        setIsActive(false);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Give time for timer to stop
+        navigate(`/tasks/${nextTaskId}`);
+      } else {
+        console.log("No next task found, navigating to tasks list");
+        setIsActive(false);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        navigate('/tasks');
+      }
+    } catch (error) {
+      console.error("Error closing task:", error);
     }
   };
+  
+
 
   useEffect(() => {
+    // Return function for cleanup when TaskDetail unmounts
     return () => {
       console.log('TaskDetail unmounting, setting isActive to false');
       setIsActive(false);
     };
-  }, []);
+  }, []); // Empty dependency array if it only needs to run on unmount, or add specific dependencies if needed for other logic within.
+  
+  // Auto-open NoUseCaseDialog for new tasks without a use case
+  useEffect(() => {
+    if (task && isNewTask && !task.matched_use_case_id) {
+      console.log('Auto-opening NoUseCaseDialog for new task without use case');
+      setNoUseCaseDialogOpen(true);
+    }
+  }, [task, isNewTask]);
+
+  const handleReopenTask = async () => {
+    if (task && task.status === 'completed') {
+      try {
+        // Change the task status back to in_progress
+        await handleStatusChange('in_progress');
+        toast({
+          title: "Task Re-opened",
+          description: `Task ${task.readable_id} has been re-opened.`,
+        });
+      } catch (error) {
+        console.error("Error re-opening task:", error);
+        toast({
+          title: "Error",
+          description: "Failed to re-open the task. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
 
   const handleBack = () => {
     setIsActive(false);
@@ -171,9 +272,12 @@ const TaskDetail = () => {
           setAssignTaskDialogOpen={setAssignTaskDialogOpen}
           setForwardTaskDialogOpen={setForwardTaskDialogOpen}
           setFollowUpDialogOpen={setFollowUpDialogOpen}
-          setCloseTaskDialogOpen={setCloseTaskDialogOpen}
+          handleCloseWithoutAvaClick={handleCloseWithoutAvaClick}
+          handleCloseWithAvaClick={handleCloseWithAvaClick}
           setEmailToCustomerDialogOpen={setEmailToCustomerDialogOpen}
           handleStatusChange={handleStatusChange}
+          handleReopenTask={handleReopenTask}
+          setNoUseCaseDialogOpen={setNoUseCaseDialogOpen}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
@@ -184,13 +288,13 @@ const TaskDetail = () => {
               <TaskDetailInfo task={task} />
               
               {/* Endkunde Info Link Section */}
-              {task.endkunde_id && (
-                <EndkundeInfoLink 
-                  endkundeId={task.endkunde_id} 
-                  customerId={task.customer_id} 
-                />
-              )}
-              
+              <EndkundeInfoLink 
+                endkundeId={task.endkunde_id} 
+                customerId={task.customer_id}
+                taskTitle={task.title}
+                taskSummary={task.description}
+                onContactsLoaded={setEndkundeContacts}
+              />  
               {/* Knowledge Article Manager Section */}
               <KnowledgeArticleManager 
                 customerId={task.customer_id} 
@@ -248,6 +352,22 @@ const TaskDetail = () => {
         open={closeTaskDialogOpen}
         onOpenChange={setCloseTaskDialogOpen}
         onClose={handleTaskClose}
+        isWithoutAva={isClosingWithoutAva}
+      />
+      
+      <AvaTaskSummaryDialog
+        open={avaSummaryDialogOpen}
+        onOpenChange={setAvaSummaryDialogOpen}
+        taskId={task.id}
+        readableId={task.readable_id}
+        taskTitle={task.title}
+        initialComment={""} // Empty by default when opening directly
+        onCancel={handleCloseSummary}
+        onContinue={handleCloseSummary}
+        onCloseTask={handleCloseTaskFromSummary}
+        endkundeOrt={task?.endkunde?.Ort || task?.customer?.address?.city || ""}
+        endkundeContacts={endkundeContacts} // Pass the contacts loaded from EndkundeInfoLink
+        customerName={task?.customer?.name || ''} // Pass the customer name to check for specific clients
       />
 
       <AssignTaskDialog
@@ -264,6 +384,16 @@ const TaskDetail = () => {
         currentAssignee={task.assigned_to}
         isForwarding={true}
       />
+      
+      {task && (
+        <NoUseCaseDialog
+          open={noUseCaseDialogOpen}
+          onOpenChange={setNoUseCaseDialogOpen}
+          taskId={task.id}
+          customerId={task.customer_id}
+          taskTitle={task.title}
+        />
+      )}
     </div>
   );
 };

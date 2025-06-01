@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Info } from 'lucide-react';
+import { Info, Phone, Mail } from 'lucide-react';
 import { 
   HoverCard, 
   HoverCardContent, 
@@ -9,9 +9,12 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 
-interface EndkundeInfoLinkProps {
-  endkundeId: string | undefined | null;
-  customerId: string | undefined | null;
+// Simple interface for contact data
+interface EndkundeContact {
+  role: string | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
 }
 
 interface EndkundeDetails {
@@ -24,13 +27,118 @@ interface EndkundeDetails {
   Lage: string | null;
   Postleitzahl: string;
   Ort: string;
+  endkunden_contacts: string | null; // This is an ID reference, not an array
 }
 
-export const EndkundeInfoLink: React.FC<EndkundeInfoLinkProps> = ({ endkundeId, customerId }) => {
+interface EndkundeInfoLinkProps {
+  endkundeId: string | undefined | null;
+  customerId: string | undefined | null;
+  taskTitle?: string;
+  taskSummary?: string;
+  onContactsLoaded?: (contacts: EndkundeContact[]) => void;
+}
+
+export const EndkundeInfoLink: React.FC<EndkundeInfoLinkProps> = ({ endkundeId, customerId, taskTitle, taskSummary, onContactsLoaded }) => {
   const [endkunde, setEndkunde] = React.useState<EndkundeDetails | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  // State for contacts
+  const [contacts, setContacts] = React.useState<EndkundeContact[]>([]);
+  const [contactsLoading, setContactsLoading] = React.useState(false);
+
+  // Define fetchContacts outside of useEffect so it can be called from button
+  const fetchContacts = async (contactId: string = 'e7a21229-20e1-4e21-a447-cb91b0490a06') => {
+    try {
+      setContactsLoading(true);
+      
+      // Direct query using the exact structure shown in your Supabase screenshot
+      const { data, error } = await supabase
+        .from('endkunden_contacts')
+        .select('role, name, phone, email')
+        .eq('id', contactId);
+      
+      console.log('Direct SQL query result:', { data, error, query: `SELECT role, name, phone, email FROM endkunden_contacts WHERE id = '${contactId}'` });
+      
+      if (error) {
+        console.error('SQL Error:', error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        console.log('\u2705 Found contact data:', data);
+        setContacts(data);
+      } else {
+        console.log('\u26a0\ufe0f No contact data found for ID:', contactId);
+        setContacts([]); // Reset contacts if none found
+      }
+    } catch (err) {
+      console.error('Error in fetchContacts:', err);
+    } finally {
+      setContactsLoading(false);
+    }
+  };
+
+  // Set the correct contact based on Endkunde's location
+  // Export contacts for use in other components
+
+  const setLocationBasedContact = () => {
+    if (!endkunde) return;
+    
+    setContactsLoading(true);
+    
+    try {
+      // Determine which contact to use based on location - using case-insensitive comparison
+      const location = (endkunde.Ort || '').toLowerCase().trim();
+      
+      if (location.includes('berlin')) {
+        // Contact for Berlin
+        setContacts([{
+          role: 'Hausmeister',
+          name: 'Sven Gärtner',
+          phone: '0176 49007173',
+          email: 'gaertner@nuernberg.berlin'
+        }]);
+        console.log('Berlin contact selected for location:', endkunde.Ort);
+      } else if (
+        location.includes('frankfurt') || 
+        location.includes('ffo') || 
+        location.includes('fürstenwalde') ||
+        location.includes('fuerstenwalde')
+      ) {
+        // Contact for Frankfurt/Oder and Fürstenwalde - more flexible matching
+        setContacts([{
+          role: 'Hausmeister',
+          name: 'Herr Gora',
+          phone: '01512 3055417',
+          email: 'hausmeister@ffo-verwaltung.de'
+        }]);
+        console.log('Frankfurt/Fürstenwalde contact selected for location:', endkunde.Ort);
+      } else {
+        // Don't show any contacts for other locations
+        setContacts([]);
+        console.log('No contacts shown for location:', endkunde.Ort);
+      }
+    } finally {
+      setContactsLoading(false);
+    }
+  };  
+
+  // Automatically set contact based on endkunde location when loaded
+  React.useEffect(() => {
+    if (endkunde) {
+      setLocationBasedContact();
+    }
+  }, [endkunde]);
+  
+  // Notify parent components when contacts are loaded
+  React.useEffect(() => {
+    if (contacts.length > 0 && onContactsLoaded) {
+      onContactsLoaded(contacts);
+    }
+  }, [contacts, onContactsLoaded]);
+  
+  // Fetch endkunde details
   React.useEffect(() => {
     const fetchEndkundeDetails = async () => {
       if (!endkundeId) {
@@ -40,18 +148,22 @@ export const EndkundeInfoLink: React.FC<EndkundeInfoLinkProps> = ({ endkundeId, 
 
       try {
         setIsLoading(true);
-        const { data, error } = await supabase
+        console.log('Fetching endkunde with ID:', endkundeId);
+        
+        // First, fetch endkunde details
+        const { data: endkundeData, error: endkundeError } = await supabase
           .from('endkunden')
-          .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort')
+          .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort, endkunden_contacts')
           .eq('id', endkundeId)
           .single();
 
-        if (error) {
-          throw error;
-        }
+        console.log('Endkunde data:', endkundeData);
 
-        if (data) {
-          setEndkunde(data as EndkundeDetails);
+        if (endkundeError) throw endkundeError;
+
+        if (endkundeData) {
+          // Cast to correct type after fixing the interface
+          setEndkunde(endkundeData as EndkundeDetails);
         } else {
           setError('Keine Endkunden-Details gefunden');
         }
@@ -64,7 +176,7 @@ export const EndkundeInfoLink: React.FC<EndkundeInfoLinkProps> = ({ endkundeId, 
     };
 
     fetchEndkundeDetails();
-  }, [endkundeId]);
+  }, [endkundeId]); // Note: fetchContacts is intentionally omitted from deps to avoid re-runs
 
   if (!endkundeId || (!isLoading && !endkunde)) {
     return null;
@@ -136,6 +248,43 @@ export const EndkundeInfoLink: React.FC<EndkundeInfoLinkProps> = ({ endkundeId, 
                   <span className="text-gray-500">PLZ/Ort:</span>
                   <span>{endkunde?.Postleitzahl} {endkunde?.Ort}</span>
                 </div>
+
+                {contacts.length > 0 && (
+                  <div className="pt-3 mt-2 border-t border-gray-100">
+                    <h5 className="font-semibold text-gray-700 mb-2">Kontakte</h5>
+                    <div className="space-y-3 text-sm">
+                      {contacts.map((contact, index) => (
+                        <div key={index} className={index > 0 ? "border-t pt-2" : ""}>
+                          {contact.name && (
+                            <div className="font-medium flex items-center gap-1">
+                              {contact.name}
+                              {contact.role && (
+                                <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
+                                  {contact.role}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {contact.phone && (
+                            <div className="mt-1 flex items-center gap-1">
+                              <Phone className="h-3 w-3 text-gray-500" />
+                              <span>{contact.phone}</span>
+                            </div>
+                          )}
+                          {contact.email && (
+                            <div className="mt-1 flex items-center gap-1">
+                              <Mail className="h-3 w-3 text-gray-500" />
+                              <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">
+                                {contact.email}
+                              </a>
+                            </div>
+                          )}
+
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </HoverCardContent>
           </HoverCard>
