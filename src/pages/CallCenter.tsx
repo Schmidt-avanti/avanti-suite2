@@ -1,4 +1,3 @@
-
 // src/pages/CallCenter.tsx
 import React, { useEffect } from 'react';
 import PhoneInterface from '@/components/call-center/PhoneInterface';
@@ -51,56 +50,102 @@ const CallCenter: React.FC = () => {
   }
   
   return (
-    <div className="container mx-auto py-6 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-6">Call Center</h1>
-      
-      <div className="mb-6 flex flex-col sm:flex-row justify-between gap-4">
-        <VoiceStatusButton />
-      </div>
-      
-      {!isSetup && (
-        <Alert className="mb-6">
-          <InfoIcon className="h-5 w-5" />
-          <AlertTitle>Telefonsystem nicht initialisiert</AlertTitle>
-          <AlertDescription>
-            Das Telefonsystem muss initialisiert werden, bevor Sie Anrufe tätigen oder empfangen können.
-            Bitte stellen Sie sicher, dass Ihr Browser den Zugriff auf das Mikrofon erlaubt.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="dialer">Dialer</TabsTrigger>
-              <TabsTrigger value="history">Anrufhistorie</TabsTrigger>
-            </TabsList>
-            <TabsContent value="dialer">
-              <div className="flex justify-center mt-4">
-                <div className="w-full max-w-md">
-                  <PhoneInterface />
-                </div>
-              </div>
-            </TabsContent>
-            <TabsContent value="history">
-              <div className="mt-4">
-                <CallHistoryList />
-              </div>
-            </TabsContent>
-          </Tabs>
+    <div className="container mx-auto py-6 max-w-5xl">
+      <div className="flex flex-col space-y-6">
+        {/* Header Section with Title and Status */}
+        <div className="flex flex-col sm:flex-row justify-between items-center bg-card rounded-lg p-4 border shadow-sm">
+          <h1 className="text-2xl font-bold">Call Center</h1>
+          <div className="flex items-center space-x-4 mt-4 sm:mt-0">
+            <VoiceStatusButton className="shadow-sm" />
+            {isAdmin && (
+              <TwilioSetupStatus compact={true} />
+            )}
+          </div>
         </div>
         
-        <div className="lg:col-span-2 space-y-6">
-          <TwilioSetupStatus />
+        {/* Alert Section - Only shown when needed */}
+        {!isSetup && (
+          <Alert variant="warning" className="mb-2">
+            <InfoIcon className="h-5 w-5" />
+            <AlertTitle>Telefonsystem nicht initialisiert</AlertTitle>
+            <AlertDescription>
+              Das Telefonsystem muss initialisiert werden, bevor Sie Anrufe tätigen oder empfangen können.
+              Bitte stellen Sie sicher, dass Ihr Browser den Zugriff auf das Mikrofon erlaubt.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Left Column - Dialer and History */}
+          <div className="md:col-span-2 space-y-6">
+            <div className="bg-card rounded-lg p-4 border shadow-sm">
+              <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="dialer">Dialer</TabsTrigger>
+                  <TabsTrigger value="history">Anrufhistorie</TabsTrigger>
+                </TabsList>
+                <TabsContent value="dialer">
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-md">
+                      <PhoneInterface />
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="history">
+                  <div className="max-h-[500px] overflow-y-auto">
+                    <CallHistoryList />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+            
+            {/* Quick Actions Section */}
+            <div className="bg-card rounded-lg p-4 border shadow-sm">
+              <h3 className="font-medium text-lg mb-3">Schnellzugriff</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <button 
+                  className="flex flex-col items-center justify-center p-3 rounded-md border hover:bg-accent transition-colors"
+                  onClick={() => setActiveTab('dialer')}
+                >
+                  <span className="text-2xl">📞</span>
+                  <span className="text-sm mt-1">Anruf tätigen</span>
+                </button>
+                <button 
+                  className="flex flex-col items-center justify-center p-3 rounded-md border hover:bg-accent transition-colors"
+                  onClick={() => setActiveTab('history')}
+                >
+                  <span className="text-2xl">📋</span>
+                  <span className="text-sm mt-1">Historie</span>
+                </button>
+                <button 
+                  className="flex flex-col items-center justify-center p-3 rounded-md border hover:bg-accent transition-colors"
+                >
+                  <span className="text-2xl">🔄</span>
+                  <span className="text-sm mt-1">Aktualisieren</span>
+                </button>
+              </div>
+            </div>
+          </div>
           
-          {isAdmin && (
-            <PhoneNumberSetup />
-          )}
+          {/* Right Column - Setup and Settings */}
+          <div className="space-y-6">
+            <div className="bg-card rounded-lg p-4 border shadow-sm">
+              <h3 className="font-medium text-lg mb-3">Systemstatus</h3>
+              <TwilioSetupStatus expanded={true} />
+            </div>
+            
+            {isAdmin && (
+              <div className="bg-card rounded-lg p-4 border shadow-sm">
+                <h3 className="font-medium text-lg mb-3">Admin-Einstellungen</h3>
+                <PhoneNumberSetup />
+              </div>
+            )}
+          </div>
         </div>
       </div>
       
-      {/* This component will appear when there's an active call */}
+      {/* Active Call Panel */}
       <ActiveCallPanel />
     </div>
   );
