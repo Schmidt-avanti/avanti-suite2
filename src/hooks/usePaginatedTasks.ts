@@ -23,7 +23,8 @@ export const usePaginatedTasks = (
   includeAll: boolean = false, 
   filters?: ReportFilters, 
   page: number = 1, 
-  pageSize: number = 10
+  pageSize: number = 10,
+  searchQuery: string = ''
 ) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -41,7 +42,7 @@ export const usePaginatedTasks = (
 
       try {
         setIsLoading(true);
-        console.log(`Fetching tasks with statusFilter=${statusFilter}, includeAll=${includeAll}, page=${page}, filters=`, filters);
+        console.log(`Fetching tasks with statusFilter=${statusFilter}, includeAll=${includeAll}, page=${page}, searchQuery=${searchQuery}, filters=`, filters);
 
         // Calculate pagination ranges
         const from = (page - 1) * pageSize;
@@ -64,6 +65,11 @@ export const usePaginatedTasks = (
           countQuery = applyFiltersToQuery(countQuery, filters);
         }
 
+        // Apply search filter if provided
+        if (searchQuery) {
+          countQuery = countQuery.or(`readable_id.ilike.%${searchQuery}%,title.ilike.%${searchQuery}%`);
+        }
+        
         // Apply user role-based filtering
         countQuery = await applyRoleBasedFiltering(countQuery, user);
         
@@ -112,6 +118,11 @@ export const usePaginatedTasks = (
           query = applyFiltersToQuery(query, filters);
         }
 
+        // Apply search filter if provided
+        if (searchQuery) {
+          query = query.or(`readable_id.ilike.%${searchQuery}%,title.ilike.%${searchQuery}%`);
+        }
+        
         // Apply user role-based filtering
         query = await applyRoleBasedFiltering(query, user);
 
@@ -214,7 +225,7 @@ export const usePaginatedTasks = (
     };
 
     fetchTasks();
-  }, [user, statusFilter, includeAll, filters, page, pageSize]);
+  }, [user, statusFilter, includeAll, filters, page, pageSize, searchQuery]);
 
   // Helper function to apply filters to query
   const applyFiltersToQuery = (query: any, filters: ReportFilters) => {

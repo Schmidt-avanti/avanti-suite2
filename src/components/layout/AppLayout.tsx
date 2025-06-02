@@ -1,6 +1,7 @@
 
 // src/components/layout/AppLayout.tsx
 import { Outlet, useLocation } from 'react-router-dom';
+import { SearchProvider } from '@/contexts/SearchContext';
 import Navbar from './Navbar';
 import AppSidebar from './AppSidebar';
 import { TwilioProvider } from '@/contexts/TwilioContext';
@@ -66,20 +67,22 @@ const AppLayout = () => {
   // Create the content layout that will be wrapped with or without TwilioProvider
   const renderContent = () => (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 w-full">
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-col flex-1 w-full">
-            <Navbar />
-            <main className="flex-1 p-4">
-              <Outlet />
-            </main>
+      <SearchProvider>
+        <SidebarProvider>
+          <div className="flex min-h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-col flex-1 w-full">
+              <Navbar />
+              <main className="flex-1 p-4">
+                <Outlet />
+              </main>
+            </div>
+            <Suspense fallback={null}>
+              <FloatingChatButton />
+            </Suspense>
           </div>
-          <Suspense fallback={null}>
-            <FloatingChatButton />
-          </Suspense>
-        </div>
-      </SidebarProvider>
+        </SidebarProvider>
+      </SearchProvider>
     </div>
   );
   

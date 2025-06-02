@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
+import { useSearch } from '@/contexts/SearchContext';
 import { TasksTable } from '@/components/tasks/TasksTable';
 import { ReportFilters } from '@/components/reports/ReportFilters';
 import { ReportFilters as ReportFiltersType } from '@/hooks/useReportData';
@@ -22,6 +23,7 @@ const CompletedTasks = () => {
   });
   
   const [currentPage, setCurrentPage] = useState(1);
+  const { searchQuery } = useSearch();
   const pageSize = 25;
   
   const { 
@@ -29,22 +31,22 @@ const CompletedTasks = () => {
     isLoading, 
     totalCount, 
     totalPages 
-  } = usePaginatedTasks(filters.status, true, filters, currentPage, pageSize);
+  } = usePaginatedTasks(filters.status, true, filters, currentPage, pageSize, searchQuery);
   
   const { customers } = useCustomers();
   const [users, setUsers] = useState<Array<{ id: string; full_name: string }>>([]);
   const queryClient = useQueryClient();
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters]);
+  }, [filters, searchQuery]);
 
   // Pre-fetch next page for faster navigation
   useEffect(() => {
     if (currentPage < totalPages) {
       queryClient.prefetchQuery({
-        queryKey: ['tasks', 'paginated', filters.status, currentPage + 1, pageSize, filters],
+        queryKey: ['tasks', 'paginated', filters.status, currentPage + 1, pageSize, filters, searchQuery],
         queryFn: () => fetchTasksForPreloading(currentPage + 1)
       });
     }
@@ -94,6 +96,7 @@ const CompletedTasks = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -104,6 +107,8 @@ const CompletedTasks = () => {
           </span>
         )}
       </div>
+
+
 
       <ReportFilters 
         filters={filters}

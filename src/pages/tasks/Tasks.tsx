@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useSearch } from '@/contexts/SearchContext';
 import { Card } from '@/components/ui/card';
 import { PlusIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +19,7 @@ const Tasks = () => {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<TaskStatus | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const { searchQuery } = useSearch();
   const pageSize = 10;
   
   // Use the paginated tasks hook instead of useTasks
@@ -26,17 +28,18 @@ const Tasks = () => {
     false, 
     undefined, 
     currentPage, 
-    pageSize
+    pageSize,
+    searchQuery
   );
   
   const { counts } = useTaskCounts();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
-  // Reset to page 1 when status filter changes
+  // Reset to page 1 when status filter or search query changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, searchQuery]);
 
   // Prefetch data when component loads
   useEffect(() => {
@@ -54,7 +57,7 @@ const Tasks = () => {
     // Prefetch next page for smoother navigation
     if (currentPage < totalPages) {
       queryClient.prefetchQuery({
-        queryKey: ['tasks', 'paginated', statusFilter, currentPage + 1, pageSize],
+        queryKey: ['tasks', 'paginated', statusFilter, currentPage + 1, pageSize, searchQuery],
         staleTime: 30000
       });
     }
@@ -72,11 +75,13 @@ const Tasks = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+
   return (
     <div className="space-y-4">
       <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'justify-between items-center'}`}>
         <h1 className="text-2xl font-bold">Aufgaben</h1>
         <div className={`flex ${isMobile ? 'flex-col space-y-2 w-full' : 'space-x-2'}`}>
+
           <div className={`flex items-center ${isMobile ? 'w-full' : ''}`}>
             <Select
               value={statusFilter || 'all'}
