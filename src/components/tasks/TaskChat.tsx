@@ -149,14 +149,33 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           </div>
         )}
 
-        {messages.map((message) => (
-          <TaskChatMessage 
-            key={message.id}
-            message={message}
-            selectedOptions={selectedOptions}
-            onOptionSelect={handleOptionSelect}
-          />
-        ))}
+        {messages.map((message, index) => {
+          // Find the last assistant message in the messages array
+          const lastAssistantMessageIndex = [...messages].reverse()
+            .findIndex(msg => msg.role === 'assistant');
+          
+          // If found, calculate its actual index in the original array
+          const lastAssistantIndex = lastAssistantMessageIndex >= 0 ? 
+            (messages.length - 1 - lastAssistantMessageIndex) : -1;
+          
+          // This is the last assistant message if its index matches the current message's index
+          // and it's an assistant message
+          const isLastAssistant = index === lastAssistantIndex && message.role === 'assistant';
+          
+          return (
+            <TaskChatMessage 
+              key={message.id}
+              message={message}
+              selectedOptions={selectedOptions}
+              onOptionSelect={handleOptionSelect}
+              taskId={taskId}
+              taskTitle={useCaseId}
+              readableId={taskId}
+              endkundeOrt={''}
+              isLastAssistantMessage={isLastAssistant}
+            />
+          );
+        })}
 
         <TaskChatStatus 
           isLoading={isLoading}

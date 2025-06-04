@@ -120,75 +120,45 @@ export function AvaTaskSummaryDialog({
     }
   };
   
-  // Generate an AI-enhanced structured summary from Ava messages
+  // Simplified summary generation - just get the last assistant message
   const generateSummary = (messages: AvaMessage[]) => {
     // Only consider Ava responses for summary generation
     const avaResponses = messages.filter(msg => msg.type === 'ava' || msg.role === 'assistant');
-    const userMessages = messages.filter(msg => msg.type === 'user' || msg.role === 'user');
     
     if (avaResponses.length === 0) return;
     
-    // Generate summary items using AI-inspired pattern recognition
-    const items: SummaryItem[] = [];
+    // Get the last response from the assistant
+    const lastAvaMessage = avaResponses[avaResponses.length - 1];
     
-    // Perform deep analysis of the conversation
-    const analyzedConversation = analyzeConversation(messages);
+    // Clean up JSON structure artifacts from the message
+    const cleanContent = cleanupText(lastAvaMessage.content);
     
-    // Generate a concise client-friendly summary first (this will be shown at the top)
-    const clientFriendlySummary = generateClientFriendlySummary(analyzedConversation, avaResponses, userMessages);
-    if (clientFriendlySummary) {
-      items.push({
-        key: "Zusammenfassung für Kunden",
-        value: clientFriendlySummary
-      });
-    }
-    
-    // Extract a comprehensive problem statement with context
-    const mainProblem = extractEnhancedProblem(analyzedConversation, avaResponses, userMessages);
-    if (mainProblem) {
-      items.push({
-        key: "Problem",
-        value: mainProblem
-      });
-    }
-    
-    // Create a comprehensive solution/next steps summary
-    const resolution = extractEnhancedResolution(analyzedConversation, avaResponses);
-    if (resolution) {
-      items.push({
-        key: "Lösung/Nächste Schritte",
-        value: resolution
-      });
-    }
-    
-    // Extract customer concern with better context awareness
-    const customerConcern = extractEnhancedCustomerConcerns(analyzedConversation, userMessages);
-    if (customerConcern) {
-      items.push({
-        key: "Kundenanliegen",
-        value: customerConcern
-      });
-    }
-    
-    // If we couldn't extract specific items, use an intelligent general summary
-    if (items.length === 0) {
-      // Generate a more insightful fallback summary
-      const fallbackSummary = createEnhancedFallbackSummary(analyzedConversation);
-      
-      items.push({
-        key: "Zusammenfassung",
-        value: fallbackSummary
-      });
-    }
-    
-    // Remove JSON-like structures to make summaries more readable
-    items.forEach(item => {
-      if (item.value.includes('{') || item.value.includes('}') || item.value.includes('"text"')) {
-        item.value = cleanJsonStructure(item.value);
+    // Create a simple summary with just the last message
+    const items: SummaryItem[] = [
+      {
+        key: "Antwort von AVA",
+        value: cleanContent
       }
+    ];
+    
+    // Add the closing question
+    items.push({
+      key: "Abschlussfrage",
+      value: "Gibt es noch etwas anderes, womit ich Ihnen heute helfen kann?"
     });
     
     setSummaryItems(items);
+  };
+  
+  // Function to clean up JSON structure artifacts from text
+  const cleanupText = (text: string) => {
+    return text
+      .replace(/^\s*{/, '') // Opening brace at beginning
+      .replace(/}\s*$/, '') // Closing brace at end
+      .replace(/"text"\s*:\s*"/, '') // "text": "
+      .replace(/"options"\s*:\s*\[.*?\]/, '') // "options": [...]
+      .replace(/",\s*$/, '') // ", at the end
+      .trim();
   };
   
   // Generate a concise, client-friendly summary for agents to read to clients
@@ -378,10 +348,10 @@ export function AvaTaskSummaryDialog({
           // Enhance with context from topic words if it's too short
           if (problemText.length < 50 && analyzedConversation.topicWords.length > 0) {
             const topicContext = analyzedConversation.topicWords.slice(0, 3).join(', ');
-            return `Um den Auftrag an den Reparaturdienstleister weiterzuleiten: ${problemText} (Betrifft: ${topicContext})`;
+            return `Um den Auftrag an den Hausmeister weiterzuleiten: ${problemText} (Betrifft: ${topicContext})`;
           }
           
-          return `Um den Auftrag an den Reparaturdienstleister weiterzuleiten: ${problemText}`;
+          return `Um den Auftrag an den Hausmeister weiterzuleiten: ${problemText}`;
         }
       }
     }
@@ -398,7 +368,7 @@ export function AvaTaskSummaryDialog({
       
       for (const sentence of sentences) {
         if (problemIndicators.some(indicator => sentence.toLowerCase().includes(indicator))) {
-          return `Um den Auftrag an den Reparaturdienstleister weiterzuleiten: ${sentence.trim()}.`;
+          return `Um den Auftrag an den Hausmeister weiterzuleiten: ${sentence.trim()}.`;
         }
       }
     }
@@ -408,13 +378,13 @@ export function AvaTaskSummaryDialog({
       const cleanQuery = initialUserQuery.replace(/\*\*/g, '').replace(/\\n/g, ' ').trim();
       if (cleanQuery.length > 20) {
         // Use the initial query as the problem statement
-        return `Um den Auftrag an den Reparaturdienstleister weiterzuleiten: ${cleanQuery.substring(0, 150)}${cleanQuery.length > 150 ? '...' : ''}`;
+        return `Um den Auftrag an den Hausmeister weiterzuleiten: ${cleanQuery.substring(0, 150)}${cleanQuery.length > 150 ? '...' : ''}`;
       }
     }
     
     // Last resort fallback
     if (topicWords.length > 0) {
-      return `Um den Auftrag an den Reparaturdienstleister weiterzuleiten: Problem mit ${topicWords.join(', ')}.`;
+      return `Um den Auftrag an den Hausmeister weiterzuleiten: Problem mit ${topicWords.join(', ')}.`;
     }
     
     return null;
@@ -437,12 +407,12 @@ export function AvaTaskSummaryDialog({
           let solutionText = solutionMatch[2].trim();
           
           // Check if this is a forwarding case
-          if (content.includes('weitergeleitet') || content.includes('Reparaturdienstleister') || 
+          if (content.includes('weitergeleitet') || content.includes('Hausmeister') || 
               content.includes('Hausmeister') || content.includes('Termin')) {
             return `Alle notwendigen Informationen zur ${analyzedConversation.topicWords[0] || 'Anfrage'}, ` + 
                    `dem Einsatz einer ${analyzedConversation.topicWords[1] || 'Lösung'} und ` +
                    `dem möglichen ${analyzedConversation.topicWords[2] || 'Problem'} werden jetzt an den ` +
-                   `zuständigen Reparaturdienstleister weitergeleitet. Sie erhalten eine Rückmeldung, ` +
+                   `zuständigen Hausmeister weitergeleitet. Sie erhalten eine Rückmeldung, ` +
                    `sobald der Auftrag angenommen wurde oder Rückfragen bestehen. Die Details werden im System dokumentiert.`;
           }
           
@@ -467,7 +437,7 @@ export function AvaTaskSummaryDialog({
         return `Alle notwendigen Informationen zur ${analyzedConversation.topicWords[0] || 'Anfrage'}, ` + 
                `dem Einsatz einer ${analyzedConversation.topicWords[1] || 'Lösung'} und ` +
                `dem möglichen ${analyzedConversation.topicWords[2] || 'Problem'} werden jetzt an den ` +
-               `zuständigen Reparaturdienstleister weitergeleitet. Sie erhalten eine Rückmeldung, ` +
+               `zuständigen Hausmeister weitergeleitet. Sie erhalten eine Rückmeldung, ` +
                `sobald der Auftrag angenommen wurde oder Rückfragen bestehen. Die Details werden im System dokumentiert.`;
       }
     }
@@ -482,7 +452,7 @@ export function AvaTaskSummaryDialog({
           content.includes('informiert') ||
           content.includes('kontaktiert')) {
         
-        return `Alle notwendigen Informationen werden jetzt an den zuständigen Reparaturdienstleister weitergeleitet. ` +
+        return `Alle notwendigen Informationen werden jetzt an den zuständigen Hausmeister weitergeleitet. ` +
                `Sie erhalten eine Rückmeldung, sobald der Auftrag angenommen wurde oder Rückfragen bestehen. ` +
                `Die Details werden im System dokumentiert.`;
       }
@@ -657,7 +627,7 @@ export function AvaTaskSummaryDialog({
     onCancel();
   };
 
-  // Check if the AVA response suggests forwarding to a responsible person
+  // Always show forward button except for excluded clients
   const shouldShowForwardButton = () => {
     // List of clients where email forwarding should always be disabled
     const excludedClients = [
@@ -675,82 +645,8 @@ export function AvaTaskSummaryDialog({
       return false;
     }
     
-    // Keywords that indicate a responsible person needs to be contacted
-    const contactKeywords = [
-      'hausmeister', 'kontaktier', 'zuständig', 'verantwortlich', 'beauftrag',
-      'handwerker', 'techniker', 'reparatur', 'dienstleister', 'serviceteam',
-      'service-team', 'termin', 'wartung', 'installateur', 'elektriker', 'fachmann',
-      'instandsetzung', 'weiterleiten', 'anruf', 'vor ort', 'vor-ort'
-    ];
-    
-    // Keywords specific to problems that typically require a service technician
-    const problemKeywords = [
-      'verstopf', 'wasserrohr', 'rohrbruch', 'wasserschaden', 'heizung',
-      'strom', 'elektrik', 'defekt', 'reparier', 'kaputt', 'funktioniert nicht',
-      'kein wasser', 'kein strom', 'leck', 'undicht', 'schimmel', 'tropft'
-    ];
-    
-    // First check summary items for contact recommendations
-    if (summaryItems.length > 0) {
-      for (const item of summaryItems) {
-        const lowerValue = item.value.toLowerCase();
-        
-        // Check for direct mention of contacting someone
-        const hasContactKeyword = contactKeywords.some(keyword => 
-          lowerValue.includes(keyword)
-        );
-        
-        if (hasContactKeyword) {
-          console.log('Email button shown - summary mentions contacting responsible person');
-          return true;
-        }
-        
-        // Check for specific problems that typically require a service technician
-        if (item.key.toLowerCase() === 'problem' || item.key.toLowerCase() === 'hauptproblem') {
-          const hasProblemKeyword = problemKeywords.some(keyword => 
-            lowerValue.includes(keyword)
-          );
-          
-          if (hasProblemKeyword) {
-            console.log('Email button shown - summary mentions problem requiring technician');
-            return true;
-          }
-        }
-      }
-    }
-    
-    // Check AVA messages for contact recommendations
-    const avaResponses = avaMessages.filter(msg => msg.type === 'ava' || msg.role === 'assistant');
-    // Focus on last two messages as they are most likely to contain the recommendation
-    const lastAvaMessages = avaResponses.slice(-2); 
-    
-    for (const msg of lastAvaMessages) {
-      const lowerContent = msg.content.toLowerCase();
-      
-      // Check for direct mention of contacting someone
-      const hasContactKeyword = contactKeywords.some(keyword => 
-        lowerContent.includes(keyword)
-      );
-      
-      if (hasContactKeyword) {
-        console.log('Email button shown - AVA message mentions contacting responsible person');
-        return true;
-      }
-      
-      // Check for specific problems in last messages
-      const hasProblemKeyword = problemKeywords.some(keyword => 
-        lowerContent.includes(keyword)
-      );
-      
-      if (hasProblemKeyword) {
-        console.log('Email button shown - AVA message mentions problem requiring technician');
-        return true;
-      }
-    }
-    
-    // Default to NOT showing the button unless AVA explicitly suggests contacting someone
-    console.log('Email button hidden - no indication that contact is needed');
-    return false;
+    // Always show email button for all other clients
+    return true;
   };
   
   // Function to get email contact from endkundeContacts array
@@ -928,12 +824,12 @@ export function AvaTaskSummaryDialog({
                   <div className="text-sm mt-1 space-y-2">
                      {summaryItems.length > 0 ? (
                       <div className="mt-2 space-y-3">
-                        {summaryItems.map((item, index) => (
-                          <div key={index}>
-                            <h5 className="font-medium text-gray-700">{item.key}:</h5>
-                            <p className="whitespace-pre-wrap text-sm">{item.value}</p>
+                        {/* Show only the last AVA response */}
+                        {summaryItems.length > 0 && summaryItems[0].key === "Antwort von AVA" && (
+                          <div>
+                            <p className="whitespace-pre-wrap text-sm">{summaryItems[0].value}</p>
                           </div>
-                        ))}
+                        )}
                         <p className="mt-3 italic text-blue-700">
                           "Gibt es noch etwas anderes, womit ich Ihnen heute helfen kann?"
                         </p>
@@ -988,7 +884,7 @@ export function AvaTaskSummaryDialog({
                   disabled={isSubmitting}
                 >
                   <Mail className="h-4 w-4" />
-                  Email senden
+                  E-Mail weiterleiten
                 </Button>
               )}
               <Button 
@@ -1076,7 +972,7 @@ export function AvaTaskSummaryDialog({
               className="flex items-center gap-1"
             >
               <Mail className="h-4 w-4" />
-              {sendingEmail ? "Wird gesendet..." : "Senden"}
+              {sendingEmail ? "Wird gesendet..." : "Email senden"}
             </Button>
           </DialogFooter>
         </DialogContent>
