@@ -105,6 +105,7 @@ export const SmartWorkflowInterface: React.FC<SmartWorkflowInterfaceProps> = ({
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [showConversationHelp, setShowConversationHelp] = useState<{[key: string]: boolean}>({});
+  const [generationFailed, setGenerationFailed] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -129,10 +130,11 @@ export const SmartWorkflowInterface: React.FC<SmartWorkflowInterfaceProps> = ({
         role: 'assistant',
         content: `Hallo! Ich helfe dir bei der Bearbeitung: **${data.title}**
 
-Um mit der strukturierten Bearbeitung zu beginnen, klicke auf "KI-Schritte generieren". Dies erstellt intelligente, telefonfreundliche Arbeitsschritte.
-
-💡 **Wichtig:** Ohne KI-Schritte steht dir nur der Chat zur Verfügung!`
+Die KI-Schritte werden automatisch generiert...`
       }]);
+      
+      // Automatically generate AI steps
+      await generateAiWorkflowSteps(data);
       
     } catch (error: any) {
       console.error('Error fetching use case:', error);
@@ -388,18 +390,20 @@ Führen Sie diesen Schritt durch und haken Sie ihn ab, wenn Sie fertig sind. Bei
     }
   };
 
-  const generateAiWorkflowSteps = async () => {
-    if (!useCase) return;
+  const generateAiWorkflowSteps = async (useCaseData?: DatabaseUseCase) => {
+    const currentUseCase = useCaseData || useCase;
+    if (!currentUseCase) return;
 
     try {
       setIsGeneratingSteps(true);
+      setGenerationFailed(false);
       
       const { data, error } = await supabase.functions.invoke('generate-workflow-steps', {
         body: {
-          useCaseTitle: useCase.title,
-          informationNeeded: useCase.information_needed || '',
+          useCaseTitle: currentUseCase.title,
+          informationNeeded: currentUseCase.information_needed || '',
           taskDescription: taskDescription,
-          steps: useCase.steps
+          steps: currentUseCase.steps
         }
       });
 
@@ -442,46 +446,29 @@ Beginne jetzt mit Schritt 1: **${aiSteps[0]?.title}**`
           description: `${aiSteps.length} intelligente Arbeitsschritte wurden erstellt.`,
         });
       } else {
-        // No fallback - just inform the user
-        toast({
-          title: "KI-Service nicht verfügbar",
-          description: "Die KI-Schritte können derzeit nicht generiert werden. Bitte versuchen Sie es später erneut.",
-          variant: "destructive"
-        });
-        
-        setChatMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `❌ **KI-Service derzeit nicht verfügbar**
-
-Die intelligenten Arbeitsschritte können momentan nicht generiert werden.
-
-**Was Sie tun können:**
-- Versuchen Sie es in wenigen Minuten erneut  
-- Nutzen Sie den Chat für Fragen und Unterstützung
-- Dokumentieren Sie Ihre Arbeit manuell
-
-Entschuldigung für die Unannehmlichkeiten!`
-        }]);
+        throw new Error('KI-Service nicht verfügbar');
       }
 
     } catch (error: any) {
       console.error('Error generating AI steps:', error);
+      setGenerationFailed(true);
+      
       toast({
         variant: "destructive",
         title: "KI-Service nicht verfügbar",
-        description: "Die KI-Schritte können derzeit nicht generiert werden. Bitte versuchen Sie es später erneut."
+        description: "Die KI-Schritte können derzeit nicht generiert werden. Der Mitarbeiter muss ohne strukturierte Schritte arbeiten."
       });
       
       setChatMessages(prev => [...prev, {
         role: 'assistant',
-        content: `❌ **Technischer Fehler beim KI-Service**
+        content: `❌ **KI-Service derzeit nicht verfügbar**
 
 Die intelligenten Arbeitsschritte können momentan nicht generiert werden.
 
-**Was Sie tun können:**
-- Versuchen Sie es in wenigen Minuten erneut  
+**Sie müssen ohne strukturierte Schritte arbeiten:**
 - Nutzen Sie den Chat für Fragen und Unterstützung
 - Dokumentieren Sie Ihre Arbeit manuell
+- Verwenden Sie die allgemeinen Informationen zum Use Case
 
 Entschuldigung für die Unannehmlichkeiten!`
       }]);
@@ -585,7 +572,7 @@ Entschuldigung für die Unannehmlichkeiten!`
       <div className="flex justify-center items-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p>Lädt Workflow-Details...</p>
+          <p>Lädt Workflow-Details und generiert KI-Schritte...</p>
         </div>
       </div>
     );
@@ -606,29 +593,19 @@ Entschuldigung für die Unannehmlichkeiten!`
           <div>
             <h1 className="text-2xl font-bold text-blue-900">{useCase?.title}</h1>
             <p className="text-blue-700">
-              {hasWorkflowSteps ? 'Schritt-für-Schritt Abarbeitung der Kundenanfrage' : 'Generiere KI-Schritte für strukturierte Bearbeitung'}
+              {isGeneratingSteps ? 'KI-Schritte werden generiert...' : 
+               hasWorkflowSteps ? 'Schritt-für-Schritt Abarbeitung der Kundenanfrage' : 
+               'KI-Service nicht verfügbar - manuelle Bearbeitung erforderlich'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={generateAiWorkflowSteps}
-            disabled={isGeneratingSteps}
-            className="bg-gradient-to-r from-purple-500 to-blue-500 text-white border-none hover:from-purple-600 hover:to-blue-600"
-          >
-            {isGeneratingSteps ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Generiere...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                KI-Schritte generieren
-              </>
-            )}
-          </Button>
+          {isGeneratingSteps && (
+            <Badge variant="secondary" className="text-sm px-3 py-1 animate-pulse">
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500 mr-2"></div>
+              Generiere KI-Schritte...
+            </Badge>
+          )}
           {hasWorkflowSteps && (
             <>
               <Badge variant="secondary" className="text-sm px-3 py-1">
@@ -890,32 +867,26 @@ Entschuldigung für die Unannehmlichkeiten!`
             </Card>
           )}
 
-          {/* No Workflow Steps Message */}
-          {!hasWorkflowSteps && (
-            <Card className="border-2 border-dashed border-gray-300">
+          {/* Generation Failed Message */}
+          {generationFailed && !hasWorkflowSteps && !isGeneratingSteps && (
+            <Card className="border-2 border-red-300 bg-red-50">
               <CardContent className="text-center py-12">
-                <Sparkles className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">Keine Workflow-Schritte aktiv</h3>
-                <p className="text-gray-600 mb-6">
-                  Klicken Sie auf "KI-Schritte generieren", um intelligente, strukturierte Arbeitsschritte zu erstellen.
+                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-red-700 mb-2">KI-Service nicht verfügbar</h3>
+                <p className="text-red-600 mb-6">
+                  Die intelligenten Arbeitsschritte können derzeit nicht generiert werden.
+                  Sie müssen ohne strukturierte Schritte arbeiten.
                 </p>
-                <Button 
-                  onClick={generateAiWorkflowSteps}
-                  disabled={isGeneratingSteps}
-                  className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-                >
-                  {isGeneratingSteps ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Generiere KI-Schritte...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      KI-Schritte generieren
-                    </>
+                <div className="bg-white p-4 rounded-lg border border-red-200">
+                  <p className="text-sm text-gray-700 mb-2">
+                    <strong>Use Case:</strong> {useCase?.title}
+                  </p>
+                  {useCase?.information_needed && (
+                    <p className="text-sm text-gray-700">
+                      <strong>Benötigte Informationen:</strong> {useCase.information_needed}
+                    </p>
                   )}
-                </Button>
+                </div>
               </CardContent>
             </Card>
           )}
