@@ -1,3 +1,4 @@
+
 // src/pages/CallCenter.tsx
 import React, { useEffect } from 'react';
 import PhoneInterface from '@/components/call-center/PhoneInterface';
@@ -56,16 +57,16 @@ const CallCenter: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between items-center bg-card rounded-lg p-4 border shadow-sm">
           <h1 className="text-2xl font-bold">Call Center</h1>
           <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-            <VoiceStatusButton className="shadow-sm" />
+            <VoiceStatusButton />
             {isAdmin && (
-              <TwilioSetupStatus compact={true} />
+              <TwilioSetupStatus />
             )}
           </div>
         </div>
         
         {/* Alert Section - Only shown when needed */}
         {!isSetup && (
-          <Alert variant="warning" className="mb-2">
+          <Alert variant="destructive" className="mb-2">
             <InfoIcon className="h-5 w-5" />
             <AlertTitle>Telefonsystem nicht initialisiert</AlertTitle>
             <AlertDescription>
@@ -132,7 +133,7 @@ const CallCenter: React.FC = () => {
           <div className="space-y-6">
             <div className="bg-card rounded-lg p-4 border shadow-sm">
               <h3 className="font-medium text-lg mb-3">Systemstatus</h3>
-              <TwilioSetupStatus expanded={true} />
+              <TwilioSetupStatus />
             </div>
             
             {isAdmin && (
