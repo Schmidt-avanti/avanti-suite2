@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   CheckCircle, 
   Circle, 
@@ -20,7 +22,10 @@ import {
   Plus,
   SkipForward,
   Edit3,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  Phone,
+  HelpCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -34,14 +39,32 @@ interface DatabaseUseCase {
   type: string | null;
 }
 
+interface GeneratedWorkflowStep {
+  id: string;
+  title: string;
+  question: string;
+  conversationHelp: string;
+  inputType: 'text' | 'textarea' | 'phone' | 'email' | 'select' | 'checkbox';
+  options?: string[];
+  required: boolean;
+  placeholder?: string;
+}
+
 interface WorkflowStep {
   id: string;
   originalIndex: number;
   title: string;
+  question?: string;
+  conversationHelp?: string;
+  inputType?: string;
+  options?: string[];
+  required?: boolean;
+  placeholder?: string;
   completed: boolean;
   value?: string;
   isDeviation?: boolean;
   deviationReason?: string;
+  isAiGenerated?: boolean;
 }
 
 interface Deviation {
@@ -70,6 +93,7 @@ export const SmartWorkflowInterface: React.FC<SmartWorkflowInterfaceProps> = ({
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingSteps, setIsGeneratingSteps] = useState(false);
   const [finalNotes, setFinalNotes] = useState('');
   const [deviations, setDeviations] = useState<Deviation[]>([]);
   const [showDeviationDialog, setShowDeviationDialog] = useState(false);
@@ -80,6 +104,7 @@ export const SmartWorkflowInterface: React.FC<SmartWorkflowInterfaceProps> = ({
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [showConversationHelp, setShowConversationHelp] = useState<{[key: string]: boolean}>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -101,17 +126,18 @@ export const SmartWorkflowInterface: React.FC<SmartWorkflowInterfaceProps> = ({
       
       // Parse the real steps from the use case
       const realSteps = parseUseCaseSteps(data.steps || '');
-      console.log('Parsed steps:', realSteps);
       setWorkflowSteps(realSteps);
       
       // Add helpful welcome message
       setChatMessages([{
         role: 'assistant',
-        content: `Hallo! Ich helfe Ihnen bei der Bearbeitung: **${data.title}**
+        content: `Hallo! Ich helfe dir bei der Bearbeitung: **${data.title}**
 
 **Aktuelle Aufgabe:** ${realSteps[0]?.title || 'Erste Schritte laden...'}
 
-Falls ein Schritt nicht passt oder Sie vom Plan abweichen müssen, nutzen Sie die "Plan anpassen" Buttons. Ich unterstütze Sie gerne!`
+Falls ein Schritt nicht passt oder du vom Plan abweich musst, nutze die "Plan anpassen" Buttons. Ich unterstütze dich gerne!
+
+💡 **Tipp:** Klicke auf "KI-Schritte generieren" für intelligente, telefonfreundliche Arbeitsschritte!`
       }]);
       
     } catch (error: any) {
@@ -420,6 +446,170 @@ Führen Sie diesen Schritt durch und haken Sie ihn ab, wenn Sie fertig sind. Bei
     }
   };
 
+  const generateAiWorkflowSteps = async () => {
+    if (!useCase) return;
+
+    try {
+      setIsGeneratingSteps(true);
+      
+      const { data, error } = await supabase.functions.invoke('generate-workflow-steps', {
+        body: {
+          useCaseTitle: useCase.title,
+          informationNeeded: useCase.information_needed || '',
+          taskDescription: taskDescription,
+          steps: useCase.steps
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.steps) {
+        const aiSteps: WorkflowStep[] = data.steps.map((step: GeneratedWorkflowStep, index: number) => ({
+          id: step.id,
+          originalIndex: index,
+          title: step.title,
+          question: step.question,
+          conversationHelp: step.conversationHelp,
+          inputType: step.inputType,
+          options: step.options,
+          required: step.required,
+          placeholder: step.placeholder,
+          completed: false,
+          isAiGenerated: true,
+          isDeviation: false
+        }));
+
+        setWorkflowSteps(aiSteps);
+        setCurrentStepIndex(0);
+
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `🎉 **KI-Schritte erfolgreich generiert!**
+
+Ich habe ${aiSteps.length} intelligente, telefonfreundliche Arbeitsschritte für dich erstellt. Jeder Schritt enthält:
+
+✅ **Konkrete Fragen** für das Telefongespräch
+🗣️ **Gesprächsführungs-Hilfen** für schwierige Situationen  
+📝 **Passende Eingabefelder** für die Dokumentation
+
+Beginne jetzt mit Schritt 1: **${aiSteps[0]?.title}**`
+        }]);
+
+        toast({
+          title: "KI-Schritte generiert!",
+          description: `${aiSteps.length} intelligente Arbeitsschritte wurden erstellt.`,
+        });
+      } else if (data.fallback) {
+        // Fallback to original steps
+        toast({
+          title: "KI nicht verfügbar",
+          description: "Verwende Standard-Schritte. KI-Service temporär nicht erreichbar.",
+          variant: "destructive"
+        });
+      }
+
+    } catch (error: any) {
+      console.error('Error generating AI steps:', error);
+      toast({
+        variant: "destructive",
+        title: "KI-Fehler",
+        description: "KI-Schritte konnten nicht generiert werden. Verwende Standard-Schritte."
+      });
+    } finally {
+      setIsGeneratingSteps(false);
+    }
+  };
+
+  const toggleConversationHelp = (stepId: string) => {
+    setShowConversationHelp(prev => ({
+      ...prev,
+      [stepId]: !prev[stepId]
+    }));
+  };
+
+  const renderStepInput = (step: WorkflowStep) => {
+    const inputId = `input-${step.id}`;
+    
+    switch (step.inputType) {
+      case 'textarea':
+        return (
+          <Textarea
+            id={inputId}
+            placeholder={step.placeholder || "Deine Eingabe..."}
+            value={step.value || ''}
+            onChange={(e) => updateStepValue(step.id, e.target.value)}
+            className="min-h-20 text-base"
+          />
+        );
+      
+      case 'phone':
+        return (
+          <div className="relative">
+            <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              id={inputId}
+              type="tel"
+              placeholder={step.placeholder || "Telefonnummer"}
+              value={step.value || ''}
+              onChange={(e) => updateStepValue(step.id, e.target.value)}
+              className="pl-10 text-base"
+            />
+          </div>
+        );
+      
+      case 'email':
+        return (
+          <Input
+            id={inputId}
+            type="email"
+            placeholder={step.placeholder || "E-Mail-Adresse"}
+            value={step.value || ''}
+            onChange={(e) => updateStepValue(step.id, e.target.value)}
+            className="text-base"
+          />
+        );
+      
+      case 'select':
+        return (
+          <Select value={step.value || ''} onValueChange={(value) => updateStepValue(step.id, value)}>
+            <SelectTrigger className="text-base">
+              <SelectValue placeholder={step.placeholder || "Bitte auswählen..."} />
+            </SelectTrigger>
+            <SelectContent>
+              {step.options?.map((option, index) => (
+                <SelectItem key={index} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      
+      case 'checkbox':
+        return (
+          <div className="flex items-center space-x-3 p-3 border border-gray-300 rounded-lg bg-white">
+            <Checkbox
+              checked={step.completed || false}
+              onCheckedChange={(checked) => updateStepValue(step.id, checked)}
+              className="h-5 w-5"
+            />
+            <span className="text-lg">{step.question || step.title}</span>
+          </div>
+        );
+      
+      default:
+        return (
+          <Input
+            id={inputId}
+            placeholder={step.placeholder || "Deine Eingabe..."}
+            value={step.value || ''}
+            onChange={(e) => updateStepValue(step.id, e.target.value)}
+            className="text-base"
+          />
+        );
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -448,6 +638,24 @@ Führen Sie diesen Schritt durch und haken Sie ihn ab, wenn Sie fertig sind. Bei
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={generateAiWorkflowSteps}
+            disabled={isGeneratingSteps}
+            className="bg-gradient-to-r from-purple-500 to-blue-500 text-white border-none hover:from-purple-600 hover:to-blue-600"
+          >
+            {isGeneratingSteps ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Generiere...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                KI-Schritte generieren
+              </>
+            )}
+          </Button>
           <Badge variant="secondary" className="text-sm px-3 py-1">
             Schritt {currentStepIndex + 1} von {workflowSteps.length}
           </Badge>
@@ -498,6 +706,12 @@ Führen Sie diesen Schritt durch und haken Sie ihn ab, wenn Sie fertig sind. Bei
                   )}
                 </div>
                 <div className="font-medium line-clamp-2">{step.title}</div>
+                {step.isAiGenerated && (
+                  <div className="text-xs text-purple-600 mt-1 flex items-center justify-center">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    KI
+                  </div>
+                )}
                 {step.isDeviation && (
                   <div className="text-xs text-orange-600 mt-1">Abweichung</div>
                 )}
@@ -520,6 +734,12 @@ Führen Sie diesen Schritt durch und haken Sie ihn ab, wenn Sie fertig sind. Bei
                   </div>
                   <div className="flex-1">
                     <div className="text-xl text-blue-900">{currentStep.title}</div>
+                    {currentStep.isAiGenerated && (
+                      <div className="text-sm text-purple-600 mt-1 flex items-center">
+                        <Sparkles className="h-4 w-4 mr-1" />
+                        KI-generierter Schritt
+                      </div>
+                    )}
                     {currentStep.isDeviation && (
                       <div className="text-sm text-orange-600 mt-1">
                         ⚠️ Abweichung: {currentStep.deviationReason}
@@ -531,33 +751,76 @@ Führen Sie diesen Schritt durch und haken Sie ihn ab, wenn Sie fertig sind. Bei
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
                 
-                {/* Step completion */}
-                <div className="space-y-3">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                {/* Question and Conversation Help */}
+                {currentStep.question && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <div className="flex items-start gap-2">
-                      <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <h4 className="font-semibold text-blue-900 mb-2">Führen Sie diesen Schritt durch:</h4>
-                        <p className="text-blue-800">{currentStep.title}</p>
+                      <Phone className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-green-900 mb-2">Frage an den Anrufer:</h4>
+                        <p className="text-green-800 text-lg font-medium">"{currentStep.question}"</p>
+                        
+                        {currentStep.conversationHelp && (
+                          <div className="mt-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleConversationHelp(currentStep.id)}
+                              className="text-green-700 hover:text-green-900 p-0 h-auto font-normal"
+                            >
+                              <HelpCircle className="h-4 w-4 mr-1" />
+                              {showConversationHelp[currentStep.id] ? 'Gesprächshilfe ausblenden' : 'Gesprächshilfe anzeigen'}
+                            </Button>
+                            
+                            {showConversationHelp[currentStep.id] && (
+                              <div className="mt-2 p-3 bg-green-100 border border-green-300 rounded text-sm">
+                                <p className="font-medium text-green-900 mb-1">💬 Gesprächsführungs-Hilfe:</p>
+                                <p className="text-green-800">{currentStep.conversationHelp}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
+                )}
 
-                  <div className="flex items-center space-x-3 p-3 border border-gray-300 rounded-lg bg-white">
-                    <Checkbox
-                      checked={currentStep.completed || false}
-                      onCheckedChange={(checked) => updateStepValue(currentStep.id, checked)}
-                      className="h-5 w-5"
-                    />
-                    <span className="text-lg">Dieser Schritt ist erledigt</span>
-                  </div>
+                {/* Step completion */}
+                <div className="space-y-3">
+                  {!currentStep.question && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-semibold text-blue-900 mb-2">Führe diesen Schritt durch:</h4>
+                          <p className="text-blue-800">{currentStep.title}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-                  <Textarea
-                    placeholder="Notizen zu diesem Schritt (optional)..."
-                    value={currentStep.value || ''}
-                    onChange={(e) => updateStepValue(currentStep.id, e.target.value)}
-                    className="min-h-16 text-base"
-                  />
+                  {currentStep.inputType !== 'checkbox' && (
+                    <div className="space-y-2">
+                      <label htmlFor={`input-${currentStep.id}`} className="block text-sm font-medium text-gray-700">
+                        {currentStep.question || 'Dokumentation'}
+                        {currentStep.required && <span className="text-red-500 ml-1">*</span>}
+                      </label>
+                      {renderStepInput(currentStep)}
+                    </div>
+                  )}
+
+                  {currentStep.inputType === 'checkbox' ? (
+                    renderStepInput(currentStep)
+                  ) : (
+                    <div className="flex items-center space-x-3 p-3 border border-gray-300 rounded-lg bg-white">
+                      <Checkbox
+                        checked={currentStep.completed || false}
+                        onCheckedChange={(checked) => updateStepValue(currentStep.id, checked)}
+                        className="h-5 w-5"
+                      />
+                      <span className="text-lg">Dieser Schritt ist erledigt</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Deviation buttons */}
