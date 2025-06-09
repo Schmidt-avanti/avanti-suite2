@@ -115,8 +115,7 @@ Generiere 3-6 konkrete, telefonfreundliche Arbeitsschritte in Du-Form, die einem
     console.error('Error in generate-workflow-steps function:', error);
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message,
-      fallback: true
+      error: error.message
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

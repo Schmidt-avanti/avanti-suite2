@@ -124,20 +124,14 @@ export const SmartWorkflowInterface: React.FC<SmartWorkflowInterfaceProps> = ({
       
       setUseCase(data);
       
-      // Parse the real steps from the use case
-      const realSteps = parseUseCaseSteps(data.steps || '');
-      setWorkflowSteps(realSteps);
-      
       // Add helpful welcome message
       setChatMessages([{
         role: 'assistant',
         content: `Hallo! Ich helfe dir bei der Bearbeitung: **${data.title}**
 
-**Aktuelle Aufgabe:** ${realSteps[0]?.title || 'Erste Schritte laden...'}
+Um mit der strukturierten Bearbeitung zu beginnen, klicke auf "KI-Schritte generieren". Dies erstellt intelligente, telefonfreundliche Arbeitsschritte.
 
-Falls ein Schritt nicht passt oder du vom Plan abweich musst, nutze die "Plan anpassen" Buttons. Ich unterstütze dich gerne!
-
-💡 **Tipp:** Klicke auf "KI-Schritte generieren" für intelligente, telefonfreundliche Arbeitsschritte!`
+💡 **Wichtig:** Ohne KI-Schritte steht dir nur der Chat zur Verfügung!`
       }]);
       
     } catch (error: any) {
@@ -150,58 +144,6 @@ Falls ein Schritt nicht passt oder du vom Plan abweich musst, nutze die "Plan an
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const parseUseCaseSteps = (stepsString: string): WorkflowStep[] => {
-    if (!stepsString) return [];
-    
-    console.log('Original steps string:', stepsString);
-    
-    // Try different patterns to split numbered steps
-    let stepLines: string[] = [];
-    
-    // Pattern 1: "1. Step, 2. Step, 3. Step" (comma-separated)
-    if (stepsString.includes(',') && /\d+\.\s/.test(stepsString)) {
-      stepLines = stepsString.split(',').map(s => s.trim());
-    }
-    // Pattern 2: "1. Step\n2. Step\n3. Step" (newline-separated)
-    else if (stepsString.includes('\n') && /\d+\.\s/.test(stepsString)) {
-      stepLines = stepsString.split('\n').filter(line => line.trim());
-    }
-    // Pattern 3: Manual split by number patterns like "1. text 2. text 3. text"
-    else if (/\d+\.\s/.test(stepsString)) {
-      // Split by number patterns like "1. ", "2. ", etc.
-      const matches = stepsString.split(/(?=\d+\.\s)/);
-      stepLines = matches.filter(match => match.trim()).map(match => match.trim());
-    }
-    // Fallback: treat as single step
-    else {
-      stepLines = [stepsString.trim()];
-    }
-    
-    console.log('Split step lines:', stepLines);
-    
-    return stepLines
-      .filter(step => step.trim())
-      .map((step, index) => {
-        // Clean up the step text - remove leading numbers and clean whitespace
-        let cleanStep = step.trim();
-        
-        // Remove leading number pattern like "1. " or "2. "
-        cleanStep = cleanStep.replace(/^\d+\.\s*/, '');
-        
-        // Remove trailing commas or periods if they exist
-        cleanStep = cleanStep.replace(/[,.]$/, '');
-        
-        return {
-          id: `step-${index}`,
-          originalIndex: index,
-          title: cleanStep.trim(),
-          completed: false,
-          isDeviation: false
-        };
-      })
-      .filter(step => step.title.length > 0); // Remove empty steps
   };
 
   const updateStepValue = (stepId: string, value: string | boolean) => {
@@ -499,22 +441,50 @@ Beginne jetzt mit Schritt 1: **${aiSteps[0]?.title}**`
           title: "KI-Schritte generiert!",
           description: `${aiSteps.length} intelligente Arbeitsschritte wurden erstellt.`,
         });
-      } else if (data.fallback) {
-        // Fallback to original steps
+      } else {
+        // No fallback - just inform the user
         toast({
-          title: "KI nicht verfügbar",
-          description: "Verwende Standard-Schritte. KI-Service temporär nicht erreichbar.",
+          title: "KI-Service nicht verfügbar",
+          description: "Die KI-Schritte können derzeit nicht generiert werden. Bitte versuchen Sie es später erneut.",
           variant: "destructive"
         });
+        
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `❌ **KI-Service derzeit nicht verfügbar**
+
+Die intelligenten Arbeitsschritte können momentan nicht generiert werden.
+
+**Was Sie tun können:**
+- Versuchen Sie es in wenigen Minuten erneut  
+- Nutzen Sie den Chat für Fragen und Unterstützung
+- Dokumentieren Sie Ihre Arbeit manuell
+
+Entschuldigung für die Unannehmlichkeiten!`
+        }]);
       }
 
     } catch (error: any) {
       console.error('Error generating AI steps:', error);
       toast({
         variant: "destructive",
-        title: "KI-Fehler",
-        description: "KI-Schritte konnten nicht generiert werden. Verwende Standard-Schritte."
+        title: "KI-Service nicht verfügbar",
+        description: "Die KI-Schritte können derzeit nicht generiert werden. Bitte versuchen Sie es später erneut."
       });
+      
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `❌ **Technischer Fehler beim KI-Service**
+
+Die intelligenten Arbeitsschritte können momentan nicht generiert werden.
+
+**Was Sie tun können:**
+- Versuchen Sie es in wenigen Minuten erneut  
+- Nutzen Sie den Chat für Fragen und Unterstützung
+- Dokumentieren Sie Ihre Arbeit manuell
+
+Entschuldigung für die Unannehmlichkeiten!`
+      }]);
     } finally {
       setIsGeneratingSteps(false);
     }
@@ -622,6 +592,7 @@ Beginne jetzt mit Schritt 1: **${aiSteps[0]?.title}**`
   }
 
   const currentStep = getCurrentStep();
+  const hasWorkflowSteps = workflowSteps.length > 0;
 
   return (
     <div className="max-w-7xl mx-auto p-6">
@@ -634,7 +605,9 @@ Beginne jetzt mit Schritt 1: **${aiSteps[0]?.title}**`
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-blue-900">{useCase?.title}</h1>
-            <p className="text-blue-700">Schritt-für-Schritt Abarbeitung der Kundenanfrage</p>
+            <p className="text-blue-700">
+              {hasWorkflowSteps ? 'Schritt-für-Schritt Abarbeitung der Kundenanfrage' : 'Generiere KI-Schritte für strukturierte Bearbeitung'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -656,76 +629,82 @@ Beginne jetzt mit Schritt 1: **${aiSteps[0]?.title}**`
               </>
             )}
           </Button>
-          <Badge variant="secondary" className="text-sm px-3 py-1">
-            Schritt {currentStepIndex + 1} von {workflowSteps.length}
-          </Badge>
-          {deviations.length > 0 && (
-            <Badge variant="outline" className="text-orange-600 border-orange-300">
-              {deviations.length} Abweichung{deviations.length > 1 ? 'en' : ''}
-            </Badge>
+          {hasWorkflowSteps && (
+            <>
+              <Badge variant="secondary" className="text-sm px-3 py-1">
+                Schritt {currentStepIndex + 1} von {workflowSteps.length}
+              </Badge>
+              {deviations.length > 0 && (
+                <Badge variant="outline" className="text-orange-600 border-orange-300">
+                  {deviations.length} Abweichung{deviations.length > 1 ? 'en' : ''}
+                </Badge>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* Progress */}
-      <Card className="mb-6 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-blue-900">Gesamtfortschritt</span>
-            <span className="text-sm text-blue-700 font-medium">
-              {getCompletedSteps()}/{workflowSteps.length} Schritte abgeschlossen
-            </span>
-          </div>
-          <Progress value={getProgressPercentage()} className="mb-4" />
-          
-          <div className="flex gap-1 overflow-x-auto">
-            {workflowSteps.map((step, index) => (
-              <div
-                key={step.id}
-                className={`flex-1 min-w-[120px] p-3 rounded-lg text-center text-xs transition-all ${
-                  index === currentStepIndex
-                    ? 'bg-blue-500 text-white border-2 border-blue-600 shadow-md'
-                    : step.completed
-                    ? step.isDeviation 
-                      ? 'bg-orange-100 text-orange-800 border border-orange-300'
-                      : 'bg-green-100 text-green-800 border border-green-300'
-                    : 'bg-gray-100 text-gray-600 border border-gray-200'
-                }`}
-              >
-                <div className="flex items-center justify-center mb-1">
-                  {step.completed ? (
-                    step.isDeviation ? (
-                      <AlertTriangle className="h-4 w-4" />
+      {/* Progress - Only show if we have workflow steps */}
+      {hasWorkflowSteps && (
+        <Card className="mb-6 border-blue-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-blue-900">Gesamtfortschritt</span>
+              <span className="text-sm text-blue-700 font-medium">
+                {getCompletedSteps()}/{workflowSteps.length} Schritte abgeschlossen
+              </span>
+            </div>
+            <Progress value={getProgressPercentage()} className="mb-4" />
+            
+            <div className="flex gap-1 overflow-x-auto">
+              {workflowSteps.map((step, index) => (
+                <div
+                  key={step.id}
+                  className={`flex-1 min-w-[120px] p-3 rounded-lg text-center text-xs transition-all ${
+                    index === currentStepIndex
+                      ? 'bg-blue-500 text-white border-2 border-blue-600 shadow-md'
+                      : step.completed
+                      ? step.isDeviation 
+                        ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                        : 'bg-green-100 text-green-800 border border-green-300'
+                      : 'bg-gray-100 text-gray-600 border border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-center mb-1">
+                    {step.completed ? (
+                      step.isDeviation ? (
+                        <AlertTriangle className="h-4 w-4" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4" />
+                      )
+                    ) : index === currentStepIndex ? (
+                      <Target className="h-4 w-4" />
                     ) : (
-                      <CheckCircle className="h-4 w-4" />
-                    )
-                  ) : index === currentStepIndex ? (
-                    <Target className="h-4 w-4" />
-                  ) : (
-                    <Circle className="h-4 w-4" />
+                      <Circle className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div className="font-medium line-clamp-2">{step.title}</div>
+                  {step.isAiGenerated && (
+                    <div className="text-xs text-purple-600 mt-1 flex items-center justify-center">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      KI
+                    </div>
+                  )}
+                  {step.isDeviation && (
+                    <div className="text-xs text-orange-600 mt-1">Abweichung</div>
                   )}
                 </div>
-                <div className="font-medium line-clamp-2">{step.title}</div>
-                {step.isAiGenerated && (
-                  <div className="text-xs text-purple-600 mt-1 flex items-center justify-center">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    KI
-                  </div>
-                )}
-                {step.isDeviation && (
-                  <div className="text-xs text-orange-600 mt-1">Abweichung</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Current Step */}
-          {currentStep && (
+          {/* Current Step - Only show if we have workflow steps */}
+          {hasWorkflowSteps && currentStep && (
             <Card className="border-2 border-blue-300">
               <CardHeader className="bg-blue-50">
                 <CardTitle className="flex items-center gap-3">
@@ -884,8 +863,8 @@ Beginne jetzt mit Schritt 1: **${aiSteps[0]?.title}**`
             </Card>
           )}
 
-          {/* Final Notes - shown on last step */}
-          {currentStepIndex === workflowSteps.length - 1 && (
+          {/* Final Notes - shown on last step only if we have workflow steps */}
+          {hasWorkflowSteps && currentStepIndex === workflowSteps.length - 1 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -910,6 +889,36 @@ Beginne jetzt mit Schritt 1: **${aiSteps[0]?.title}**`
               </CardContent>
             </Card>
           )}
+
+          {/* No Workflow Steps Message */}
+          {!hasWorkflowSteps && (
+            <Card className="border-2 border-dashed border-gray-300">
+              <CardContent className="text-center py-12">
+                <Sparkles className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">Keine Workflow-Schritte aktiv</h3>
+                <p className="text-gray-600 mb-6">
+                  Klicken Sie auf "KI-Schritte generieren", um intelligente, strukturierte Arbeitsschritte zu erstellen.
+                </p>
+                <Button 
+                  onClick={generateAiWorkflowSteps}
+                  disabled={isGeneratingSteps}
+                  className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                >
+                  {isGeneratingSteps ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Generiere KI-Schritte...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      KI-Schritte generieren
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -925,11 +934,13 @@ Beginne jetzt mit Schritt 1: **${aiSteps[0]?.title}**`
                 <span className="font-medium">Use Case:</span>
                 <span>{useCase?.type || 'Standard'}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4" />
-                <span className="font-medium">Fortschritt:</span>
-                <span>{getCompletedSteps()}/{workflowSteps.length} Schritte</span>
-              </div>
+              {hasWorkflowSteps && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4" />
+                  <span className="font-medium">Fortschritt:</span>
+                  <span>{getCompletedSteps()}/{workflowSteps.length} Schritte</span>
+                </div>
+              )}
               <div className="border-t pt-3">
                 <p className="text-sm text-gray-600 font-medium mb-1">Beschreibung:</p>
                 <p className="text-sm text-gray-800">{taskDescription.substring(0, 150)}...</p>
