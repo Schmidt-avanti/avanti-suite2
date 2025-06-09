@@ -11,6 +11,9 @@ import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog'
 import { NoUseCaseDialog } from '@/components/tasks/NoUseCaseDialog';
 import { UseCaseSelectionInterface } from '@/components/tasks/UseCaseSelectionInterface';
 import { StructuredWorkflowInterface } from '@/components/tasks/StructuredWorkflowInterface';
+import { SmartUseCaseSelection } from '@/components/tasks/SmartUseCaseSelection';
+import { SmartWorkflowInterface } from '@/components/tasks/SmartWorkflowInterface';
+import { ManualProcessingInterface } from '@/components/tasks/ManualProcessingInterface';
 import { TaskChat } from "@/components/tasks/TaskChat";
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
