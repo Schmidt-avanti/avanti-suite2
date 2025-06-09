@@ -940,6 +940,54 @@ export type Database = {
           },
         ]
       }
+      task_sessions: {
+        Row: {
+          created_at: string | null
+          duration_seconds: number | null
+          end_time: string | null
+          id: string
+          start_time: string
+          task_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          end_time?: string | null
+          id?: string
+          start_time?: string
+          task_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          end_time?: string | null
+          id?: string
+          start_time?: string
+          task_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_sessions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_times: {
         Row: {
           created_at: string

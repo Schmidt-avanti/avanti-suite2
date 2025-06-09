@@ -11,19 +11,21 @@ import {
   Circle, 
   MessageSquare, 
   AlertTriangle, 
-  HelpCircle, 
-  Lightbulb, 
   ArrowLeft, 
   Send,
-  FileText,
   Clock,
   User,
   Info,
   ChevronRight,
-  Target
+  Target,
+  Plus,
+  SkipForward,
+  Edit3,
+  AlertCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface DatabaseUseCase {
   id: string;
@@ -35,16 +37,18 @@ interface DatabaseUseCase {
 
 interface WorkflowStep {
   id: string;
+  originalIndex: number;
   title: string;
-  description: string;
-  detailedInstructions: string;
-  helpText?: string;
-  type: 'checkbox' | 'textarea' | 'action';
-  required: boolean;
-  completed?: boolean;
+  completed: boolean;
   value?: string;
-  suggestions?: string[];
-  exampleAnswer?: string;
+  isDeviation?: boolean;
+  deviationReason?: string;
+}
+
+interface Deviation {
+  stepIndex: number;
+  reason: string;
+  newSteps?: string[];
 }
 
 interface SmartWorkflowInterfaceProps {
@@ -68,6 +72,11 @@ export const SmartWorkflowInterface: React.FC<SmartWorkflowInterfaceProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [finalNotes, setFinalNotes] = useState('');
+  const [deviations, setDeviations] = useState<Deviation[]>([]);
+  const [showDeviationDialog, setShowDeviationDialog] = useState(false);
+  const [deviationType, setDeviationType] = useState<'skip' | 'add' | 'modify'>('modify');
+  const [deviationReason, setDeviationReason] = useState('');
+  const [additionalStep, setAdditionalStep] = useState('');
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   const [chatInput, setChatInput] = useState('');
@@ -91,76 +100,18 @@ export const SmartWorkflowInterface: React.FC<SmartWorkflowInterfaceProps> = ({
       
       setUseCase(data);
       
-      // Create clear, detailed workflow steps
-      const steps: WorkflowStep[] = [
-        {
-          id: '1',
-          title: 'Kundenanfrage analysieren',
-          description: 'Verstehen Sie genau, was der Kunde möchte',
-          detailedInstructions: 'Lesen Sie die Kundenanfrage aufmerksam durch und identifizieren Sie das Hauptproblem. Fassen Sie in eigenen Worten zusammen, was der Kunde benötigt.',
-          helpText: `Die Kundenanfrage lautet: "${taskDescription.substring(0, 200)}${taskDescription.length > 200 ? '...' : ''}"`,
-          type: 'textarea',
-          required: true,
-          exampleAnswer: 'Der Kunde hat ein Problem mit...',
-          suggestions: [
-            'Der Kunde meldet ein technisches Problem',
-            'Der Kunde benötigt Informationen zu',
-            'Der Kunde möchte eine Störung melden'
-          ]
-        },
-        {
-          id: '2',
-          title: 'Lösungsweg bestimmen',
-          description: 'Entscheiden Sie, wie Sie dem Kunden helfen können',
-          detailedInstructions: 'Überlegen Sie, welche konkreten Schritte notwendig sind, um das Problem des Kunden zu lösen. Beschreiben Sie Ihren Lösungsansatz.',
-          helpText: 'Denken Sie daran: Können Sie direkt helfen, muss jemand anders kontaktiert werden, oder benötigen Sie weitere Informationen?',
-          type: 'textarea',
-          required: true,
-          exampleAnswer: 'Ich werde dem Kunden helfen, indem ich...',
-          suggestions: [
-            'Direkte Hilfe durch Anleitung',
-            'Weiterleitung an Techniker',
-            'Weitere Informationen erforderlich'
-          ]
-        },
-        {
-          id: '3',
-          title: 'Maßnahmen durchführen',
-          description: 'Führen Sie die geplanten Schritte aus',
-          detailedInstructions: 'Setzen Sie Ihren Lösungsplan um. Das kann eine Anleitung für den Kunden sein, ein Technikertermin, oder andere konkrete Aktionen.',
-          helpText: 'Dokumentieren Sie alle Schritte, die Sie unternommen haben',
-          type: 'textarea',
-          required: true,
-          exampleAnswer: 'Ich habe folgende Maßnahmen durchgeführt...',
-          suggestions: [
-            'Anleitung gegeben',
-            'Techniker beauftragt',
-            'Informationen übermittelt'
-          ]
-        },
-        {
-          id: '4',
-          title: 'Kunde informieren',
-          description: 'Bestätigen Sie, dass der Kunde informiert wurde',
-          detailedInstructions: 'Haben Sie den Kunden über das Ergebnis oder die nächsten Schritte informiert? Dies ist wichtig für die Kundenzufriedenheit.',
-          helpText: 'Der Kunde sollte wissen, was als nächstes passiert',
-          type: 'checkbox',
-          required: true
-        }
-      ];
-      
-      setWorkflowSteps(steps);
+      // Parse the real steps from the use case
+      const realSteps = parseUseCaseSteps(data.steps || '');
+      setWorkflowSteps(realSteps);
       
       // Add helpful welcome message
       setChatMessages([{
         role: 'assistant',
-        content: `Hallo! Ich helfe Ihnen bei der Bearbeitung dieser ${data.type || 'Kundenanfrage'}. 
+        content: `Hallo! Ich helfe Ihnen bei der Bearbeitung: **${data.title}**
 
-**Ihr aktueller Schritt:** ${steps[0].title}
+**Aktuelle Aufgabe:** ${realSteps[0]?.title || 'Erste Schritte laden...'}
 
-${steps[0].detailedInstructions}
-
-Falls Sie Fragen haben oder Unterstützung benötigen, können Sie mich jederzeit fragen!`
+Falls ein Schritt nicht passt oder Sie vom Plan abweichen müssen, nutzen Sie die "Plan anpassen" Buttons. Ich unterstütze Sie gerne!`
       }]);
       
     } catch (error: any) {
@@ -173,6 +124,21 @@ Falls Sie Fragen haben oder Unterstützung benötigen, können Sie mich jederzei
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const parseUseCaseSteps = (stepsString: string): WorkflowStep[] => {
+    if (!stepsString) return [];
+    
+    // Split by line breaks and filter empty lines
+    const stepLines = stepsString.split('\n').filter(line => line.trim());
+    
+    return stepLines.map((step, index) => ({
+      id: `step-${index}`,
+      originalIndex: index,
+      title: step.trim(),
+      completed: false,
+      isDeviation: false
+    }));
   };
 
   const updateStepValue = (stepId: string, value: string | boolean) => {
@@ -192,7 +158,7 @@ Falls Sie Fragen haben oder Unterstützung benötigen, können Sie mich jederzei
   const getProgressPercentage = () => (getCompletedSteps() / workflowSteps.length) * 100;
   const canProceedToNext = () => {
     const currentStep = getCurrentStep();
-    return currentStep && (!currentStep.required || currentStep.completed);
+    return currentStep && currentStep.completed;
   };
 
   const handleNextStep = () => {
@@ -206,9 +172,7 @@ Falls Sie Fragen haben oder Unterstützung benötigen, können Sie mich jederzei
         role: 'assistant',
         content: `Gut gemacht! Sie sind jetzt bei Schritt ${nextIndex + 1}: **${nextStep.title}**
 
-${nextStep.detailedInstructions}
-
-Brauchen Sie Hilfe bei diesem Schritt?`
+Führen Sie diesen Schritt durch und haken Sie ihn ab, wenn Sie fertig sind. Bei Problemen nutzen Sie "Plan anpassen".`
       }]);
     }
   };
@@ -216,6 +180,101 @@ Brauchen Sie Hilfe bei diesem Schritt?`
   const handlePreviousStep = () => {
     if (currentStepIndex > 0) {
       setCurrentStepIndex(currentStepIndex - 1);
+    }
+  };
+
+  const handleDeviation = async (type: 'skip' | 'add' | 'modify') => {
+    setDeviationType(type);
+    setShowDeviationDialog(true);
+  };
+
+  const saveDeviation = async () => {
+    if (!deviationReason.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Grund erforderlich",
+        description: "Bitte geben Sie einen Grund für die Abweichung an."
+      });
+      return;
+    }
+
+    try {
+      // Save deviation to database
+      const { error } = await supabase
+        .from('workflow_deviations')
+        .insert({
+          task_id: taskId,
+          use_case_id: useCaseId,
+          deviation_text: `${deviationType === 'skip' ? 'Schritt übersprungen' : 
+                          deviationType === 'add' ? 'Zusätzlicher Schritt' : 
+                          'Schritt geändert'}: ${getCurrentStep()?.title || 'Unbekannt'}. Grund: ${deviationReason}${
+                          deviationType === 'add' && additionalStep ? `. Zusätzlicher Schritt: ${additionalStep}` : ''}`
+        });
+
+      if (error) throw error;
+
+      // Handle different deviation types
+      if (deviationType === 'skip') {
+        // Mark current step as completed but note the deviation
+        const currentStep = getCurrentStep();
+        if (currentStep) {
+          updateStepValue(currentStep.id, true);
+          setWorkflowSteps(prev => prev.map(step => 
+            step.id === currentStep.id 
+              ? { ...step, isDeviation: true, deviationReason }
+              : step
+          ));
+        }
+      } else if (deviationType === 'add' && additionalStep.trim()) {
+        // Add new step after current one
+        const newStep: WorkflowStep = {
+          id: `deviation-${Date.now()}`,
+          originalIndex: currentStepIndex + 0.5,
+          title: additionalStep,
+          completed: false,
+          isDeviation: true,
+          deviationReason
+        };
+        
+        setWorkflowSteps(prev => [
+          ...prev.slice(0, currentStepIndex + 1),
+          newStep,
+          ...prev.slice(currentStepIndex + 1)
+        ]);
+      }
+
+      // Add to chat
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `Abweichung dokumentiert: ${deviationReason}${
+          deviationType === 'add' && additionalStep ? `\n\nZusätzlicher Schritt hinzugefügt: "${additionalStep}"` : ''
+        }\n\nSie können normal mit dem Workflow fortfahren.`
+      }]);
+
+      // Add deviation to local state
+      setDeviations(prev => [...prev, {
+        stepIndex: currentStepIndex,
+        reason: deviationReason,
+        newSteps: deviationType === 'add' && additionalStep ? [additionalStep] : undefined
+      }]);
+
+      toast({
+        title: "Abweichung dokumentiert",
+        description: "Die Abweichung wurde erfolgreich gespeichert."
+      });
+
+      // Reset dialog
+      setDeviationReason('');
+      setAdditionalStep('');
+      setShowDeviationDialog(false);
+
+    } catch (error: any) {
+      console.error('Error saving deviation:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Abweichung konnte nicht gespeichert werden."
+      });
     }
   };
 
@@ -228,7 +287,6 @@ Brauchen Sie Hilfe bei diesem Schritt?`
     setIsChatLoading(true);
     
     try {
-      // Call AI service for intelligent help
       const { data, error } = await supabase.functions.invoke('handle-task-chat', {
         body: {
           taskId: taskId,
@@ -237,7 +295,8 @@ Brauchen Sie Hilfe bei diesem Schritt?`
           context: {
             currentStep: getCurrentStep(),
             taskDescription: taskDescription,
-            completedSteps: workflowSteps.filter(s => s.completed)
+            completedSteps: workflowSteps.filter(s => s.completed),
+            deviations: deviations
           }
         }
       });
@@ -246,14 +305,14 @@ Brauchen Sie Hilfe bei diesem Schritt?`
       
       setChatMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: data.response || 'Entschuldigung, ich konnte Ihnen nicht helfen. Versuchen Sie es erneut oder wenden Sie sich an Ihren Supervisor.'
+        content: data.response || 'Entschuldigung, ich konnte Ihnen nicht helfen. Versuchen Sie es erneut.'
       }]);
       
     } catch (error) {
       console.error('Chat error:', error);
       setChatMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Entschuldigung, es gab einen technischen Fehler. Versuchen Sie es später erneut oder wenden Sie sich an Ihren Supervisor für weitere Hilfe.'
+        content: 'Entschuldigung, es gab einen technischen Fehler. Versuchen Sie es später erneut.'
       }]);
     } finally {
       setIsChatLoading(false);
@@ -261,15 +320,13 @@ Brauchen Sie Hilfe bei diesem Schritt?`
   };
 
   const handleCompleteTask = async () => {
-    const requiredStepsCompleted = workflowSteps
-      .filter(step => step.required)
-      .every(step => step.completed);
+    const requiredStepsCompleted = workflowSteps.every(step => step.completed);
       
     if (!requiredStepsCompleted) {
       toast({
         variant: "destructive",
-        title: "Pflichtschritte fehlen",
-        description: "Bitte vervollständigen Sie alle erforderlichen Schritte bevor Sie die Aufgabe abschließen."
+        title: "Alle Schritte erforderlich",
+        description: "Bitte vervollständigen Sie alle Schritte oder dokumentieren Sie Abweichungen."
       });
       return;
     }
@@ -277,14 +334,17 @@ Brauchen Sie Hilfe bei diesem Schritt?`
     try {
       setIsSaving(true);
       
-      // Save workflow progress
+      // Save workflow progress including deviations
       const workflowData = {
         steps: workflowSteps.map(step => ({
           id: step.id,
           title: step.title,
-          completed: step.completed || false,
-          value: step.value || ''
+          completed: step.completed,
+          value: step.value || '',
+          isDeviation: step.isDeviation || false,
+          deviationReason: step.deviationReason
         })),
+        deviations: deviations,
         finalNotes: finalNotes,
         completedAt: new Date().toISOString()
       };
@@ -300,7 +360,6 @@ Brauchen Sie Hilfe bei diesem Schritt?`
 
       if (error) throw error;
 
-      // Update task status
       await supabase
         .from('tasks')
         .update({ status: 'completed' })
@@ -308,7 +367,7 @@ Brauchen Sie Hilfe bei diesem Schritt?`
 
       toast({
         title: "Aufgabe erfolgreich abgeschlossen!",
-        description: "Alle Schritte wurden dokumentiert und die Aufgabe ist abgeschlossen."
+        description: `Alle Schritte wurden dokumentiert${deviations.length > 0 ? ` (${deviations.length} Abweichung${deviations.length > 1 ? 'en' : ''} dokumentiert)` : ''}.`
       });
 
       onTaskComplete();
@@ -348,12 +407,19 @@ Brauchen Sie Hilfe bei diesem Schritt?`
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-blue-900">{useCase?.title}</h1>
-            <p className="text-blue-700">Strukturierte Schritt-für-Schritt Bearbeitung</p>
+            <p className="text-blue-700">Schritt-für-Schritt Abarbeitung der Kundenanfrage</p>
           </div>
         </div>
-        <Badge variant="secondary" className="text-sm px-3 py-1">
-          Schritt {currentStepIndex + 1} von {workflowSteps.length}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-sm px-3 py-1">
+            Schritt {currentStepIndex + 1} von {workflowSteps.length}
+          </Badge>
+          {deviations.length > 0 && (
+            <Badge variant="outline" className="text-orange-600 border-orange-300">
+              {deviations.length} Abweichung{deviations.length > 1 ? 'en' : ''}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Progress */}
@@ -375,20 +441,29 @@ Brauchen Sie Hilfe bei diesem Schritt?`
                   index === currentStepIndex
                     ? 'bg-blue-500 text-white border-2 border-blue-600 shadow-md'
                     : step.completed
-                    ? 'bg-green-100 text-green-800 border border-green-300'
+                    ? step.isDeviation 
+                      ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                      : 'bg-green-100 text-green-800 border border-green-300'
                     : 'bg-gray-100 text-gray-600 border border-gray-200'
                 }`}
               >
                 <div className="flex items-center justify-center mb-1">
                   {step.completed ? (
-                    <CheckCircle className="h-4 w-4" />
+                    step.isDeviation ? (
+                      <AlertTriangle className="h-4 w-4" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )
                   ) : index === currentStepIndex ? (
                     <Target className="h-4 w-4" />
                   ) : (
                     <Circle className="h-4 w-4" />
                   )}
                 </div>
-                <div className="font-medium">{step.title}</div>
+                <div className="font-medium line-clamp-2">{step.title}</div>
+                {step.isDeviation && (
+                  <div className="text-xs text-orange-600 mt-1">Abweichung</div>
+                )}
               </div>
             ))}
           </div>
@@ -406,91 +481,74 @@ Brauchen Sie Hilfe bei diesem Schritt?`
                   <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
                     {currentStepIndex + 1}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <div className="text-xl text-blue-900">{currentStep.title}</div>
-                    <div className="text-blue-700 text-sm font-normal">{currentStep.description}</div>
+                    {currentStep.isDeviation && (
+                      <div className="text-sm text-orange-600 mt-1">
+                        ⚠️ Abweichung: {currentStep.deviationReason}
+                      </div>
+                    )}
                   </div>
-                  {currentStep.required && <Badge variant="destructive">Pflicht</Badge>}
+                  <Badge variant="default">Schritt {currentStepIndex + 1}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
                 
-                {/* Detailed Instructions */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start gap-2">
-                    <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <h4 className="font-semibold text-blue-900 mb-2">Was Sie jetzt tun müssen:</h4>
-                      <p className="text-blue-800">{currentStep.detailedInstructions}</p>
+                {/* Step completion */}
+                <div className="space-y-3">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-2">
+                      <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-semibold text-blue-900 mb-2">Führen Sie diesen Schritt durch:</h4>
+                        <p className="text-blue-800">{currentStep.title}</p>
+                      </div>
                     </div>
                   </div>
+
+                  <div className="flex items-center space-x-3 p-3 border border-gray-300 rounded-lg bg-white">
+                    <Checkbox
+                      checked={currentStep.completed || false}
+                      onCheckedChange={(checked) => updateStepValue(currentStep.id, checked)}
+                      className="h-5 w-5"
+                    />
+                    <span className="text-lg">Dieser Schritt ist erledigt</span>
+                  </div>
+
+                  <Textarea
+                    placeholder="Notizen zu diesem Schritt (optional)..."
+                    value={currentStep.value || ''}
+                    onChange={(e) => updateStepValue(currentStep.id, e.target.value)}
+                    className="min-h-16 text-base"
+                  />
                 </div>
 
-                {currentStep.helpText && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <div className="flex items-start gap-2">
-                      <HelpCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-yellow-800 font-medium">Zusätzliche Information:</p>
-                        <p className="text-sm text-yellow-700">{currentStep.helpText}</p>
-                      </div>
-                    </div>
+                {/* Deviation buttons */}
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Plan anpassen:</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <Dialog open={showDeviationDialog} onOpenChange={setShowDeviationDialog}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={() => handleDeviation('skip')}>
+                          <SkipForward className="h-4 w-4 mr-1" />
+                          Schritt überspringen
+                        </Button>
+                      </DialogTrigger>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={() => handleDeviation('add')}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Zusätzlicher Schritt
+                        </Button>
+                      </DialogTrigger>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={() => handleDeviation('modify')}>
+                          <Edit3 className="h-4 w-4 mr-1" />
+                          Schritt anpassen
+                        </Button>
+                      </DialogTrigger>
+                    </Dialog>
                   </div>
-                )}
-
-                {/* Step Input */}
-                {currentStep.type === 'checkbox' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3 p-3 border border-gray-300 rounded-lg">
-                      <Checkbox
-                        checked={currentStep.completed || false}
-                        onCheckedChange={(checked) => updateStepValue(currentStep.id, checked)}
-                        className="h-5 w-5"
-                      />
-                      <span className="text-lg">Ich habe diesen Schritt abgeschlossen</span>
-                    </div>
-                  </div>
-                )}
-
-                {currentStep.type === 'textarea' && (
-                  <div className="space-y-4">
-                    {currentStep.exampleAnswer && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                        <p className="text-sm font-medium text-green-800 mb-1">Beispiel für eine gute Antwort:</p>
-                        <p className="text-sm text-green-700 italic">"{currentStep.exampleAnswer}"</p>
-                      </div>
-                    )}
-                    
-                    <Textarea
-                      placeholder="Geben Sie hier Ihre Antwort ein..."
-                      value={currentStep.value || ''}
-                      onChange={(e) => updateStepValue(currentStep.id, e.target.value)}
-                      className="min-h-24 text-base"
-                    />
-                    
-                    {currentStep.suggestions && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium flex items-center gap-1">
-                          <Lightbulb className="h-4 w-4 text-yellow-500" />
-                          Schnelle Auswahl:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {currentStep.suggestions.map((suggestion, index) => (
-                            <Button
-                              key={index}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => updateStepValue(currentStep.id, suggestion)}
-                              className="text-xs"
-                            >
-                              {suggestion}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                </div>
 
                 {/* Navigation */}
                 <div className="flex justify-between pt-6 border-t">
@@ -531,17 +589,24 @@ Brauchen Sie Hilfe bei diesem Schritt?`
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Abschließende Notizen (Optional)
+                  <MessageSquare className="h-5 w-5" />
+                  Abschließende Zusammenfassung
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <Textarea
-                  placeholder="Zusätzliche Bemerkungen zur Bearbeitung..."
+                  placeholder="Zusammenfassung der Bearbeitung, wichtige Erkenntnisse..."
                   value={finalNotes}
                   onChange={(e) => setFinalNotes(e.target.value)}
                   className="min-h-20"
                 />
+                {deviations.length > 0 && (
+                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded">
+                    <p className="text-sm font-medium text-orange-800">
+                      {deviations.length} Abweichung{deviations.length > 1 ? 'en' : ''} dokumentiert
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -557,16 +622,16 @@ Brauchen Sie Hilfe bei diesem Schritt?`
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4" />
-                <span className="font-medium">Workflow:</span>
+                <span className="font-medium">Use Case:</span>
                 <span>{useCase?.type || 'Standard'}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Clock className="h-4 w-4" />
-                <span className="font-medium">Geschätzt:</span>
-                <span>10-20 Min.</span>
+                <span className="font-medium">Fortschritt:</span>
+                <span>{getCompletedSteps()}/{workflowSteps.length} Schritte</span>
               </div>
               <div className="border-t pt-3">
-                <p className="text-sm text-gray-600 font-medium mb-1">Kundenanfrage:</p>
+                <p className="text-sm text-gray-600 font-medium mb-1">Beschreibung:</p>
                 <p className="text-sm text-gray-800">{taskDescription.substring(0, 150)}...</p>
               </div>
             </CardContent>
@@ -637,6 +702,50 @@ Brauchen Sie Hilfe bei diesem Schritt?`
           </Card>
         </div>
       </div>
+
+      {/* Deviation Dialog */}
+      <Dialog open={showDeviationDialog} onOpenChange={setShowDeviationDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-500" />
+              Plan anpassen
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              {deviationType === 'skip' && 'Warum möchten Sie diesen Schritt überspringen?'}
+              {deviationType === 'add' && 'Welcher zusätzliche Schritt ist nötig?'}
+              {deviationType === 'modify' && 'Wie wurde dieser Schritt angepasst?'}
+            </p>
+            
+            <Textarea
+              placeholder="Grund für die Abweichung..."
+              value={deviationReason}
+              onChange={(e) => setDeviationReason(e.target.value)}
+              className="min-h-20"
+            />
+            
+            {deviationType === 'add' && (
+              <Textarea
+                placeholder="Beschreibung des zusätzlichen Schritts..."
+                value={additionalStep}
+                onChange={(e) => setAdditionalStep(e.target.value)}
+                className="min-h-16"
+              />
+            )}
+            
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowDeviationDialog(false)}>
+                Abbrechen
+              </Button>
+              <Button onClick={saveDeviation}>
+                Abweichung dokumentieren
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
