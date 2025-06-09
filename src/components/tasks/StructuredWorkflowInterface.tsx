@@ -34,7 +34,7 @@ interface StructuredWorkflowInterfaceProps {
   taskId: string;
   useCaseId: string;
   onTaskComplete: () => void;
-  onAddDeviation: (deviation: string) => void;
+  onAddDeviation: (useCaseId: string, deviation: string) => void;
 }
 
 export const StructuredWorkflowInterface: React.FC<StructuredWorkflowInterfaceProps> = ({
@@ -117,7 +117,7 @@ export const StructuredWorkflowInterface: React.FC<StructuredWorkflowInterfacePr
 
   const handleAddDeviation = () => {
     if (deviationText.trim()) {
-      onAddDeviation(deviationText);
+      onAddDeviation(useCaseId, deviationText);
       setDeviationText('');
       setShowDeviationInput(false);
       toast({
@@ -131,9 +131,20 @@ export const StructuredWorkflowInterface: React.FC<StructuredWorkflowInterfacePr
     try {
       setIsSaving(true);
       
+      // Convert WorkflowStep objects to plain objects that are JSON serializable
+      const serializableSteps = workflowSteps.map(step => ({
+        id: step.id,
+        title: step.title,
+        description: step.description,
+        type: step.type,
+        required: step.required,
+        completed: step.completed || false,
+        value: step.value || ''
+      }));
+      
       // Save workflow progress
       const workflowData = {
-        steps: workflowSteps,
+        steps: serializableSteps,
         notes: notes,
         completed_at: new Date().toISOString()
       };
@@ -143,7 +154,7 @@ export const StructuredWorkflowInterface: React.FC<StructuredWorkflowInterfacePr
         .upsert({
           task_id: taskId,
           use_case_id: useCaseId,
-          workflow_data: workflowData,
+          workflow_data: workflowData as any,
           completed: true
         });
 

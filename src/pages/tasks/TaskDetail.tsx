@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,6 +106,49 @@ const TaskDetail = () => {
     }
   }, [task, isNewTask]);
 
+  const findNextTask = async () => {
+    if (!user?.id) return null;
+    
+    try {
+      // Find next 'new' task assigned to this user
+      let query = supabase
+        .from('tasks')
+        .select('id')
+        .eq('status', 'new')
+        .eq('assigned_to', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1);
+        
+      const { data: newTasks, error: newTasksError } = await query;
+      
+      if (newTasksError) throw newTasksError;
+      
+      if (newTasks && newTasks.length > 0) {
+        return newTasks[0].id;
+      }
+      
+      // If no 'new' tasks, look for 'in_progress' tasks
+      const { data: inProgressTasks, error: inProgressTasksError } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('status', 'in_progress')
+        .eq('assigned_to', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1);
+        
+      if (inProgressTasksError) throw inProgressTasksError;
+      
+      if (inProgressTasks && inProgressTasks.length > 0) {
+        return inProgressTasks[0].id;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error finding next task:', error);
+      return null;
+    }
+  };
+
   const handleUseCaseSelected = (useCaseId: string) => {
     setSelectedUseCaseId(useCaseId);
     setShowUseCaseSelection(false);
@@ -128,6 +172,14 @@ const TaskDetail = () => {
         setIsActive(false);
         setTimeout(() => navigate('/tasks'), 100);
       }
+    }
+  };
+
+  const handleAddDeviation = async (useCaseId: string, deviationText: string) => {
+    try {
+      await addDeviation(useCaseId, deviationText);
+    } catch (error) {
+      console.error('Error adding deviation:', error);
     }
   };
 
@@ -290,7 +342,7 @@ const TaskDetail = () => {
             taskId={task.id}
             useCaseId={selectedUseCaseId}
             onTaskComplete={handleTaskComplete}
-            onAddDeviation={addDeviation}
+            onAddDeviation={handleAddDeviation}
           />
         </div>
       </div>
