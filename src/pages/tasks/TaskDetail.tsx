@@ -99,14 +99,16 @@ const TaskDetail = () => {
   // Fetch email threads for this task
   const { threads: emailThreads } = useEmailThreads(id || null);
 
-  // Check if task needs use case selection
+  // Always start with selection for new tasks, unless already assigned
   useEffect(() => {
-    if (task && isNewTask && !task.matched_use_case_id) {
+    if (task && isNewTask) {
+      // Always show selection interface for new tasks
       setInterfaceMode('selection');
     } else if (task && task.matched_use_case_id) {
       setSelectedUseCaseId(task.matched_use_case_id);
       setInterfaceMode('workflow');
     } else if (task) {
+      // For existing tasks without use case, show legacy interface
       setInterfaceMode('legacy');
     }
   }, [task, isNewTask]);
@@ -155,16 +157,20 @@ const TaskDetail = () => {
   };
 
   const handleUseCaseSelected = (useCaseId: string) => {
+    console.log('Use case selected:', useCaseId);
     setSelectedUseCaseId(useCaseId);
     setInterfaceMode('workflow');
   };
 
   const handleManualProcessing = () => {
+    console.log('Starting manual processing');
     setInterfaceMode('manual');
   };
 
   const handleBackToSelection = () => {
+    console.log('Going back to selection');
     setInterfaceMode('selection');
+    setSelectedUseCaseId(null);
   };
 
   const handleNoUseCaseSelected = () => {
@@ -310,7 +316,7 @@ const TaskDetail = () => {
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
   if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
 
-  // Smart Use Case Selection Interface
+  // Smart Use Case Selection Interface - ALWAYS shown first for new tasks
   if (interfaceMode === 'selection') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -356,7 +362,7 @@ const TaskDetail = () => {
     );
   }
 
-  // Legacy interface for edge cases (keep existing implementation)
+  // Legacy interface for existing tasks without new flag
   if (interfaceMode === 'legacy') {
     return (
       <div className="max-w-screen-xl mx-auto w-full px-3 md:px-8 py-5">
@@ -499,148 +505,8 @@ const TaskDetail = () => {
     );
   }
 
-  const canAssignOrForward = user?.role === 'admin' || user?.role === 'agent' || user?.id === task.assigned_to;
-  const isUnassigned = !task.assigned_to;
-
-  return (
-    <div className="max-w-screen-xl mx-auto w-full px-3 md:px-8 py-5">
-      <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-0">
-        <TaskDetailHeader 
-          task={task}
-          formattedTime={formattedTime}
-          isUnassigned={isUnassigned}
-          user={user}
-          canAssignOrForward={canAssignOrForward}
-          handleBack={handleBack}
-          handleAssignToMe={handleAssignToMe}
-          setAssignTaskDialogOpen={setAssignTaskDialogOpen}
-          setForwardTaskDialogOpen={setForwardTaskDialogOpen}
-          setFollowUpDialogOpen={setFollowUpDialogOpen}
-          handleCloseWithoutAvaClick={handleCloseWithoutAvaClick}
-          handleCloseWithAvaClick={handleCloseWithAvaClick}
-          setEmailToCustomerDialogOpen={setEmailToCustomerDialogOpen}
-          handleStatusChange={handleStatusChange}
-          handleReopenTask={handleReopenTask}
-          setNoUseCaseDialogOpen={setNoUseCaseDialogOpen}
-        />
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
-          {/* Left column with scroll area */}
-          <ScrollArea className="h-[calc(100vh-280px)] lg:max-h-[700px]">
-            <div className="flex flex-col space-y-6 pr-4">
-              {/* Task Info Section */}
-              <TaskDetailInfo task={task} />
-              
-              {/* Endkunde Info Link Section */}
-              <EndkundeInfoLink 
-                endkundeId={task.endkunde_id} 
-                customerId={task.customer_id}
-                taskTitle={task.title}
-                taskSummary={task.description}
-                onContactsLoaded={setEndkundeContacts}
-              />  
-              {/* Knowledge Article Manager Section */}
-              <KnowledgeArticleManager 
-                customerId={task.customer_id} 
-                taskDescription={task.description}
-              />
-              
-              {/* Email Thread History Component */}
-              {emailThreads && emailThreads.length > 0 && (
-                <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
-                  <EmailThreadHistory threads={emailThreads} />
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-
-          <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
-            <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 p-6">
-              {task.source === 'email' ? (
-                <EmailReplyPanel
-                  taskId={task.id}
-                  replyTo={replyTo}
-                  setReplyTo={setReplyTo}
-                />
-              ) : (
-                <>
-                  <CardHeader className="p-0 pb-2 flex flex-row items-center border-none">
-                    <CardTitle className="text-xl font-semibold text-blue-900">
-                      Bearbeitung der Aufgabe
-                    </CardTitle>
-                  </CardHeader>
-                  <TaskChat taskId={task.id} useCaseId={task.matched_use_case_id} />
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* All existing dialogs remain the same */}
-      <EmailToCustomerDialog
-        open={emailToCustomerDialogOpen}
-        onOpenChange={setEmailToCustomerDialogOpen}
-        taskId={task.id}
-        recipientEmail={task.customer?.email || task.endkunde_email}
-        taskMessages={messages}
-        onEmailSent={handleEmailSent}
-      />
-
-      <FollowUpDialog
-        open={followUpDialogOpen}
-        onOpenChange={setFollowUpDialogOpen}
-        onSave={handleFollowUp}
-      />
-
-      <CloseTaskDialog
-        open={closeTaskDialogOpen}
-        onOpenChange={setCloseTaskDialogOpen}
-        onClose={handleTaskClose}
-        isWithoutAva={isClosingWithoutAva}
-      />
-      
-      <AvaTaskSummaryDialog
-        open={avaSummaryDialogOpen}
-        onOpenChange={setAvaSummaryDialogOpen}
-        taskId={task.id}
-        readableId={task.readable_id}
-        taskTitle={task.title}
-        initialComment=""
-        onCancel={handleCloseSummary}
-        onContinue={handleCloseSummary}
-        onCloseTask={handleCloseTaskFromSummary}
-        endkundeOrt={task?.endkunde?.Ort || task?.customer?.address?.city || ""}
-        endkundeContacts={endkundeContacts}
-        customerName={task?.customer?.name || ''}
-      />
-
-      <AssignTaskDialog
-        open={assignTaskDialogOpen}
-        onOpenChange={setAssignTaskDialogOpen}
-        onAssign={handleAssignTask}
-        currentAssignee={task.assigned_to}
-      />
-
-      <AssignTaskDialog
-        open={forwardTaskDialogOpen}
-        onOpenChange={setForwardTaskDialogOpen}
-        onAssign={handleAssignTask}
-        currentAssignee={task.assigned_to}
-        isForwarding={true}
-      />
-      
-      {task && (
-        <NoUseCaseDialog
-          open={noUseCaseDialogOpen}
-          onOpenChange={setNoUseCaseDialogOpen}
-          taskId={task.id}
-          customerId={task.customer_id}
-          taskTitle={task.title}
-        />
-      )}
-    </div>
-  );
+  // Fallback - should not happen
+  return <div className="text-center py-8">Lade Interface...</div>;
 };
 
 export default TaskDetail;

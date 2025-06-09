@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertCircle, ArrowRight, Lightbulb, Clock, User, CheckCircle } from "lucide-react";
+import { AlertCircle, ArrowRight, Lightbulb, Clock, User, CheckCircle, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -115,8 +114,8 @@ export const SmartUseCaseSelection: React.FC<SmartUseCaseSelectionProps> = ({
       if (error) throw error;
 
       toast({
-        title: "Use Case zugewiesen",
-        description: "Die strukturierte Bearbeitung wird gestartet."
+        title: "Workflow ausgewählt",
+        description: "Die strukturierte Bearbeitung wird jetzt gestartet."
       });
 
       onUseCaseSelected(useCaseId);
@@ -125,7 +124,7 @@ export const SmartUseCaseSelection: React.FC<SmartUseCaseSelectionProps> = ({
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: "Use Case konnte nicht zugewiesen werden."
+        description: "Workflow konnte nicht zugewiesen werden."
       });
     } finally {
       setIsAssigning(false);
@@ -137,7 +136,7 @@ export const SmartUseCaseSelection: React.FC<SmartUseCaseSelectionProps> = ({
       <div className="flex justify-center items-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p>Analysiere passende Workflows...</p>
+          <p>Suche passende Workflows für Ihre Aufgabe...</p>
         </div>
       </div>
     );
@@ -147,65 +146,70 @@ export const SmartUseCaseSelection: React.FC<SmartUseCaseSelectionProps> = ({
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-3">Workflow-Assistent</h2>
-        <p className="text-lg text-muted-foreground">
-          Ich analysiere Ihre Aufgabe und schlage den besten Bearbeitungsweg vor
+        <h1 className="text-3xl font-bold mb-3 text-blue-900">
+          <Search className="inline h-8 w-8 mr-3 text-blue-600" />
+          Workflow-Auswahl
+        </h1>
+        <p className="text-lg text-gray-700 mb-4">
+          Wählen Sie den passenden Workflow für Ihre Kundenanfrage aus
         </p>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-3xl mx-auto">
+          <h3 className="font-semibold text-blue-900 mb-2">Ihre Kundenanfrage:</h3>
+          <p className="text-blue-800 font-medium">"{taskTitle}"</p>
+          <p className="text-blue-700 text-sm mt-1">{taskDescription}</p>
+        </div>
       </div>
-
-      {/* Task Summary */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Ihre Aufgabe
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <h3 className="font-semibold mb-2">{taskTitle}</h3>
-          <p className="text-sm text-muted-foreground">{taskDescription}</p>
-        </CardContent>
-      </Card>
 
       {/* AI Suggestions */}
       {suggestedUseCases.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Lightbulb className="h-5 w-5 text-yellow-500" />
-            <h3 className="text-xl font-semibold">Empfohlene Workflows</h3>
-            <Badge variant="secondary">KI-Analyse</Badge>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-green-100 p-2 rounded-full">
+              <Lightbulb className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-semibold text-green-800">Empfohlene Workflows</h2>
+              <p className="text-green-700">Basierend auf Ihrer Anfrage haben wir diese passenden Workflows gefunden:</p>
+            </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {suggestedUseCases.map((useCase, index) => (
-              <Card key={useCase.id} className="hover:shadow-lg transition-all duration-200 border-green-200 bg-green-50">
-                <CardHeader className="pb-3">
+              <Card key={useCase.id} className="hover:shadow-lg transition-all duration-200 border-2 border-green-300 bg-green-50">
+                <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      {useCase.title}
-                    </CardTitle>
-                    <Badge variant="default" className="bg-green-500">
-                      #{index + 1} Empfehlung
-                    </Badge>
+                    <div className="flex items-center gap-3">
+                      <div className="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl text-green-800">{useCase.title}</CardTitle>
+                        <Badge variant="default" className="bg-green-500 mt-1">
+                          Beste Empfehlung
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                    {useCase.information_needed || 'Strukturierter Workflow für diese Art von Anfrage'}
-                  </p>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Clock className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm text-blue-600">Geschätzte Zeit: 5-15 Min.</span>
+                  <div className="space-y-4">
+                    <p className="text-gray-700">
+                      <strong>Was wird gemacht:</strong> {useCase.information_needed || 'Strukturierte Bearbeitung Ihrer Kundenanfrage mit Schritt-für-Schritt Anleitung'}
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                      <Clock className="h-4 w-4" />
+                      <span>Geschätzte Bearbeitungszeit: 5-15 Minuten</span>
+                    </div>
+                    <Button 
+                      onClick={() => handleUseCaseSelect(useCase.id)}
+                      disabled={isAssigning}
+                      className="w-full bg-green-600 hover:bg-green-700 text-lg py-3"
+                      size="lg"
+                    >
+                      <CheckCircle className="h-5 w-5 mr-2" />
+                      Diesen Workflow verwenden
+                    </Button>
                   </div>
-                  <Button 
-                    onClick={() => handleUseCaseSelect(useCase.id)}
-                    disabled={isAssigning}
-                    className="w-full bg-green-600 hover:bg-green-700"
-                  >
-                    <ArrowRight className="h-4 w-4 mr-2" />
-                    Diesen Workflow starten
-                  </Button>
                 </CardContent>
               </Card>
             ))}
@@ -213,57 +217,81 @@ export const SmartUseCaseSelection: React.FC<SmartUseCaseSelectionProps> = ({
         </div>
       )}
 
-      {/* All Available Use Cases */}
+      {/* Alternative Workflows */}
       {useCases.length > suggestedUseCases.length && (
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold">Weitere verfügbare Workflows</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {useCases
-              .filter(uc => !suggestedUseCases.find(suc => suc.id === uc.id))
-              .map((useCase) => (
-                <Card key={useCase.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">{useCase.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                      {useCase.information_needed || 'Strukturierter Workflow verfügbar'}
-                    </p>
-                    <Button 
-                      onClick={() => handleUseCaseSelect(useCase.id)}
-                      disabled={isAssigning}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <ArrowRight className="h-4 w-4 mr-2" />
-                      Workflow wählen
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+          <div className="border-t pt-6">
+            <h3 className="text-xl font-semibold mb-4 text-gray-800">Weitere verfügbare Workflows</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {useCases
+                .filter(uc => !suggestedUseCases.find(suc => suc.id === uc.id))
+                .map((useCase) => (
+                  <Card key={useCase.id} className="hover:shadow-md transition-shadow border border-gray-300">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg text-gray-800">{useCase.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-600 mb-4">
+                        {useCase.information_needed || 'Strukturierte Bearbeitung verfügbar'}
+                      </p>
+                      <Button 
+                        onClick={() => handleUseCaseSelect(useCase.id)}
+                        disabled={isAssigning}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <ArrowRight className="h-4 w-4 mr-2" />
+                        Workflow wählen
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
           </div>
         </div>
       )}
 
+      {/* No matching workflows */}
+      {useCases.length === 0 && (
+        <Card className="border-yellow-300 bg-yellow-50">
+          <CardContent className="pt-6 text-center">
+            <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+              Keine passenden Workflows gefunden
+            </h3>
+            <p className="text-yellow-700 mb-4">
+              Für diese Art von Anfrage ist noch kein automatischer Workflow verfügbar.
+            </p>
+            <Button 
+              onClick={onManualProcessing}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              Manuelle Bearbeitung starten
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Manual Processing Option */}
-      <Card className="border-orange-200 bg-orange-50">
+      <Card className="border-orange-300 bg-orange-50">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-6 w-6 text-orange-500 mt-1" />
               <div>
-                <h3 className="font-medium text-lg">Manuelle Bearbeitung</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Für spezielle Fälle oder wenn kein Workflow passt. Sie erhalten dabei trotzdem KI-Unterstützung.
+                <h3 className="font-semibold text-lg text-orange-800">Individuelle Bearbeitung</h3>
+                <p className="text-orange-700 mt-1">
+                  Falls kein Workflow passt, können Sie die Anfrage individuell bearbeiten. 
+                  Sie erhalten dabei trotzdem KI-Unterstützung und Hilfestellung.
                 </p>
               </div>
             </div>
             <Button 
               variant="outline" 
               onClick={onManualProcessing}
-              className="border-orange-300 hover:bg-orange-100 ml-4"
+              className="border-orange-400 hover:bg-orange-100 ml-4 whitespace-nowrap"
             >
-              Manuell bearbeiten
+              Individuell bearbeiten
             </Button>
           </div>
         </CardContent>
