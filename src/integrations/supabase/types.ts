@@ -991,6 +991,51 @@ export type Database = {
           },
         ]
       }
+      task_workflow_progress: {
+        Row: {
+          completed: boolean | null
+          created_at: string
+          id: string
+          task_id: string
+          updated_at: string
+          use_case_id: string
+          workflow_data: Json | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          task_id: string
+          updated_at?: string
+          use_case_id: string
+          workflow_data?: Json | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          task_id?: string
+          updated_at?: string
+          use_case_id?: string
+          workflow_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_workflow_progress_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_workflow_progress_use_case_id_fkey"
+            columns: ["use_case_id"]
+            isOneToOne: false
+            referencedRelation: "use_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null
@@ -1575,6 +1620,55 @@ export type Database = {
             columns: ["chat_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_deviations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deviation_text: string
+          id: string
+          task_id: string
+          use_case_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deviation_text: string
+          id?: string
+          task_id: string
+          use_case_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deviation_text?: string
+          id?: string
+          task_id?: string
+          use_case_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_deviations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_deviations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_deviations_use_case_id_fkey"
+            columns: ["use_case_id"]
+            isOneToOne: false
+            referencedRelation: "use_cases"
             referencedColumns: ["id"]
           },
         ]

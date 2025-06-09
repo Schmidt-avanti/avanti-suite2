@@ -9,7 +9,7 @@ interface WorkflowDeviation {
   use_case_id: string;
   deviation_text: string;
   created_at: string;
-  created_by: string;
+  created_by: string | null;
 }
 
 export const useUseCaseWorkflow = (taskId: string) => {

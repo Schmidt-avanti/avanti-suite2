@@ -9,13 +9,13 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
-interface UseCase {
+interface DatabaseUseCase {
   id: string;
   title: string;
-  description: string;
-  type: string;
+  information_needed: string | null;
+  type: string | null;
   is_active: boolean;
-  customer_id: string;
+  customer_id: string | null;
 }
 
 interface UseCaseSelectionInterfaceProps {
@@ -33,8 +33,8 @@ export const UseCaseSelectionInterface: React.FC<UseCaseSelectionInterfaceProps>
   onUseCaseSelected,
   onNoUseCaseSelected
 }) => {
-  const [useCases, setUseCases] = useState<UseCase[]>([]);
-  const [filteredUseCases, setFilteredUseCases] = useState<UseCase[]>([]);
+  const [useCases, setUseCases] = useState<DatabaseUseCase[]>([]);
+  const [filteredUseCases, setFilteredUseCases] = useState<DatabaseUseCase[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -47,7 +47,7 @@ export const UseCaseSelectionInterface: React.FC<UseCaseSelectionInterfaceProps>
   useEffect(() => {
     const filtered = useCases.filter(useCase =>
       useCase.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      useCase.description.toLowerCase().includes(searchTerm.toLowerCase())
+      (useCase.information_needed && useCase.information_needed.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredUseCases(filtered);
   }, [useCases, searchTerm]);
@@ -57,7 +57,7 @@ export const UseCaseSelectionInterface: React.FC<UseCaseSelectionInterfaceProps>
       setIsLoading(true);
       const { data, error } = await supabase
         .from('use_cases')
-        .select('*')
+        .select('id, title, information_needed, type, is_active, customer_id')
         .eq('customer_id', customerId)
         .eq('is_active', true)
         .order('title');
@@ -154,12 +154,12 @@ export const UseCaseSelectionInterface: React.FC<UseCaseSelectionInterfaceProps>
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg">{useCase.title}</CardTitle>
-                <Badge variant="secondary">{useCase.type}</Badge>
+                {useCase.type && <Badge variant="secondary">{useCase.type}</Badge>}
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                {useCase.description}
+                {useCase.information_needed || 'Keine Beschreibung verfügbar'}
               </p>
               <Button 
                 onClick={() => handleUseCaseSelect(useCase.id)}

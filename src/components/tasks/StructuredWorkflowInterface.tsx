@@ -12,12 +12,12 @@ import { CheckCircle, Circle, MessageSquare, Plus, AlertTriangle } from "lucide-
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
-interface UseCase {
+interface DatabaseUseCase {
   id: string;
   title: string;
-  description: string;
-  workflow_steps: any;
-  required_fields: any;
+  information_needed: string | null;
+  steps: string | null;
+  type: string | null;
 }
 
 interface WorkflowStep {
@@ -43,7 +43,7 @@ export const StructuredWorkflowInterface: React.FC<StructuredWorkflowInterfacePr
   onTaskComplete,
   onAddDeviation
 }) => {
-  const [useCase, setUseCase] = useState<UseCase | null>(null);
+  const [useCase, setUseCase] = useState<DatabaseUseCase | null>(null);
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -61,7 +61,7 @@ export const StructuredWorkflowInterface: React.FC<StructuredWorkflowInterfacePr
       setIsLoading(true);
       const { data, error } = await supabase
         .from('use_cases')
-        .select('*')
+        .select('id, title, information_needed, steps, type')
         .eq('id', useCaseId)
         .single();
 
@@ -69,8 +69,8 @@ export const StructuredWorkflowInterface: React.FC<StructuredWorkflowInterfacePr
       
       setUseCase(data);
       
-      // Initialize workflow steps from use case data
-      const steps: WorkflowStep[] = data.workflow_steps?.steps || [
+      // Initialize workflow steps from use case data or create default steps
+      const steps: WorkflowStep[] = [
         {
           id: '1',
           title: 'Kundenanfrage prüfen',
@@ -188,7 +188,7 @@ export const StructuredWorkflowInterface: React.FC<StructuredWorkflowInterfacePr
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              {useCase?.description}
+              {useCase?.information_needed || 'Keine Beschreibung verfügbar'}
             </p>
             
             <div className="mb-4">
