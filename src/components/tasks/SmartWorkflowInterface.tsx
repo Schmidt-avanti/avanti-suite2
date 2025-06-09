@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -102,6 +101,7 @@ export const SmartWorkflowInterface: React.FC<SmartWorkflowInterfaceProps> = ({
       
       // Parse the real steps from the use case
       const realSteps = parseUseCaseSteps(data.steps || '');
+      console.log('Parsed steps:', realSteps);
       setWorkflowSteps(realSteps);
       
       // Add helpful welcome message
@@ -129,16 +129,53 @@ Falls ein Schritt nicht passt oder Sie vom Plan abweichen müssen, nutzen Sie di
   const parseUseCaseSteps = (stepsString: string): WorkflowStep[] => {
     if (!stepsString) return [];
     
-    // Split by line breaks and filter empty lines
-    const stepLines = stepsString.split('\n').filter(line => line.trim());
+    console.log('Original steps string:', stepsString);
     
-    return stepLines.map((step, index) => ({
-      id: `step-${index}`,
-      originalIndex: index,
-      title: step.trim(),
-      completed: false,
-      isDeviation: false
-    }));
+    // Try different patterns to split numbered steps
+    let stepLines: string[] = [];
+    
+    // Pattern 1: "1. Step, 2. Step, 3. Step" (comma-separated)
+    if (stepsString.includes(',') && /\d+\.\s/.test(stepsString)) {
+      stepLines = stepsString.split(',').map(s => s.trim());
+    }
+    // Pattern 2: "1. Step\n2. Step\n3. Step" (newline-separated)
+    else if (stepsString.includes('\n') && /\d+\.\s/.test(stepsString)) {
+      stepLines = stepsString.split('\n').filter(line => line.trim());
+    }
+    // Pattern 3: Manual split by number patterns like "1. text 2. text 3. text"
+    else if (/\d+\.\s/.test(stepsString)) {
+      // Split by number patterns like "1. ", "2. ", etc.
+      const matches = stepsString.split(/(?=\d+\.\s)/);
+      stepLines = matches.filter(match => match.trim()).map(match => match.trim());
+    }
+    // Fallback: treat as single step
+    else {
+      stepLines = [stepsString.trim()];
+    }
+    
+    console.log('Split step lines:', stepLines);
+    
+    return stepLines
+      .filter(step => step.trim())
+      .map((step, index) => {
+        // Clean up the step text - remove leading numbers and clean whitespace
+        let cleanStep = step.trim();
+        
+        // Remove leading number pattern like "1. " or "2. "
+        cleanStep = cleanStep.replace(/^\d+\.\s*/, '');
+        
+        // Remove trailing commas or periods if they exist
+        cleanStep = cleanStep.replace(/[,.]$/, '');
+        
+        return {
+          id: `step-${index}`,
+          originalIndex: index,
+          title: cleanStep.trim(),
+          completed: false,
+          isDeviation: false
+        };
+      })
+      .filter(step => step.title.length > 0); // Remove empty steps
   };
 
   const updateStepValue = (stepId: string, value: string | boolean) => {
