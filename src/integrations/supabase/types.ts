@@ -270,47 +270,6 @@ export type Database = {
         }
         Relationships: []
       }
-      endkunden_contacts: {
-        Row: {
-          id: string
-          name: string
-          role: string
-          phone: string | null
-          email: string | null
-          created_at: string
-          updated_at: string | null
-          endkunde_id: string | null
-        }
-        Insert: {
-          id?: string
-          name: string
-          role?: string
-          phone?: string | null
-          email?: string | null
-          created_at?: string
-          updated_at?: string | null
-          endkunde_id?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          role?: string
-          phone?: string | null
-          email?: string | null
-          created_at?: string
-          updated_at?: string | null
-          endkunde_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "endkunden_contacts_endkunde_id_fkey"
-            columns: ["endkunde_id"]
-            isOneToOne: false
-            referencedRelation: "endkunden"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       email_threads: {
         Row: {
           attachments: Json | null
@@ -376,6 +335,7 @@ export type Database = {
           Adresse: string
           created_at: string
           customer_ID: string | null
+          endkunden_contacts: string | null
           external_ID: string | null
           Gebäude: string | null
           id: string
@@ -386,12 +346,12 @@ export type Database = {
           updated_at: string
           Vorname: string | null
           Wohnung: string | null
-          endkunden_contacts: string | null
         }
         Insert: {
           Adresse: string
           created_at?: string
           customer_ID?: string | null
+          endkunden_contacts?: string | null
           external_ID?: string | null
           Gebäude?: string | null
           id?: string
@@ -402,12 +362,12 @@ export type Database = {
           updated_at?: string
           Vorname?: string | null
           Wohnung?: string | null
-          endkunden_contacts?: string | null
         }
         Update: {
           Adresse?: string
           created_at?: string
           customer_ID?: string | null
+          endkunden_contacts?: string | null
           external_ID?: string | null
           Gebäude?: string | null
           id?: string
@@ -418,7 +378,6 @@ export type Database = {
           updated_at?: string
           Vorname?: string | null
           Wohnung?: string | null
-          endkunden_contacts?: string | null
         }
         Relationships: [
           {
@@ -428,7 +387,44 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "endkunden_endkunden_contacts_fkey"
+            columns: ["endkunden_contacts"]
+            isOneToOne: false
+            referencedRelation: "endkunden_contacts"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      endkunden_contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          "Main Arbeitgeber": string | null
+          name: string | null
+          phone: string | null
+          role: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          "Main Arbeitgeber"?: string | null
+          name?: string | null
+          phone?: string | null
+          role?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          "Main Arbeitgeber"?: string | null
+          name?: string | null
+          phone?: string | null
+          role?: string | null
+        }
+        Relationships: []
       }
       inbound_emails: {
         Row: {
@@ -950,6 +946,7 @@ export type Database = {
           duration_seconds: number | null
           ended_at: string | null
           id: string
+          session_type: string | null
           started_at: string
           task_id: string
           time_spent_task: number | null
@@ -960,6 +957,7 @@ export type Database = {
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
+          session_type?: string | null
           started_at?: string
           task_id: string
           time_spent_task?: number | null
@@ -970,6 +968,7 @@ export type Database = {
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
+          session_type?: string | null
           started_at?: string
           task_id?: string
           time_spent_task?: number | null
@@ -1009,11 +1008,13 @@ export type Database = {
           match_confidence: number | null
           match_reasoning: string | null
           matched_use_case_id: string | null
+          processed_no_use_case: boolean | null
           readable_id: string | null
           source: string | null
           source_email_id: string | null
           status: string
           title: string
+          total_time_seconds: number | null
           updated_at: string
         }
         Insert: {
@@ -1032,11 +1033,13 @@ export type Database = {
           match_confidence?: number | null
           match_reasoning?: string | null
           matched_use_case_id?: string | null
+          processed_no_use_case?: boolean | null
           readable_id?: string | null
           source?: string | null
           source_email_id?: string | null
           status?: string
           title: string
+          total_time_seconds?: number | null
           updated_at?: string
         }
         Update: {
@@ -1055,11 +1058,13 @@ export type Database = {
           match_confidence?: number | null
           match_reasoning?: string | null
           matched_use_case_id?: string | null
+          processed_no_use_case?: boolean | null
           readable_id?: string | null
           source?: string | null
           source_email_id?: string | null
           status?: string
           title?: string
+          total_time_seconds?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1103,6 +1108,44 @@ export type Database = {
             columns: ["source_email_id"]
             isOneToOne: false
             referencedRelation: "inbound_emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      templates: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          title: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "auth_users_view"
             referencedColumns: ["id"]
           },
         ]

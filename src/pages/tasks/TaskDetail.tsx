@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,8 @@ import { AvaTaskSummaryDialog } from '@/components/tasks/AvaTaskSummaryDialog';
 import { AssignTaskDialog } from '@/components/tasks/AssignTaskDialog';
 import { EmailToCustomerDialog } from '@/components/tasks/EmailToCustomerDialog';
 import { NoUseCaseDialog } from '@/components/tasks/NoUseCaseDialog';
+import { UseCaseSelectionInterface } from '@/components/tasks/UseCaseSelectionInterface';
+import { StructuredWorkflowInterface } from '@/components/tasks/StructuredWorkflowInterface';
 import { TaskChat } from "@/components/tasks/TaskChat";
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
@@ -19,6 +20,7 @@ import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { useTaskMessages } from '@/hooks/useTaskMessages';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
+import { useUseCaseWorkflow } from '@/hooks/useUseCaseWorkflow';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,6 +51,11 @@ const TaskDetail = () => {
   const [noUseCaseDialogOpen, setNoUseCaseDialogOpen] = useState(false);
   const [isNewTask, setIsNewTask] = useState(false);
   
+  // New interface states
+  const [showUseCaseSelection, setShowUseCaseSelection] = useState(false);
+  const [showStructuredWorkflow, setShowStructuredWorkflow] = useState(false);
+  const [selectedUseCaseId, setSelectedUseCaseId] = useState<string | null>(null);
+  
   // Store the contacts from EndkundeInfoLink
   const [endkundeContacts, setEndkundeContacts] = useState<EndkundeContact[]>([]);
   
@@ -73,6 +80,9 @@ const TaskDetail = () => {
     status: task?.status
   });
 
+  // Use case workflow hook
+  const { addDeviation } = useUseCaseWorkflow(id || '');
+
   // Check URL parameters for the 'new' flag
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -85,46 +95,39 @@ const TaskDetail = () => {
   // Fetch email threads for this task
   const { threads: emailThreads } = useEmailThreads(id || null);
 
-  const findNextTask = async () => {
-    if (!user?.id) return null;
-    
-    try {
-      // Find next 'new' task assigned to this user
-      let query = supabase
-        .from('tasks')
-        .select('id')
-        .eq('status', 'new')
-        .eq('assigned_to', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1);
-        
-      const { data: newTasks, error: newTasksError } = await query;
-      
-      if (newTasksError) throw newTasksError;
-      
-      if (newTasks && newTasks.length > 0) {
-        return newTasks[0].id;
+  // Check if task needs use case selection
+  useEffect(() => {
+    if (task && isNewTask && !task.matched_use_case_id) {
+      setShowUseCaseSelection(true);
+    } else if (task && task.matched_use_case_id && !showStructuredWorkflow) {
+      setSelectedUseCaseId(task.matched_use_case_id);
+      setShowStructuredWorkflow(true);
+    }
+  }, [task, isNewTask]);
+
+  const handleUseCaseSelected = (useCaseId: string) => {
+    setSelectedUseCaseId(useCaseId);
+    setShowUseCaseSelection(false);
+    setShowStructuredWorkflow(true);
+  };
+
+  const handleNoUseCaseSelected = () => {
+    setShowUseCaseSelection(false);
+    setNoUseCaseDialogOpen(true);
+  };
+
+  const handleTaskComplete = async () => {
+    if (task) {
+      await handleStatusChange('completed');
+      // Navigate to next task or task list
+      const nextTaskId = await findNextTask();
+      if (nextTaskId) {
+        setIsActive(false);
+        setTimeout(() => navigate(`/tasks/${nextTaskId}`), 100);
+      } else {
+        setIsActive(false);
+        setTimeout(() => navigate('/tasks'), 100);
       }
-      
-      // If no 'new' tasks, look for 'in_progress' tasks
-      const { data: inProgressTasks, error: inProgressTasksError } = await supabase
-        .from('tasks')
-        .select('id')
-        .eq('status', 'in_progress')
-        .eq('assigned_to', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1);
-        
-      if (inProgressTasksError) throw inProgressTasksError;
-      
-      if (inProgressTasks && inProgressTasks.length > 0) {
-        return inProgressTasks[0].id;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error finding next task:', error);
-      return null;
     }
   };
 
@@ -194,8 +197,6 @@ const TaskDetail = () => {
       console.error("Error closing task:", error);
     }
   };
-  
-
 
   useEffect(() => {
     // Return function for cleanup when TaskDetail unmounts
@@ -204,14 +205,6 @@ const TaskDetail = () => {
       setIsActive(false);
     };
   }, []); // Empty dependency array if it only needs to run on unmount, or add specific dependencies if needed for other logic within.
-  
-  // Auto-open NoUseCaseDialog for new tasks without a use case
-  useEffect(() => {
-    if (task && isNewTask && !task.matched_use_case_id) {
-      console.log('Auto-opening NoUseCaseDialog for new task without use case');
-      setNoUseCaseDialogOpen(true);
-    }
-  }, [task, isNewTask]);
 
   const handleReopenTask = async () => {
     if (task && task.status === 'completed') {
@@ -254,10 +247,61 @@ const TaskDetail = () => {
   if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
   if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
 
+  // Show Use Case Selection Interface for new tasks without use case
+  if (showUseCaseSelection) {
+    return (
+      <div className="max-w-screen-xl mx-auto w-full px-3 md:px-8 py-5">
+        <UseCaseSelectionInterface
+          taskId={task.id}
+          customerId={task.customer_id}
+          taskDescription={task.description}
+          onUseCaseSelected={handleUseCaseSelected}
+          onNoUseCaseSelected={handleNoUseCaseSelected}
+        />
+      </div>
+    );
+  }
+
+  // Show Structured Workflow Interface for tasks with use case
+  if (showStructuredWorkflow && selectedUseCaseId) {
+    return (
+      <div className="max-w-screen-xl mx-auto w-full px-3 md:px-8 py-5">
+        <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-6">
+          <TaskDetailHeader 
+            task={task}
+            formattedTime={formattedTime}
+            isUnassigned={!task.assigned_to}
+            user={user}
+            canAssignOrForward={user?.role === 'admin' || user?.role === 'agent' || user?.id === task.assigned_to}
+            handleBack={handleBack}
+            handleAssignToMe={handleAssignToMe}
+            setAssignTaskDialogOpen={setAssignTaskDialogOpen}
+            setForwardTaskDialogOpen={setForwardTaskDialogOpen}
+            setFollowUpDialogOpen={setFollowUpDialogOpen}
+            handleCloseWithoutAvaClick={handleCloseWithoutAvaClick}
+            handleCloseWithAvaClick={handleCloseWithAvaClick}
+            setEmailToCustomerDialogOpen={setEmailToCustomerDialogOpen}
+            handleStatusChange={handleStatusChange}
+            handleReopenTask={handleReopenTask}
+            setNoUseCaseDialogOpen={setNoUseCaseDialogOpen}
+          />
+          
+          <StructuredWorkflowInterface
+            taskId={task.id}
+            useCaseId={selectedUseCaseId}
+            onTaskComplete={handleTaskComplete}
+            onAddDeviation={addDeviation}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // Updated logic to allow agents to forward tasks
   const canAssignOrForward = user?.role === 'admin' || user?.role === 'agent' || user?.id === task.assigned_to;
   const isUnassigned = !task.assigned_to;
 
+  // Fallback to original interface for edge cases
   return (
     <div className="max-w-screen-xl mx-auto w-full px-3 md:px-8 py-5">
       <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-0">
@@ -333,6 +377,7 @@ const TaskDetail = () => {
         </div>
       </div>
 
+      {/* All existing dialogs remain the same */}
       <EmailToCustomerDialog
         open={emailToCustomerDialogOpen}
         onOpenChange={setEmailToCustomerDialogOpen}
