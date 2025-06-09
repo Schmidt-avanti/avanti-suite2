@@ -3,11 +3,14 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 interface UseCasePreviewProps {
-  aiResponseJson: any;
+  aiResponseJson?: any;
+  useCase?: any;
 }
 
-const UseCasePreview = ({ aiResponseJson }: UseCasePreviewProps) => {
-  if (!aiResponseJson) return null;
+const UseCasePreview = ({ aiResponseJson, useCase }: UseCasePreviewProps) => {
+  // Allow passing either aiResponseJson or useCase
+  const data = useCase || aiResponseJson;
+  if (!data) return null;
 
   // Render verschachtelte Objekte wie chat_response
   const renderNestedObject = (obj: any) => {
@@ -50,13 +53,13 @@ const UseCasePreview = ({ aiResponseJson }: UseCasePreviewProps) => {
   
   // Einfache Felder, die als Text dargestellt werden
   const simpleFields = [
-    { label: "Titel", value: aiResponseJson.title },
-    { label: "Typ", value: aiResponseJson.type },
-    { label: "Benötigte Informationen", value: aiResponseJson.information_needed },
-    { label: "Schritte", value: aiResponseJson.steps },
-    { label: "Typische Aktivitäten", value: aiResponseJson.typical_activities },
-    { label: "Erwartetes Ergebnis", value: aiResponseJson.expected_result },
-    { label: "Nächste Frage", value: aiResponseJson.next_question },
+    { label: "Titel", value: data.title },
+    { label: "Typ", value: data.type },
+    { label: "Benötigte Informationen", value: data.information_needed },
+    { label: "Schritte", value: data.steps },
+    { label: "Typische Aktivitäten", value: data.typical_activities },
+    { label: "Erwartetes Ergebnis", value: data.expected_result },
+    { label: "Nächste Frage", value: data.next_question },
   ];
 
   return (
@@ -77,7 +80,7 @@ const UseCasePreview = ({ aiResponseJson }: UseCasePreviewProps) => {
         
         {/* Komplexe Felder */}
         {complexFields.map(field => {
-          const value = aiResponseJson[field];
+          const value = data[field];
           if (!value) return null;
           
           return (

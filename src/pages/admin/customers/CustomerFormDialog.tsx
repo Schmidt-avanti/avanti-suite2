@@ -36,9 +36,11 @@ interface CustomerFormData {
   billingAddress: string;
   costCenter: string;
   contactPerson: string;
+  // Always create client user - field kept for backward compatibility
   createClientUser: boolean;
   clientEmail: string;
   clientName: string;
+  clientPassword: string; // Added for custom initial password
 }
 
 const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
@@ -56,9 +58,10 @@ const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<CustomerFormData>({
     defaultValues: {
       hasInvoiceAddress: false,
-      createClientUser: false,
+      createClientUser: true, // Always true now
       clientEmail: "",
-      clientName: ""
+      clientName: "",
+      clientPassword: "W1llkommen@avanti"  // Default password
     }
   });
 
@@ -85,9 +88,11 @@ const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
         billingAddress: customer.billing_address || "",
         costCenter: customer.cost_center || "",
         contactPerson: customer.contact_person || "",
-        createClientUser: false,
+        // Don't automatically check createClientUser for existing customers
+        createClientUser: false, 
         clientEmail: customer.email || "",
-        clientName: customer.name || ""
+        clientName: customer.name || "",
+        clientPassword: "W1llkommen@avanti" // Default password
       });
       setIsInvoiceAddressEnabled(customer.has_invoice_address || false);
     } else if (open) {
@@ -108,9 +113,10 @@ const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
         billingAddress: "",
         costCenter: "",
         contactPerson: "",
-        createClientUser: false,
+        createClientUser: true, // Always true now
         clientEmail: "",
-        clientName: ""
+        clientName: "",
+        clientPassword: "W1llkommen@avanti" // Default password
       });
       setIsInvoiceAddressEnabled(false);
       setIsCreatingClientUser(false);
@@ -180,14 +186,14 @@ const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
         });
       }
 
-      // Create client user if requested
-      if (data.createClientUser && data.clientEmail) {
+      // Create client user if requested or if it's a new customer
+      if ((data.createClientUser || !customer) && data.clientEmail) {
         try {
           const { data: userData, error } = await supabase.functions.invoke('create-user', {
             body: {
               action: 'create',
               email: data.clientEmail,
-              password: "W1llkommen@avanti", // Default password
+              password: data.clientPassword || "W1llkommen@avanti", // Use the provided password or default
               userData: {
                 role: "client",
                 "Full Name": data.clientName || data.name,
@@ -325,27 +331,40 @@ const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
 
             <TabsContent value="access" className="space-y-4 pt-4">
               <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="createClientUser"
-                    checked={createClientUser}
-                    onCheckedChange={(checked) => {
-                      setValue("createClientUser", checked === true);
-                      setIsCreatingClientUser(checked === true);
-                    }}
-                  />
-                  <Label htmlFor="createClientUser">Kundenzugang anlegen</Label>
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 text-sm text-blue-700 mb-4">
+                  <p><strong>Wichtig:</strong> Für jeden neuen Kunden wird automatisch ein Kundenzugang angelegt.</p>
+                  <p>Für bestehende Kunden können Sie optional einen Zugang erstellen.</p>
                 </div>
+                
+                {!customer && (
+                  <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 text-sm text-yellow-800">
+                    <strong>Hinweis:</strong> Da Sie einen neuen Kunden anlegen, wird automatisch ein Kundenzugang erstellt.
+                  </div>
+                )}
+                
+                {customer && (
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Checkbox
+                      id="createClientUser"
+                      checked={createClientUser}
+                      onCheckedChange={(checked) => {
+                        setValue("createClientUser", checked === true);
+                        setIsCreatingClientUser(checked === true);
+                      }}
+                    />
+                    <Label htmlFor="createClientUser">Kundenzugang anlegen</Label>
+                  </div>
+                )}
 
-                {createClientUser && (
+                {(createClientUser || !customer) && (
                   <div className="space-y-4 pl-6 border-l-2 border-gray-200">
                     <div>
-                      <Label htmlFor="clientEmail">E-Mail für Zugang</Label>
+                      <Label htmlFor="clientEmail">E-Mail für Zugang <span className="text-red-500">*</span></Label>
                       <Input
                         id="clientEmail"
                         type="email"
                         {...register("clientEmail", {
-                          required: createClientUser ? "E-Mail ist erforderlich für einen Kundenzugang" : false,
+                          required: !customer || createClientUser ? "E-Mail ist erforderlich für einen Kundenzugang" : false,
                           pattern: {
                             value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                             message: "Ungültige E-Mail-Adresse"
@@ -358,11 +377,11 @@ const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
                     </div>
 
                     <div>
-                      <Label htmlFor="clientName">Name des Nutzers</Label>
+                      <Label htmlFor="clientName">Name des Nutzers <span className="text-red-500">*</span></Label>
                       <Input
                         id="clientName"
                         {...register("clientName", {
-                          required: createClientUser ? "Name ist erforderlich für einen Kundenzugang" : false
+                          required: !customer || createClientUser ? "Name ist erforderlich für einen Kundenzugang" : false
                         })}
                       />
                       {errors.clientName && (
@@ -370,9 +389,26 @@ const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
                       )}
                     </div>
 
+                    <div>
+                      <Label htmlFor="clientPassword">Passwort <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="clientPassword"
+                        type="password"
+                        {...register("clientPassword", {
+                          required: !customer || createClientUser ? "Passwort ist erforderlich für einen Kundenzugang" : false,
+                          minLength: {
+                            value: 8,
+                            message: "Passwort muss mindestens 8 Zeichen lang sein"
+                          }
+                        })}
+                      />
+                      {errors.clientPassword && (
+                        <p className="text-sm text-red-500 mt-1">{errors.clientPassword.message}</p>
+                      )}
+                    </div>
                     <div className="bg-blue-50 border-l-4 border-blue-400 p-4 text-sm text-blue-700">
                       <p>Ein Kundenzugang mit der angegebenen E-Mail wird angelegt. Der Kunde erhält ein temporäres Passwort und kann sich damit anmelden.</p>
-                      <p className="mt-2">Initiales Passwort: <strong>W1llkommen@avanti</strong> (Muss bei erster Anmeldung geändert werden)</p>
+                      <p className="mt-2">Initiales Passwort: <strong>{watch('clientPassword') || 'W1llkommen@avanti'}</strong> (Muss bei erster Anmeldung geändert werden)</p>
                     </div>
                   </div>
                 )}

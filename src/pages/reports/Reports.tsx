@@ -4,9 +4,7 @@ import { ReportFilters } from '@/components/reports/ReportFilters';
 import ReportKpiCard from '@/components/reports/ReportKpiCard';
 import ReportCharts from '@/components/reports/ReportCharts';
 import ReportTasksTable from '@/components/reports/ReportTasksTable';
-import { ProcessingTimeStats } from '@/components/reports/ProcessingTimeStats';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTaskTimeSummaries } from '@/hooks/useTaskTimeSummaries';
 import { toast } from 'sonner';
 
 const Reports: React.FC = () => {
@@ -22,31 +20,13 @@ const Reports: React.FC = () => {
     kpiData 
   } = useReportData();
 
-  // Extrahiere die Task-IDs aus den gefilterten Tasks
-  const taskIds = tasks && Array.isArray(tasks) 
-    ? tasks.filter(t => t && t.id).map(t => t.id) 
-    : [];
-  
   // Debug-Logging
   console.log('Report tasks count:', tasks?.length);
-  console.log('Report taskIds for time summaries:', taskIds);
-  
-  // Hole die Zeitzusammenfassungen
-  const { 
-    taskTimeSummaries, 
-    isLoading: isLoadingTimes, 
-    error 
-  } = useTaskTimeSummaries(taskIds);
-  
-  useEffect(() => {
-    if (error) {
-      console.error('Error fetching time summaries:', error);
-      toast.error('Fehler beim Laden der Zeitdaten');
-    }
-  }, [error]);
+
+  // Timer functionality has been removed
 
   // Zeige einen Ladebalken, wenn noch Daten geladen werden
-  if (isLoading || isLoadingTimes) {
+  if (isLoading) {
     return (
       <div className="py-4 space-y-6">
         <h1 className="text-2xl font-bold mb-4">Reports</h1>
@@ -109,9 +89,7 @@ const Reports: React.FC = () => {
         />
       </div>
       
-      <div className="w-full overflow-hidden">
-        <ProcessingTimeStats taskTimeSummaries={taskTimeSummaries || []} />
-      </div>
+      {/* Processing time stats removed - timer functionality has been removed */}
       
       <div className="w-full overflow-hidden">
         <ReportCharts 

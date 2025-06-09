@@ -1,8 +1,8 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTaskSessionContext } from '@/contexts/TaskSessionContext';
 import { Card } from '@/components/ui/card';
 import { 
   Form,
@@ -34,6 +34,7 @@ const CreateTask = () => {
   const { customers, isLoading: isLoadingCustomers } = useCustomers();
   const { logTaskOpen } = useTaskActivity();
   const [isMatching, setIsMatching] = useState(false);
+  const { startSession } = useTaskSessionContext();
   
   const form = useForm<TaskFormValues>({
     defaultValues: {
@@ -50,28 +51,7 @@ const CreateTask = () => {
     form.setValue('endkundeId', endkundeId);
   };
 
-  // Initialize a timer entry when a task is created
-  const initializeTaskTimer = async (taskId: string, userId: string) => {
-    try {
-      // Create a timer entry for the new task
-      const { error } = await supabase
-        .from('task_times')
-        .insert({
-          task_id: taskId,
-          user_id: userId,
-          started_at: new Date().toISOString(),
-        });
-        
-      if (error) {
-        console.error("Error initializing task timer:", error);
-        return;
-      }
-      
-      console.log('Timer initialized for new task:', taskId);
-    } catch (err) {
-      console.error("Failed to initialize task timer:", err);
-    }
-  };
+  // Timer functionality has been removed
 
   const onSubmit = async (values: TaskFormValues) => {
     if (!user) return;
@@ -142,8 +122,7 @@ const CreateTask = () => {
           status_to: 'new'
         });
 
-      // Initialize a timer for the newly created task
-      await initializeTaskTimer(task.id, user.id);
+      // Timer functionality has been removed
 
       const { error: messageError } = await supabase
         .from('task_messages')
@@ -224,6 +203,16 @@ const CreateTask = () => {
       }
 
       await logTaskOpen(task.id);
+      
+      // Create initial task session
+      try {
+        console.log('Creating initial task session for task:', task.id);
+        await startSession(task.id);
+        console.log('Initial task session created successfully');
+      } catch (sessionError) {
+        console.error('Error creating initial task session:', sessionError);
+        // Don't block task creation if session creation fails
+      }
 
       toast({
         title: "Aufgabe erstellt",

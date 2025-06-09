@@ -56,21 +56,9 @@ export const useInvoiceData = (customerId: string, from: Date, to: Date) => {
           console.log(`Found ${taskData?.length || 0} tasks for customer:`, taskData);
         }
 
-        // Direct query to check task_times for validation
+        // Task timer validation has been removed
         if (taskData && taskData.length > 0) {
-          const taskIds = taskData.map(t => t.id);
-          const { data: timeData, error: timeError } = await supabase
-            .from('task_times')
-            .select('*')
-            .in('task_id', taskIds)
-            .order('started_at', { ascending: false })
-            .limit(10);
-
-          if (timeError) {
-            console.error('Error fetching time entries:', timeError);
-          } else {
-            console.log(`Found ${timeData?.length || 0} time entries for customer tasks:`, timeData);
-          }
+          console.log(`Found ${taskData.length} tasks for customer`);
         }
 
         // Then fetch the actual daily summary data

@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTaskTimer } from '@/hooks/useTaskTimer';
 import { useAuth } from '@/contexts/AuthContext';
 import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
 import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
@@ -19,6 +18,7 @@ import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { useTaskMessages } from '@/hooks/useTaskMessages';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
+import { useTaskSession } from '@/hooks/useTaskSession';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -66,12 +66,16 @@ const TaskDetail = () => {
     handleAssignTask
   } = useTaskDetail(id, user);
 
-  // Pass task status to timer hook if available
-  const { formattedTime } = useTaskTimer({ 
-    taskId: id || '', 
-    isActive,
-    status: task?.status
-  });
+  // Task session tracking
+  const { formattedTotalTime, startTracking, setIsInTaskDetail, lastUpdateTime, isTracking } = useTaskSession(id);
+  
+  // Start tracking time when component mounts, but only once
+  useEffect(() => {
+    if (id && task && !isTracking) {
+      console.log('Starting task session tracking for task:', id);
+      startTracking();
+    }
+  }, [id, task, isTracking]);
 
   // Check URL parameters for the 'new' flag
   useEffect(() => {
@@ -263,7 +267,6 @@ const TaskDetail = () => {
       <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-0">
         <TaskDetailHeader 
           task={task}
-          formattedTime={formattedTime}
           isUnassigned={isUnassigned}
           user={user}
           canAssignOrForward={canAssignOrForward}
@@ -278,6 +281,8 @@ const TaskDetail = () => {
           handleStatusChange={handleStatusChange}
           handleReopenTask={handleReopenTask}
           setNoUseCaseDialogOpen={setNoUseCaseDialogOpen}
+          formattedTotalTime={formattedTotalTime}
+          lastUpdateTime={lastUpdateTime}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">

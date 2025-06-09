@@ -29,18 +29,19 @@ import PromptTemplatesPage from "@/pages/admin/PromptTemplates";
 import UseCaseDetailPage from "@/pages/admin/UseCaseDetailPage";
 import CreateKnowledgeArticle from "@/pages/admin/CreateKnowledgeArticle";
 import WhatsappAccountsAdminPage from "@/pages/admin/WhatsappAccounts";
-import ProcessingTimeRedirect from "@/pages/admin/ProcessingTime";
 
 // Supervisor Pages
 import LiveAgentOverview from "@/pages/supervisor/LiveAgentOverview";
 import ShortBreakSettings from "@/pages/supervisor/ShortBreakSettings";
-import ProcessingTime from "@/pages/supervisor/ProcessingTime";
 
 // Agent Pages
 import AgentDashboard from "@/pages/agent/Dashboard";
 
 // Client Pages
 import ClientDashboard from "@/pages/customer/Dashboard";
+import CustomerUseCases from "@/pages/customer/UseCases";
+import CustomerCreateUseCase from "@/pages/customer/CreateUseCase";
+import CustomerInvoices from "@/pages/customer/Invoices";
 
 // Task Pages
 import CreateTask from "@/pages/tasks/CreateTask";
@@ -164,10 +165,7 @@ const App = () => {
                       </ProtectedRoute>
                     }
                   />
-                  <Route
-                    path="/admin/processing-time"
-                    element={<ProcessingTimeRedirect />}
-                  />
+                  {/* Processing time route removed - timer functionality has been removed */}
 
                   {/* Supervisor Pages */}
                   <Route
@@ -186,14 +184,7 @@ const App = () => {
                       </ProtectedRoute>
                     }
                   />
-                  <Route
-                    path="/supervisor/processing-time"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <ProcessingTime />
-                      </ProtectedRoute>
-                    }
-                  />
+                  {/* Processing time route removed - timer functionality has been removed */}
 
                   <Route
                     path="/knowledge"
@@ -266,6 +257,30 @@ const App = () => {
                     element={
                       <ProtectedRoute allowedRoles={["customer"]}>
                         <ClientDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/client/use-cases"
+                    element={
+                      <ProtectedRoute allowedRoles={["customer"]}>
+                        <CustomerUseCases />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/client/use-cases/create"
+                    element={
+                      <ProtectedRoute allowedRoles={["customer"]}>
+                        <CustomerCreateUseCase />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/client/invoices"
+                    element={
+                      <ProtectedRoute allowedRoles={["customer"]}>
+                        <CustomerInvoices />
                       </ProtectedRoute>
                     }
                   />
