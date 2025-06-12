@@ -81,13 +81,13 @@ export const useTaskSession = (taskId?: string): TaskSessionResult => {
     // Initial update
     updateTimeDisplay();
     
-    // If we're tracking, update every 10 seconds
-    // This is a static display, so frequent updates aren't necessary
+    // If we're tracking, update every second to make timer feel more responsive
+    // This ensures the timer display is always up-to-date
     let intervalId: NodeJS.Timeout | null = null;
     if (isTracking) {
       intervalId = setInterval(() => {
         updateTimeDisplay();
-      }, 10000);
+      }, 1000);
     }
     
     return () => {

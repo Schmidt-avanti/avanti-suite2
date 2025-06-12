@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTaskSessionContext } from '@/contexts/TaskSessionContext';
 import { Card } from '@/components/ui/card';
 import { 
   Form,
@@ -34,7 +33,6 @@ const CreateTask = () => {
   const { customers, isLoading: isLoadingCustomers } = useCustomers();
   const { logTaskOpen } = useTaskActivity();
   const [isMatching, setIsMatching] = useState(false);
-  const { startSession } = useTaskSessionContext();
   
   const form = useForm<TaskFormValues>({
     defaultValues: {
@@ -110,6 +108,19 @@ const CreateTask = () => {
         .single();
 
       if (taskError) throw taskError;
+      
+      // Create initial session for the task
+      const { error: sessionError } = await supabase
+        .from('task_sessions')
+        .insert({
+          task_id: task.id,
+          user_id: user.id,
+          start_time: new Date().toISOString()
+        });
+        
+      if (sessionError) {
+        console.error('Error creating initial task session:', sessionError);
+      }
 
       // Create an activity log entry for the assignment
       await supabase
@@ -203,16 +214,6 @@ const CreateTask = () => {
       }
 
       await logTaskOpen(task.id);
-      
-      // Create initial task session
-      try {
-        console.log('Creating initial task session for task:', task.id);
-        await startSession(task.id);
-        console.log('Initial task session created successfully');
-      } catch (sessionError) {
-        console.error('Error creating initial task session:', sessionError);
-        // Don't block task creation if session creation fails
-      }
 
       toast({
         title: "Aufgabe erstellt",

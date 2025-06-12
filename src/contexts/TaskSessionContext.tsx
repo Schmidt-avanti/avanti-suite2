@@ -23,6 +23,17 @@ export interface TaskSession {
   created_at: string;
 }
 
+// Interface for task time tracking
+export interface TaskTime {
+  id: string;
+  task_id: string;
+  user_id: string;
+  start_time: string;
+  end_time?: string | null;
+  duration_seconds?: number | null;
+  created_at: string;
+}
+
 // Interface for the context value
 interface TaskSessionContextValue {
   activeTaskId: string | null;
@@ -67,7 +78,7 @@ export const TaskSessionProvider: React.FC<TaskSessionProviderProps> = ({ childr
       // Next, check for sessions in the database that might not be properly closed
       // This handles cases where the browser crashed or user closed the tab without proper cleanup
       const { data: existingSessions, error: queryError } = await supabase
-        .from('task_sessions')
+        .from('task_times')
         .select('id')
         .eq('task_id', taskId)
         .eq('user_id', user.id)
@@ -86,7 +97,7 @@ export const TaskSessionProvider: React.FC<TaskSessionProviderProps> = ({ childr
       
       // No active or orphaned sessions found, create a new one
       const { data: session, error } = await supabase
-        .from('task_sessions')
+        .from('task_times')
         .insert({
           task_id: taskId,
           user_id: user.id,
@@ -123,7 +134,7 @@ export const TaskSessionProvider: React.FC<TaskSessionProviderProps> = ({ childr
       
       // Get the session to calculate duration
       const { data: session, error: fetchError } = await supabase
-        .from('task_sessions')
+        .from('task_times')
         .select('*')
         .eq('id', sessionId)
         .single();
@@ -137,7 +148,7 @@ export const TaskSessionProvider: React.FC<TaskSessionProviderProps> = ({ childr
       
       // Update the session
       const { error: updateError } = await supabase
-        .from('task_sessions')
+        .from('task_times')
         .update({
           end_time: now.toISOString(),
           duration_seconds: durationSeconds > 0 ? durationSeconds : 0
@@ -147,6 +158,29 @@ export const TaskSessionProvider: React.FC<TaskSessionProviderProps> = ({ childr
       if (updateError) throw updateError;
       
       console.log(`Ended session ${sessionId} for task ${taskId} with duration ${durationSeconds}s`);
+      
+      // Update total duration in tasks table for efficiency
+      const { data: taskData, error: taskFetchError } = await supabase
+        .from('tasks')
+        .select('total_duration_seconds')
+        .eq('id', taskId)
+        .single();
+        
+      if (!taskFetchError && taskData) {
+        const currentTotal = taskData.total_duration_seconds || 0;
+        const newTotal = currentTotal + durationSeconds;
+        
+        const { error: taskUpdateError } = await supabase
+          .from('tasks')
+          .update({
+            total_duration_seconds: newTotal
+          })
+          .eq('id', taskId);
+          
+        if (taskUpdateError) {
+          console.error('Error updating task total duration:', taskUpdateError);
+        }
+      }
       
       // Reset active session if this was the active one
       if (sessionId === activeSessionId) {
@@ -168,7 +202,7 @@ export const TaskSessionProvider: React.FC<TaskSessionProviderProps> = ({ childr
     
     try {
       const { data: sessions, error } = await supabase
-        .from('task_sessions')
+        .from('task_times')
         .select('*')
         .eq('task_id', taskId)
         .order('start_time', { ascending: true });
