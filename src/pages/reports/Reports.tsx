@@ -89,7 +89,19 @@ const Reports: React.FC = () => {
         />
       </div>
       
-      {/* Processing time stats removed - timer functionality has been removed */}
+      {/* Task time statistics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mt-4">
+        <ReportKpiCard 
+          title="Gesamtzeit aller Aufgaben" 
+          value={kpiData.formattedTotalTime}
+          tooltip="Gesamtzeit über alle gefilterten Aufgaben summiert"
+        />
+        <ReportKpiCard 
+          title="Durchschnittliche Zeit pro Aufgabe" 
+          value={kpiData.formattedAvgTime}
+          tooltip="Durchschnittliche Bearbeitungszeit pro Aufgabe"
+        />
+      </div>
       
       <div className="w-full overflow-hidden">
         <ReportCharts 

@@ -58,6 +58,9 @@ export interface Task {
   customer_id: string;
   created_by?: string;
   assigned_to?: string;
+  
+  // Task time tracking
+  total_time_seconds?: number;
 }
 
 export interface User {

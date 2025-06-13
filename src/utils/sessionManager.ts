@@ -57,6 +57,103 @@ class SessionManager {
   }
 
   /**
+   * Update task's total time by aggregating all sessions
+   * This ensures the task has the correct total time across all users
+   */
+  private async updateTaskTotalTime(taskId: string): Promise<boolean> {
+    try {
+      console.log('Updating total time for task:', taskId);
+      
+      // Sum all sessions for this task, regardless of user
+      const { data, error } = await supabase
+        .from('task_sessions')
+        .select('duration_seconds')
+        .eq('task_id', taskId)
+        .not('duration_seconds', 'is', null);
+        
+      if (error) {
+        console.error('Error calculating total time:', error);
+        return false;
+      }
+      
+      const totalSeconds = data.reduce((sum, session) => 
+        sum + (session.duration_seconds || 0), 0);
+      
+      console.log(`Total time for task ${taskId}: ${totalSeconds} seconds`);
+      
+      // Update the task's total_time_seconds
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ total_time_seconds: totalSeconds })
+        .eq('id', taskId);
+
+      if (updateError) {
+        console.error('Error updating task total time:', updateError);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to update task total time:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Update task's total time using synchronous request
+   * This ensures the task total time is updated even during page unload
+   */
+  private syncUpdateTaskTotalTime(taskId: string, totalSeconds: number): boolean {
+    try {
+      const xhr = new XMLHttpRequest();
+      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/tasks?id=eq.${taskId}`;
+      
+      // Open request in synchronous mode (blocks until complete)
+      xhr.open('PATCH', apiUrl, false);
+      
+      // Set headers
+      xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+      xhr.setRequestHeader('Authorization', `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Prefer', 'return=minimal');
+      
+      // Send the request with update data
+      xhr.send(JSON.stringify({ total_time_seconds: totalSeconds }));
+      
+      return xhr.status >= 200 && xhr.status < 300;
+    } catch (error) {
+      console.error('Error updating task total time synchronously:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Calculate total time for a task by summing all sessions
+   * @param taskId - The task ID
+   * @returns Total time in seconds
+   */
+  private async calculateTaskTotalSeconds(taskId: string): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .from('task_sessions')
+        .select('duration_seconds')
+        .eq('task_id', taskId)
+        .not('duration_seconds', 'is', null);
+        
+      if (error) {
+        console.error('Error calculating total time:', error);
+        return 0;
+      }
+      
+      return data.reduce((sum, session) => 
+        sum + (session.duration_seconds || 0), 0);
+    } catch (error) {
+      console.error('Failed to calculate task total time:', error);
+      return 0;
+    }
+  }
+
+  /**
    * End the current session
    * 
    * @param useSync - Whether to use a synchronous XMLHttpRequest (default: false)
@@ -96,7 +193,16 @@ class SessionManager {
 
       // If synchronous update is requested (for page unloads), use XMLHttpRequest
       if (useSync) {
-        return this.syncUpdateSession(sessionId, now.toISOString(), durationSeconds);
+        const sessionUpdated = this.syncUpdateSession(sessionId, now.toISOString(), durationSeconds);
+        
+        if (sessionUpdated) {
+          // Calculate total time for the task
+          const totalSeconds = await this.calculateTaskTotalSeconds(session.task_id);
+          // Update task total time
+          this.syncUpdateTaskTotalTime(session.task_id, totalSeconds);
+        }
+        
+        return sessionUpdated;
       } else {
         // Otherwise use standard async update
         const { error: updateError } = await supabase
@@ -116,6 +222,10 @@ class SessionManager {
         this.currentSessionId = null;
         localStorage.removeItem('current_task_session');
         localStorage.removeItem('current_task_id');
+        
+        // Update task total time after session is updated
+        await this.updateTaskTotalTime(session.task_id);
+        
         return true;
       }
     } catch (error) {
