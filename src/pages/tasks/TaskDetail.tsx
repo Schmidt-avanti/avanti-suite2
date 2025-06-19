@@ -82,20 +82,20 @@ const TaskDetail = () => {
     if (!id) return;
     
     try {
+      // Instead of querying task_sessions directly, get the aggregated time from tasks table
       const { data, error } = await supabase
-        .from('task_sessions')
-        .select('duration_seconds')
-        .eq('task_id', id)
-        .not('duration_seconds', 'is', null);
+        .from('tasks')
+        .select('total_time_seconds')
+        .eq('id', id)
+        .single();
 
       if (error) {
-        console.error('Error fetching task sessions:', error);
+        console.error('Error fetching task total time:', error);
         return;
       }
 
-      const totalSeconds = data.reduce((sum, session) => {
-        return sum + (session.duration_seconds || 0);
-      }, 0);
+      // Use the pre-calculated total_time_seconds value
+      const totalSeconds = data.total_time_seconds || 0;
 
       setTotalFormattedTime(formatTime(totalSeconds));
     } catch (error) {
