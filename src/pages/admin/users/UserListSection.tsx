@@ -52,6 +52,7 @@ const UserListSection: React.FC<UserListSectionProps> = ({
       }
 
       console.log('Fetched assignments:', assignments);
+      console.log('Available customers:', customers);
 
       // Group assignments by user ID
       const userAssignments: Record<string, string[]> = {};
@@ -59,7 +60,8 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         if (!userAssignments[assignment.user_id]) {
           userAssignments[assignment.user_id] = [];
         }
-        userAssignments[assignment.user_id].push(assignment.customer_id);
+        // Ensure the customer_id is properly formatted as string
+        userAssignments[assignment.user_id].push(String(assignment.customer_id));
       });
 
       console.log('Grouped assignments by user:', userAssignments);
@@ -68,12 +70,20 @@ const UserListSection: React.FC<UserListSectionProps> = ({
       const formattedUsers = profiles.map(profile => {
         // Get customer IDs for current user
         const customerIds = userAssignments[profile.id] || [];
-        // Find customer objects for each ID
-        const userCustomers = customers.filter(customer => 
-          customerIds.includes(customer.id)
-        );
+        
+        // Debug: log all the customer IDs for this user
+        console.log(`Looking for customers with IDs for user ${profile.id}:`, customerIds);
+        
+        // Find customer objects for each ID - convert both sides to string to ensure match
+        const userCustomers = customers.filter(customer => {
+          const match = customerIds.includes(String(customer.id));
+          if (match) {
+            console.log(`Found match for customer ID ${customer.id}:`, customer.name);
+          }
+          return match;
+        });
 
-        console.log(`User ${profile.id} has customers:`, userCustomers);
+        console.log(`User ${profile.id} (${profile['Full Name']}) has ${userCustomers.length} customers:`, userCustomers);
 
         return {
           id: profile.id,

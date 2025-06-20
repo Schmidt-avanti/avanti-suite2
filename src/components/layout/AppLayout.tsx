@@ -5,10 +5,10 @@ import { SearchProvider } from '@/contexts/SearchContext';
 import Navbar from './Navbar';
 import AppSidebar from './AppSidebar';
 import { TwilioProvider } from '@/contexts/TwilioContext';
+import { TaskSessionProvider } from '@/contexts/TaskSessionContext';
 import ActiveCallPanel from '@/components/call-center/ActiveCallPanel';
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { TaskTimerProvider } from '@/contexts/TaskTimerContext';
 
 // Lazy load components that might not be needed immediately
 const FloatingChatButton = lazy(() =>
@@ -68,7 +68,6 @@ const AppLayout = () => {
   // Create the content layout that will be wrapped with or without TwilioProvider
   const renderContent = () => (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 w-full">
-      <TaskTimerProvider>
         <SearchProvider>
           <SidebarProvider>
             <div className="flex min-h-screen w-full">
@@ -85,7 +84,6 @@ const AppLayout = () => {
             </div>
           </SidebarProvider>
         </SearchProvider>
-      </TaskTimerProvider>
     </div>
   );
   
@@ -93,9 +91,11 @@ const AppLayout = () => {
   // The provider itself will handle checking if Twilio is actually loaded before using it
   if (isTwilioNeededRoute) {
     return (
-      <TwilioProvider>
-        {renderContent()}
-      </TwilioProvider>
+      <TaskSessionProvider>
+        <TwilioProvider>
+          {renderContent()}
+        </TwilioProvider>
+      </TaskSessionProvider>
     );
   }
   

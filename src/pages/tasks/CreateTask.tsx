@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -50,28 +49,7 @@ const CreateTask = () => {
     form.setValue('endkundeId', endkundeId);
   };
 
-  // Initialize a timer entry when a task is created
-  const initializeTaskTimer = async (taskId: string, userId: string) => {
-    try {
-      // Create a timer entry for the new task
-      const { error } = await supabase
-        .from('task_times')
-        .insert({
-          task_id: taskId,
-          user_id: userId,
-          started_at: new Date().toISOString(),
-        });
-        
-      if (error) {
-        console.error("Error initializing task timer:", error);
-        return;
-      }
-      
-      console.log('Timer initialized for new task:', taskId);
-    } catch (err) {
-      console.error("Failed to initialize task timer:", err);
-    }
-  };
+  // Timer functionality has been removed
 
   const onSubmit = async (values: TaskFormValues) => {
     if (!user) return;
@@ -130,6 +108,19 @@ const CreateTask = () => {
         .single();
 
       if (taskError) throw taskError;
+      
+      // Create initial session for the task
+      const { error: sessionError } = await supabase
+        .from('task_sessions')
+        .insert({
+          task_id: task.id,
+          user_id: user.id,
+          start_time: new Date().toISOString()
+        });
+        
+      if (sessionError) {
+        console.error('Error creating initial task session:', sessionError);
+      }
 
       // Create an activity log entry for the assignment
       await supabase
@@ -142,8 +133,7 @@ const CreateTask = () => {
           status_to: 'new'
         });
 
-      // Initialize a timer for the newly created task
-      await initializeTaskTimer(task.id, user.id);
+      // Timer functionality has been removed
 
       const { error: messageError } = await supabase
         .from('task_messages')

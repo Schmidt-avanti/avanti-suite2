@@ -45,6 +45,24 @@ export function formatTimeHHMM(seconds: number): string {
 /**
  * Formatiert die verstrichene Zeit seit einem bestimmten Zeitpunkt
  */
+/**
+ * Formats seconds to MM:SS or HH:MM:SS format for task time display
+ * This is used for task timer display and reporting
+ */
+export function formatTimeFromSeconds(totalSeconds: number): string {
+  if (!totalSeconds || totalSeconds < 0) return '00:00';
+  
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+  
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
 export function formatTimeElapsed(startTime: string | Date): string {
   const start = startTime instanceof Date ? startTime : new Date(startTime);
   const now = new Date();

@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useBeforeUnload } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTaskTimer } from '@/hooks/useTaskTimer';
 import { useAuth } from '@/contexts/AuthContext';
 import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
 import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
@@ -19,6 +18,7 @@ import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { useTaskMessages } from '@/hooks/useTaskMessages';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
+import { sessionManager } from '@/utils/sessionManager';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -66,18 +66,66 @@ const TaskDetail = () => {
     handleAssignTask
   } = useTaskDetail(id, user);
 
-  // Pass task status to timer hook if available
-  const { formattedTime } = useTaskTimer({ 
-    taskId: id || '', 
-    isActive,
-    status: task?.status
-  });
+  // Tracking total time from all sessions
+  const [totalFormattedTime, setTotalFormattedTime] = useState<string>('00:00');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  
+  // Format seconds to MM:SS
+  const formatTime = (totalSeconds: number): string => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Calculate total time from all sessions
+  const calculateTotalTime = async () => {
+    if (!id) return;
+    
+    try {
+      // Instead of querying task_sessions directly, get the aggregated time from tasks table
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('total_time_seconds')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching task total time:', error);
+        return;
+      }
+
+      // Use the pre-calculated total_time_seconds value
+      const totalSeconds = data.total_time_seconds || 0;
+
+      setTotalFormattedTime(formatTime(totalSeconds));
+    } catch (error) {
+      console.error('Error calculating total time:', error);
+    }
+  };
 
   // Check URL parameters for the 'new' flag
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    setIsNewTask(urlParams.get('new') === 'true');
-  }, []);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('new')) {
+      setIsNewTask(true);
+    }
+    
+    // Start a session when the component mounts
+    const startNewSession = async () => {
+      if (id && user?.id) {
+        const newSessionId = await sessionManager.startSession(id, user.id);
+        setSessionId(newSessionId);
+        calculateTotalTime();
+      }
+    };
+    
+    startNewSession();
+    
+    // End the session when the component unmounts
+    return () => {
+      sessionManager.endCurrentSession();
+    };
+  }, [id, user]);
   
   // Fetch task messages for chat history
   const { messages } = useTaskMessages(id || null);
@@ -129,8 +177,11 @@ const TaskDetail = () => {
   };
 
   // This function is only used for direct closing without AVA
-  const handleTaskClose = (comment: string) => {
+  const handleTaskClose = async (comment: string) => {
     console.log("Task close handler called with comment (direct closing):", comment);
+    
+    // First, explicitly end the current session
+    await sessionManager.endCurrentSession();
     
     // Close task directly without AVA summary
     handleCloseWithoutAva(comment).then(() => {
@@ -168,6 +219,8 @@ const TaskDetail = () => {
   };
   
   const handleCloseTaskFromSummary = async (comment: string) => {
+    // First, explicitly end the current session
+    await sessionManager.endCurrentSession();
     console.log("Closing task from AVA summary dialog with comment:", comment);
     
     try {
@@ -200,7 +253,8 @@ const TaskDetail = () => {
   useEffect(() => {
     // Return function for cleanup when TaskDetail unmounts
     return () => {
-      console.log('TaskDetail unmounting, setting isActive to false');
+      console.log('TaskDetail unmounting, ending session and setting isActive to false');
+      sessionManager.endCurrentSession();
       setIsActive(false);
     };
   }, []); // Empty dependency array if it only needs to run on unmount, or add specific dependencies if needed for other logic within.
@@ -233,8 +287,9 @@ const TaskDetail = () => {
     }
   };
 
-  const handleBack = () => {
-    setIsActive(false);
+  const handleBack = async () => {
+    // End the session before navigating away
+    await sessionManager.endCurrentSession();
     
     // Check if the task is completed and navigate accordingly
     if (task && task.status === 'completed') {
@@ -263,7 +318,6 @@ const TaskDetail = () => {
       <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-0">
         <TaskDetailHeader 
           task={task}
-          formattedTime={formattedTime}
           isUnassigned={isUnassigned}
           user={user}
           canAssignOrForward={canAssignOrForward}
@@ -278,6 +332,7 @@ const TaskDetail = () => {
           handleStatusChange={handleStatusChange}
           handleReopenTask={handleReopenTask}
           setNoUseCaseDialogOpen={setNoUseCaseDialogOpen}
+          formattedTotalTime={totalFormattedTime}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">

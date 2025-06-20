@@ -5,24 +5,7 @@ export type UserRole = 'admin' | 'agent' | 'customer';
 // Define TaskActivityAction type that was missing
 export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'assign' | 'comment';
 
-// Add to existing types
-export interface TaskTime {
-  id: string;
-  task_id: string;
-  user_id: string;
-  started_at: string;
-  ended_at?: string;
-  duration_seconds?: number;
-  created_at: string;
-}
-
-export interface TaskTimeSummary {
-  task_id: string;
-  user_id: string;
-  total_seconds: number;
-  total_hours: number;
-  session_count: number;
-}
+// Timer related types have been removed
 
 // Adding email thread interface
 export interface EmailThread {
@@ -75,6 +58,9 @@ export interface Task {
   customer_id: string;
   created_by?: string;
   assigned_to?: string;
+  
+  // Task time tracking
+  total_time_seconds?: number;
 }
 
 export interface User {

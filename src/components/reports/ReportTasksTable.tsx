@@ -13,6 +13,7 @@ import {
 import { TaskStatusBadge } from '@/components/tasks/TaskStatusBadge';
 import type { Task } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatTimeFromSeconds } from '@/utils/timeUtils';
 
 interface ReportTasksTableProps {
   tasks: Task[];
@@ -42,6 +43,7 @@ const ReportTasksTable: React.FC<ReportTasksTableProps> = ({ tasks }) => {
                 <TableHead>Erstellungsdatum</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Erstellt von</TableHead>
+                <TableHead>Gesamtzeit</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -62,11 +64,14 @@ const ReportTasksTable: React.FC<ReportTasksTableProps> = ({ tasks }) => {
                       <TaskStatusBadge status={task.status} />
                     </TableCell>
                     <TableCell>{task.creator?.["Full Name"] || '-'}</TableCell>
+                    <TableCell>
+                      {formatTimeFromSeconds(task.total_time_seconds || 0)}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4">
+                  <TableCell colSpan={8} className="text-center py-4">
                     Keine Aufgaben gefunden
                   </TableCell>
                 </TableRow>

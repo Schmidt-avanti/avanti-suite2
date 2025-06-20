@@ -1,23 +1,30 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { sessionManager } from '@/utils/sessionManager';
 import { Button } from "@/components/ui/button";
 import { 
   ArrowLeft, Clock, CheckCircle, Calendar, Mail, 
-  UserPlus, Forward, X, PhoneIcon, RefreshCw, AlertTriangle
+  UserPlus, Forward, X, PhoneIcon, RefreshCw, AlertTriangle,
+  History
 } from "lucide-react";
 import { TaskStatusBadge } from './TaskStatusBadge';
 import type { TaskStatus } from '@/types';
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import PhoneInterface from '@/components/call-center/PhoneInterface';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TaskDetailHeaderProps {
   task: any;
-  formattedTime: string;
   isUnassigned: boolean;
   user: any;
   canAssignOrForward: boolean;
-  handleBack: () => void;
+  handleBack: () => Promise<void>;
   handleAssignToMe: () => void;
   setAssignTaskDialogOpen: (open: boolean) => void;
   setForwardTaskDialogOpen: (open: boolean) => void;
@@ -28,11 +35,11 @@ interface TaskDetailHeaderProps {
   handleStatusChange: (status: TaskStatus) => void;
   handleReopenTask: () => Promise<void>;
   setNoUseCaseDialogOpen?: (open: boolean) => void;
+  formattedTotalTime?: string;
 }
 
 export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   task,
-  formattedTime,
   isUnassigned,
   user,
   canAssignOrForward,
@@ -46,7 +53,8 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   setEmailToCustomerDialogOpen,
   handleStatusChange,
   handleReopenTask,
-  setNoUseCaseDialogOpen
+  setNoUseCaseDialogOpen,
+  formattedTotalTime
 }) => {
   const isEmailTask = task.source === 'email';
   const isCompleted = task.status === 'completed';
@@ -87,7 +95,13 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
         {/* Left section with back button, status and timer */}
         <div className="flex items-center">
           <Button
-            onClick={handleBack}
+            onClick={() => {
+              // First explicitly end any active session with synchronous request
+              console.log('Back button clicked, ending session before navigation');
+              sessionManager.endCurrentSession(true); // Use synchronous mode
+              // Then navigate back
+              handleBack();
+            }}
             variant="ghost"
             className="text-gray-600 hover:bg-gray-100 mr-2"
           >
@@ -95,10 +109,28 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
             Zurück zur Übersicht
           </Button>
           
-          <div className="flex items-center text-gray-500 ml-4">
-            <Clock className="h-4 w-4 mr-1" />
-            <span className="text-sm font-medium">{formattedTime}</span>
-          </div>
+          {/* Task timer display with simplified tooltip */}
+          {formattedTotalTime && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center text-gray-500 ml-4 mr-2 cursor-help">
+                    <Clock className="h-4 w-4 mr-1" />
+                    <span className="text-sm font-medium">Zeit: {formattedTotalTime}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="p-3 max-w-sm">
+                  <div className="flex flex-col gap-2">
+                    <div className="font-medium text-sm">Gesamtzeit für diese Aufgabe</div>
+                    <div className="flex items-center text-xs text-gray-500">
+                      <History className="h-3 w-3 mr-1" />
+                      <span>Zeit aus allen Sitzungen aller Benutzer</span>
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           
           <TaskStatusBadge status={task.status as TaskStatus} className="ml-4" />
         </div>

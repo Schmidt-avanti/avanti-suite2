@@ -5,6 +5,7 @@ import { useTasks } from './useTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Task, TaskStatus } from '@/types';
+import { formatTimeFromSeconds } from '@/utils/timeUtils';
 
 export interface ReportFilters {
   customerId: string | null;
@@ -217,12 +218,24 @@ export const useReportData = () => {
     // Fix: Use all available customers instead of just those found in filtered tasks
     // This is the correct number of active customers in the system
     const activeCustomers = allCustomers.length;
+    
+    // Calculate total time spent on tasks
+    const totalTimeSeconds = filteredTasks.reduce((total, task) => {
+      return total + (task.total_time_seconds || 0);
+    }, 0);
+    
+    // Calculate average time per task
+    const avgTimeSeconds = totalTasks > 0 ? Math.round(totalTimeSeconds / totalTasks) : 0;
 
     return {
       totalTasks,
       newTasks,
       completedTasks,
-      activeCustomers
+      activeCustomers,
+      totalTimeSeconds,
+      avgTimeSeconds,
+      formattedTotalTime: formatTimeFromSeconds(totalTimeSeconds),
+      formattedAvgTime: formatTimeFromSeconds(avgTimeSeconds)
     };
   }, [filteredTasks, allCustomers]);
 
