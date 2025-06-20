@@ -82,7 +82,8 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             created_at,
             created_by,
             customer_id,
-            customer:customer_id(id, name)
+            customer:customer_id(id, name),
+            total_time_seconds
           `)
           .order('created_at', { ascending: false });
 
@@ -206,6 +207,7 @@ export const useTasks = (statusFilter: string | null = null, includeAll: boolean
             attachments: rawTask.attachments,
             description: rawTask.description,
             matched_use_case_id: rawTask.matched_use_case_id,
+            total_time_seconds: rawTask.total_time_seconds,
             // Add these required fields to fix TypeScript errors
             customer_id: rawTask.customer_id,
             created_by: rawTask.created_by,
