@@ -1,6 +1,6 @@
 
 // Update UserRole type to match database constraint
-export type UserRole = 'admin' | 'agent' | 'customer';
+export type UserRole = 'admin' | 'agent' | 'customer' | 'supervisor';
 
 // Define TaskActivityAction type that was missing
 export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'assign' | 'comment';
@@ -41,40 +41,45 @@ export interface EmailThread {
 }
 
 // Existing types (to fix build errors)
-export type TaskStatus = 'new' | 'in_progress' | 'followup' | 'completed';
+export type TaskStatus = 'new' | 'in_progress' | 'followup' | 'completed' | 'cancelled' | 'forwarded' | 'waiting_for_customer';
 
 export interface Task {
   id: string;
   title: string;
+  description?: string; // Was present in DB schema
   status: TaskStatus;
   created_at: string;
+  updated_at: string; // Added, from DB schema, to be used for 'closed_at'
   source?: string;
   readable_id?: string;
-  customer?: {
-    id: string;
-    name: string;
-  };
-  creator?: {
-    id: string;
-    "Full Name": string;
-  };
-  assignee?: {
+  customer_id: string; // Was present in DB schema and already added
+  customer?: Customer; // Populated by useTaskDetail, now using the full Customer type
+  created_by?: string; // User ID, was present in DB schema and already added
+  creator?: { // Populated by useTaskDetail
     id: string;
     "Full Name": string;
   };
-  follow_up_date?: string;
-  closing_comment?: string;
-  attachments?: any[];
-  endkunde_id?: string;
-  endkunde_email?: string; 
-  from_email?: string;     
-  description?: string;    
-  matched_use_case_id?: string;
-  
-  // Adding the missing properties to fix TypeScript errors
-  customer_id: string;
-  created_by?: string;
-  assigned_to?: string;
+  assigned_to?: string; // User ID, was present in DB schema and already added
+  assignee?: { // Populated by useTaskDetail
+    id: string;
+    "Full Name": string;
+  };
+  follow_up_date?: string; // Was present in DB schema
+  closing_comment?: string; // Was present in DB schema
+  attachments?: any[]; // Type 'jsonb' in DB, 'any[]' is a reasonable approximation for now
+  endkunde_id?: string; // Was present in DB schema
+  endkunde_email?: string; // Was present in DB schema
+  // from_email is not in the DB schema for 'tasks' table
+  matched_use_case_id?: string; // Was present in DB schema
+  match_confidence?: number; // Was present in DB schema (double precision)
+  match_reasoning?: string; // Was present in DB schema
+  source_email_id?: string; // Was present in DB schema (uuid)
+  forwarded_to?: string; // Was present in DB schema
+  processed_no_use_case?: boolean; // Was present in DB schema
+  total_duration_seconds?: number; // Was present in DB schema (integer)
+  // total_time_seconds is a duplicate of total_duration_seconds in the DB schema, using one.
+  is_blank_task?: boolean; // Flag für Blanko-Aufgabe ohne Ava-Unterstützung
+  matched_use_case_title?: string | null; // Added for displaying in TaskDetailInfo
 }
 
 export interface User {
@@ -85,7 +90,16 @@ export interface User {
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
-  fullName?: string; // Add this property to fix the error
+  fullName?: string; 
+  "Full Name": string; // Required to match Task.creator and Task.assignee structure
+}
+
+export interface Contact {
+  id: string; // Assuming contacts might have IDs if stored separately
+  type: string; // e.g., 'phone', 'email', 'mobile'
+  value: string; // The actual phone number or email address
+  label?: string; // e.g., 'Work', 'Home', 'Main'
+  is_primary?: boolean;
 }
 
 export interface Customer {
@@ -110,6 +124,9 @@ export interface Customer {
   invoice_street?: string;
   invoice_zip?: string;
   invoice_city?: string;
+  phone?: string; // Made optional as it might not exist in DB or not always be queried
+  contacts?: Contact[] | null; // Made optional as it's not queried directly anymore
+  additional_info?: any; // Added to support dynamic metadata for use cases
 }
 
 export type Notification = {
@@ -137,4 +154,26 @@ export interface PaymentMethod {
   billing_address?: string;
   billing_zip?: string;
   billing_city?: string;
+}
+
+export interface Endkunde {
+  id: string;
+  name: string; // Composite of Vorname and Nachname
+  Vorname?: string; // Raw field from DB
+  Nachname?: string; // Raw field from DB
+  created_at: string;
+}
+
+export interface DetailedTask extends Task {
+  customer: Customer | null;
+  creator: User | null;
+  assignee: User | null;
+  endkunde: Endkunde | null;
+  // matched_use_case_title is inherited from Task
+}
+
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  useCase?: any; 
 }

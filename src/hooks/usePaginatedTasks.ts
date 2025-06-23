@@ -7,7 +7,7 @@ import { ReportFilters } from '@/hooks/useReportData';
 
 // Helper function to validate task status
 const validateTaskStatus = (status: string): TaskStatus => {
-  const validStatuses: TaskStatus[] = ['new', 'in_progress', 'followup', 'completed'];
+  const validStatuses: TaskStatus[] = ['new', 'in_progress', 'followup', 'completed', 'cancelled', 'forwarded', 'waiting_for_customer'];
   
   if (validStatuses.includes(status as TaskStatus)) {
     return status as TaskStatus;
@@ -195,11 +195,12 @@ export const usePaginatedTasks = (
             title: rawTask.title,
             status: validateTaskStatus(rawTask.status),
             created_at: rawTask.created_at,
+            updated_at: rawTask.updated_at,
             source: rawTask.source,
             readable_id: rawTask.readable_id,
             endkunde_id: rawTask.endkunde_id,
             endkunde_email: rawTask.endkunde_email,
-            from_email: rawTask.from_email,
+
             customer: rawTask.customer,
             creator: rawTask.creator,
             assignee: rawTask.assignee,

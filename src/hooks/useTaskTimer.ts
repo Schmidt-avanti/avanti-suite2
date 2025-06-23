@@ -25,7 +25,8 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
   
   // Determine if timer should be active
   const shouldBeActive = (): boolean => {
-    return isActive && (status === 'new' || status === 'in_progress');
+    const result = isActive && (status === 'new' || status === 'in_progress');
+    return result;
   };
   
   // Load saved time on component mount and check for active sessions
@@ -145,7 +146,10 @@ export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOpti
 
   // Starts a new timer session
   const startSession = async () => {
-    if (!taskId || !user || sessionStartRef.current || isUpdating) return;
+    if (!taskId) { // Guard against empty taskId
+      return;
+    }
+    if (!user || sessionStartRef.current || isUpdating) return;
     
     setIsUpdating(true);
     

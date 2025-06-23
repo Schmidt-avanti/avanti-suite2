@@ -132,6 +132,42 @@ const AppSidebar = () => {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+
+                {/* Customer-only navigation for Use Cases and Reports */}
+                {user.role === 'customer' && (
+                  <>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to="/admin/use-cases"
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                            }`
+                          }
+                        >
+                          <FileText className="h-5 w-5 text-sidebar-primary" />
+                          <span className="truncate">Use Cases</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to="/reports"
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                            }`
+                          }
+                        >
+                          <BarChart3 className="h-5 w-5 text-sidebar-primary" />
+                          <span className="truncate">Reports</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </>
+                )}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <NavLink

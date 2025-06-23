@@ -1,38 +1,29 @@
+import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import type { TaskStatus } from '@/types';
 
-import { TaskStatus } from '@/types';
-import { cn } from '@/lib/utils';
+interface StatusConfig {
+  label: string;
+  variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success';
+}
+
+const statusConfigMap: Record<TaskStatus, StatusConfig> = {
+  new: { label: 'Neu', variant: 'default' },
+  in_progress: { label: 'In Bearbeitung', variant: 'secondary' },
+  followup: { label: 'Follow-Up', variant: 'outline' },
+  completed: { label: 'Abgeschlossen', variant: 'success' },
+  cancelled: { label: 'Storniert', variant: 'destructive' },
+  forwarded: { label: 'Weitergeleitet', variant: 'outline' },
+  waiting_for_customer: { label: 'Wartet auf Kunde', variant: 'secondary' },
+};
 
 interface TaskStatusBadgeProps {
   status: TaskStatus;
   className?: string;
 }
 
-export const TaskStatusBadge = ({ status, className }: TaskStatusBadgeProps) => {
-  const getStatusLabel = (status: TaskStatus) => {
-    switch (status) {
-      case 'new': return 'Neu';
-      case 'in_progress': return 'In Bearbeitung';
-      case 'followup': return 'Wiedervorlage';
-      case 'completed': return 'Abgeschlossen';
-      // Removed 'closed' status option
-      default: return status;
-    }
-  };
+export const TaskStatusBadge: React.FC<TaskStatusBadgeProps> = ({ status, className }) => {
+  const config = statusConfigMap[status] || { label: 'Unbekannt', variant: 'destructive' };
 
-  const getStatusClass = (status: TaskStatus) => {
-    switch (status) {
-      case 'new': return 'bg-blue-100 text-blue-800';
-      case 'in_progress': return 'bg-yellow-100 text-yellow-800';
-      case 'followup': return 'bg-purple-100 text-purple-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      // Removed 'closed' status style
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  return (
-    <span className={cn(`px-2 py-1 rounded-full text-xs ${getStatusClass(status)}`, className)}>
-      {getStatusLabel(status)}
-    </span>
-  );
+  return <Badge variant={config.variant} className={className}>{config.label}</Badge>;
 };

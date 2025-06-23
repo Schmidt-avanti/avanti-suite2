@@ -90,9 +90,40 @@ export const TaskTimerProvider: React.FC<TaskTimerProviderProps> = ({ children }
         },
         async (payload) => {
           // When a task_time entry changes, refresh the cache for that task
-          const taskId = payload.new?.task_id;
-          if (taskId) {
-            await calculateTotalTime(taskId);
+          const newPayload = payload.new as Partial<TaskTimeEntry>;
+          const oldPayload = payload.old as Partial<TaskTimeEntry>;
+          const taskId = newPayload?.task_id || oldPayload?.task_id;
+          if (taskId && typeof taskId === 'string') { // Ensure taskId is a string
+            try {
+              // Get all completed time entries for this task to update the cache
+              const { data: entries, error } = await supabase
+                .from('task_times')
+                .select('duration_seconds')
+                .eq('task_id', taskId)
+                .not('duration_seconds', 'is', null);
+
+              if (error) {
+                console.error(`Real-time: Error fetching task_times for cache update (task ${taskId}):`, error);
+                // Potentially throw error or handle more gracefully depending on desired behavior
+                return; // Exit if we can't fetch data
+              }
+
+              const totalSeconds = entries?.reduce((sum, entry) =>
+                sum + (entry.duration_seconds || 0), 0) || 0;
+
+              setTimeCache((prev) => {
+                // console.log(`Real-time: Updating time cache for task ${taskId} from ${prev[taskId] || 0} to ${totalSeconds}s`);
+                return {
+                  ...prev,
+                  [taskId]: totalSeconds,
+                };
+              });
+            } catch (err) {
+              // Error is logged if it came from supabase query
+              // console.error(`Real-time: Failed to update cache for task ${taskId}:`, err);
+            }
+          } else if ((payload.new as Partial<TaskTimeEntry>)?.task_id || (payload.old as Partial<TaskTimeEntry>)?.task_id) {
+            // console.warn(`Real-time: Received payload for task_id that is not a string or is null:`, (payload.new as Partial<TaskTimeEntry>)?.task_id || (payload.old as Partial<TaskTimeEntry>)?.task_id);
           }
         }
       )
@@ -124,12 +155,6 @@ export const TaskTimerProvider: React.FC<TaskTimerProviderProps> = ({ children }
         ...prev,
         [taskId]: totalSeconds
       }));
-      
-      // Also update the tasks table with the cached time for efficiency
-      await supabase
-        .from('tasks')
-        .update({ total_time_seconds: totalSeconds })
-        .eq('id', taskId);
       
       return totalSeconds;
     } catch (err) {

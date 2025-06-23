@@ -1,354 +1,453 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
-import { UseCaseType } from "@/types/use-case";
-import CreateUseCaseForm from "@/components/use-cases/CreateUseCaseForm";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 import UseCaseChatAndPreview from "@/components/use-cases/UseCaseChatAndPreview";
+import { useCustomers } from "@/hooks/useCustomers";
+import { usePromptTemplates } from "@/hooks/usePromptTemplates";
+import type { UseCaseType } from "@/types/use-case";
+import type { Customer, Message } from "@/types";
+import { ProcessMap, ProcessStep } from "@/types/process";
 
-type Message = {
-  role: "user" | "assistant";
-  content: string;
-};
 
-type Customer = {
-  id: string;
-  name: string;
-  industry: string | null;
-  tools?: {
-    task_management: string | null;
-    knowledge_base: string | null;
-    crm: string | null;
-  };
-};
 
-type PromptTemplate = {
-  id: string;
-  type: string;
-  content: string;
-};
-
-enum Step {
-  FORM = 1,
-  CHAT = 2,
-  REVIEW = 3
+interface UseCase {
+  title: string;
+  expected_result: string;
+  information_needed: string;
+  process_map?: ProcessMap;
+  type?: UseCaseType;
+  customer_id?: string;
+  raw_response?: any;
+  response_id?: string;
 }
 
-const fetchCustomers = async () => {
-  console.log("Fetching customers data...");
-  
-  const { data: customers, error: customersError } = await supabase
-    .from("customers")
-    .select("id, name, industry")
-    .order("name");
+enum Step {
+  FORM,
+  CHAT,
+}
 
-  if (customersError) {
-    console.error("Error fetching customers:", customersError);
-    throw customersError;
+const extractUseCaseJson = (content: string): UseCase | null => {
+  console.log("Parsing AI response:", content?.substring(0, 100) + "...");
+  
+  const jsonRegex = /```(?:json)?\n([\s\S]*?)\n```/;
+  let jsonContent = null;
+  const match = content?.match(jsonRegex);
+  
+  if (match && match[1]) {
+    console.log("Found JSON code block in response");
+    jsonContent = match[1];
+  } else {
+    console.log("No JSON code block found, trying to parse entire content");
+    jsonContent = content;
   }
-
-  const { data: tools, error: toolsError } = await supabase
-    .from("customer_tools")
-    .select("customer_id, task_management, knowledge_base, crm");
-
-  if (toolsError) {
-    console.error("Error fetching customer tools:", toolsError);
-    throw toolsError;
+  
+  if (!jsonContent) {
+    console.error("No valid content to parse");
+    return null;
   }
-
-  const customersWithTools = customers.map((customer) => {
-    const customerTools = tools.find((t) => t.customer_id === customer.id);
-    return {
-      ...customer,
-      tools: customerTools
-        ? {
-            task_management: customerTools.task_management,
-            knowledge_base: customerTools.knowledge_base,
-            crm: customerTools.crm,
-          }
-        : undefined,
-    };
-  });
   
-  console.log(`Found ${customersWithTools.length} customers with tools`);
-  return customersWithTools;
-};
-
-const fetchPrompts = async () => {
-  console.log("Fetching prompt templates...");
-  
-  const { data, error } = await supabase
-    .from("prompt_templates")
-    .select("id, type, content")
-    .eq("is_active", true);
+  try {
+    const parsedJson = JSON.parse(jsonContent);
+    console.log("Successfully parsed JSON:", parsedJson);
     
-  if (error) {
-    console.error("Error fetching prompt templates:", error);
-    throw error;
+    if (!parsedJson.title || !parsedJson.type) {
+      console.error("Parsed JSON missing required fields (title or type)");
+      return null;
+    }
+    
+    return parsedJson;
+  } catch (error) {
+    console.error("Error parsing JSON from AI response:", error);
+    try {
+      const possibleJson = content?.match(/{[\s\S]*}/)?.[0];
+      if (possibleJson) {
+        console.log("Trying to extract JSON by searching for object literals");
+        return JSON.parse(possibleJson);
+      }
+    } catch (fallbackError) {
+      console.error("Fallback parsing also failed:", fallbackError);
+    }
+    return null;
   }
-  
-  console.log(`Found ${data.length} active prompt templates`);
-  return data;
 };
 
 const CreateUseCasePage = () => {
   const [step, setStep] = useState<Step>(Step.FORM);
-  
-  const [customerId, setCustomerId] = useState<string>("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [type, setType] = useState<UseCaseType | "">("");
-  
+  const [topicInput, setTopicInput] = useState<string>("");
   const [chatInput, setChatInput] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
-  
   const [loadingAI, setLoadingAI] = useState(false);
-  const [aiResponseJson, setAiResponseJson] = useState<any>(null);
-  
+  const [aiResponseJson, setAiResponseJson] = useState<UseCase | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<string | null>(null);
+  const [responseId, setResponseId] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
-  const { 
-    data: customers = [], 
-    isLoading: isLoadingCustomers,
-    error: customersError 
-  } = useQuery({ 
-    queryKey: ["customers"], 
-    queryFn: fetchCustomers 
-  });
-  
-  const { 
-    data: prompts = [], 
-    isLoading: isLoadingPrompts,
-    error: promptsError 
-  } = useQuery({ 
-    queryKey: ["prompt_templates"], 
-    queryFn: fetchPrompts 
-  });
+  const { customers, isLoading: isLoadingCustomers } = useCustomers();
+  const { templates, isLoading: isLoadingPrompts } = usePromptTemplates();
 
-  const { toast } = useToast();
   const navigate = useNavigate();
-  
-  const promptTemplate = prompts?.find((p: PromptTemplate) => p.type === type)?.content;
+  const [searchParams] = useSearchParams();
+  const customerIdFromUrl = searchParams.get("customer_id");
 
-  React.useEffect(() => {
-    if (customersError) {
-      toast({
-        variant: "destructive",
-        title: "Fehler beim Laden der Kunden",
-        description: (customersError as Error).message,
-      });
+  useEffect(() => {
+    if (customerIdFromUrl) {
+      setSelectedCustomerId(customerIdFromUrl);
     }
-    
-    if (promptsError) {
-      toast({
-        variant: "destructive",
-        title: "Fehler beim Laden der Prompt-Vorlagen",
-        description: (promptsError as Error).message,
-      });
-    }
-  }, [customersError, promptsError, toast]);
+  }, [customerIdFromUrl]);
 
-  async function sendChatToAI() {
-    if (!promptTemplate || !customerId || !chatInput.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Eingabe unvollständig",
-        description: "Bitte füllen Sie alle erforderlichen Felder aus.",
-      });
+  const selectedCustomer = useMemo(() => {
+    return customers.find((c) => c.id === selectedCustomerId);
+  }, [customers, selectedCustomerId]);
+
+  const promptTemplate = useMemo(() => {
+    return templates.find((p) => p.type === type)?.content;
+  }, [templates, type]);
+
+  const handleSendMessage = async (promptOverride?: any) => {
+    // Sicherstellen, dass prompt ein String ist
+    const prompt = typeof promptOverride === 'string' ? promptOverride : chatInput;
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) return;
+
+    // Den ursprünglichen System-Prompt finden
+    const systemPrompt = templates.find(t => t.type === type)?.content;
+    if (!systemPrompt) {
+      toast.error("Fehler", { description: "Konnte die ursprüngliche Prompt-Vorlage nicht finden." });
       return;
     }
 
-    setError(null);
-    setRawResponse(null);
+    const userMessage: Message = { role: "user", content: prompt };
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
     setLoadingAI(true);
-    
-    const newMessage = { role: "user" as const, content: chatInput };
-    setMessages(prev => [...prev, newMessage]);
-    
+    setChatInput("");
+
+    // Die letzte response_id aus dem State holen
+    const lastResponseId = responseId;
+
+    // Die Funktion mit dem Kontext aufrufen
+    generateUseCase(prompt, systemPrompt, lastResponseId);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const generateUseCase = async (userInput: string, systemPrompt: string, previous_response_id?: string) => {
+    // Beim ersten Aufruf (keine previous_response_id) wird der Lade-Spinner für die ganze Seite angezeigt.
+    // Bei Folgeaufrufen im Chat wird nur der kleine Spinner in der Chat-Komponente aktiv.
+    if (!previous_response_id) {
+      setLoadingAI(true);
+      setError(null);
+      setAiResponseJson(null);
+      setRawResponse(null);
+      setResponseId(null);
+    } else {
+      setLoadingAI(true); // Auch im Chat den Ladezustand aktivieren
+    }
+
     try {
-      const selectedCustomer = customers.find((c: Customer) => c.id === customerId);
-      
-      if (!selectedCustomer) {
-        throw new Error("Kunde nicht gefunden");
-      }
-      
-      console.log("Sending request to edge function with customer:", selectedCustomer.name);
-      
-      const res = await supabase.functions.invoke("generate-use-case", {
+      const { data, error: invokeError } = await supabase.functions.invoke('generate-use-case', {
         body: {
-          prompt: promptTemplate,
-          metadata: selectedCustomer,
-          userInput: chatInput,
-          type,
-          debug: true
+          prompt: systemPrompt,
+          userInput: userInput,
+          previous_response_id: previous_response_id,
+          use_case_type: type,
+          metadata: {
+            industry: selectedCustomer?.industry,
+            ...selectedCustomer?.additional_info,
+          },
         },
       });
-      
-      console.log("Edge function response:", res);
-      
-      if (res.error) {
-        console.error("Edge function error:", res.error);
-        setError(`Fehler: ${res.error.message || "Unbekannter Fehler"}`);
-        
-        if (res.data && typeof res.data === 'object') {
-          if (res.data.raw_content) {
-            setRawResponse(JSON.stringify(res.data.raw_content, null, 2));
-          } else if (res.data.details) {
-            setRawResponse(JSON.stringify(res.data.details, null, 2));
-          }
-        }
-        
-        toast({
-          variant: "destructive",
-          title: "Fehler bei der KI-Anfrage",
-          description: res.error.message || "Es gab einen Fehler bei der Verarbeitung.",
-        });
-        setLoadingAI(false);
-        return;
+
+      if (invokeError) throw invokeError;
+
+      console.log("Received data from function:", data);
+
+      // Den Inhalt für die Sprechblase dynamisch bestimmen
+      let assistantContent = "Hier ist der aktualisierte Use Case. Bitte prüfen Sie die Details in der Vorschau.";
+      if (data.chat_response && data.chat_response.info_block) {
+        assistantContent = data.chat_response.info_block;
       }
 
-      if (res.data) {
-        console.log("Received valid response from edge function");
-        
-        if (res.data.chat_response?.info_block) {
-          setMessages((prev) => [...prev, { 
-            role: "assistant", 
-            content: res.data.chat_response.info_block 
-          }]);
-        }
-        
-        if (res.data.next_question) {
-          setMessages((prev) => [...prev, { 
-            role: "assistant", 
-            content: res.data.next_question 
-          }]);
-        }
+      const assistantMessage: Message = { role: "assistant", content: assistantContent, useCase: data };
+      setMessages((prev) => [...prev, assistantMessage]);
+      
+      setAiResponseJson(data);
+      setRawResponse(JSON.stringify(data, null, 2));
+      setResponseId(data.response_id || null);
 
-        setAiResponseJson(res.data);
-        setChatInput("");
-        
-        if (messages.length === 0) {
-          setStep(Step.REVIEW);
-        }
-      } else {
-        setError("Keine Daten in der Antwort erhalten");
-        toast({
-          variant: "destructive",
-          title: "Leere Antwort",
-          description: "Die Anfrage war erfolgreich, aber es wurden keine Daten zurückgegeben.",
-        });
-      }
-    } catch (err: any) {
-      console.error("Request error:", err);
-      setError(`Fehler bei der Anfrage: ${err.message}`);
-      toast({
-        variant: "destructive",
-        title: "Verbindungsfehler",
-        description: err.message,
+    } catch (e: any) {
+      console.error("Error generating use case:", e);
+      const errorMessage = e.message || "Ein unbekannter Fehler ist aufgetreten.";
+      setError(errorMessage);
+      const errorAssistantMessage: Message = { role: "assistant", content: `Es ist ein Fehler aufgetreten: ${errorMessage}` };
+      setMessages((prev) => [...prev, errorAssistantMessage]);
+      toast.error("Fehler bei der Generierung", {
+        description: errorMessage,
       });
     } finally {
       setLoadingAI(false);
     }
-  }
+  };
 
-  async function handleSave() {
-    if (!aiResponseJson || !customerId) {
-      toast({
-        variant: "destructive",
-        title: "Unvollständige Daten",
-        description: "Der Use Case kann nicht gespeichert werden.",
+  const proceedWithSave = async () => {
+    setShowSaveConfirm(false);
+    if (!aiResponseJson) {
+      toast.error("Fehler", {
+        description: "Keine Use-Case-Daten zum Speichern vorhanden."
       });
       return;
     }
-    
-    try {
-      console.log("Saving use case to database...");
-      
-      const { 
-        type, 
-        title, 
-        information_needed, 
-        steps, 
-        typical_activities, 
-        expected_result, 
-        chat_response, 
-        next_question, 
-        process_map, 
-        decision_logic 
-      } = aiResponseJson;
 
-      const { error } = await supabase.from("use_cases").insert([
-        {
-          type,
-          customer_id: customerId,
-          title,
-          information_needed,
-          steps,
-          typical_activities,
-          expected_result,
-          chat_response,
-          next_question,
-          process_map,
-          decision_logic,
-          is_active: true,
-        },
-      ]);
+    const dataToSave = {
+      ...aiResponseJson,
+      type: type,
+      customer_id: selectedCustomerId,
+      // raw_response entfernt, da die Spalte in der Datenbank nicht existiert
+      response_id: responseId,
+      process_map: aiResponseJson.process_map as any,
+    };
+
+    // Use Case speichern
+    const { data, error } = await supabase.from("use_cases").insert([dataToSave]).select();
+
+    if (error) {
+      console.error("Error saving use case:", error);
+      toast.error("Fehler beim Speichern", {
+        description: error.message
+      });
+    } else {
+      // Erfolgreich gespeichert, jetzt Embedding erstellen
+      const useCaseId = data[0]?.id;
       
-      if (error) {
-        console.error("Error saving use case:", error);
-        toast({
-          variant: "destructive",
-          title: "Fehler beim Speichern",
-          description: error.message,
+      if (useCaseId) {
+        try {
+          // Embedding erstellen
+          const { data: embeddingData, error: embeddingError } = await supabase.functions.invoke('generate-embeddings', {
+            body: JSON.stringify({ useCaseIds: [useCaseId] })
+          });
+          
+          if (embeddingError) {
+            console.error("Error creating embedding:", embeddingError);
+            toast.success("Use Case gespeichert", {
+              description: "Use Case wurde gespeichert, aber das Embedding konnte nicht erstellt werden."
+            });
+          } else {
+            toast.success("Use Case gespeichert", {
+              description: "Use Case wurde gespeichert und Embedding erfolgreich erstellt."
+            });
+          }
+        } catch (embeddingError) {
+          console.error("Error creating embedding:", embeddingError);
+          toast.success("Use Case gespeichert", {
+            description: "Use Case wurde gespeichert, aber das Embedding konnte nicht erstellt werden."
+          });
+        }
+      } else {
+        toast.success("Use Case gespeichert", {
+          description: "Use Case wurde gespeichert, aber die ID konnte nicht ermittelt werden für das Embedding."
         });
-        return;
       }
       
-      toast({
-        title: "Use Case gespeichert",
-        description: "Der Use Case wurde erfolgreich gespeichert.",
-      });
       navigate("/admin/use-cases");
-    } catch (err: any) {
-      console.error("Save error:", err);
-      toast({
-        variant: "destructive",
-        title: "Fehler beim Speichern",
-        description: err.message,
+    }
+  };
+
+  const handleSave = () => {
+    if (!aiResponseJson) {
+      toast.error("Fehler", {
+        description: "Keine Use-Case-Daten zum Speichern vorhanden."
+      });
+      return;
+    }
+    setShowSaveConfirm(true);
+  };
+
+  const handleStartChat = () => {
+    if (selectedCustomerId && type && topicInput.trim() && templates.find((p) => p.type === type)) {
+      // Wechsle zur Chat-Ansicht und starte die Use-Case-Generierung
+      setStep(Step.CHAT);
+      
+      // Wir senden den User-Input (topicInput) als tatsächliche Benutzeranfrage
+      // und nicht mehr das Template als User-Input
+      const userMessage: Message = { role: "user", content: topicInput };
+      setMessages([userMessage]);
+      
+      setLoadingAI(true);
+      setError(null);
+      setAiResponseJson(null);
+      setRawResponse(null);
+      setResponseId(null);
+      
+      // API-Anfrage mit korrektem System-Prompt und User-Input
+      if (promptTemplate) {
+        generateUseCase(topicInput, promptTemplate);
+      }
+    } else {
+      toast.error("Fehlende Informationen", {
+        description: "Bitte wählen Sie Kunde und Typ aus und geben Sie ein Thema ein. Stellen Sie sicher, dass eine Prompt-Vorlage existiert."
       });
     }
+  };
+
+  if (step === Step.FORM) {
+    return (
+      <div className="p-4 md:p-6">
+        <h1 className="text-2xl font-bold mb-4">Neuen Use Case erstellen</h1>
+        <div className="space-y-4 max-w-2xl mx-auto">
+          <div>
+            <Label htmlFor="customer">Kunde</Label>
+            <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
+              <SelectTrigger><SelectValue placeholder="Kunde auswählen..." /></SelectTrigger>
+              <SelectContent>
+                {customers.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name} {c.industry ? `(${c.industry})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {selectedCustomer && (
+            <div>
+              <Label>Branche</Label>
+              <p className="text-sm p-2 bg-gray-100 rounded-md">{selectedCustomer.industry || "Keine Branche zugewiesen"}</p>
+            </div>
+          )}
+          <div>
+            <Label htmlFor="type">Use Case Typ</Label>
+            <Select onValueChange={(v) => setType(v as UseCaseType)} value={type}>
+              <SelectTrigger><SelectValue placeholder="Typ auswählen..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="forwarding_use_case">Weiterleitung</SelectItem>
+                <SelectItem value="direct_use_case">Direktbearbeitung</SelectItem>
+                <SelectItem value="knowledge_request">Wissensanfrage</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {selectedCustomerId && type && (
+            <div className="space-y-2">
+              <Label htmlFor="topic">Use Case Thema</Label>
+              <div className="text-sm text-muted-foreground mb-2">
+                Beschreiben Sie hier detailliert, worum es im Use Case gehen soll. Je mehr Details Sie angeben, 
+                desto besser kann der Use Case generiert werden.
+              </div>
+              <Textarea
+                id="topic"
+                placeholder="z.B. Automatische Erstellung von Monatsberichten für Kunden mit Zusammenfassung der erledigten Aufgaben..."
+                value={topicInput}
+                onChange={(e) => setTopicInput(e.target.value)}
+                onKeyDown={(e) => {
+                  // Wenn Enter gedrückt wird (ohne Shift) und der Button nicht deaktiviert ist
+                  if (e.key === 'Enter' && !e.shiftKey && 
+                      selectedCustomerId && type && topicInput.trim() && !isLoadingCustomers && !isLoadingPrompts) {
+                    e.preventDefault(); // Verhindert den Zeilenumbruch
+                    handleStartChat();
+                  }
+                }}
+                rows={5}
+                className="resize-none"
+              />
+            </div>
+          )}
+          
+          <Button 
+            onClick={handleStartChat} 
+            disabled={!selectedCustomerId || !type || !topicInput.trim() || isLoadingCustomers || isLoadingPrompts}
+          >
+            {loadingAI || isLoadingCustomers || isLoadingPrompts ? "Lade..." : "Use Case generieren"}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h2 className="text-xl font-bold mb-6">Neuen Use Case anlegen</h2>
+    <div className="p-4 md:p-6 h-full flex flex-col">
+      <UseCaseChatAndPreview
+        messages={messages}
+        chatInput={chatInput}
+        setChatInput={setChatInput}
+        onSendMessage={handleSendMessage}
+        loadingAI={loadingAI}
+        error={error}
+        rawResponse={rawResponse}
+        aiResponseJson={aiResponseJson}
+        onSave={handleSave}
+        onBack={() => setStep(Step.FORM)}
+        handleKeyDown={handleKeyDown}
+        textareaRef={textareaRef}
+      />
 
-      {step === Step.FORM && (
-        <CreateUseCaseForm
-          customers={customers}
-          customerId={customerId}
-          setCustomerId={setCustomerId}
-          type={type}
-          setType={setType}
-          onNext={() => setStep(Step.CHAT)}
-          isLoading={isLoadingCustomers || isLoadingPrompts}
-        />
-      )}
-
-      {(step === Step.CHAT || step === Step.REVIEW) && (
-        <UseCaseChatAndPreview
-          messages={messages}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          onSendMessage={sendChatToAI}
-          loadingAI={loadingAI}
-          error={error}
-          rawResponse={rawResponse}
-          aiResponseJson={aiResponseJson}
-          onSave={handleSave}
-          onBack={() => setStep(Step.FORM)}
-        />
-      )}
+      {/* Loading-Modal während der Generierung */}
+      <Dialog open={loadingAI && !aiResponseJson} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Use Case wird generiert</DialogTitle>
+            <DialogDescription>
+              Bitte warten Sie, während der Use Case generiert wird. Dies kann einige Sekunden dauern.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center items-center py-8">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">KI generiert den Use Case...</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Bestätigungsdialog zum Speichern */}
+      <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bestätigung</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchten Sie diesen Use Case wirklich speichern?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={proceedWithSave}>Speichern</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

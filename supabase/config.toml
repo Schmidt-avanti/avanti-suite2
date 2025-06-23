@@ -1,15 +1,15 @@
 
 # supabase/config.toml
 project_id = "knoevkvjyuchhcmzsdpq"
-services = [
-  {id = "gotrue", name = "GoTrue", port = 9999},
-  {id = "storage", name = "Storage", port = 5000},
-]
+# services = [
+#   {id = "gotrue", name = "GoTrue", port = 9999},
+#   {id = "storage", name = "Storage", port = 5000},
+# ]
 
 [api]
 port = 54321
-types = "types"
-auto_update_types = true
+# types = "types"
+# auto_update_types = true
 
 # Webhook functions should not require auth
 [functions.twilio-voice-webhook]
@@ -28,4 +28,7 @@ verify_jwt = true
 
 # Make the validate-email function publicly accessible with JWT verification
 [functions.validate-email]
+verify_jwt = true
+
+[functions.generate-schwungrad-email]
 verify_jwt = true

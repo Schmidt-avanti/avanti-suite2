@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Session } from "@supabase/supabase-js";
 
 export interface AuthState {
-  user: (User & { role: UserRole }) | null;
+  user: (User & { role: UserRole; customer_id?: string }) | null;
   session: Session | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
@@ -38,15 +38,24 @@ const fetchUserProfile = async (userId: string) => {
     }
     
     if (!profile) {
-      console.error("No profile found for user ID:", userId);
-      throw new Error("Kein Profil gefunden");
+      throw new Error("Profil nicht gefunden. Bitte kontaktiere deinen Administrator.");
     }
-    
-    console.log("Profile successfully fetched:", profile);
-    return profile;
-  } catch (error) {
-    console.error("Error in fetchUserProfile:", error);
-    throw error;
+
+    // Fetch customer_id from user_customer_assignments (not from profiles)
+    let customer_id: string | undefined = undefined;
+    if (profile.role === 'customer') {
+      const { data: assignments, error: assignmentError } = await supabase
+        .from('user_customer_assignments')
+        .select('customer_id')
+        .eq('user_id', userId);
+      if (!assignmentError && assignments && assignments.length > 0) {
+        customer_id = assignments[0].customer_id;
+      }
+    }
+
+    return { ...profile, customer_id };
+  } catch (err) {
+    throw err;
   }
 };
 
@@ -61,14 +70,19 @@ const createUserFromSessionAndProfile = (session: Session, profileData: any): Us
     console.warn(`Invalid role found in profile: ${role}, defaulting to 'customer'`);
   }
   
-  return {
+  const userObj: any = {
     id: session.user.id,
     email: session.user.email ?? "",
     role: (['admin', 'agent', 'customer'].includes(role) ? role : 'customer') as UserRole,
     createdAt: session.user.created_at,
     firstName: profileData["Full Name"] || undefined,
     lastName: undefined,
+    "Full Name": profileData["Full Name"] || "",
   };
+  if (role === 'customer' && profileData.customer_id) {
+    userObj.customer_id = profileData.customer_id;
+  }
+  return userObj;
 };
 
 export function useProvideAuth(): AuthState {

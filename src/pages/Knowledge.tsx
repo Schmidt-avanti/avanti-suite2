@@ -8,37 +8,79 @@ import KnowledgeList from '@/components/knowledge/KnowledgeList';
 import KnowledgeDetail from '@/components/knowledge/KnowledgeDetail';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from '@/contexts/AuthContext';
 
 type ViewType = 'articles' | 'cases';
 
 const Knowledge = () => {
+  const { user } = useAuth();
+  // Customer: always their customer_id, others: 'all' by default
+  const [selectedCustomer, setSelectedCustomer] = React.useState<string>(user?.role === 'customer' ? (user?.customer_id || '') : 'all');
   const [viewType, setViewType] = React.useState<ViewType>('articles');
   const [selectedItemId, setSelectedItemId] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [selectedCustomer, setSelectedCustomer] = React.useState<string>('all');
+
+  // Keep selectedCustomer in sync if user changes (e.g. after login)
+  React.useEffect(() => {
+    if (user?.role === 'customer' && user.customer_id) {
+      setSelectedCustomer(user.customer_id);
+    }
+  }, [user]);
 
   const { data: customers } = useQuery({
-    queryKey: ['customers'],
+    queryKey: ['customers', user?.id, user?.role],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('id, name')
-        .eq('is_active', true)
-        .order('name');
-      if (error) throw error;
-      return data;
+      if (user?.role === 'customer') {
+        // Kunde sieht nur sich selbst
+        const { data, error } = await supabase
+          .from('customers')
+          .select('id, name')
+          .eq('id', user.customer_id)
+          .eq('is_active', true)
+          .order('name');
+        if (error) throw error;
+        return data;
+      } else if (user?.role === 'agent') {
+        // Agent sieht nur zugeordnete Kunden
+        const { data: assignments, error: assignmentsError } = await supabase
+          .from('user_customer_assignments')
+          .select('customer_id')
+          .eq('user_id', user.id);
+        if (assignmentsError) throw assignmentsError;
+        const customerIds = assignments?.map(a => a.customer_id) || [];
+        if (customerIds.length === 0) return [];
+        const { data, error } = await supabase
+          .from('customers')
+          .select('id, name')
+          .in('id', customerIds)
+          .eq('is_active', true)
+          .order('name');
+        if (error) throw error;
+        return data;
+      } else {
+        // Admin sieht alle
+        const { data, error } = await supabase
+          .from('customers')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name');
+        if (error) throw error;
+        return data;
+      }
     },
   });
 
   const { data: articles } = useQuery({
-    queryKey: ['knowledge-articles', selectedCustomer],
+    queryKey: ['knowledge-articles', selectedCustomer, user?.role, user?.customer_id],
     queryFn: async () => {
       let query = supabase
         .from('knowledge_articles')
         .select('id, title, content, created_at')
         .eq('is_active', true);
 
-      if (selectedCustomer !== 'all') {
+      if (user?.role === 'customer') {
+        query = query.eq('customer_id', user.customer_id);
+      } else if (selectedCustomer !== 'all') {
         query = query.eq('customer_id', selectedCustomer);
       }
 
@@ -49,14 +91,16 @@ const Knowledge = () => {
   });
 
   const { data: cases } = useQuery({
-    queryKey: ['use-cases', selectedCustomer],
+    queryKey: ['use-cases', selectedCustomer, user?.role, user?.customer_id],
     queryFn: async () => {
       let query = supabase
         .from('use_cases')
         .select('id, title, information_needed, created_at')
         .eq('is_active', true);
 
-      if (selectedCustomer !== 'all') {
+      if (user?.role === 'customer') {
+        query = query.eq('customer_id', user.customer_id);
+      } else if (selectedCustomer !== 'all') {
         query = query.eq('customer_id', selectedCustomer);
       }
 
@@ -96,22 +140,25 @@ const Knowledge = () => {
                   />
                   <Search className="h-5 w-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>
-                <Select
-                  value={selectedCustomer}
-                  onValueChange={setSelectedCustomer}
-                >
-                  <SelectTrigger className="min-w-[142px] sm:min-w-[200px] max-w-[250px] rounded-lg border-gray-200 bg-gray-50">
-                    <SelectValue placeholder="Kunde auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Kunden</SelectItem>
-                    {customers?.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {(user?.role === 'admin' || user?.role === 'agent') && (
+                  <Select
+                    value={selectedCustomer}
+                    onValueChange={setSelectedCustomer}
+                  >
+                    <SelectTrigger className="min-w-[142px] sm:min-w-[200px] max-w-[250px] rounded-lg border-gray-200 bg-gray-50">
+                      <SelectValue placeholder="Kunde auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Kunden</SelectItem>
+                      {customers?.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {/* Für Kunden kein Dropdown */}
               </div>
               <div className="mt-2 sm:mt-0 flex gap-3 justify-end">
                 <ToggleGroup

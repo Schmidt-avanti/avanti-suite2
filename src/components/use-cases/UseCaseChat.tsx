@@ -17,6 +17,8 @@ interface UseCaseChatProps {
   setChatInput: (value: string) => void;
   onSendMessage: () => void;
   loading: boolean;
+  handleKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  textareaRef: React.RefObject<HTMLTextAreaElement>;
 }
 
 const UseCaseChat = ({ 
@@ -24,11 +26,12 @@ const UseCaseChat = ({
   chatInput, 
   setChatInput, 
   onSendMessage, 
-  loading 
+  loading,
+  handleKeyDown,
+  textareaRef
 }: UseCaseChatProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
+
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -37,13 +40,6 @@ const UseCaseChat = ({
       }
     }
   }, [messages]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && chatInput.trim()) {
-      e.preventDefault();
-      onSendMessage();
-    }
-  };
 
   return (
     <Card className="flex flex-col h-[600px] rounded-2xl shadow-md">

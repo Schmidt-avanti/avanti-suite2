@@ -67,281 +67,246 @@ import CallCenter from '@/pages/CallCenter';
 // Use a single instance of QueryClient for the entire app
 const queryClient = new QueryClient();
 
-const App = () => {
+function App() {
   return (
-    <ThemeProvider>
-      <TooltipProvider>
-        <AuthProvider>
-          <SupervisorChatProvider>
-            <Toaster />
-            <Sonner />
-            <Router>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-                
-                {/* Important: The reset password route must be outside of the protected routes */}
-                <Route path="/auth/reset-password" element={<ResetPassword />} />
-                
-                {/* Entferne Registrierung, leite ggf. weiter */}
-                <Route path="/auth/register" element={<Navigate to="/auth/login" replace />} />
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <TooltipProvider>
+          <AuthProvider>
+            <SupervisorChatProvider>
+              <Router>
+                <Toaster />
+                <Sonner />
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth/login" element={<Login />} />
+                  <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/auth/reset-password" element={<ResetPassword />} />
+                  <Route path="/landing" element={<Landing />} />
 
-                {/* Admin routes, geschützt */}
-                <Route element={<AppLayout />}>
-                  {/* Main Dashboard for all users */}
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
-                        <Dashboard />
-                      </ProtectedRoute>
-                    }
-                  />
+                  {/* Protected routes */}
+                  <Route element={<AppLayout />}>
+                    {/* Knowledge route for all roles (with sidebar) */}
+                    <Route
+                      path="/knowledge"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'agent', 'customer']}>
+                          <Knowledge />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <ProtectedRoute>
+                          <Dashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    {/* Admin */}
+                    <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route
+                      path="/admin/dashboard"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <AdminDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/users"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <UsersAdminPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/customers"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <CustomersAdminPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/use-cases"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'customer']}>
+                          <UseCasesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/use-cases/create"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'customer']}>
+                          <CreateUseCasePage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/use-cases/:id"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'customer']}>
+                          <UseCaseDetailPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/prompt-templates"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <PromptTemplatesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/knowledge/create"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <CreateKnowledgeArticle />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/whatsapp-accounts"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <WhatsappAccountsAdminPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/processing-time"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <ProcessingTimeRedirect />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    {/* Supervisor */}
+                    <Route
+                      path="/supervisor/live-overview"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+                          <LiveAgentOverview />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/supervisor/short-break-settings"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+                          <ShortBreakSettings />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/supervisor/processing-time"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+                          <ProcessingTime />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    {/* Agent */}
+                    <Route
+                      path="/agent/dashboard"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'agent']}>
+                          <AgentDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    {/* Customer */}
+                    <Route
+                      path="/customer/dashboard"
+                      element={
+                        <ProtectedRoute allowedRoles={['customer']}>
+                          <ClientDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    {/* Tasks */}
+                    <Route
+                      path="/tasks"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'agent', 'customer']}>
+                          <Tasks />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/tasks/create"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'agent']}>
+                          <CreateTask />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/tasks/completed"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'agent', 'customer']}>
+                          <CompletedTasks />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/tasks/:id"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'agent']}>
+                          <TaskDetail />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    {/* Reports */}
+                    <Route
+                      path="/reports"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'agent', 'customer']}>
+                          <Reports />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    {/* Accounting */}
+                    <Route
+                      path="/accounting/invoices"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'customer']}>
+                          <InvoicesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/accounting/payment-data"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'customer']}>
+                          <PaymentDataPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                  </Route>
                   
-                  <Route
-                    path="/admin/dashboard"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <AdminDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/users"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <UsersAdminPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/customers"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <CustomersAdminPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/use-cases"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <UseCasesPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/use-cases/:id"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <UseCaseDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/use-cases/create"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <CreateUseCasePage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/prompts"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <PromptTemplatesPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/knowledge-articles/create/:useCaseId"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <CreateKnowledgeArticle />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin/processing-time"
-                    element={<ProcessingTimeRedirect />}
-                  />
-
-                  {/* Supervisor Pages */}
-                  <Route
-                    path="/supervisor/live-agents"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <LiveAgentOverview />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/supervisor/short-breaks"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <ShortBreakSettings />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/supervisor/processing-time"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <ProcessingTime />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="/knowledge"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
-                        <Knowledge />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="/knowledge/edit/:id"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "customer"]}>
-                        <KnowledgeArticleEdit />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="/admin/whatsapp-accounts"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <WhatsappAccountsAdminPage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Accounting routes */}
-                  <Route
-                    path="/accounting/invoices"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin"]}>
-                        <InvoicesPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/accounting/payment-data"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "customer"]}>
-                        <PaymentDataPage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Reports page */}
-                  <Route
-                    path="/reports"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
-                        <Reports />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Agent routes */}
-                  <Route
-                    path="/agent/dashboard"
-                    element={
-                      <ProtectedRoute allowedRoles={["agent"]}>
-                        <AgentDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Client routes */}
-                  <Route
-                    path="/client/dashboard"
-                    element={
-                      <ProtectedRoute allowedRoles={["customer"]}>
-                        <ClientDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/meine-aufgaben"
-                    element={
-                      <ProtectedRoute allowedRoles={["customer"]}>
-                        <Navigate to="/client/dashboard" replace />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Task routes - WICHTIG: Spezifischere Routen zuerst, dann dynamische */}
-                  <Route
-                    path="/tasks/completed"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
-                        <CompletedTasks />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/tasks/create"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
-                        <CreateTask />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/tasks"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
-                        <Tasks />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/tasks/:id"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "agent", "customer"]}>
-                        <TaskDetail />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* WhatsApp Integration */}
-                  <Route
-                    path="/whatsapp"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "agent"]}>
-                        <WhatsappPage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Call Center Integration */}
-                  <Route
-                    path="/call-center"
-                    element={
-                      <ProtectedRoute allowedRoles={["admin", "agent"]}>
-                        <CallCenter />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Catch-all for unauthorized */}
+                  {/* Not Found */}
                   <Route path="*" element={<NotFound />} />
-                </Route>
-              </Routes>
-            </Router>
-          </SupervisorChatProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </ThemeProvider>
+                </Routes>
+              </Router>
+            </SupervisorChatProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
-};
+}
 
 export default App;

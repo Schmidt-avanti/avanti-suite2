@@ -26,10 +26,12 @@ interface CreateUseCaseFormProps {
   isLoading?: boolean;
 }
 
-const useCaseTypes = Object.entries(useCaseTypeLabels).map(([value, label]) => ({
-  value,
-  label,
-}));
+const useCaseTypes = Object.entries(useCaseTypeLabels)
+  .filter(([value]) => value !== USE_CASE_TYPES.KNOWLEDGE_ARTICLE)
+  .map(([value, label]) => ({
+    value,
+    label,
+  }));
 
 const CreateUseCaseForm: React.FC<CreateUseCaseFormProps> = ({
   customers,
@@ -117,13 +119,13 @@ const CreateUseCaseForm: React.FC<CreateUseCaseFormProps> = ({
           <h3 className="font-medium mb-2">Use Case Beschreibung</h3>
           <p>
             {type === USE_CASE_TYPES.KNOWLEDGE_REQUEST && (
-              "Eine reine Informationsanfrage, die mit Wissen aus der Wissensdatenbank beantwortet wird."
+              "Eine reine Informationsanfrage, die mit Wissen aus de, Use Case und der Wissensdatenbank beantwortet wird."
             )}
             {type === USE_CASE_TYPES.FORWARDING && (
-              "Ein Anliegen, das an einen Spezialisten weitergeleitet werden muss."
+              "Ein Anliegen, das an den Kunden weitergeleitet wird."
             )}
             {type === USE_CASE_TYPES.DIRECT && (
-              "Ein Anliegen, das direkt bearbeitet werden kann, z.B. durch Anlegen einer Aufgabe."
+              "Ein Anliegen, das direkt und abschließend durch avanti Mitarbeiter bearbeitet wird."
             )}
           </p>
         </div>
