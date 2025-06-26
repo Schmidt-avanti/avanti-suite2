@@ -68,7 +68,7 @@ import CallCenter from '@/pages/CallCenter';
 // Use a single instance of QueryClient for the entire app
 const queryClient = new QueryClient();
 
-const App = () => {
+function App() {
   return (
     <ThemeProvider>
       <TooltipProvider>
@@ -349,14 +349,14 @@ const App = () => {
 
                   {/* Catch-all for unauthorized */}
                   <Route path="*" element={<NotFound />} />
-                </Route>
-              </Routes>
-            </Router>
-          </SupervisorChatProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </ThemeProvider>
+                </Routes>
+              </Router>
+            </SupervisorChatProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
-};
+}
 
 export default App;

@@ -54,7 +54,9 @@ const UserListTable: React.FC<Props> = ({
               }
             </TableCell>
             <TableCell>
-              {user.customers?.length ? (
+              {user.role !== 'admin' && (!user.customers || user.customers.length === 0) ? (
+                <span className="text-red-500 italic text-xs">Keine Kunden zugeordnet</span>
+              ) : user.customers && user.customers.length > 0 ? (
                 user.customers.map(c => c.name).join(", ")
               ) : (
                 <span className="text-gray-400 italic text-xs">Keine</span>

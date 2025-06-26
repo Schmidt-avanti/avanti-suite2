@@ -8,7 +8,7 @@ import {
   History
 } from "lucide-react";
 import { TaskStatusBadge } from './TaskStatusBadge';
-import type { TaskStatus } from '@/types';
+import type { DetailedTask, TaskStatus } from '@/types';
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import PhoneInterface from '@/components/call-center/PhoneInterface';
@@ -56,34 +56,33 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   setNoUseCaseDialogOpen,
   formattedTotalTime
 }) => {
+  const detailedTask = task as DetailedTask; // Explicit type assertion
   const isEmailTask = task.source === 'email';
-  const isCompleted = task.status === 'completed';
   const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
   
   // Extract phone number from endkunde data if available
   const getPhoneNumber = () => {
-    if (task.endkunde_id) {
-      // Try to extract phone from endkunde info
-      if (task.endkunde && task.endkunde.Adresse) {
-        return task.endkunde.Adresse;
-      }
+    if (detailedTask.endkunde_id) {
+      // Phone for endkunde is not available in the current Endkunde type
+      // If it were, it would be task.endkunde.phone (mapped from task.endkunde.telefon)
+      // For now, this block can be removed or commented out, as task.endkunde.phone will be undefined.
     }
     
     // Fallback to customer phone if available
-    if (task.customer && task.customer.phone) {
-      return task.customer.phone;
+    if (detailedTask.customer && detailedTask.customer.phone) {
+      return detailedTask.customer.phone;
     }
     
     return '';
   };
 
   const getCustomerName = () => {
-    if (task.endkunde_id && task.endkunde) {
-      return `${task.endkunde.Vorname || ''} ${task.endkunde.Nachname || ''}`.trim();
+    if (detailedTask.endkunde_id && detailedTask.endkunde) {
+      return `${detailedTask.endkunde.Vorname || ''} ${detailedTask.endkunde.Nachname || ''}`.trim();
     }
     
-    if (task.customer) {
-      return task.customer.name;
+    if (detailedTask.customer) {
+      return detailedTask.customer.name;
     }
     
     return '';
@@ -151,7 +150,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
         )}
         
         {/* No Use Case Actions button - only show for tasks without a use case */}
-        {!task.matched_use_case_id && setNoUseCaseDialogOpen && (
+        {!detailedTask.matched_use_case_id && setNoUseCaseDialogOpen && (
           <Button 
             variant="outline" 
             className="bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200"
@@ -173,26 +172,19 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           Wiedervorlage
         </Button>
         
-        {/* "Beenden ohne Ava" button */}
-        <Button 
-          variant="outline" 
-          className="bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
-          onClick={handleCloseWithoutAvaClick}
-          disabled={isCompleted}
-        >
-          <X className="h-4 w-4 mr-2" />
-          Beenden ohne Ava
-        </Button>
-        
         {/* "Aufgabe abschließen" button - only hidden for completed tasks */}
         {!isCompleted && (
           <Button 
             variant="outline" 
             className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
             onClick={handleCloseWithAvaClick}
+            disabled={isLoadingSummary}
           >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Aufgabe abschließen
+            {isLoadingSummary ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Bitte warten...</>
+            ) : (
+              <><CheckCircle className="h-4 w-4 mr-2" /> Aufgabe abschließen</>
+            )}
           </Button>
         )}
         

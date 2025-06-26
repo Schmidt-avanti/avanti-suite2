@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils'; // Added import for cn
 import { useAuth } from '@/contexts/AuthContext';
 import { Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -19,6 +20,7 @@ interface TaskChatMessageProps {
   readableId?: string;
   endkundeOrt?: string;
   isLastAssistantMessage?: boolean;
+  isReadOnly?: boolean; // Added isReadOnly prop
 }
 
 export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({ 
@@ -29,7 +31,8 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   taskTitle = "",
   readableId = "",
   endkundeOrt = "",
-  isLastAssistantMessage = false
+  isLastAssistantMessage = false,
+  isReadOnly = false
 }) => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -43,7 +46,7 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   // Parse JSON content and extract text and options
   const parseMessageContent = () => {
     if (message.role !== "assistant") {
-      return { text: message.content, options: [] };
+      return { text: message.content, options: [], suggested_confirmation_text: null };
     }
     
     try {
@@ -51,7 +54,8 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
       const parsedContent = JSON.parse(message.content);
       return { 
         text: parsedContent.text || message.content, 
-        options: Array.isArray(parsedContent.options) ? parsedContent.options : [] 
+        options: Array.isArray(parsedContent.options) ? parsedContent.options : [],
+        suggested_confirmation_text: parsedContent.suggested_confirmation_text || null
       };
     } catch (e) {
       // Not valid JSON, try to extract options from text
@@ -65,24 +69,24 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
             o.trim().replace(/"/g, '').replace(/^\[|\]$/g, '')
           );
           
-          return { text: content, options };
+          return { text: content, options, suggested_confirmation_text: null };
         } catch (err) {
-          return { text: content, options: [] };
+          return { text: content, options: [], suggested_confirmation_text: null };
         }
       } else {
         // Check for key list patterns that might contain key options
         const listMatch = content.match(/(?:\d+\.\s+(.*?)(?:\n|$))+/g);
         if (listMatch && content.toLowerCase().includes('schlüssel')) {
           const defaultOptions = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
-          return { text: content, options: defaultOptions };
+          return { text: content, options: defaultOptions, suggested_confirmation_text: null };
         }
         
-        return { text: content, options: [] };
+        return { text: content, options: [], suggested_confirmation_text: null };
       }
     }
   };
 
-  const { text, options } = parseMessageContent();
+  const { text, options, suggested_confirmation_text } = parseMessageContent();
   
   // Filter out options that have already been selected
   const availableOptions = options.filter(option => !selectedOptions.has(option));
@@ -109,7 +113,9 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   const displayText = cleanupText(text);
   
   // Use the message's creator name if available, otherwise fallback to current user
-  const displayName = message.creatorName || (message.role === "assistant" ? "Assistentin" : (user?.fullName || user?.email || "Benutzer"));
+  const displayName = message.creatorName || 
+                      (message.role === "assistant" ? "Ava" : 
+                      (user?.fullName || user?.email || "Benutzer"));
   
   // Message is from assistant
   const isAssistantMessage = message.role === "assistant" && message.content;
@@ -245,10 +251,22 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
         }
         border border-blue-50/40
       `}>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-semibold text-sm">
-            {displayName}
-          </span>
+        <div className="flex flex-col mb-1">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-sm">
+              {displayName}
+            </span>
+            <span className="text-xs text-gray-500">
+              {message.created_at && new Date(message.created_at).toLocaleString('de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+              })}
+            </span>
+          </div>
         </div>
         <div className="text-sm whitespace-pre-wrap">
           {displayText}
@@ -259,17 +277,36 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
               <Button
                 key={idx}
                 variant="outline"
-                onClick={() => onOptionSelect(option)}
-                className="rounded text-sm px-4 py-1 hover:bg-blue-100"
-                size={isMobile ? "sm" : "default"}
+                onClick={() => !isReadOnly && onOptionSelect(option)}
+                disabled={isReadOnly}
+                className={cn(
+                  "bg-blue-500 hover:bg-blue-600 text-white",
+                  selectedOptions.has(option) && "bg-blue-700 ring-2 ring-blue-400 ring-offset-2",
+                  "transition-all duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 shadow-md hover:shadow-lg rounded-lg px-4 py-2 text-sm font-medium m-1 flex-grow sm:flex-grow-0 min-w-[120px] text-center justify-center",
+                  isReadOnly && "opacity-50 cursor-not-allowed"
+                )}
               >
                 {option}
               </Button>
             ))}
           </div>
         )}
+        {/* Suggested confirmation button */} 
+        {isAssistantMessage && suggested_confirmation_text && availableOptions.length === 0 && (
+          <div className={`flex flex-wrap gap-2 mt-3 ${isMobile ? 'flex-col items-stretch' : ''}`}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => !isReadOnly && onOptionSelect(suggested_confirmation_text)}
+              disabled={isReadOnly}
+              className="whitespace-normal text-left h-auto rounded text-sm px-4 py-1 hover:bg-blue-100"
+            >
+              {suggested_confirmation_text}
+            </Button>
+          </div>
+        )}
         
-        {/* Email button for messages that need to be forwarded */}
+        {/* Email button for messages that need to be forwarded */} 
         {isAssistantMessage && shouldShowEmailButton() && (
           <div className="flex mt-3">
             <Button

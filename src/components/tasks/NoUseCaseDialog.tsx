@@ -22,6 +22,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
@@ -29,139 +31,142 @@ import { Loader2 } from 'lucide-react';
 interface NoUseCaseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
   taskId: string;
   customerId: string;
   taskTitle: string;
 }
 
-interface FormValues {
-  message: string;
-  recipient: string;
-}
+const formSchema = z.object({
+  recipient: z.string().email({ message: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.' }),
+  message: z.string().min(10, {
+    message: 'Die Nachricht muss mindestens 10 Zeichen lang sein.',
+  }),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
   open,
   onOpenChange,
+  onSuccess,
   taskId,
-  customerId,
+  customerId, // customerId wird aktuell nicht direkt für den Edge Function Call benötigt
   taskTitle
 }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [clientTemplate, setClientTemplate] = useState('');
+    const [loadingState, setLoadingState] = useState<'idle' | 'generating' | 'sending'>('idle');
+  const [emailSubject, setEmailSubject] = useState<string | null>(null);
+  const [sendDelay, setSendDelay] = useState(0);
+  const [isSendDelayed, setIsSendDelayed] = useState(true);
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       message: '',
-      recipient: 's.huebner@ja-dialog.de' // Default recipient email
-    }
+      recipient: '',
+    },
+    mode: 'onChange', // Validate on change for better UX
   });
 
-
-
-  // Fetch template for client communication
   useEffect(() => {
-    const fetchTemplate = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('prompt_templates')
-          .select('content')
-          .eq('type', 'no_use_case_client_query')
-          .single();
+    let delayTimer: ReturnType<typeof setInterval> | undefined;
 
+    if (open && taskId) {
+      setLoadingState('generating');
+      // Reset state for re-opening dialog
+      setEmailSubject(null);
+      setSendDelay(0);
+      form.reset({ recipient: '', message: '' });
+
+      supabase.functions.invoke('generate-schwungrad-email', {
+        body: { taskId },
+      })
+      .then(({ data, error }) => {
         if (error) throw error;
-        
-        if (data && data.content) {
-          const templateText = data.content
-            .replace('{{task_title}}', taskTitle)
-            .replace('{{task_id}}', taskId);
-          
-          setClientTemplate(templateText);
-          form.setValue('message', templateText);
-        } else {
-          // Default template if none is configured
-          const defaultTemplate = 
-            `Bezüglich Ihrer Anfrage "${taskTitle}" (ID: ${taskId}):\n\n` +
-            `Wir benötigen weitere Informationen, um Ihre Anfrage korrekt zu bearbeiten. ` +
-            `Was genau wünschen Sie von uns bezüglich dieser Anfrage? ` +
-            `Sollen wir für diesen Anfragetyp einen neuen Standard-Prozess (Use Case) erstellen?`;
-          
-          setClientTemplate(defaultTemplate);
-          form.setValue('message', defaultTemplate);
+        if (!data || !data.subject || !data.body || !data.recipient) {
+          throw new Error("Unvollständige oder fehlerhafte Daten vom Server erhalten.");
         }
-      } catch (error) {
-        console.error('Error fetching template:', error);
-        // Set a fallback template
-        const fallbackTemplate = 
-          `Bezüglich Ihrer Anfrage "${taskTitle}":\n\n` +
-          `Wir benötigen weitere Informationen, um Ihre Anfrage korrekt zu bearbeiten. ` +
-          `Was genau wünschen Sie von uns bezüglich dieser Anfrage? ` +
-          `Sollen wir für diesen Anfragetyp einen neuen Standard-Prozess erstellen?`;
-        
-        setClientTemplate(fallbackTemplate);
-        form.setValue('message', fallbackTemplate);
+
+        form.reset({
+          recipient: data.recipient,
+          message: data.body,
+        });
+        setEmailSubject(data.subject);
+        form.trigger(); // Manually trigger validation to enable button if form is valid
+        setLoadingState('idle');
+
+        // Start 10-second countdown
+        setSendDelay(10);
+        delayTimer = setInterval(() => {
+          setSendDelay((prev) => {
+            if (prev <= 1) {
+              clearInterval(delayTimer!);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      })
+      .catch((error: any) => {
+        console.error('Failed to generate email:', error);
+        setLoadingState('idle');
+        toast({
+          variant: 'destructive',
+          title: 'Fehler bei der E-Mail-Vorbereitung',
+          description: error.message || 'Der E-Mail-Entwurf konnte nicht erstellt werden.',
+        });
+      });
+    }
+
+    return () => {
+      if (delayTimer) {
+        clearInterval(delayTimer);
       }
     };
-
-    if (open) {
-      fetchTemplate();
-    }
-  }, [open, taskId, taskTitle, form]);
+  }, [open, taskId, form, toast]);
 
   const onSubmit = async (values: FormValues) => {
-    setIsSubmitting(true);
-    try {
-      // Create a request body for the send-email function
-      const requestBody = {
-        to: values.recipient, // Use the recipient from the form
-        subject: `Rückfrage zu Aufgabe ohne Use Case: ${taskTitle} (${taskId})`,
-        text: values.message,
-        taskId,
-        readableId: taskId.substring(0, 8), // Use taskId as readableId if actual readableId isn't available
-        fromName: 'Avanti Service'
-      };
-      
-      console.log('Sending email to customer:', JSON.stringify(requestBody));
-      
-      // Use send-email function instead of handle-no-use-case
-      const response = await supabase.functions.invoke('send-email', {
-        body: requestBody
-      });
-
-      if (response.error) throw new Error(response.error.message);
-
-      // No longer storing customer preferences - removed as requested
-
-      // Update task status to indicate waiting for customer
-      try {
-        await supabase
-          .from('tasks')
-          .update({ 
-            status: 'waiting_on_customer',
-            last_customer_contact: new Date().toISOString()
-          })
-          .eq('id', taskId);
-      } catch (taskError) {
-        console.error('Error updating task status:', taskError);
-        // Continue even if task status update fails
-      }
-
-      // Success message
-      toast({
-        title: "E-Mail gesendet",
-        description: "Anfrage wurde an den Kunden gesendet."
-      });
-
-      onOpenChange(false);
-    } catch (error) {
-      console.error('Error sending email to customer:', error);
+    if (!emailSubject) {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: error.message || 'Die E-Mail konnte nicht gesendet werden. Bitte versuchen Sie es erneut.'
+        description: "Der Betreff der E-Mail wurde nicht geladen. Bitte schließen Sie den Dialog und versuchen Sie es erneut.",
+      });
+      return;
+    }
+
+    setLoadingState('sending');
+    try {
+      const { error: sendError } = await supabase.functions.invoke('send-schwungrad-email', {
+        body: {
+          taskId,
+          recipient: values.recipient,
+          subject: emailSubject,
+          body: values.message,
+        },
+      });
+
+      if (sendError) {
+        throw new Error(`Fehler beim Senden der E-Mail: ${sendError.message}`);
+      }
+
+      toast({
+        title: "E-Mail erfolgreich gesendet",
+        description: "Die Anfrage wurde an den Kunden zur Klärung gesendet.",
+      });
+
+      onSuccess(); // Notify parent component to refresh and navigate
+      onOpenChange(false); // Close dialog on success
+    } catch (error: any) {
+      console.error('Fehler im onSubmit Prozess:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Senden",
+        description: error.message || 'Ein unerwarteter Fehler ist aufgetreten.',
       });
     } finally {
-      setIsSubmitting(false);
+      setLoadingState('idle');
     }
   };
 
@@ -169,15 +174,24 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Aufgabe ohne Use Case</DialogTitle>
+          <DialogTitle>
+            {loadingState === 'generating' ? "E-Mail-Entwurf wird geladen..." : emailSubject || `Rückfrage zu: ${taskTitle}`}
+          </DialogTitle>
           <DialogDescription>
-            Die Aufgabe "{taskTitle}" wurde ohne zugeordneten Use Case erstellt.
-            Bitte senden Sie eine Anfrage, um weitere Informationen zu erhalten.
+            {loadingState === 'generating' 
+              ? "Bitte warten Sie einen Moment." 
+              : emailSubject 
+                ? `Überprüfen und bearbeiten Sie den E-Mail-Entwurf für die Aufgabe "${taskTitle}".`
+                : `Für die Aufgabe "${taskTitle}" konnte kein passender Use Case gefunden werden. Hier kannst du eine Rückfrage an den Kunden formulieren.`
+            }
+            <div className="text-sm text-muted-foreground">
+              Bitte überprüfe den automatisch erstellten Entwurf, bevor du die Aktion ausführst.
+            </div>
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
             <FormField
               control={form.control}
               name="recipient"
@@ -190,11 +204,9 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       placeholder="E-Mail-Adresse des Empfängers"
                       {...field}
+                      disabled={loadingState !== 'idle'}
                     />
                   </FormControl>
-                  <FormDescription>
-                    Die E-Mail wird an diese Adresse gesendet.
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -211,6 +223,7 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
                       placeholder="Geben Sie eine Nachricht ein, die an den Kunden gesendet werden soll"
                       className="min-h-[150px]"
                       {...field}
+                      disabled={loadingState !== 'idle'}
                     />
                   </FormControl>
                   <FormDescription>
@@ -221,21 +234,21 @@ export const NoUseCaseDialog: React.FC<NoUseCaseDialogProps> = ({
               )}
             />
 
-            {/* Checkbox for remembering action removed as requested */}
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
+            <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loadingState !== 'idle'}>
                 Abbrechen
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmitting ? 'Wird verarbeitet...' : 'Bestätigen'}
-              </Button>
+              <div className="flex items-center gap-2">
+                {sendDelay > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    Verfügbar in {sendDelay}s
+                  </span>
+                )}
+                <Button type="submit" disabled={loadingState !== 'idle' || !form.formState.isValid || sendDelay > 0}>
+                  {loadingState === 'sending' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {loadingState === 'sending' ? 'Wird gesendet...' : 'Aktion ausführen'}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>

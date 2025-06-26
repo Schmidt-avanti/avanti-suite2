@@ -14,9 +14,11 @@ interface EmailReplyPanelProps {
   taskId: string;
   replyTo: string;
   setReplyTo: (email: string) => void;
+  isReadOnly?: boolean;
+  onEmailSent?: (emailDetails: { recipient: string; subject: string | null; taskId: string; }) => void;
 }
 
-export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyTo, setReplyTo }) => {
+export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyTo, setReplyTo, isReadOnly, onEmailSent }) => {
   const [replyBody, setReplyBody] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -171,6 +173,14 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
       setShowConfirmation(true);
 
       // Dispatch event to notify system that an email was sent
+      if (onEmailSent) {
+        onEmailSent({
+          recipient: replyTo,
+          subject: null, // Subject is handled by backend or could be passed if needed
+          taskId: taskId
+        });
+      }
+      // Also keep the global event for other potential listeners
       const emailSentEvent = new CustomEvent('email-sent', {
         detail: {
           recipient: replyTo,
@@ -255,7 +265,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
           value={replyBody}
           onChange={(e) => setReplyBody(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 mb-4 bg-white"
-          disabled={isSending}
+          disabled={isReadOnly || isSending}
         />
         
         {/* Always show Spell checking tool when there's text */}
@@ -273,7 +283,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
               variant="outline"
               size="sm"
               onClick={() => document.getElementById("file-upload-reply")?.click()}
-              disabled={isSending}
+              disabled={isReadOnly || isSending}
               className="flex items-center text-sm"
             >
               <Paperclip className="h-4 w-4 mr-2" />
@@ -285,7 +295,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
               multiple
               onChange={handleFileChange}
               className="hidden"
-              disabled={isSending}
+              disabled={isReadOnly || isSending}
             />
           </div>
           
@@ -309,7 +319,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
                       variant="ghost"
                       size="sm"
                       onClick={() => removeAttachment(index)}
-                      disabled={isSending}
+                      disabled={isReadOnly || isSending}
                       className="h-6 w-6 p-0 rounded-full"
                     >
                       <X className="h-4 w-4 text-gray-500" />
@@ -336,7 +346,7 @@ export const EmailReplyPanel: React.FC<EmailReplyPanelProps> = ({ taskId, replyT
         <Button
           className="w-fit bg-blue-600 hover:bg-blue-700 text-white self-start"
           onClick={handleSendEmail}
-          disabled={isSending || !replyBody.trim()}
+          disabled={isReadOnly || isSending || !replyBody.trim()}
         >
           {isSending ? (
             <>

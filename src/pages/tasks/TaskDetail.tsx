@@ -12,7 +12,7 @@ import { NoUseCaseDialog } from '@/components/tasks/NoUseCaseDialog';
 import { TaskChat } from "@/components/tasks/TaskChat";
 import { TaskDetailHeader } from '@/components/tasks/TaskDetailHeader';
 import { TaskDetailInfo } from '@/components/tasks/TaskDetailInfo';
-import { EndkundeInfoLink } from '@/components/tasks/EndkundeInfoLink';
+import { EndkundeInfoDisplay } from '@/components/tasks/EndkundeInfoLink'; // Path is correct, component name changed
 import { EmailReplyPanel } from '@/components/tasks/EmailReplyPanel';
 import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
@@ -22,7 +22,8 @@ import { sessionManager } from '@/utils/sessionManager';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { KnowledgeArticleManager } from '@/components/tasks/KnowledgeArticleManager';
+
+import { CompletedTaskOverlay } from '@/components/tasks/CompletedTaskOverlay';
 import type { TaskStatus } from '@/types';
 
 // Interface for endkunde contact information
@@ -37,23 +38,23 @@ const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const statusUpdateRef = useRef(false);
 
-  // Task status dialogs
-  const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
-  const [closeTaskDialogOpen, setCloseTaskDialogOpen] = useState(false);
-  const [isClosingWithoutAva, setIsClosingWithoutAva] = useState(false);
-  const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
-  const [forwardTaskDialogOpen, setForwardTaskDialogOpen] = useState(false);
-  const [emailToCustomerDialogOpen, setEmailToCustomerDialogOpen] = useState(false);
-  const [avaSummaryDialogOpen, setAvaSummaryDialogOpen] = useState(false);
-  const [noUseCaseDialogOpen, setNoUseCaseDialogOpen] = useState(false);
+  // Consolidated dialog state management
+  type DialogType = 'none' | 'followUp' | 'closeTask' | 'assignTask' | 'forwardTask' | 'emailToCustomer' | 'avaSummary' | 'noUseCase';
+  const [activeDialog, setActiveDialog] = useState<DialogType>('none');
+
+  // State for dialog data
+  const [avaSummaryInitialData, setAvaSummaryInitialData] = useState<{ summaryDraft: string; textToAgent: string; options: string[]; } | null>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [isNewTask, setIsNewTask] = useState(false);
-  
+
   // Store the contacts from EndkundeInfoLink
   const [endkundeContacts, setEndkundeContacts] = useState<EndkundeContact[]>([]);
-  
+
   const [isActive, setIsActive] = useState(true);
-  
+
   const {
     task,
     isLoading,
@@ -103,7 +104,7 @@ const TaskDetail = () => {
     }
   };
 
-  // Check URL parameters for the 'new' flag
+  // Check URL parameters for the 'new' flag and reset status update flag on new task ID
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.has('new')) {
@@ -129,47 +130,36 @@ const TaskDetail = () => {
   
   // Fetch task messages for chat history
   const { messages } = useTaskMessages(id || null);
-  
+
   // Fetch email threads for this task
   const { threads: emailThreads } = useEmailThreads(id || null);
 
+  // Automatically change status from 'new' to 'in_progress' when a task is opened
+  useEffect(() => {
+    // Use a ref to ensure this runs only once per task load
+    if (task && task.status === 'new' && task.assigned_to === user?.id && !statusUpdateRef.current) {
+      statusUpdateRef.current = true; // Set flag immediately to prevent re-entry
+      toast({
+        title: "Neue Aufgabe geöffnet",
+        description: "Status wird automatisch auf 'In Bearbeitung' gesetzt.",
+      });
+      console.log(`Automatically changing status for task ${task.id} to in_progress`);
+      handleStatusChange('in_progress');
+    }
+  }, [task, user?.id, handleStatusChange, toast]);
+
   const findNextTask = async () => {
     if (!user?.id) return null;
-    
     try {
-      // Find next 'new' task assigned to this user
-      let query = supabase
+      const { data, error } = await supabase
         .from('tasks')
         .select('id')
-        .eq('status', 'new')
+        .or(`status.eq.new,status.eq.in_progress`)
         .eq('assigned_to', user.id)
         .order('created_at', { ascending: true })
         .limit(1);
-        
-      const { data: newTasks, error: newTasksError } = await query;
-      
-      if (newTasksError) throw newTasksError;
-      
-      if (newTasks && newTasks.length > 0) {
-        return newTasks[0].id;
-      }
-      
-      // If no 'new' tasks, look for 'in_progress' tasks
-      const { data: inProgressTasks, error: inProgressTasksError } = await supabase
-        .from('tasks')
-        .select('id')
-        .eq('status', 'in_progress')
-        .eq('assigned_to', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1);
-        
-      if (inProgressTasksError) throw inProgressTasksError;
-      
-      if (inProgressTasks && inProgressTasks.length > 0) {
-        return inProgressTasks[0].id;
-      }
-      
-      return null;
+      if (error) throw error;
+      return data && data.length > 0 ? data[0].id : null;
     } catch (error) {
       console.error('Error finding next task:', error);
       return null;
@@ -217,32 +207,17 @@ const TaskDetail = () => {
     // Open the AVA summary dialog directly instead of the close task dialog
     setAvaSummaryDialogOpen(true);
   };
-  
+
   const handleCloseTaskFromSummary = async (comment: string) => {
     // First, explicitly end the current session
     await sessionManager.endCurrentSession();
     console.log("Closing task from AVA summary dialog with comment:", comment);
     
     try {
-      // Close the task with the comment provided in the summary dialog
-      // This is where we actually update the task status to completed
       await handleCloseWithoutAva(comment);
-      console.log("Task closed successfully");
-      setAvaSummaryDialogOpen(false);
-      
-      // Find and navigate to next task
-      const nextTaskId = await findNextTask();
-      if (nextTaskId) {
-        console.log("Navigating to next task:", nextTaskId);
-        setIsActive(false);
-        await new Promise(resolve => setTimeout(resolve, 100)); // Give time for timer to stop
-        navigate(`/tasks/${nextTaskId}`);
-      } else {
-        console.log("No next task found, navigating to tasks list");
-        setIsActive(false);
-        await new Promise(resolve => setTimeout(resolve, 100));
-        navigate('/tasks');
-      }
+      setActiveDialog('none');
+      toast({ title: "Aufgabe erfolgreich abgeschlossen!" });
+      await navigateToNextTask();
     } catch (error) {
       console.error("Error closing task:", error);
     }
@@ -265,24 +240,16 @@ const TaskDetail = () => {
       console.log('Auto-opening NoUseCaseDialog for new task without use case');
       setNoUseCaseDialogOpen(true);
     }
-  }, [task, isNewTask]);
+  };
 
   const handleReopenTask = async () => {
     if (task && task.status === 'completed') {
       try {
-        // Change the task status back to in_progress
         await handleStatusChange('in_progress');
-        toast({
-          title: "Task Re-opened",
-          description: `Task ${task.readable_id} has been re-opened.`,
-        });
+        toast({ title: "Task Re-opened", description: `Task ${task.readable_id} has been re-opened.` });
       } catch (error) {
         console.error("Error re-opening task:", error);
-        toast({
-          title: "Error",
-          description: "Failed to re-open the task. Please try again.",
-          variant: "destructive"
-        });
+        toast({ title: "Error", description: "Failed to re-open the task. Please try again.", variant: "destructive" });
       }
     }
   };
@@ -299,17 +266,20 @@ const TaskDetail = () => {
     }
   };
 
-  const handleEmailSent = (emailDetails: { recipient: string, subject: string }) => {
-    toast({
-      title: "E-Mail gesendet",
-      description: `E-Mail wurde erfolgreich an ${emailDetails.recipient} gesendet.`,
-    });
-  };
+  useEffect(() => {
+    return () => { setIsActive(false); };
+  }, []);
 
-  if (isLoading) return <div className="text-center py-8">Lade Aufgabe...</div>;
-  if (!task) return <div className="text-center py-8">Aufgabe nicht gefunden</div>;
+  useEffect(() => {
+    if (task && isNewTask && !task.matched_use_case_id) {
+      setActiveDialog('noUseCase');
+    }
+  }, [task, isNewTask]);
 
-  // Updated logic to allow agents to forward tasks
+  if (isLoading) return <div className="flex items-center justify-center h-screen"><div>Loading task...</div></div>;
+  if (!task) return <div className="flex items-center justify-center h-screen"><div>Task not found.</div></div>;
+
+  const isCompleted = task.status === 'completed';
   const canAssignOrForward = user?.role === 'admin' || user?.role === 'agent' || user?.id === task.assigned_to;
   const isUnassigned = !task.assigned_to;
 
@@ -335,121 +305,104 @@ const TaskDetail = () => {
           formattedTotalTime={totalFormattedTime}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
-          {/* Left column with scroll area */}
-          <ScrollArea className="h-[calc(100vh-280px)] lg:max-h-[700px]">
-            <div className="flex flex-col space-y-6 pr-4">
-              {/* Task Info Section */}
-              <TaskDetailInfo task={task} />
-              
-              {/* Endkunde Info Link Section */}
-              <EndkundeInfoLink 
-                endkundeId={task.endkunde_id} 
-                customerId={task.customer_id}
-                taskTitle={task.title}
-                taskSummary={task.description}
-                onContactsLoaded={setEndkundeContacts}
-              />  
-              {/* Knowledge Article Manager Section */}
-              <KnowledgeArticleManager 
-                customerId={task.customer_id} 
-                taskDescription={task.description}
-              />
-              
-              {/* Email Thread History Component */}
-              {emailThreads && emailThreads.length > 0 && (
-                <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4">
-                  <EmailThreadHistory threads={emailThreads} />
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-
-          <div className="lg:col-span-2 flex w-full h-full min-h-[540px]">
-            <div className="w-full h-full bg-gradient-to-br from-white via-blue-50/60 to-blue-100/50 rounded-2xl shadow-md border border-gray-100 flex flex-col justify-between overflow-hidden mb-8 p-6">
-              {task.source === 'email' ? (
-                <EmailReplyPanel
-                  taskId={task.id}
-                  replyTo={replyTo}
-                  setReplyTo={setReplyTo}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 px-4 py-8">
+            <ScrollArea className="h-[calc(100vh-280px)] lg:max-h-[700px]">
+              <div className="flex flex-col space-y-6 pr-4">
+                <TaskDetailInfo task={task} />
+                <EndkundeInfoDisplay 
+                  endkundeId={task.endkunde_id}
+                  customerId={task.customer_id}
+                  onContactsLoaded={setEndkundeContacts} // Store contacts in state
                 />
-              ) : (
-                <>
-                  <CardHeader className="p-0 pb-2 flex flex-row items-center border-none">
-                    <CardTitle className="text-xl font-semibold text-blue-900">
-                      Bearbeitung der Aufgabe
-                    </CardTitle>
-                  </CardHeader>
-                  <TaskChat taskId={task.id} useCaseId={task.matched_use_case_id} />
-                </>
-              )}
+                {emailThreads && emailThreads.length > 0 && (
+                  <EmailThreadHistory threads={emailThreads} />
+                )}
+                {task.source === 'email' && (
+                  <EmailReplyPanel
+                    replyTo={replyTo}
+                    setReplyTo={setReplyTo}
+                    taskId={id!}
+                    isReadOnly={isCompleted}
+                  />
+                )}
+              </div>
+            </ScrollArea>
+
+            <div className="lg:col-span-2">
+              <Card className="h-full flex flex-col">
+                <CardHeader>
+                  <CardTitle>Interne Kommunikation &amp; Notizen</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-grow flex flex-col">
+                  <TaskChat
+                    taskId={id!}
+                    useCaseId={task.matched_use_case_id}
+                    initialMessages={messages}
+                    openAvaSummaryDialog={handleOpenAvaSummaryDialogFromChat}
+                    isReadOnly={isCompleted}
+                    isBlankTask={task.is_blank_task}
+                  />
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
       </div>
 
-      <EmailToCustomerDialog
-        open={emailToCustomerDialogOpen}
-        onOpenChange={setEmailToCustomerDialogOpen}
-        taskId={task.id}
-        recipientEmail={task.customer?.email || task.endkunde_email}
-        taskMessages={messages}
-        onEmailSent={handleEmailSent}
-      />
-
+      {/* Dialogs */}
       <FollowUpDialog
-        open={followUpDialogOpen}
-        onOpenChange={setFollowUpDialogOpen}
+        open={activeDialog === 'followUp'}
+        onOpenChange={(isOpen) => !isOpen && setActiveDialog('none')}
         onSave={handleFollowUp}
       />
-
       <CloseTaskDialog
-        open={closeTaskDialogOpen}
-        onOpenChange={setCloseTaskDialogOpen}
-        onClose={handleTaskClose}
-        isWithoutAva={isClosingWithoutAva}
+        open={activeDialog === 'closeTask'}
+        onOpenChange={(isOpen) => !isOpen && setActiveDialog('none')}
+        onClose={handleCloseTaskFromSummary} // Always use the summary handler, it can handle empty comments
+        isWithoutAva={true}
       />
-      
       <AvaTaskSummaryDialog
-        open={avaSummaryDialogOpen}
-        onOpenChange={setAvaSummaryDialogOpen}
-        taskId={task.id}
+        open={activeDialog === 'avaSummary'}
+        onOpenChange={(isOpen) => !isOpen && setActiveDialog('none')}
+        taskId={id!}
         readableId={task.readable_id}
         taskTitle={task.title}
-        initialComment={""} // Empty by default when opening directly
-        onCancel={handleCloseSummary}
-        onContinue={handleCloseSummary}
+        initialSummaryText={avaSummaryInitialData?.summaryDraft || ''}
+        onCancel={() => setActiveDialog('none')}
         onCloseTask={handleCloseTaskFromSummary}
-        endkundeOrt={task?.endkunde?.Ort || task?.customer?.address?.city || ""}
-        endkundeContacts={endkundeContacts} // Pass the contacts loaded from EndkundeInfoLink
-        customerName={task?.customer?.name || ''} // Pass the customer name to check for specific clients
+        endkundeContacts={endkundeContacts}
+        customerName={task.customer?.name}
+        isReadOnly={isCompleted}
+      />
+      <AssignTaskDialog
+        open={activeDialog === 'assignTask'}
+        onOpenChange={(isOpen) => !isOpen && setActiveDialog('none')}
+        onAssign={handleAssignTask}
+      />
+      <EmailToCustomerDialog
+        open={activeDialog === 'emailToCustomer'}
+        onOpenChange={(isOpen) => !isOpen && setActiveDialog('none')}
+        taskId={id!}
+        recipientEmail={task?.endkunde_email}
+        taskMessages={messages}
+        onEmailSent={() => {
+          handleStatusChange('waiting_for_customer');
+          handleNextTask();
+        }}
+      />
+      <NoUseCaseDialog
+        open={activeDialog === 'noUseCase'}
+        onOpenChange={() => setActiveDialog('none')}
+        onSuccess={() => {
+          setActiveDialog('none');
+          handleNextTask();
+        }}
+        taskId={task?.id || ''}
+        customerId={task?.customer_id || ''}
+        taskTitle={task?.title || ''}
       />
 
-      <AssignTaskDialog
-        open={assignTaskDialogOpen}
-        onOpenChange={setAssignTaskDialogOpen}
-        onAssign={handleAssignTask}
-        currentAssignee={task.assigned_to}
-      />
-
-      <AssignTaskDialog
-        open={forwardTaskDialogOpen}
-        onOpenChange={setForwardTaskDialogOpen}
-        onAssign={handleAssignTask}
-        currentAssignee={task.assigned_to}
-        isForwarding={true}
-      />
-      
-      {task && (
-        <NoUseCaseDialog
-          open={noUseCaseDialogOpen}
-          onOpenChange={setNoUseCaseDialogOpen}
-          taskId={task.id}
-          customerId={task.customer_id}
-          taskTitle={task.title}
-        />
-      )}
-    </div>
+    </>
   );
 };
 

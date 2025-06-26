@@ -119,8 +119,13 @@ const UserEditDialog: React.FC<Props> = ({
     };
   }, [dropdownOpen]);
 
-  // --- Multiselect UI ---
+  // --- Searchable, virtualized multi-select UI ---
   function MultiSelectCustomers() {
+    const [search, setSearch] = useState("");
+    const filteredCustomers = customers.filter((c) =>
+      c.name.toLowerCase().includes(search.toLowerCase())
+    );
+
     if (loading) return (
       <div className="py-2 text-sm text-muted-foreground">Lädt Kunden ...</div>
     );
@@ -132,71 +137,64 @@ const UserEditDialog: React.FC<Props> = ({
     }
     return (
       <div className="relative w-full">
-        <button
-          type="button"
-          id="customers-multiselect-trigger"
-          data-testid="customers-multiselect-trigger"
-          className={cn(
-            "flex w-full min-h-[40px] items-center gap-2 rounded-2xl border px-3 py-2 cursor-pointer",
-            "bg-white shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-avanti-500",
-            "transition-colors",
-            "text-base"
+        <input
+          type="text"
+          placeholder="Kunden suchen..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full mb-2 px-3 py-2 border rounded focus:border-avanti-500 outline-none"
+        />
+        <div className="border rounded-xl bg-white shadow max-h-64 overflow-auto" style={{ minHeight: 120 }}>
+          {filteredCustomers.length === 0 ? (
+            <div className="p-3 text-sm text-muted-foreground">Keine Treffer</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+              {filteredCustomers.map((cust) => {
+                const checked = selectedCustomers.includes(cust.id);
+                const disabled = (role === "customer"
+                  && selectedCustomers.length > 0
+                  && !selectedCustomers.includes(cust.id)
+                );
+                return (
+                  <button
+                    key={cust.id}
+                    type="button"
+                    className={cn(
+                      "flex w-full text-left items-center gap-2 px-4 py-2 text-base rounded hover:bg-avanti-50 transition",
+                      checked ? "bg-avanti-100 font-bold" : "",
+                      disabled && "opacity-60 pointer-events-none"
+                    )}
+                    onClick={() => handleCustomerSelect(cust.id)}
+                    disabled={disabled}
+                    style={{ justifyContent: "flex-start" }}
+                  >
+                    <span className={cn(
+                      "inline-flex items-center justify-center w-4 h-4 rounded border border-avanti-400 mr-2",
+                      checked ? "bg-avanti-600 text-white border-avanti-600" : "bg-white"
+                    )}>
+                      {checked && <Check className="w-3 h-3" />}
+                    </span>
+                    <span className="text-left">{cust.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           )}
-          onClick={() => setDropdownOpen(!dropdownOpen)}
-          tabIndex={0}
-        >
-          <Users className="h-4 w-4 mr-2 text-avanti-500" />
-          <span className={cn(
-            !selectedCustomers.length && "text-muted-foreground"
-          )}>
-            {selectedCustomers.length > 0
-              ? customers
-                  .filter((c) => selectedCustomers.includes(c.id))
-                  .map((c) => c.name)
-                  .join(", ")
-              : "Kunde auswählen"
-            }
+        </div>
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs text-muted-foreground">
+            {selectedCustomers.length} ausgewählt
           </span>
-          {dropdownOpen ? 
-            <ChevronUp className="ml-auto h-4 w-4 opacity-50 pointer-events-none" /> : 
-            <ChevronDown className="ml-auto h-4 w-4 opacity-50 pointer-events-none" />
-          }
-        </button>
-        {dropdownOpen && (
-          <div 
-            id="customers-dropdown"
-            className="absolute z-50 left-0 right-0 bg-white mt-2 rounded-xl shadow-lg border py-1 max-h-64 overflow-auto animate-in fade-in-0"
-          >
-            {customers.map((cust) => {
-              const checked = selectedCustomers.includes(cust.id);
-              const disabled = (role === "customer"
-                && selectedCustomers.length > 0
-                && !selectedCustomers.includes(cust.id)
-              );
-              return (
-                <button
-                  key={cust.id}
-                  type="button"
-                  className={cn(
-                    "flex w-full text-left items-center gap-2 px-4 py-2 text-base rounded hover:bg-avanti-50 transition",
-                    checked ? "bg-avanti-100 font-bold" : "",
-                    disabled && "opacity-60 pointer-events-none"
-                  )}
-                  onClick={() => handleCustomerSelect(cust.id)}
-                  disabled={disabled}
-                >
-                  <span className={cn(
-                    "inline-flex items-center justify-center w-4 h-4 rounded border border-avanti-400 mr-2",
-                    checked ? "bg-avanti-600 text-white border-avanti-600" : "bg-white"
-                  )}>
-                    {checked && <Check className="w-3 h-3" />}
-                  </span>
-                  {cust.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
+          {selectedCustomers.length > 0 && (
+            <button
+              type="button"
+              className="text-xs text-blue-500 underline ml-2"
+              onClick={() => setSelectedCustomers([])}
+            >
+              Auswahl löschen
+            </button>
+          )}
+        </div>
         <p className="mt-2 text-xs text-muted-foreground">
           {role === "customer"
             ? "Client kann nur einem Kunden zugeordnet sein"
@@ -208,7 +206,7 @@ const UserEditDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0">
+      <DialogContent className="max-w-2xl p-0 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 80px)' }} >
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>{defaultValues ? "Nutzer bearbeiten" : "NEUEN BENUTZER ANLEGEN"}</DialogTitle>
         </DialogHeader>

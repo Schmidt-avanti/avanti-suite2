@@ -1,18 +1,22 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useTaskActivity } from '@/hooks/useTaskActivity';
 import { useNavigate } from 'react-router-dom';
-import type { TaskStatus } from '@/types';
+import { Task, TaskStatus, DetailedTask, Customer, User, UserRole, Endkunde } from '@/types';
 
 export const useTaskDetail = (id: string | undefined, user: any) => {
-  const [task, setTask] = useState<any>(null);
+  const [task, setTask] = useState<DetailedTask | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [replyTo, setReplyTo] = useState('');
   const { toast } = useToast();
   const { logTaskStatusChange } = useTaskActivity();
   const navigate = useNavigate();
+
+  const taskRef = useRef(task);
+  useEffect(() => {
+    taskRef.current = task;
+  }, [task]);
 
   const extractEmail = (input: string): string | null => {
     const match = input?.match(/<(.+?)>/);
@@ -31,23 +35,53 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
       if (taskError) throw taskError;
       if (!taskData) throw new Error('Aufgabe nicht gefunden');
 
-      const [customer, creator, assignee] = await Promise.all([
-        taskData.customer_id
-          ? supabase.from('customers').select('name').eq('id', taskData.customer_id).maybeSingle()
-          : Promise.resolve({ data: null }),
+      const [customerResult, creatorResult, assigneeResult, endkundeResult, useCaseResult] = await Promise.all([
+        taskData.customer_id // This is for "our customer"
+          ? supabase.from('customers').select('id, name, street, zip, city, email').eq('id', taskData.customer_id).maybeSingle() // Correct table, phone assumed not to exist here
+          : Promise.resolve({ data: null, error: null }),
         taskData.created_by
           ? supabase.from('profiles').select('id, "Full Name"').eq('id', taskData.created_by).maybeSingle()
-          : Promise.resolve({ data: null }),
+          : Promise.resolve({ data: null, error: null }),
         taskData.assigned_to
           ? supabase.from('profiles').select('id, "Full Name"').eq('id', taskData.assigned_to).maybeSingle()
-          : Promise.resolve({ data: null }),
+          : Promise.resolve({ data: null, error: null }),
+        taskData.endkunde_id // This is for the "end-customer" (caller)
+          ? supabase.from('endkunden').select('id, Vorname, Nachname, created_at').eq('id', taskData.endkunde_id).maybeSingle() // CORRECT TABLE 'endkunden', assuming phone and other fields exist here
+          : Promise.resolve({ data: null, error: null }),
+        taskData.matched_use_case_id
+          ? supabase.from('use_cases').select('id, title').eq('id', taskData.matched_use_case_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
       ]);
+
+      // Check for errors in fetched related data
+      if (customerResult?.error) throw customerResult.error;
+      if (creatorResult?.error) throw creatorResult.error;
+      if (assigneeResult?.error) throw assigneeResult.error;
+      if (endkundeResult?.error) throw endkundeResult.error;
+      if (useCaseResult?.error) throw useCaseResult.error;
+
+      const endkundeData = endkundeResult.data;
+      const endkundeObject: Endkunde | null = endkundeData
+        ? ({ // Construct a valid Endkunde object
+            id: endkundeData.id,
+            Vorname: endkundeData.Vorname, // Keep raw DB field
+            Nachname: endkundeData.Nachname, // Keep raw DB field
+            name: `${endkundeData.Vorname || ''} ${endkundeData.Nachname || ''}`.trim(),
+            created_at: endkundeData.created_at,
+            // Optional fields from Endkunde interface (street, zip, city, phone) will be undefined
+            // as they are not fetched yet. This is fine.
+          } as Endkunde)
+        : null;
 
       const enrichedTask = {
         ...taskData,
-        customer: customer.data,
-        creator: creator.data,
-        assignee: assignee.data
+        status: taskData.status as TaskStatus,
+        attachments: taskData.attachments as any[],
+        customer: customerResult.data as Customer | null,
+        creator: creatorResult.data as User | null,
+        assignee: assigneeResult.data as User | null,
+        endkunde: endkundeObject, // Use the constructed object with the 'name' field
+        matched_use_case_title: useCaseResult?.data?.title || null,
       };
 
       setTask(enrichedTask);
@@ -109,16 +143,24 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
     }
   };
 
-  const handleStatusChange = async (newStatus: TaskStatus) => {
+  const handleStatusChange = useCallback(async (newStatus: TaskStatus) => {
+    console.log(`%%%% handleStatusChange CALLED in useTaskDetail with newStatus: ${newStatus} %%%%`);
+    console.trace(`Trace for handleStatusChange in useTaskDetail (newStatus: ${newStatus})`);
+    
+    const currentTask = taskRef.current;
+
     try {
-      if (!id || !task) return;
+      if (!id || !currentTask) {
+        console.log('%%%% handleStatusChange returning early: no id or task %%%%');
+        return;
+      }
       
-      const oldStatus = task.status as TaskStatus;
+      const oldStatus = currentTask.status as TaskStatus;
       
       // Update the database
       const { error } = await supabase
         .from('tasks')
-        .update({ status: newStatus })
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', id);
       
       if (error) throw error;
@@ -129,7 +171,7 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
       // Timer functionality has been removed
       
       // Update local task state
-      setTask({ ...task, status: newStatus });
+      setTask(current => current ? { ...current, status: newStatus as TaskStatus } : null);
       
       toast({
         title: "Status geändert",
@@ -149,7 +191,7 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
         description: "Status konnte nicht geändert werden."
       });
     }
-  };
+  }, [id, logTaskStatusChange, toast, user?.id]);
 
   const handleFollowUp = async (followUpDate: Date) => {
     try {
@@ -176,7 +218,7 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
       
       setTask({
         ...task,
-        status: 'followup',
+        status: 'followup' as TaskStatus,
         follow_up_date: followUpDate.toISOString()
       });
       
@@ -210,7 +252,7 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
       
       setTask({
         ...task,
-        status: 'completed',
+        status: 'completed' as TaskStatus,
         closing_comment: comment
       });
       
@@ -248,15 +290,28 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
           status_from: task?.status || 'new',
           status_to: task?.status || 'new'
         });
-      
-      const { data: updatedAssignee } = await supabase
+
+      // Restore assignee loading and setting
+      const { data: updatedAssigneeData, error: assigneeError } = await supabase
         .from('profiles')
-        .select('id, "Full Name"')
+        .select('id, "Full Name", email, role, created_at')
         .eq('id', user.id)
         .single();
-      
+
+      if (assigneeError) throw assigneeError;
+      if (!task) return; // Guard for task state
+
+      const updatedAssignee: User | null = updatedAssigneeData ? {
+        id: updatedAssigneeData.id,
+        "Full Name": updatedAssigneeData["Full Name"],
+        email: updatedAssigneeData.email,
+        role: updatedAssigneeData.role as UserRole, 
+        createdAt: updatedAssigneeData.created_at,
+      } : null;
+
       setTask({
         ...task,
+        status: 'in_progress' as TaskStatus,
         assigned_to: user.id,
         assignee: updatedAssignee
       });
@@ -276,53 +331,66 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
   };
 
   const handleAssignTask = async (userId: string, note: string = "") => {
+    if (!id || !task) return;
+
     try {
-      // Store the assignment note if provided
       const updateData: any = { 
         assigned_to: userId,
-        // Store the forwarding note if it exists
+        status: 'in_progress',
         ...(note ? { forwarded_to: note } : {})
       };
       
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('tasks')
         .update(updateData)
         .eq('id', id);
       
-      if (error) throw error;
+      if (updateError) throw updateError;
       
-      if (userId) {
-        // Get the task's readable_id for the notification message
-        const { data: taskData } = await supabase
-          .from('tasks')
-          .select('readable_id, title')
-          .eq('id', id)
-          .single();
-          
-        const taskIdentifier = taskData?.readable_id || task.title;
-        
-        // Create a notification for the assigned user
-        await supabase
-          .from('notifications')
-          .insert({
-            user_id: userId,
-            message: `Aufgabe "${taskIdentifier}" wurde Ihnen ${task.assigned_to ? 'weitergeleitet' : 'zugewiesen'}.${note ? ' Notiz: ' + note : ''}`,
-            task_id: id
-          });
-      }
-      
-      fetchTaskDetails();
-      
-      toast({
-        title: task.assigned_to ? "Aufgabe weitergeleitet" : "Aufgabe zugewiesen",
-        description: "Die Aufgabe wurde erfolgreich zugewiesen.",
+      await logTaskStatusChange(id, task.status, 'in_progress');
+
+      const taskIdentifier = task.readable_id || task.title;
+
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        message: `Ihnen wurde die Aufgabe "${taskIdentifier}" zugewiesen.`,
+        task_id: id,
       });
-    } catch (error) {
+
+      const { data: newAssigneeData, error: newAssigneeError } = await supabase
+        .from('profiles')
+        .select('id, "Full Name", email, role, created_at')
+        .eq('id', userId)
+        .single();
+
+      if (newAssigneeError) throw newAssigneeError;
+
+      const newAssignee: User | null = newAssigneeData ? {
+        id: newAssigneeData.id,
+        "Full Name": newAssigneeData["Full Name"],
+        email: newAssigneeData.email,
+        role: newAssigneeData.role as UserRole,
+        createdAt: newAssigneeData.created_at,
+      } : null;
+
+      setTask({
+        ...task,
+        status: 'in_progress' as TaskStatus,
+        assigned_to: userId,
+        assignee: newAssignee,
+      });
+
+      toast({
+        title: "Aufgabe zugewiesen",
+        description: "Die Aufgabe wurde erfolgreich zugewiesen und der Status aktualisiert.",
+      });
+
+    } catch (error: any) {
       console.error("Error assigning task:", error);
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: "Aufgabe konnte nicht zugewiesen werden."
+        description: `Aufgabe konnte nicht zugewiesen werden: ${error.message}`,
       });
     }
   };
@@ -341,6 +409,6 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
     handleFollowUp,
     handleCloseWithoutAva,
     handleAssignToMe,
-    handleAssignTask
+    handleAssignTask,
   };
 };

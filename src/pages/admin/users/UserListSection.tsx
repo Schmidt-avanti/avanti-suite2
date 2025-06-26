@@ -39,7 +39,11 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         .select('id, role, "Full Name", created_at, is_active, email');
       if (profilesError) throw profilesError;
 
-      console.log('Fetched profiles:', profiles);
+      // Always fetch customers fresh here for mapping
+      const { data: customersData, error: customersError } = await supabase
+        .from('customers')
+        .select('id, name, created_at');
+      if (customersError) throw customersError;
 
       // Get customer assignments for all users
       const { data: assignments, error: assignmentsError } = await supabase
@@ -64,11 +68,8 @@ const UserListSection: React.FC<UserListSectionProps> = ({
         userAssignments[assignment.user_id].push(String(assignment.customer_id));
       });
 
-      console.log('Grouped assignments by user:', userAssignments);
-
-      // Format users with customer assignments
+      // Format users with customer assignments (using up-to-date customers)
       const formattedUsers = profiles.map(profile => {
-        // Get customer IDs for current user
         const customerIds = userAssignments[profile.id] || [];
         
         // Debug: log all the customer IDs for this user
@@ -87,7 +88,7 @@ const UserListSection: React.FC<UserListSectionProps> = ({
 
         return {
           id: profile.id,
-          email: profile.email || "", // Use email from profile
+          email: profile.email || "",
           role: (profile.role || 'client') as UserRole,
           firstName: profile["Full Name"] || undefined,
           createdAt: profile.created_at,
@@ -95,7 +96,6 @@ const UserListSection: React.FC<UserListSectionProps> = ({
           customers: userCustomers,
         };
       });
-
       setUsers(formattedUsers);
     } catch (error) {
       console.error("Fehler beim Laden der Benutzer:", error);
@@ -108,6 +108,7 @@ const UserListSection: React.FC<UserListSectionProps> = ({
       setIsLoading(false);
     }
   };
+
 
   // Aktiv/Inaktiv umschalten
   const handleToggleActive = async (userId: string, isActive: boolean) => {

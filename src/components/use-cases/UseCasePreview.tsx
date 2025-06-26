@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
@@ -61,6 +60,10 @@ const UseCasePreview = ({ aiResponseJson, useCase }: UseCasePreviewProps) => {
     { label: "Erwartetes Ergebnis", value: data.expected_result },
     { label: "Nächste Frage", value: data.next_question },
   ];
+  
+  if (infoBlock) {
+    simpleFields.push({ label: "Zusammenfassung", value: infoBlock });
+  }
 
   return (
     <Card className="rounded-2xl shadow-md overflow-hidden">
@@ -68,7 +71,6 @@ const UseCasePreview = ({ aiResponseJson, useCase }: UseCasePreviewProps) => {
         <CardTitle className="text-lg">Use Case Vorschau</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 overflow-x-auto">
-        {/* Einfache Textfelder */}
         {simpleFields.map((field) => (
           field.value && (
             <div key={field.label} className="border-b pb-3">

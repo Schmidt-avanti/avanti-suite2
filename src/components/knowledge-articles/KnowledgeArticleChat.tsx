@@ -6,7 +6,6 @@ import { Send } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { markdownToHtml } from '@/utils/markdownToHtml';
 
 interface Message {
   role: 'assistant' | 'user';
@@ -14,11 +13,11 @@ interface Message {
 }
 
 interface KnowledgeArticleChatProps {
-  useCaseId: string;
-  onContentChange?: (content: string) => void;
+  useCaseId?: string;
+  onContentUpdate?: (content: string) => void;
 }
 
-const KnowledgeArticleChat = ({ useCaseId, onContentChange }: KnowledgeArticleChatProps) => {
+const KnowledgeArticleChat = ({ useCaseId, onContentUpdate }: KnowledgeArticleChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null);
@@ -27,68 +26,58 @@ const KnowledgeArticleChat = ({ useCaseId, onContentChange }: KnowledgeArticleCh
   const { mutate: sendMessage, isPending } = useMutation({
     mutationFn: async () => {
       const userInput = messages.length === 0 
-        ? "Bitte erstelle einen Wissensartikel" 
+        ? undefined  
         : input;
 
-      const response = await supabase.functions.invoke('generate-knowledge-article', {
+      console.log("=== FRONTEND DEBUG ===");
+      console.log("Calling Edge Function with:");
+      console.log("- userInput:", userInput);
+      console.log("- useCaseId:", useCaseId);
+      console.log("- previousResponseId:", previousResponseId);
+
+      const response = await supabase.functions.invoke('generate-knowledge-article-v3', {
         body: {
-          prompt: `Du bist Ava, die digitale Assistenz bei avanti.
-
-Du unterstützt interne Service-Mitarbeitende dabei, strukturierte Use Cases in klar verständliche, nutzerfreundliche und professionelle **Wissensartikel** umzuwandeln. Diese Artikel dienen zur schnellen Orientierung bei internen Fragen und Informationsbedarfen.
-
-Zielgruppe: Service-Mitarbeitende, die wissen möchten, wie ein bestimmter Ablauf funktioniert oder was in einem konkreten Fall zu tun ist.  
-Stil: sachlich, verständlich, professionell – im Stil einer internen Wissensdatenbank.  
-Format: Artikel mit klaren Zwischenüberschriften und ggf. Aufzählungen.
-
-Strukturiere den Artikel nach folgendem Muster:
-
----
-
-**Titel**  
-→ Verwende den Titel des Use Cases.
-
-**Einleitung**  
-→ Beschreibe kurz und verständlich, worum es in diesem Anwendungsfall geht (Ziel, Kontext, Relevanz).
-
-**Benötigte Informationen**  
-→ Liste kompakt auf, welche Informationen im Vorfeld vorliegen müssen.
-
-**Vorgehen**  
-→ Gib eine schrittweise Anleitung, wie der Fall bearbeitet wird.
-
-**Erwartetes Ergebnis**  
-→ Beschreibe, was am Ende des Prozesses passiert bzw. wie ein erfolgreicher Abschluss aussieht.
-
-**Hinweise oder Besonderheiten**  
-→ Optional: Nenne Herausforderungen, Sonderfälle oder wichtige Hinweise zur Bearbeitung.`,
           userInput,
           use_case_id: useCaseId,
           previous_response_id: previousResponseId
         },
       });
 
-      if (response.error) throw response.error;
+      console.log("Edge Function response:", response);
+
+      if (response.error) {
+        console.error("Edge Function error:", response.error);
+        throw response.error;
+      }
       return response.data;
     },
     onSuccess: (data) => {
       if (messages.length > 0) {
         setMessages(prev => [...prev, { role: 'user', content: input }]);
       }
-      const newMessage = { role: 'assistant' as const, content: data.content };
-      setMessages(prev => [...prev, newMessage]);
-      setPreviousResponseId(data.response_id);
-      setInput('');
       
-      if (onContentChange) {
-        const htmlContent = markdownToHtml(data.content);
-        onContentChange(htmlContent);
+      if (data?.content) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+        setPreviousResponseId(data.response_id);
+        setInput('');
+        
+        if (onContentUpdate) {
+          onContentUpdate(data.content);
+        }
+      } else {
+        // Fehlerfall behandeln
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: 'Es gab ein Problem beim Generieren des Artikels. Bitte versuchen Sie es erneut.' 
+        }]);
       }
     },
     onError: (error) => {
+      console.error('Error details:', error);
       toast({
         variant: "destructive",
         title: "Fehler beim Generieren des Artikels",
-        description: error.message,
+        description: error.message || "Ein unbekannter Fehler ist aufgetreten",
       });
     },
   });
@@ -145,16 +134,14 @@ Strukturiere den Artikel nach folgendem Muster:
       </ScrollArea>
 
       <form onSubmit={handleSubmit} className="p-4 border-t">
-        <div className="flex gap-2">
+        <div className="flex gap-4">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={messages.length === 0 
-              ? "Klicken Sie auf Generieren um zu starten..." 
-              : "Ihre Nachricht..."}
+            placeholder={messages.length === 0 ? "Klicken Sie auf 'Generieren' um zu starten" : "Ihre Nachricht..."}
             className="flex-1 resize-none"
             rows={3}
-            disabled={messages.length === 0}
+            disabled={messages.length === 0 || isPending}
           />
           <Button 
             type="submit"

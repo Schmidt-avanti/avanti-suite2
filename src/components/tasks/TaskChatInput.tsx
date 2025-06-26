@@ -7,25 +7,35 @@ import { SpellChecker } from '@/components/ui/spell-checker';
 import { EmailConfirmationBubble } from './EmailConfirmationBubble';
 
 interface TaskChatInputProps {
-  inputValue: string;
-  setInputValue: (value: string) => void;
-  handleSubmit: (e: React.FormEvent) => void;
+  value: string; // Changed from inputValue
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; // Changed from setInputValue and updated type
+  onSubmit: (e: React.FormEvent) => void;
   isLoading: boolean;
+  disabled?: boolean;
   emailSent?: boolean;
 }
 
 export const TaskChatInput: React.FC<TaskChatInputProps> = ({
-  inputValue,
-  setInputValue,
-  handleSubmit,
+  value, 
+  onChange, 
+  onSubmit,
   isLoading,
+  disabled = false,
   emailSent = false
 }) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      // Ensure onSubmit is called, which is the destructured prop name for handleSubmit
+      onSubmit(e);
     }
+  };
+
+  const handleSpellCheckerCorrect = (correctedText: string) => {
+    const syntheticEvent = {
+      target: { value: correctedText },
+    } as React.ChangeEvent<HTMLTextAreaElement>;
+    onChange(syntheticEvent);
   };
 
   return (
@@ -34,24 +44,24 @@ export const TaskChatInput: React.FC<TaskChatInputProps> = ({
       <EmailConfirmationBubble visible={emailSent} />
       
       <form
-        onSubmit={handleSubmit}
+        onSubmit={onSubmit} // Use destructured onSubmit prop
         className="w-full flex flex-col gap-2 border border-gray-200 p-4 bg-white rounded-md shadow-sm"
       >
         {/* Input area with send button */}
         <div className="relative mb-2">
           <Textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            value={value} // Changed from inputValue
+            onChange={onChange} // Changed from setInputValue
             onKeyDown={handleKeyDown}
-            placeholder="Ihre Nachricht..."
+            placeholder={disabled ? "Chat ist schreibgeschützt" : "Ihre Nachricht..."}
             className="flex-1 resize-none min-h-[48px] max-h-[96px] border-none bg-transparent focus:ring-0 text-base px-3 py-2"
             style={{ fontSize: '1rem', padding: '12px' }}
-            disabled={isLoading}
+            disabled={disabled || isLoading}
           />
           <div className="absolute bottom-2 right-2">
             <Button
               type="submit"
-              disabled={isLoading || !inputValue.trim()}
+              disabled={disabled || isLoading || !value.trim()}
               className="bg-blue-500 hover:bg-blue-600 text-white rounded-md h-11 w-11 flex items-center justify-center shadow transition-all"
               tabIndex={0}
             >
@@ -65,9 +75,9 @@ export const TaskChatInput: React.FC<TaskChatInputProps> = ({
         </div>
         
         {/* Always show spell checker when there's text */}
-        {inputValue.trim().length > 0 && (
+        {value.trim().length > 0 && (
           <div className="mt-4">
-            <SpellChecker text={inputValue} onCorrect={setInputValue} />
+            <SpellChecker text={value} onCorrect={handleSpellCheckerCorrect} />
           </div>
         )}
       </form>

@@ -1,0 +1,6 @@
+{
+  "name": "generate-knowledge-article-v3",
+  "version": "1.0",
+  "description": "Generiert Wissensartikel aus Use Cases mit der OpenAI Responses API",
+  "verify_jwt": false
+}
