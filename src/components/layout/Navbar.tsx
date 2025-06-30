@@ -17,15 +17,14 @@ import { ScreenShareButton } from '@/components/screen-share/ScreenShareButton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useSearch } from '@/contexts/SearchContext';
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
   const { toggleSidebar, open } = useSidebar();
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
+  const { searchQuery, setSearchQuery, isSearching } = useSearch();
 
   const handleSignOut = async () => {
     await signOut();
@@ -54,48 +53,48 @@ const Navbar = () => {
             </Button>
           )}
           
-          {!isAdminRoute && (
+          {isMobile && isSearchActive ? (
+            <div className="absolute inset-x-0 top-0 bg-white h-16 px-4 flex items-center z-30">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="mr-2" 
+                onClick={toggleSearch}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+              <input 
+                type="search"
+                placeholder="Suche..."
+                className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm outline-none focus:border-avanti-500 focus:ring-1 focus:ring-avanti-500"
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <Search className="absolute left-14 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            </div>
+          ) : (
             <>
-              {isMobile && isSearchActive ? (
-                <div className="absolute inset-x-0 top-0 bg-white h-16 px-4 flex items-center z-30">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="mr-2" 
-                    onClick={toggleSearch}
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
+              {isMobile ? (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={toggleSearch}
+                >
+                  <Search className="h-5 w-5" />
+                  <span className="sr-only">Search</span>
+                </Button>
+              ) : (
+                <div className="relative w-full max-w-lg">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input 
                     type="search"
-                    placeholder="Suche..."
+                    placeholder={isSearching ? "Aufgaben-ID oder Titel suchen" : "Suche..."}
                     className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm outline-none focus:border-avanti-500 focus:ring-1 focus:ring-avanti-500"
-                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                  <Search className="absolute left-14 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 </div>
-              ) : (
-                <>
-                  {isMobile ? (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={toggleSearch}
-                    >
-                      <Search className="h-5 w-5" />
-                      <span className="sr-only">Search</span>
-                    </Button>
-                  ) : (
-                    <div className="relative w-full max-w-lg">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input 
-                        type="search"
-                        placeholder="Suche..."
-                        className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm outline-none focus:border-avanti-500 focus:ring-1 focus:ring-avanti-500"
-                      />
-                    </div>
-                  )}
-                </>
               )}
             </>
           )}

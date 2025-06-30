@@ -1,11 +1,11 @@
-
 import React from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { FileText, User, Calendar, Tag, MessageSquare, Paperclip } from 'lucide-react';
+import { Task } from '@/types';
 
 interface TaskDetailInfoProps {
-  task: any;
+  task: Task;
 }
 
 export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
@@ -91,10 +91,38 @@ export const TaskDetailInfo: React.FC<TaskDetailInfoProps> = ({ task }) => {
             <Tag className="h-4 w-4 mr-2 mt-0.5 text-gray-500" />
             <div>
               <span className="text-gray-500">Quelle: </span>
-              <span className="font-medium capitalize">{task.source}</span>
+              <span className="font-medium capitalize">
+                {/* Zeige schönere Labels für die Quellen an */}
+                {task.source === 'inbound' && 'Eingehend'}
+                {task.source === 'outbound' && 'Ausgehend'}
+                {task.source === 'email' && 'E-Mail'}
+                {task.source === 'chat' && 'Chat'}
+                {task.source === 'manual' && 'Manuell'}
+                {!['inbound', 'outbound', 'email', 'chat', 'manual'].includes(task.source) && task.source}
+              </span>
             </div>
           </div>
         )}
+
+        {/* Blanko-Aufgaben-Kennzeichnung */}
+        {task.is_blank_task && (
+          <div className="flex items-start mt-2">
+            <div className="bg-orange-100 text-orange-700 px-2 py-1 rounded-md text-xs">
+              Blanko-Aufgabe ohne Ava-Unterstützung
+            </div>
+          </div>
+        )}
+
+        {/* Display Matched Use Case */}
+        <div className="flex items-start">
+          <FileText className="h-4 w-4 mr-2 mt-0.5 text-gray-500" /> {/* Using FileText as a placeholder, consider a more specific icon */}
+          <div>
+            <span className="text-gray-500">Use Case: </span>
+            <span className="font-medium">
+              {task.matched_use_case_title || 'Kein Use Case zugewiesen'}
+            </span>
+          </div>
+        </div>
 
         {/* New section to display attachments */}
         {task.attachments && task.attachments.length > 0 && (

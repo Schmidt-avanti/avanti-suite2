@@ -5,11 +5,19 @@ import { toast } from "sonner";
 import { useAuth } from '@/contexts/AuthContext';
 import { Message } from './useTaskMessages';
 
-export const useTaskChatMessages = (
-  taskId: string | undefined, 
-  useCaseId: string | undefined,
-  onMessageSent: () => void
-) => {
+interface UseTaskChatMessagesProps {
+  taskId: string | undefined;
+  useCaseId: string | undefined;
+  onMessageSent: () => void;
+  openAvaSummaryDialog: (data: { summaryDraft: string; textToAgent: string; options: string[] }) => void;
+}
+
+export const useTaskChatMessages = ({
+  taskId,
+  useCaseId,
+  onMessageSent,
+  openAvaSummaryDialog
+}: UseTaskChatMessagesProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -103,9 +111,27 @@ export const useTaskChatMessages = (
         throw error;
       }
 
+            try {
+        const parsedBackendResponse = JSON.parse(data.response); 
+
+        if (parsedBackendResponse && parsedBackendResponse.action === "propose_completion") {
+          console.log("Hook: Detected 'propose_completion'", parsedBackendResponse);
+          openAvaSummaryDialog({
+            summaryDraft: parsedBackendResponse.summary_draft || "",
+            textToAgent: parsedBackendResponse.text_to_agent || "Möchten Sie diesen Fall abschließen?",
+            options: parsedBackendResponse.options || []
+          });
+          setPreviousResponseId(data.response_id); // Set for potential continuation
+        } else {
+          setPreviousResponseId(data.response_id);
+          onMessageSent(); 
+        }
+      } catch (parseError) {
+        console.error("Hook: Error parsing backend response, treating as standard message.", parseError, data.response);
+        setPreviousResponseId(data.response_id);
+        onMessageSent();
+      }
       setRetryCount(0);
-      setPreviousResponseId(data.response_id);
-      onMessageSent();
     } catch (error: any) {
       console.error('Error sending message:', error);
       
@@ -124,7 +150,8 @@ export const useTaskChatMessages = (
   const handleRetry = () => {
     setRetryCount(prev => prev + 1);
     setTimeout(() => {
-      sendMessage("", null, new Set<string>());
+      sendMessage("", null, new Set<string>()); // Diese Zeile bleibt für den Retry-Mechanismus, wie sie ist. 
+// Der Retry sollte eine normale Anfrage auslösen, keine spezielle Dialogöffnung.
     }, retryCount * 2000);
   };
 

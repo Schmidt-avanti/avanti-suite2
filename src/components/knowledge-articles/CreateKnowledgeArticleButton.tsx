@@ -32,7 +32,7 @@ const CreateKnowledgeArticleButton = ({ useCaseId }: CreateKnowledgeArticleButto
 
   return (
     <Button 
-      onClick={() => navigate(`/admin/knowledge-articles/create/${useCaseId}`)}
+      onClick={() => navigate(`/admin/knowledge/create?useCaseId=${useCaseId}`)}
       variant="outline"
       size="sm"
       className="text-avanti-600 border-avanti-300 hover:bg-avanti-50"

@@ -1,109 +1,107 @@
-import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, Save } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import KnowledgeArticleChat from '@/components/knowledge-articles/KnowledgeArticleChat';
-import KnowledgeArticlePreview from '@/components/knowledge-articles/KnowledgeArticlePreview';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Save } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import KnowledgeArticleChat from '@/components/knowledge-articles/KnowledgeArticleChat';
+import { KnowledgeArticlePreview } from '@/components/knowledge-articles/KnowledgeArticlePreview';
+
+interface SaveArticlePayload {
+  use_case_id: string;
+  content: string;
+  title: string;
+  created_by: string;
+  customer_id: string;
+}
 
 const CreateKnowledgeArticle = () => {
   const navigate = useNavigate();
-  const { useCaseId } = useParams();
-  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const useCaseId = searchParams.get('useCaseId');
   const { user } = useAuth();
-  const [content, setContent] = React.useState('');
+
+  const [articleContent, setArticleContent] = useState('');
 
   const { data: useCase } = useQuery({
-    queryKey: ['use-case', useCaseId],
+    queryKey: ['useCase', useCaseId],
     queryFn: async () => {
+      if (!useCaseId) return null;
       const { data, error } = await supabase
         .from('use_cases')
-        .select('customer_id, title')
+        .select('*')
         .eq('id', useCaseId)
         .single();
-      
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       return data;
     },
+    enabled: !!useCaseId,
   });
 
-  const { mutate: saveArticle, isPending } = useMutation({
-    mutationFn: async () => {
-      if (!useCase?.customer_id) throw new Error('Kunde nicht gefunden');
-      
-      const { error } = await supabase
-        .from('knowledge_articles')
-        .insert([
-          {
-            use_case_id: useCaseId,
-            content: content,
-            title: useCase.title || 'Wissensartikel',
-            customer_id: useCase.customer_id,
-            created_by: user?.id,
-          }
-        ]);
-
+  const saveArticleMutation = useMutation<void, Error, SaveArticlePayload>({
+    mutationFn: async (payload) => {
+      const { error } = await supabase.from('knowledge_articles').insert([payload]);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({
-        title: "Artikel gespeichert",
-        description: "Der Wissensartikel wurde erfolgreich gespeichert.",
-      });
-      navigate(`/admin/use-cases/${useCaseId}`);
+      toast.success('Wissensartikel erfolgreich gespeichert!');
+      navigate('/knowledge');
     },
     onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Fehler beim Speichern",
-        description: error.message,
-      });
+      toast.error('Fehler beim Speichern des Wissensartikels: ' + error.message);
     },
   });
+
+  const handleSaveArticle = (contentToSave: string) => {
+    if (!useCaseId || !useCase || !user) {
+      toast.error('Informationen zum Speichern unvollständig. Use Case oder Benutzer nicht geladen.');
+      return;
+    }
+    
+    saveArticleMutation.mutate({
+      use_case_id: useCaseId,
+      content: contentToSave,
+      title: useCase.title + ' - Wissensartikel',
+      created_by: user.id,
+      customer_id: useCase.customer_id,
+    });
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate(`/admin/use-cases/${useCaseId}`)}
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Zurück
-          </Button>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Neuen Wissensartikel anlegen
-          </h1>
+        <div>
+          <h1 className="text-2xl font-bold">Wissensartikel erstellen</h1>
+          <p className="text-muted-foreground">
+            Erstelle einen neuen Wissensartikel basierend auf einem Use Case.
+          </p>
         </div>
         <Button 
-          onClick={() => saveArticle()}
-          disabled={!content.trim() || isPending}
+          onClick={() => handleSaveArticle(articleContent)}
+          disabled={!articleContent.trim() || saveArticleMutation.isPending}
           className="bg-avanti-500 hover:bg-avanti-600"
         >
           <Save className="h-4 w-4 mr-2" />
-          Wissensartikel speichern
+          Speichern
         </Button>
       </div>
 
-      <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-6">
         <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Ava Vorschlag</h2>
           <KnowledgeArticleChat 
-            useCaseId={useCaseId!} 
-            onContentChange={setContent} 
+            useCaseId={useCaseId}
+            onContentUpdate={setArticleContent}
           />
         </Card>
         
-        <div className="w-full">
-          <KnowledgeArticlePreview 
-            content={content} 
-            loading={isPending}
-          />
-        </div>
+        <KnowledgeArticlePreview 
+          content={articleContent}
+          onSave={handleSaveArticle}
+        />
       </div>
     </div>
   );

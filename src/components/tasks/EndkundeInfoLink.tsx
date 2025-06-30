@@ -38,7 +38,7 @@ interface EndkundeInfoLinkProps {
   onContactsLoaded?: (contacts: EndkundeContact[]) => void;
 }
 
-export const EndkundeInfoLink: React.FC<EndkundeInfoLinkProps> = ({ endkundeId, customerId, taskTitle, taskSummary, onContactsLoaded }) => {
+export const EndkundeInfoDisplay: React.FC<EndkundeInfoLinkProps> = ({ endkundeId, customerId, taskTitle, taskSummary, onContactsLoaded }) => { 
   const [endkunde, setEndkunde] = React.useState<EndkundeDetails | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -182,114 +182,80 @@ export const EndkundeInfoLink: React.FC<EndkundeInfoLinkProps> = ({ endkundeId, 
     return null;
   }
 
-  const displayName = endkunde ? 
-    `${endkunde.Nachname}${endkunde.Vorname ? `, ${endkunde.Vorname}` : ''}` : 
-    'Endkunde laden...';
+  if (!endkundeId) {
+    return (
+      <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4 mt-4">
+        <h3 className="text-md font-semibold text-gray-700 mb-2">Endkunde</h3>
+        <p className="text-sm text-gray-500">Kein Endkunde dieser Aufgabe zugeordnet.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4 mt-4">
+        <h3 className="text-md font-semibold text-gray-700 mb-2">Endkunde</h3>
+        <p className="text-sm text-gray-500 italic">Lade Endkunden-Informationen...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4 mt-4">
+        <h3 className="text-md font-semibold text-red-700 mb-2">Endkunde</h3>
+        <p className="text-sm text-red-500">Fehler beim Laden: {error}</p>
+      </div>
+    );
+  }
+
+  if (!endkunde) {
+    return (
+      <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4 mt-4">
+        <h3 className="text-md font-semibold text-gray-700 mb-2">Endkunde</h3>
+        <p className="text-sm text-gray-500">Endkunden-Informationen nicht gefunden.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4 mb-4">
-      <h3 className="text-lg font-semibold text-blue-900 mb-1 flex items-center">
-        Endkunde
+    <div className="bg-white/90 rounded-xl shadow-md border border-gray-100 p-4 mt-4">
+      <h3 className="text-md font-semibold text-gray-800 mb-2">
+        Endkunde: {endkunde.Vorname} {endkunde.Nachname}
       </h3>
-      <div className="text-sm text-gray-600">
-        {isLoading ? (
-          <div className="animate-pulse flex space-x-2 items-center">
-            <div className="h-4 w-28 bg-gray-200 rounded"></div>
-            <div className="h-4 w-4 bg-gray-200 rounded-full"></div>
-          </div>
-        ) : error ? (
-          <span className="text-red-500">{error}</span>
-        ) : (
-          <HoverCard openDelay={200} closeDelay={100}>
-            <HoverCardTrigger asChild>
-              <div className="flex items-center cursor-pointer hover:text-blue-600 transition-colors">
-                <span className="font-medium">{displayName}</span>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 ml-2 text-blue-400" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Details anzeigen</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-80 p-4">
-              <div className="space-y-2">
-                <h4 className="font-semibold">{displayName}</h4>
-                
-                <div className="grid grid-cols-[80px_1fr] gap-1 text-sm">
-                  <span className="text-gray-500">Adresse:</span>
-                  <span>{endkunde?.Adresse}</span>
-                  
-                  {endkunde?.Wohnung && (
-                    <>
-                      <span className="text-gray-500">Wohnung:</span>
-                      <span>{endkunde.Wohnung}</span>
-                    </>
-                  )}
-                  
-                  {endkunde?.Gebäude && (
-                    <>
-                      <span className="text-gray-500">Gebäude:</span>
-                      <span>{endkunde.Gebäude}</span>
-                    </>
-                  )}
-                  
-                  {endkunde?.Lage && (
-                    <>
-                      <span className="text-gray-500">Lage:</span>
-                      <span>{endkunde.Lage}</span>
-                    </>
-                  )}
-                  
-                  <span className="text-gray-500">PLZ/Ort:</span>
-                  <span>{endkunde?.Postleitzahl} {endkunde?.Ort}</span>
-                </div>
-
-                {contacts.length > 0 && (
-                  <div className="pt-3 mt-2 border-t border-gray-100">
-                    <h5 className="font-semibold text-gray-700 mb-2">Kontakte</h5>
-                    <div className="space-y-3 text-sm">
-                      {contacts.map((contact, index) => (
-                        <div key={index} className={index > 0 ? "border-t pt-2" : ""}>
-                          {contact.name && (
-                            <div className="font-medium flex items-center gap-1">
-                              {contact.name}
-                              {contact.role && (
-                                <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
-                                  {contact.role}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {contact.phone && (
-                            <div className="mt-1 flex items-center gap-1">
-                              <Phone className="h-3 w-3 text-gray-500" />
-                              <span>{contact.phone}</span>
-                            </div>
-                          )}
-                          {contact.email && (
-                            <div className="mt-1 flex items-center gap-1">
-                              <Mail className="h-3 w-3 text-gray-500" />
-                              <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">
-                                {contact.email}
-                              </a>
-                            </div>
-                          )}
-
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-        )}
+      <div className="text-sm text-gray-600 space-y-1">
+        <p>
+          {endkunde.Adresse}
+          {endkunde.Wohnung && `, ${endkunde.Wohnung}`}
+          {endkunde.Gebäude && `, Geb. ${endkunde.Gebäude}`}
+          {endkunde.Lage && `, ${endkunde.Lage}`}<br />
+          {endkunde.Postleitzahl} {endkunde.Ort}
+        </p>
       </div>
+
+      {contactsLoading && <p className="text-xs text-gray-500 italic mt-3 pt-3 border-t border-gray-200">Lade Kontakte...</p>}
+      {!contactsLoading && contacts.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <h4 className="text-sm font-medium text-gray-700 mb-1">Zuständiger Kontakt:</h4>
+          {contacts.map((contact, index) => (
+            <div key={index} className="text-sm text-gray-600 mb-1 flex flex-wrap items-center">
+              {contact.role && <span className="font-semibold mr-1">{contact.role}:</span>}
+              <span className="mr-2">{contact.name}</span>
+              {contact.phone && 
+                <a href={`tel:${contact.phone}`} className="mr-2 flex items-center text-blue-500 hover:underline">
+                  <Phone size={14} className="mr-1" /> {contact.phone}
+                </a>}
+              {contact.email && 
+                <a href={`mailto:${contact.email}`} className="flex items-center text-blue-500 hover:underline">
+                  <Mail size={14} className="mr-1" /> {contact.email}
+                </a>}
+            </div>
+          ))}
+        </div>
+      )}
+      {!contactsLoading && contacts.length === 0 && endkunde && (
+          <p className="text-xs text-gray-500 italic mt-3 pt-3 border-t border-gray-200">Kein spezifischer Hausmeisterkontakt für {endkunde.Ort} hinterlegt.</p>
+      )}
     </div>
   );
 };

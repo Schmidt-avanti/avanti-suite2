@@ -1,6 +1,10 @@
 
-export const markdownToHtml = (markdown: string): string => {
-  return markdown
+export const markdownToHtml = (markdown: any): string => {
+  // Sicherstellen, dass markdown ein String ist
+  const markdownStr = typeof markdown === 'string' ? markdown : 
+    markdown ? JSON.stringify(markdown) : '';
+    
+  return markdownStr
     .split('\n')
     .map(line => {
       // Headers

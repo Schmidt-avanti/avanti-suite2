@@ -21,11 +21,14 @@ export const useTaskMessages = (taskId: string | null, initialMessages: Message[
   const prevMessagesLengthRef = useRef(messages.length);
   const lastFetchAttemptRef = useRef<number>(0);
   const isFetchingRef = useRef<boolean>(false);
-  const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // For fetchMessages internal retry
+  const realTimeFetchDebounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // For debouncing real-time events
   const errorCountRef = useRef<number>(0);
   
   const fetchMessages = useCallback(async () => {
     // Validate taskId before making the database call
+    // Ensure taskId from the hook's props/scope is used.
+    // This function's identity is now stable.
     if (!taskId || taskId === "undefined") {
       console.error("Invalid taskId provided to fetchMessages:", taskId);
       return;
@@ -146,7 +149,7 @@ export const useTaskMessages = (taskId: string | null, initialMessages: Message[
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [taskId]);
+  }, []);
 
   useEffect(() => {
     // Clean up any scheduled fetches on unmount
@@ -158,33 +161,53 @@ export const useTaskMessages = (taskId: string | null, initialMessages: Message[
   }, []);
 
   useEffect(() => {
-    if (initialMessages.length === 0) {
-      // Only fetch messages if we have a valid taskId
-      if (taskId && taskId !== "undefined") {
-        fetchMessages();
-      }
+    if (taskId) {
+      // console.log(`useTaskMessages: taskId effect triggered for ${taskId}. Calling fetchMessages.`);
+      fetchMessages();
     } else {
-      const newSelectedOptions = new Set<string>();
-      initialMessages.forEach(message => {
-        if (message.role === 'user') {
-          try {
-            const options = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
-            if (options.includes(message.content)) {
-              newSelectedOptions.add(message.content);
-            }
-          } catch (e) {
-            // Not a button choice
-          }
+      setMessages([]); // Clear messages if taskId becomes null
+    }
+  }, [taskId]);
+
+  useEffect(() => {
+    if (!taskId) return;
+
+    const handleRealTimeInsert = (payload: any) => {
+      // console.log('useTaskMessages: Realtime: New message received. Debouncing fetch.', payload);
+      if (realTimeFetchDebounceTimeoutRef.current) {
+        clearTimeout(realTimeFetchDebounceTimeoutRef.current);
+      }
+      realTimeFetchDebounceTimeoutRef.current = setTimeout(() => {
+        // console.log('useTaskMessages: Realtime: Debounced fetch executing.');
+        fetchMessages();
+      }, 500); // Debounce window of 500ms
+    };
+
+    // console.log(`useTaskMessages: Setting up real-time subscription for ${taskId}`);
+    const channel = supabase
+      .channel(`task_messages_realtime:${taskId}`) // Ensure unique channel name per task
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'task_messages', filter: `task_id=eq.${taskId}` },
+        handleRealTimeInsert
+      )
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          // console.log(`useTaskMessages: Realtime: Subscribed to task_messages for task ${taskId}`);
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error(`useTaskMessages: Realtime: Subscription error for task ${taskId}:`, err || status);
         }
       });
-      setSelectedOptions(newSelectedOptions);
-      
-      // Wenn es bereits initialMessages gibt, setze initialMessageSent auf true
-      if (initialMessages.length > 0) {
-        setInitialMessageSent(true);
+
+    return () => {
+      // console.log(`useTaskMessages: Cleaning up real-time subscription for ${taskId}`);
+      supabase.removeChannel(channel);
+      if (realTimeFetchDebounceTimeoutRef.current) {
+        clearTimeout(realTimeFetchDebounceTimeoutRef.current);
       }
-    }
-  }, [initialMessages, taskId, fetchMessages]);
+    };
+  }, [taskId, fetchMessages]); // fetchMessages is stable due to useCallback(..., [])
 
   // Detect new messages by comparing current and previous message counts
   useEffect(() => {

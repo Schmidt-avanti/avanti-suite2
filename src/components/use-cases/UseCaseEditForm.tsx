@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const formSchema = z.object({
   title: z.string().min(1, "Titel wird benötigt"),
@@ -34,6 +35,7 @@ const formSchema = z.object({
   expected_result: z.string().optional(),
   steps: z.string().optional(),
   typical_activities: z.string().optional(),
+  info_block: z.string().optional(),
 });
 
 interface UseCaseEditFormProps {
@@ -55,13 +57,27 @@ export function UseCaseEditForm({ useCase, onSuccess }: UseCaseEditFormProps) {
       expected_result: useCase.expected_result || "",
       steps: useCase.steps || "",
       typical_activities: useCase.typical_activities || "",
+      info_block: useCase.chat_response?.info_block || "",
     },
   });
 
   const updateUseCase = async (values: z.infer<typeof formSchema>) => {
+    // Extrahiere info_block aus den Formularwerten
+    const { info_block, ...otherValues } = values;
+    
+    // Bereite das Update für chat_response vor
+    let chatResponse = useCase.chat_response || {};
+    if (info_block !== undefined) {
+      chatResponse = { ...chatResponse, info_block };
+    }
+    
+    // Update durchführen mit den aktualisierten Werten
     const { error } = await supabase
       .from("use_cases")
-      .update(values)
+      .update({
+        ...otherValues,
+        chat_response: chatResponse,
+      })
       .eq("id", useCase.id);
 
     if (error) throw error;
@@ -211,6 +227,30 @@ export function UseCaseEditForm({ useCase, onSuccess }: UseCaseEditFormProps) {
             </FormItem>
           )}
         />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>KI-generierte Inhalte</CardTitle>
+            <CardDescription>
+              Diese Inhalte wurden automatisch generiert und können hier bearbeitet werden.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FormField
+              control={form.control}
+              name="info_block"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Info-Block (Kernaussage)</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} className="min-h-[100px]" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
 
         <div className="flex justify-end gap-4">
           <Button type="submit" className="bg-avanti-500 hover:bg-avanti-600">

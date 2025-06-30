@@ -1,9 +1,8 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 import type { TaskStatus } from '@/types';
+import { toast } from 'sonner';
 
 interface TaskTimerOptions {
   taskId: string;
@@ -11,256 +10,292 @@ interface TaskTimerOptions {
   status?: TaskStatus;
 }
 
+/**
+ * A simple hook for tracking time spent on tasks
+ * Tracks time while a task is viewed and accumulates the total
+ */
 export const useTaskTimer = ({ taskId, isActive, status = 'new' }: TaskTimerOptions) => {
   const { user } = useAuth();
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [isTracking, setIsTracking] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const startTimeRef = useRef<number | null>(null);
-  const taskTimeEntryRef = useRef<string | null>(null);
-  const currentSessionTimeRef = useRef<number>(0);
-
-  // Determine if timer should be active based on task status
-  const shouldBeActive = (taskStatus: TaskStatus): boolean => {
-    return isActive && (taskStatus === 'new' || taskStatus === 'in_progress');
+  const [totalTime, setTotalTime] = useState(0); // Total accumulated time in seconds
+  const [sessionTime, setSessionTime] = useState(0); // Current session time
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false); // Prevents multiple concurrent operations
+  const sessionStartRef = useRef<Date | null>(null); // Current session start timestamp
+  const intervalRef = useRef<NodeJS.Timeout | null>(null); // Timer interval reference
+  
+  // Determine if timer should be active
+  const shouldBeActive = (): boolean => {
+    const result = isActive && (status === 'new' || status === 'in_progress');
+    return result;
   };
-
-  // Fetch total time from the task_times table across ALL users
-  const fetchAccumulatedTime = async () => {
-    if (!taskId) return 0;
-
-    try {
-      // Calculate total time by summing all durations for this task (across all users)
-      const { data: totalDurations, error: durationsError } = await supabase
-        .from('task_times')
-        .select('duration_seconds')
-        .eq('task_id', taskId)
-        .not('duration_seconds', 'is', null);
-
-      if (durationsError) throw durationsError;
-
-      // Calculate sum of all completed durations
-      const totalCompletedTime = totalDurations?.reduce((sum, entry) => 
-        sum + (entry.duration_seconds || 0), 0) || 0;
-
-      // Add current user's active session time (if any)
-      const totalSeconds = totalCompletedTime + currentSessionTimeRef.current;
-      
-      console.log('Total time calculation:', {
-        taskId,
-        totalCompletedTime,
-        currentSession: currentSessionTimeRef.current,
-        total: totalSeconds,
-        userId: user?.id,
-        status,
-        entriesCount: totalDurations?.length || 0
-      });
-
-      return totalSeconds;
-    } catch (err) {
-      console.error('Error calculating total time:', err);
-      return currentSessionTimeRef.current;
-    }
-  };
-
-  // Set up real-time subscription for task_times updates
-  useEffect(() => {
-    if (!taskId) return;
-
-    const initializeTimer = async () => {
-      const totalSeconds = await fetchAccumulatedTime();
-      setElapsedTime(totalSeconds);
-    };
-
-    initializeTimer();
-
-    const channel = supabase
-      .channel('task_timer')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'task_times',
-          filter: `task_id=eq.${taskId}`
-        },
-        async () => {
-          console.log('Detected change in task_times - refreshing total time');
-          const updatedTime = await fetchAccumulatedTime();
-          setElapsedTime(updatedTime);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      stopLocalTimer();
-    };
-  }, [taskId]);
-
-  // Check if there's an ongoing timer session that needs to be resumed
+  
+  // Load saved time on component mount and check for active sessions
   useEffect(() => {
     if (!taskId || !user) return;
     
-    const checkOngoingSession = async () => {
+    const fetchTaskTime = async () => {
       try {
-        // Check for any ongoing timer session that hasn't been ended
-        const { data, error } = await supabase
+        // Calculate from task_times sessions
+        const { data: sessions, error } = await supabase
           .from('task_times')
-          .select('id, started_at')
+          .select('duration_seconds')
+          .eq('task_id', taskId)
+          .not('duration_seconds', 'is', null);
+        
+        if (error) throw error;
+        
+        if (sessions?.length) {
+          const total = sessions.reduce((sum, session) => 
+            sum + (session.duration_seconds || 0), 0);
+          setTotalTime(total);
+        }
+
+        // Check for any active sessions that weren't properly closed
+        const { data: activeSession } = await supabase
+          .from('task_times')
+          .select('*')
           .eq('task_id', taskId)
           .eq('user_id', user.id)
           .is('ended_at', null)
-          .order('started_at', { ascending: false })
-          .limit(1);
-          
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Found an ongoing session, resume it
-          taskTimeEntryRef.current = data[0].id;
-          const startTime = new Date(data[0].started_at).getTime();
-          startTimeRef.current = startTime;
-          currentSessionTimeRef.current = Math.floor((Date.now() - startTime) / 1000);
-          setIsTracking(true);
-          
-          if (shouldBeActive(status)) {
-            startLocalTimer();
+          .single();
+            
+        if (activeSession) {
+          // We found an active session
+          const startTime = new Date(activeSession.started_at);
+          const now = new Date();
+              
+          // If the session is from more than 30 minutes ago, close it
+          if (now.getTime() - startTime.getTime() > 30 * 60 * 1000) {
+            const duration = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+            await closeSession(activeSession.id, duration);
+          } else if (shouldBeActive()) {
+            // Resume the session
+            sessionStartRef.current = startTime;
+            setCurrentSessionId(activeSession.id);
+            startTimer();
           } else {
-            // If we shouldn't be active now, end the previous session
-            await stopTracking();
+            // End the orphaned session
+            const duration = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+            await closeSession(activeSession.id, duration);
           }
-        } else if (shouldBeActive(status)) {
-          // No ongoing session but we should be active
-          startTracking();
         }
       } catch (err) {
-        console.error('Error checking ongoing timer session:', err);
+        console.error('Error loading task time data:', err);
       }
     };
     
-    checkOngoingSession();
-  }, [taskId, user, status]);
-
-  // Handle the interval timer for the current user's session
-  const startLocalTimer = () => {
-    stopLocalTimer();
+    fetchTaskTime();
     
-    timerRef.current = setInterval(async () => {
-      if (startTimeRef.current) {
-        currentSessionTimeRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        const totalTime = await fetchAccumulatedTime();
-        setElapsedTime(totalTime);
+    return () => {
+      // Clean up timer on unmount
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
       }
-    }, 1000);
-  };
+      
+      // End the active session when component unmounts
+      if (sessionStartRef.current && currentSessionId) {
+        const now = new Date();
+        const sessionDuration = Math.floor((now.getTime() - sessionStartRef.current.getTime()) / 1000);
+        if (sessionDuration > 1) { // Only save sessions longer than 1 second
+          closeSession(currentSessionId, sessionDuration).catch(err => 
+            console.error('Error closing session on unmount:', err)
+          );
+        }
+      }
+    };
+  }, [taskId, user]);  // Added user dependency
+  
+  // Start or stop timer based on active status and task status
+  useEffect(() => {
+    if (shouldBeActive()) {
+      startSession();
+    } else {
+      endCurrentSession();
+    }
+  }, [isActive, status]);
+  
+  // We don't need the updateTaskTotalTime function anymore since we're not caching in tasks table
 
-  const stopLocalTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+  // Close a database session
+  const closeSession = async (sessionId: string, duration: number): Promise<void> => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+    
+    try {
+      const now = new Date();
+      
+      // Update the session record
+      await supabase
+        .from('task_times')
+        .update({
+          ended_at: now.toISOString(),
+          duration_seconds: duration
+        })
+        .eq('id', sessionId);
+      
+      // Update the total time
+      const newTotal = totalTime + duration;
+      setTotalTime(newTotal);
+      
+    } catch (err) {
+      console.error(`Error closing session ${sessionId}:`, err);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
-  // Start tracking time
-  const startTracking = async () => {
-    if (!user || isTracking || !shouldBeActive(status)) return;
-
+  // Starts a new timer session
+  const startSession = async () => {
+    if (!taskId) { // Guard against empty taskId
+      return;
+    }
+    if (!user || sessionStartRef.current || isUpdating) return;
+    
+    setIsUpdating(true);
+    
     try {
-      console.log(`Starting timer for task ${taskId} with status ${status}`);
+      const now = new Date();
       
+      // Create session in database
       const { data, error } = await supabase
         .from('task_times')
         .insert({
           task_id: taskId,
           user_id: user.id,
-          started_at: new Date().toISOString(),
+          started_at: now.toISOString()
         })
         .select('id')
         .single();
-
+      
       if (error) throw error;
-
-      taskTimeEntryRef.current = data.id;
-      startTimeRef.current = Date.now();
-      currentSessionTimeRef.current = 0;
-      setIsTracking(true);
-      startLocalTimer();
-
-    } catch (err) {
-      console.error('Error starting task timer:', err);
-      toast.error('Fehler beim Starten der Zeitmessung');
-    }
-  };
-
-  // Stop tracking time
-  const stopTracking = async () => {
-    if (!isTracking || !taskTimeEntryRef.current) return;
-
-    try {
-      stopLocalTimer();
-
-      if (startTimeRef.current) {
-        const finalSessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        
-        // Only update if there was actual time spent
-        if (finalSessionTime > 0) {
-          const { error } = await supabase
-            .from('task_times')
-            .update({
-              ended_at: new Date().toISOString(),
-              duration_seconds: finalSessionTime
-            })
-            .eq('id', taskTimeEntryRef.current);
-          
-          if (error) throw error;
-        }
-
-        currentSessionTimeRef.current = 0;
+      
+      // Set the session start time and ID
+      sessionStartRef.current = now;
+      setCurrentSessionId(data.id);
+      
+      // Start the timer to update UI
+      startTimer();
+      
+      // Update task status to in_progress if it's new
+      if (status === 'new') {
+        await supabase
+          .from('tasks')
+          .update({ status: 'in_progress' })
+          .eq('id', taskId);
       }
-
-      setIsTracking(false);
-      startTimeRef.current = null;
-      taskTimeEntryRef.current = null;
-
-      // Update total time immediately after stopping
-      const updatedTime = await fetchAccumulatedTime();
-      setElapsedTime(updatedTime);
-
     } catch (err) {
-      console.error('Error stopping task timer:', err);
-      toast.error('Fehler beim Stoppen der Zeitmessung');
+      console.error(`Error starting session for task ${taskId}:`, err);
+      toast.error('Fehler beim Starten des Aufgabentimers');
+      sessionStartRef.current = null;
+    } finally {
+      setIsUpdating(false);
     }
   };
-
-  // Format time to HH:MM:SS
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  // Effect for handling active state and status changes
-  useEffect(() => {
-    const timerShouldBeActive = shouldBeActive(status);
+  
+  // End current session if one exists
+  const endCurrentSession = async () => {
+    if (!sessionStartRef.current || !currentSessionId) return;
     
-    if (timerShouldBeActive && !isTracking && taskId) {
-      startTracking();
-    } else if (!timerShouldBeActive && isTracking) {
-      stopTracking();
-    }
-
-    return () => {
-      if (isTracking) {
-        stopTracking();
+    const now = new Date();
+    const duration = Math.floor((now.getTime() - sessionStartRef.current.getTime()) / 1000);
+    
+    // Only count sessions longer than 1 second
+    if (duration > 1) {
+      await closeSession(currentSessionId, duration);
+      
+      // Reset session tracking
+      sessionStartRef.current = null;
+      setCurrentSessionId(null);
+      setSessionTime(0);
+      
+      // Stop the timer
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
-    };
-  }, [isActive, taskId, status]);
+    } else {
+      // Delete short sessions instead of closing them
+      if (isUpdating) return;
+      setIsUpdating(true);
+      
+      try {
+        // Delete the session record
+        await supabase
+          .from('task_times')
+          .delete()
+          .eq('id', currentSessionId);
+          
+        // Reset session tracking
+        sessionStartRef.current = null;
+        setCurrentSessionId(null);
+        setSessionTime(0);
+        
+        // Stop the timer
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      } catch (err) {
+        console.error(`Error deleting short session ${currentSessionId}:`, err);
+      } finally {
+        setIsUpdating(false);
+      }
+    }
+  };
+  
+  // Start the timer for UI updates
+  const startTimer = () => {
+    // Clear any existing interval first
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    
+    // Create new interval to update UI every second
+    intervalRef.current = setInterval(() => {
+      if (!sessionStartRef.current) return;
+      
+      const now = new Date();
+      const currentSessionTime = Math.floor((now.getTime() - sessionStartRef.current.getTime()) / 1000);
+      setSessionTime(currentSessionTime);
+    }, 1000);
+  };
+
+  // Format seconds into a readable time string (MM:SS or HH:MM:SS)
+  const formatTime = (seconds: number): string => {
+    if (seconds === 0) return '00:00';
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    
+    const pad = (num: number) => num.toString().padStart(2, '0');
+    
+    if (hours > 0) {
+      return `${hours}:${pad(minutes)}:${pad(remainingSeconds)}`; // HH:MM:SS
+    } else {
+      return `${pad(minutes)}:${pad(remainingSeconds)}`; // MM:SS
+    }
+  };
+
+  // Simple minute display for task list (e.g., "5 Minuten")
+  const getMinuteDisplay = (): string => {
+    const totalSeconds = totalTime + sessionTime;
+    if (totalSeconds === 0) return '0 Minuten';
+    
+    const minutes = Math.ceil(totalSeconds / 60); // Round up to nearest minute
+    return `${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}`;
+  };
+  
+  // Calculate the total seconds (historical + current session)
+  const getTotalSeconds = (): number => {
+    return totalTime + sessionTime;
+  };
 
   return {
-    elapsedTime,
-    formattedTime: formatTime(elapsedTime),
-    isTracking
+    elapsedTime: getTotalSeconds(),
+    formattedTime: formatTime(getTotalSeconds()),
+    minuteDisplay: getMinuteDisplay(),
+    isTracking: !!sessionStartRef.current,
+    totalTimeSeconds: getTotalSeconds()
   };
 };

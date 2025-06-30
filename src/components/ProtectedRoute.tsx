@@ -48,15 +48,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (!allowedRoles.includes(user.role)) {
     console.log(`User role '${user.role}' not authorized for this route. Allowed roles:`, allowedRoles);
     
-    // Rolle stimmt nicht für Bereich! → harte Weiterleitung nach Startseite
-    if (user.role === 'admin') {
-      return <Navigate to="/admin/dashboard" replace />;
-    } else if (user.role === 'agent') {
-      return <Navigate to="/agent/dashboard" replace />;
-    } else if (user.role === 'customer') {
-      return <Navigate to="/client/dashboard" replace />;
-    }
-    return <Navigate to="/error" replace />;
+    // Rolle stimmt nicht für Bereich! → immer Weiterleitung nach allgemeinem Dashboard
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

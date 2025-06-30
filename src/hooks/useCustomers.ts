@@ -31,7 +31,7 @@ export const useCustomers = () => {
           
           const { data: assignedCustomers, error: assignmentError } = await supabase
             .from('user_customer_assignments')
-            .select('customer_id, customers(id, name, branch, is_active)')
+            .select('customer_id, customers(id, name, branch, is_active, industry)')
             .eq('user_id', user.id);
 
           if (assignmentError) {
@@ -55,6 +55,7 @@ export const useCustomers = () => {
                 name: ac.customers.name,
                 branch: ac.customers.branch,
                 is_active: ac.customers.is_active,
+                industry: ac.customers.industry,
                 created_at: '' // We set an empty date, as it's not needed here
               }));
               
@@ -71,7 +72,7 @@ export const useCustomers = () => {
           
           const { data: userAssignment, error: clientError } = await supabase
             .from('user_customer_assignments')
-            .select('customer_id, customers(id, name, branch, is_active)')
+            .select('customer_id, customers(id, name, branch, is_active, industry)')
             .eq('user_id', user.id)
             .single();
 
@@ -94,6 +95,7 @@ export const useCustomers = () => {
               name: userAssignment.customers.name,
               branch: userAssignment.customers.branch,
               is_active: userAssignment.customers.is_active,
+              industry: userAssignment.customers.industry,
               created_at: '' // We set an empty date, as it's not needed here
             }]);
           } else {
@@ -102,12 +104,13 @@ export const useCustomers = () => {
           }
         } 
         // For admins, fetch all customers
-        else if (user.role === 'admin') {
-          console.log('useCustomers: User is an admin, fetching all customers');
-          
+        else {
+          console.log('useCustomers: User is an admin or supervisor, fetching all customers');
+
           const { data: allCustomers, error: adminError } = await supabase
             .from('customers')
-            .select('id, name, branch, is_active');
+            .select('id, name, branch, is_active, created_at, industry')
+            .order('name');
 
           if (adminError) {
             console.error('Error fetching all customers:', adminError);
@@ -128,13 +131,16 @@ export const useCustomers = () => {
               name: customer.name,
               branch: customer.branch,
               is_active: customer.is_active,
+              industry: customer.industry,
               created_at: '' // We set an empty date, as it's not needed here
             }));
             setCustomers(formattedCustomers);
           } else {
             setCustomers([]);
           }
-        } else {
+        }
+        // Falls die Rolle nicht bekannt ist
+        if (user.role !== 'admin' && user.role !== 'agent' && user.role !== 'customer' && user.role !== 'supervisor') {
           console.warn(`useCustomers: Unknown user role: ${user.role}`);
           setCustomers([]);
         }

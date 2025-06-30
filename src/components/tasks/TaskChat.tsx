@@ -1,5 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTaskMessages, Message } from '@/hooks/useTaskMessages';
@@ -15,9 +15,12 @@ interface TaskChatProps {
   taskId: string;
   useCaseId?: string;
   initialMessages?: Message[];
+  openAvaSummaryDialog: (data: { summaryDraft: string; textToAgent: string; options: string[] }) => void;
+  isReadOnly?: boolean; // Added isReadOnly prop
+  isBlankTask?: boolean; // Flag für Blanko-Aufgaben ohne Ava
 }
 
-export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatProps) {
+export function TaskChat({ taskId, useCaseId, initialMessages = [], openAvaSummaryDialog, isReadOnly, isBlankTask = false }: TaskChatProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [emailJustSent, setEmailJustSent] = useState(false);
@@ -54,7 +57,12 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
     setInputValue,
     sendMessage,
     handleRetry
-  } = useTaskChatMessages(taskId, useCaseId, fetchMessages);
+  } = useTaskChatMessages({
+    taskId,
+    useCaseId,
+    onMessageSent: fetchMessages,
+    openAvaSummaryDialog // NEU
+  });
 
   // Listen for email notification events
   useEffect(() => {
@@ -79,7 +87,14 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   }, [taskId]);
 
   // Automatische Nachricht senden, wenn ein Use-Case zugeordnet ist und noch keine Nachrichten vorhanden sind
+  // Bei Blanko-Aufgaben wird keine automatische Nachricht gesendet
   useEffect(() => {
+    // Bei Blanko-Aufgaben keine automatische Chat-Initialisierung
+    if (isBlankTask) {
+      console.log("Skipping auto-start for blank task");
+      return;
+    }
+
     const initializeChat = async () => {
       // Nur eine automatische Nachricht senden, wenn:
       // 1. Eine Use-Case-ID vorhanden ist
@@ -119,15 +134,48 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() && !isLoading) {
-      sendMessage(inputValue, null, selectedOptions);
+      if (isBlankTask) {
+        // Bei Blanko-Aufgaben nur die Benutzer-Nachricht speichern, ohne KI-Antwort anzufordern
+        const saveUserMessageOnly = async () => {
+          try {
+            const { error } = await supabase
+              .from('task_messages')
+              .insert({
+                task_id: taskId,
+                content: inputValue.trim(),
+                role: 'user',
+                created_by: user?.id
+              });
+            
+            if (error) throw error;
+            fetchMessages(); // Nachrichten aktualisieren
+            setInputValue(''); // Eingabefeld leeren
+          } catch (error) {
+            console.error('Error saving user message:', error);
+            toast({
+              variant: "destructive",
+              title: "Fehler",
+              description: "Nachricht konnte nicht gespeichert werden."
+            });
+          }
+        };
+        
+        saveUserMessageOnly();
+      } else {
+        // Normaler Ablauf für reguläre Aufgaben mit Ava
+        sendMessage(inputValue, null, selectedOptions);
+      }
       // Enable auto-scroll when user sends a message
       setAutoScroll(true);
     }
   };
 
   const handleOptionSelect = (option: string) => {
-    sendMessage("", option, selectedOptions);
-    setAutoScroll(true);
+    // Bei Blanko-Aufgaben keine Optionen anzeigen/auswählen
+    if (!isBlankTask) {
+      sendMessage("", option, selectedOptions);
+      setAutoScroll(true);
+    }
   };
 
   return (
@@ -149,14 +197,34 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
           </div>
         )}
 
-        {messages.map((message) => (
-          <TaskChatMessage 
-            key={message.id}
-            message={message}
-            selectedOptions={selectedOptions}
-            onOptionSelect={handleOptionSelect}
-          />
-        ))}
+        {messages.map((message, index) => {
+          // Find the last assistant message in the messages array
+          const lastAssistantMessageIndex = [...messages].reverse()
+            .findIndex(msg => msg.role === 'assistant');
+          
+          // If found, calculate its actual index in the original array
+          const lastAssistantIndex = lastAssistantMessageIndex >= 0 ? 
+            (messages.length - 1 - lastAssistantMessageIndex) : -1;
+          
+          // This is the last assistant message if its index matches the current message's index
+          // and it's an assistant message
+          const isLastAssistant = index === lastAssistantIndex && message.role === 'assistant';
+          
+          return (
+            <TaskChatMessage 
+              key={message.id}
+              message={message}
+              selectedOptions={selectedOptions}
+              onOptionSelect={handleOptionSelect}
+              taskId={taskId}
+              taskTitle={useCaseId}
+              readableId={taskId}
+              endkundeOrt={''}
+              isLastAssistantMessage={isLastAssistant}
+              isReadOnly={isReadOnly} // Pass isReadOnly to TaskChatMessage
+            />
+          );
+        })}
 
         <TaskChatStatus 
           isLoading={isLoading}
@@ -173,12 +241,16 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [] }: TaskChatPr
         onClick={scrollToBottom} 
       />
 
-      <TaskChatInput
-        inputValue={inputValue}
-        setInputValue={setInputValue}
-        handleSubmit={handleSubmit}
-        isLoading={isLoading}
-        emailSent={emailJustSent}
+      <TaskChatInput 
+        value={inputValue} 
+        onChange={(e) => setInputValue(e.target.value)} 
+        onSubmit={handleSubmit} 
+        isLoading={isLoading} 
+        disabled={isReadOnly || isLoading} // Disable input if read-only or loading
+        // emailSent prop seems to be from an older version of TaskChatInput, removing if not used
+        // If TaskChatInputProps still expects emailSent, ensure it's correctly defined and passed.
+        // For now, assuming it was part of the props that changed and might not be needed directly here
+        // or needs to be re-evaluated based on TaskChatInput's current props.
       />
     </div>
   );
