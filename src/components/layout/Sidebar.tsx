@@ -79,6 +79,12 @@ const Sidebar = () => {
       role: "admin",
     },
     {
+      to: "/admin/endkunden",
+      icon: <Users className="h-5 w-5" />,
+      label: "Endkunden",
+      role: "admin",
+    },
+    {
       to: "/admin/customers",
       icon: <Users className="h-5 w-5" />,
       label: "Kunden",

@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2, Ban } from "lucide-react";
@@ -34,17 +34,56 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [customerToDelete, setCustomerToDelete] = React.useState<Customer | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [productMap, setProductMap] = useState<{[key: string]: string}>({});
+  const [optionsMap, setOptionsMap] = useState<{[key: string]: string}>({});
+  const [loading, setLoading] = useState(true);
   const { toast: uiToast } = useToast();
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const { data, error } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
+    const fetchData = async () => {
+      setLoading(true);
+      
+      // Produkte laden
+      const { data: productData } = await supabase
+        .from("products")
+        .select("id, name");
+        
+      if (productData) {
+        const prodMap: {[key: string]: string} = {};
+        productData.forEach(product => {
+          prodMap[product.id] = product.name;
+        });
+        setProductMap(prodMap);
+      }
+      
+      // Optionen laden
+      const { data: optionsData } = await supabase
+        .from("product_options")
+        .select("id, name");
+        
+      if (optionsData) {
+        const optMap: {[key: string]: string} = {};
+        optionsData.forEach(option => {
+          optMap[option.id] = option.name;
+        });
+        setOptionsMap(optMap);
+      }
+
+      // Kunden laden
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, industry, created_at, is_active, products, options")
+        .order("created_at", { ascending: false });
+        
       if (!error && data) {
         setCustomers(data);
       }
+
+      setLoading(false);
     };
-    fetchCustomers();
-  }, [setCustomers]);
+
+    fetchData();
+  }, []);
 
   const handleDeleteClick = (customer: Customer) => {
     setCustomerToDelete(customer);
@@ -129,7 +168,9 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Branche</TableHead>
+            <TableHead>Industrie</TableHead>
+            <TableHead>Produkt</TableHead>
+            <TableHead>Optionen</TableHead>
             <TableHead>Erstellt am</TableHead>
             <TableHead>Status</TableHead>
             <TableHead></TableHead>
@@ -139,8 +180,18 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
           {sortedCustomers.map((customer) => (
             <TableRow key={customer.id} className={!customer.is_active ? "opacity-60" : ""}>
               <TableCell>{customer.name}</TableCell>
-              <TableCell>{customer.branch || "–"}</TableCell>
-              <TableCell>{customer.created_at ? new Date(customer.created_at).toLocaleDateString() : "–"}</TableCell>
+              <TableCell>{customer.industry || "–"}</TableCell>
+              <TableCell>
+                {Array.isArray(customer.products) && customer.products.length > 0 
+                  ? customer.products.map((prodId: string) => productMap[prodId] || prodId).join(", ")
+                  : "–"}
+              </TableCell>
+              <TableCell>
+                {Array.isArray(customer.options) && customer.options.length > 0
+                  ? customer.options.map((optId: string) => optionsMap[optId] || optId).join(", ")
+                  : "–"}
+              </TableCell>
+              <TableCell>{customer.created_at ? new Date(customer.created_at).toLocaleDateString('de-DE') : "–"}</TableCell>
               <TableCell>{customer.is_active ? "Aktiv" : "Inaktiv"}</TableCell>
               <TableCell>
                 <div className="flex gap-1">
@@ -166,6 +217,7 @@ const CustomerListSection: React.FC<CustomerListSectionProps> = ({
                 </div>
               </TableCell>
             </TableRow>
+
           ))}
         </TableBody>
       </Table>

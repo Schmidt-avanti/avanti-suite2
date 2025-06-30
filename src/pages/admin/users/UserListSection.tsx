@@ -4,6 +4,8 @@ import UserListTable from "./UserListTable";
 import { User, UserRole, Customer } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 interface UserListSectionProps {
   customers: Customer[];
@@ -24,11 +26,36 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   isLoading,
 }) => {
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filteredUsers, setFilteredUsers] = useState<(User & { customers: Customer[]; is_active: boolean })[]>([]);
 
   useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line
   }, []);
+
+  // Filtern der Benutzer basierend auf dem Suchbegriff
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredUsers(users);
+      return;
+    }
+
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    const filtered = users.filter(user => {
+      // Nach Name, E-Mail, Rolle oder zugewiesenen Kunden suchen
+      const nameMatch = user.firstName?.toLowerCase().includes(lowerSearchTerm) || false;
+      const emailMatch = user.email?.toLowerCase().includes(lowerSearchTerm) || false;
+      const roleMatch = user.role?.toLowerCase().includes(lowerSearchTerm) || false;
+      const customerMatch = user.customers.some(customer => 
+        customer.name.toLowerCase().includes(lowerSearchTerm)
+      );
+
+      return nameMatch || emailMatch || roleMatch || customerMatch;
+    });
+
+    setFilteredUsers(filtered);
+  }, [searchTerm, users]);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -190,14 +217,29 @@ const UserListSection: React.FC<UserListSectionProps> = ({
   };
 
   return (
-    <>
+    <div className="space-y-4 pt-4">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Nutzer suchen nach Name, E-Mail, Rolle oder Kunde..."
+          className="pl-8"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+      
       {isLoading ? (
         <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-avanti-600"></div>
         </div>
+      ) : searchTerm && filteredUsers.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          Keine Benutzer für "{searchTerm}" gefunden
+        </div>
       ) : users.length > 0 ? (
         <UserListTable
-          users={users}
+          users={searchTerm ? filteredUsers : users}
           customers={customers}
           onEdit={onEditUser}
           onDelete={handleDelete}
@@ -209,7 +251,7 @@ const UserListSection: React.FC<UserListSectionProps> = ({
           Keine Benutzer gefunden. Klicke auf "Neu anlegen", um einen Benutzer zu erstellen.
         </div>
       )}
-    </>
+    </div>
   );
 };
 

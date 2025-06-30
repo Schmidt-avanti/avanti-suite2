@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import CustomerListSection from "./customers/CustomerListSection";
 import CustomerFormDialog from "./customers/CustomerFormDialog";
+import CustomerEditDialog from "./customers/CustomerEditDialog";
 import { Customer } from "@/types";
 
 const CustomersAdminPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
 
@@ -19,7 +21,7 @@ const CustomersAdminPage: React.FC = () => {
 
   const handleEdit = (customer: Customer) => {
     setEditCustomer(customer);
-    setDialogOpen(true);
+    setEditDialogOpen(true);
   };
 
   return (
@@ -42,9 +44,18 @@ const CustomersAdminPage: React.FC = () => {
         </CardContent>
       </Card>
       
+      {/* Dialog für neuen Kunden */}
       <CustomerFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        customer={null}
+        setCustomers={setCustomers}
+      />
+      
+      {/* Dialog für Kundenbearbeitung */}
+      <CustomerEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
         customer={editCustomer}
         setCustomers={setCustomers}
       />

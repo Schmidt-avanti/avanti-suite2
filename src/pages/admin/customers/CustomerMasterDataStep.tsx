@@ -4,6 +4,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
+// Alphabetisch sortierte Branchenliste für das Dropdown
+const presetBranches = [
+  "Baugewerbe",
+  "Beratung & Consulting",
+  "Bildung",
+  "e-commerce",
+  "Gastronomie",
+  "Gesundheitswesen",
+  "Handel",
+  "Handwerk",
+  "Hausverwaltung",
+  "IT & Software",
+  "Logistik",
+  "Marketing & Werbung",
+  "Produktion & Industrie",
+  "Transport & Verkehr",
+  "Versicherung",
+  "Sonstige"
+];
+
 interface Address {
   street: string;
   zip: string;
@@ -73,13 +93,35 @@ const CustomerMasterDataStep: React.FC<Props> = ({ customer, setCustomer }) => {
         
         <div>
           <Label htmlFor="branch">Branche *</Label>
-          <Input
+          <select
             id="branch"
-            value={customer.branch || ""}
-            onChange={(e) => handleChange("branch", e.target.value)}
-            placeholder="z. B. IT, Handwerk, Dienstleistung"
+            className="block w-full rounded-md border border-gray-300 p-2 mt-1 text-sm focus:ring focus:ring-avanti-200"
+            value={customer.branch && !presetBranches.includes(customer.branch) ? "__other__" : (customer.branch || "")}
+            onChange={(e) => {
+              if (e.target.value === "__other__") {
+                handleChange("branch", "");
+              } else {
+                handleChange("branch", e.target.value);
+              }
+            }}
             required
-          />
+          >
+            <option value="" disabled>Bitte Branche wählen…</option>
+            {presetBranches.map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+            <option value="__other__">Andere Branche hinzufügen…</option>
+          </select>
+          {(!customer.branch || !presetBranches.includes(customer.branch)) && (
+            <Input
+              className="mt-2"
+              placeholder="Branche manuell eingeben"
+              value={customer.branch || ""}
+              onChange={(e) => handleChange("branch", e.target.value)}
+              required
+              autoFocus
+            />
+          )}
         </div>
         
         <div>

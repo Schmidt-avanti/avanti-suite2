@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -6,11 +5,8 @@ import {
   ClipboardList,
   BookOpen,
   BarChart3,
-  Users,
-  Building2,
   FileText,
   MessageSquare,
-  Settings,
   Timer,
   Radio,
   Clock,
@@ -19,7 +15,12 @@ import {
   ChevronRight,
   Receipt,
   CreditCard,
-  Phone
+  Phone,
+  Users,
+  Building,
+  Terminal,
+  Contact,
+  Puzzle,
 } from 'lucide-react';
 
 import {
@@ -39,9 +40,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const AppSidebar = () => {
   const { user } = useAuth();
-  const [adminOpen, setAdminOpen] = useState(true);
   const [supervisorOpen, setSupervisorOpen] = useState(true);
   const [accountingOpen, setAccountingOpen] = useState(true);
+  const [adminOpen, setAdminOpen] = useState(true);
   const location = useLocation();
   const isMobile = useIsMobile();
   const { setOpen } = useSidebar();
@@ -55,7 +56,6 @@ const AppSidebar = () => {
 
   if (!user) return null;
 
-  // Check if user is admin or agent
   const showCallCenter = user.role === 'admin' || user.role === 'agent';
 
   return (
@@ -132,6 +132,41 @@ const AppSidebar = () => {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+
+                {user.role === 'customer' && (
+                  <>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to="/admin/use-cases"
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                            }`
+                          }
+                        >
+                          <FileText className="h-5 w-5 text-sidebar-primary" />
+                          <span className="truncate">Use Cases</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to="/reports"
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                            }`
+                          }
+                        >
+                          <BarChart3 className="h-5 w-5 text-sidebar-primary" />
+                          <span className="truncate">Reports</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </>
+                )}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -148,7 +183,6 @@ const AppSidebar = () => {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 
-                {/* Call Center Navigation Item - visible to admin and agent roles */}
                 {showCallCenter && (
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
@@ -284,6 +318,44 @@ const AppSidebar = () => {
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
                           <NavLink
+                            to="/accounting/products"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <ClipboardList className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Produkte</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink to="/accounting/product-options" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${ isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : '' }`}>
+                            <Puzzle className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Optionen</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/accounting/opening-hours"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Clock className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Öffnungszeiten</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
                             to="/accounting/invoices"
                             className={({ isActive }) =>
                               `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
@@ -296,7 +368,6 @@ const AppSidebar = () => {
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
-
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
                           <NavLink
@@ -312,6 +383,7 @@ const AppSidebar = () => {
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
+
                     </SidebarMenu>
                   </div>
                 </SidebarGroupContent>
@@ -336,49 +408,27 @@ const AppSidebar = () => {
                   <div
                     className={`overflow-hidden transition-all duration-300 ease-in-out ${
                       adminOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
-                    }`}
-                  >
+                    }`}>
                     <SidebarMenu>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/users"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
+                          <NavLink to="/admin/users" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${ isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : '' }`}>
                             <Users className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Users</span>
+                            <span className="truncate">Benutzer</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/customers"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Building2 className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Kunden</span>
+                          <NavLink to="/admin/customers" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${ isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : '' }`}>
+                            <Building className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Firmenkunden</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/use-cases"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
+                          <NavLink to="/admin/use-cases" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${ isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : '' }`}>
                             <FileText className="h-5 w-5 text-sidebar-primary" />
                             <span className="truncate">Use Cases</span>
                           </NavLink>
@@ -386,31 +436,33 @@ const AppSidebar = () => {
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/prompts"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <MessageSquare className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Prompts</span>
+                          <NavLink to="/admin/twilio-phone-numbers" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${ isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : '' }`}>
+                            <Phone className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Telefonnummern</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/whatsapp-accounts"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <MessageSquare className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">WhatsApp Konten</span>
+                          <NavLink to="/admin/prompt-templates" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${ isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : '' }`}>
+                            <Terminal className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Prompt Templates</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink to="/admin/endkunden" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${ isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : '' }`}>
+                            <Users className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Endkunden</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink to="/admin/ansprechpartner" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${ isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : '' }`}>
+                            <Contact className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Ansprechpartner</span>
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -421,25 +473,8 @@ const AppSidebar = () => {
             </>
           )}
         </SidebarContent>
-
         <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <NavLink
-                  to="/settings"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                      isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                    }`
-                  }
-                >
-                  <Settings className="h-5 w-5 text-sidebar-primary" />
-                  <span className="truncate">Einstellungen</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          {/* Footer content can go here */}
         </SidebarFooter>
       </div>
     </Sidebar>

@@ -100,16 +100,30 @@ export interface Customer {
   contact_person?: string;
   avanti_email?: string; // Add this field for the custom email
   
-  // Adding the missing properties that were causing TypeScript errors
+  // Hauptadressdaten
   street?: string;
+  address_addition?: string; // Adresszusatz (z.B. c/o) für die Hauptadresse
   zip?: string;
   city?: string;
   email?: string;
   industry?: string;
+  
+  // Rechnungsdaten
   has_invoice_address?: boolean;
   invoice_street?: string;
+  invoice_address_addition?: string; // Adresszusatz für die Rechnungsadresse
   invoice_zip?: string;
   invoice_city?: string;
+  invoice_contact_name?: string;
+  invoice_email?: string;
+  
+  // Vertragsdaten
+  products?: string[];
+  options?: string[];
+  start_date?: string;
+  billing_interval?: 'monthly' | 'quarterly' | 'annually';
+  contract_type?: 'inbound' | 'outbound';
+  inclusive_volume?: number;
 }
 
 export type Notification = {
