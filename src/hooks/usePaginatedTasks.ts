@@ -101,6 +101,7 @@ export const usePaginatedTasks = (
             created_by,
             assigned_to,
             customer_id,
+            follow_up_date,
             customer:customer_id(id, name)
           `)
           .order('created_at', { ascending: false })
@@ -211,6 +212,7 @@ export const usePaginatedTasks = (
             customer_id: rawTask.customer_id,
             created_by: rawTask.created_by,
             assigned_to: rawTask.assigned_to,
+            follow_up_date: rawTask.follow_up_date,
             closing_comment: rawTask.closing_comment
           };
         });

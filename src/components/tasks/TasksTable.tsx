@@ -30,6 +30,7 @@ interface Task {
   readable_id?: string;
   endkunde_id?: string;
   source?: string;
+  follow_up_date?: string; // Wiedervorlage-Datum hinzugefügt
 }
 
 interface TasksTableProps {
@@ -75,7 +76,7 @@ const TaskRow = memo(({ task, isMobile, onRowClick }: {
         )}
       </TableCell>
       <TableCell>
-        <TaskStatusBadge status={task.status} />
+        <TaskStatusBadge status={task.status} follow_up_date={task.follow_up_date} />
       </TableCell>
       {!isMobile && (
         <TableCell>{task.customer?.name || 'Unbekannt'}</TableCell>
