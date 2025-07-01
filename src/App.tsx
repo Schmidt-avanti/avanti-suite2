@@ -54,6 +54,8 @@ import Reports from "@/pages/reports/Reports";
 // Accounting Pages
 import InvoicesPage from "@/pages/accounting/InvoicesPage";
 import PaymentDataPage from "@/pages/accounting/PaymentDataPage";
+import ProductsPage from "@/pages/accounting/Products";
+import ProductOptionsPage from "@/pages/accounting/ProductOptions";
 
 // Public Pages
 import Landing from "@/pages/Landing";
@@ -292,6 +294,22 @@ function App() {
                       element={
                         <ProtectedRoute allowedRoles={['admin', 'customer']}>
                           <PaymentDataPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/accounting/products"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <ProductsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/accounting/product-options"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <ProductOptionsPage />
                         </ProtectedRoute>
                       }
                     />

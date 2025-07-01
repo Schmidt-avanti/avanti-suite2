@@ -348,6 +348,38 @@ const AppSidebar = () => {
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
+                      
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/accounting/products"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Settings className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Produkte</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/accounting/product-options"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Settings className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Optionen</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
                     </SidebarMenu>
                   </div>
                 </SidebarGroupContent>
@@ -405,6 +437,7 @@ const AppSidebar = () => {
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
+
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
                           <NavLink

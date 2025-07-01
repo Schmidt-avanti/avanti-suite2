@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Info, Phone, Mail } from 'lucide-react';
+import { Info, Phone, Mail, Clipboard } from 'lucide-react';
 import { 
   HoverCard, 
   HoverCardContent, 
@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/hover-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
 // Simple interface for contact data
 interface EndkundeContact {
@@ -27,6 +28,7 @@ interface EndkundeDetails {
   Lage: string | null;
   Postleitzahl: string;
   Ort: string;
+  Rufnummer: string | null; // Hinzugefügt für die Telefonnummer
   endkunden_contacts: string | null; // This is an ID reference, not an array
 }
 
@@ -42,6 +44,7 @@ export const EndkundeInfoDisplay: React.FC<EndkundeInfoLinkProps> = ({ endkundeI
   const [endkunde, setEndkunde] = React.useState<EndkundeDetails | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const { toast } = useToast();
 
   // State for contacts
   const [contacts, setContacts] = React.useState<EndkundeContact[]>([]);
@@ -153,7 +156,7 @@ export const EndkundeInfoDisplay: React.FC<EndkundeInfoLinkProps> = ({ endkundeI
         // First, fetch endkunde details
         const { data: endkundeData, error: endkundeError } = await supabase
           .from('endkunden')
-          .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort, endkunden_contacts')
+          .select('id, Nachname, Vorname, Adresse, Wohnung, "Gebäude", Lage, Postleitzahl, Ort, Rufnummer, endkunden_contacts')
           .eq('id', endkundeId)
           .single();
 
@@ -231,6 +234,26 @@ export const EndkundeInfoDisplay: React.FC<EndkundeInfoLinkProps> = ({ endkundeI
           {endkunde.Lage && `, ${endkunde.Lage}`}<br />
           {endkunde.Postleitzahl} {endkunde.Ort}
         </p>
+        {endkunde.Rufnummer && (
+          <div className="flex items-center mt-1">
+            <Phone size={14} className="mr-1 text-gray-500" /> 
+            <span className="mr-2">{endkunde.Rufnummer}</span>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(endkunde.Rufnummer || '');
+                toast({
+                  description: "Rufnummer wurde in die Zwischenablage kopiert",
+                  duration: 2000,
+                  className: "bg-green-50 border-green-200 text-green-800"
+                });
+              }} 
+              className="text-gray-400 hover:text-blue-500 cursor-pointer"
+              title="In Zwischenablage kopieren"
+            >
+              <Clipboard size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       {contactsLoading && <p className="text-xs text-gray-500 italic mt-3 pt-3 border-t border-gray-200">Lade Kontakte...</p>}
@@ -254,7 +277,7 @@ export const EndkundeInfoDisplay: React.FC<EndkundeInfoLinkProps> = ({ endkundeI
         </div>
       )}
       {!contactsLoading && contacts.length === 0 && endkunde && (
-          <p className="text-xs text-gray-500 italic mt-3 pt-3 border-t border-gray-200">Kein spezifischer Hausmeisterkontakt für {endkunde.Ort} hinterlegt.</p>
+          <p className="text-xs text-gray-500 italic mt-3 pt-3 border-t border-gray-200">Keine weiteren Kunden-Kontaktdaten hinterlegt.</p>
       )}
     </div>
   );
