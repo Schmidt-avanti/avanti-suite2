@@ -341,12 +341,23 @@ const TaskDetail = () => {
         open={activeDialog === 'assignTask'}
         onOpenChange={(isOpen) => !isOpen && setActiveDialog('none')}
         onAssign={handleAssignTask}
+        currentAssignee={task?.assigned_to}
+        customerId={task?.customer_id}
+      />
+      <AssignTaskDialog
+        open={activeDialog === 'forwardTask'}
+        onOpenChange={(isOpen) => !isOpen && setActiveDialog('none')}
+        onAssign={handleAssignTask}
+        currentAssignee={task?.assigned_to}
+        isForwarding={true}
+        customerId={task?.customer_id}
       />
       <EmailToCustomerDialog
         open={activeDialog === 'emailToCustomer'}
         onOpenChange={(isOpen) => !isOpen && setActiveDialog('none')}
         taskId={id!}
-        recipientEmail={task?.endkunde_email}
+        readableId={task?.readable_id}
+        recipientEmail={task?.customer?.email || task?.endkunde_email}
         taskMessages={messages}
         onEmailSent={() => {
           handleStatusChange('waiting_for_customer');

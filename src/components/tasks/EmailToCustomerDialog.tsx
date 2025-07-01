@@ -23,6 +23,7 @@ interface EmailToCustomerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   taskId: string;
+  readableId?: string;
   recipientEmail: string | undefined;
   taskMessages: any[] | null;
   onEmailSent: (emailDetails: { recipient: string; subject: string }) => void;
@@ -32,6 +33,7 @@ export function EmailToCustomerDialog({
   open,
   onOpenChange,
   taskId,
+  readableId,
   recipientEmail,
   taskMessages,
   onEmailSent,
@@ -49,14 +51,15 @@ export function EmailToCustomerDialog({
   useEffect(() => {
     if (open) {
       setRecipient(recipientEmail || "");
-      setSubject("");
+      // Automatisch Betreff mit lesbarer Aufgabennummer vorausfüllen
+      setSubject(`Rückfrage zu Aufgabe ${readableId || ''}`);
       setBody("");
       setIncludeHistory(false);
       setAttachments([]);
       setError(null);
       setUploadProgress(0);
     }
-  }, [open, recipientEmail]);
+  }, [open, recipientEmail, readableId]);
 
   const recipientMinLength = 5; // Basic validation for email
   const subjectMinLength = 3;
