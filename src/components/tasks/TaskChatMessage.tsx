@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useTaskChatMessages } from '../../hooks/useTaskChatMessages';
 
 interface TaskChatMessageProps {
   message: any;
@@ -21,6 +22,7 @@ interface TaskChatMessageProps {
   endkundeOrt?: string;
   isLastAssistantMessage?: boolean;
   isReadOnly?: boolean; // Added isReadOnly prop
+  onSendMessage: (text: string) => void; // NEU
 }
 
 export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({ 
@@ -32,7 +34,8 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   readableId = "",
   endkundeOrt = "",
   isLastAssistantMessage = false,
-  isReadOnly = false
+  isReadOnly = false,
+  onSendMessage
 }) => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
@@ -42,6 +45,7 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   const [emailTo, setEmailTo] = useState('');
   const [emailCc, setEmailCc] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const { sendMessage } = useTaskChatMessages(taskId);
   
   // Parse JSON content and extract text and options
   const parseMessageContent = () => {
@@ -205,6 +209,8 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
         detail: { task_id: taskId }
       });
       window.dispatchEvent(event);
+      
+      onSendMessage(`E-Mail wurde an ${emailTo} gesendet.`);
       
     } catch (error) {
       console.error('Error sending email:', error);

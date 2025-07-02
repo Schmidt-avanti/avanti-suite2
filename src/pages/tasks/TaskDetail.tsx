@@ -21,6 +21,7 @@ import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { TaskChatMessage } from '../../components/tasks/TaskChatMessage';
 
 import { CompletedTaskOverlay } from '@/components/tasks/CompletedTaskOverlay';
 import type { TaskStatus } from '@/types';
@@ -303,7 +304,11 @@ const TaskDetail = () => {
                     openAvaSummaryDialog={handleOpenAvaSummaryDialogFromChat}
                     isReadOnly={isCompleted}
                     isBlankTask={task.is_blank_task}
-                  />
+                  >
+                    <TaskChatMessage
+                      onSendMessage={(text) => sendMessage(text, null, new Set())}
+                    />
+                  </TaskChat>
                 </CardContent>
               </Card>
             </div>

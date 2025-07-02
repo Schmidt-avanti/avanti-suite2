@@ -263,7 +263,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [], openAvaSumma
               readableId={taskId}
               endkundeOrt={''}
               isLastAssistantMessage={isLastAssistant}
-              isReadOnly={isReadOnly} // Pass isReadOnly to TaskChatMessage
+              isReadOnly={isReadOnly}
+              onSendMessage={(text) => sendMessage(text, null, new Set())}
             />
           );
         })}

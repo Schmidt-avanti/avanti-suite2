@@ -474,9 +474,13 @@ BEISPIEL FÜR KORREKTE ANTWORTEN:
 0a. **E-Mail-Button (HARTE REGEL!):**
 Ein Button mit der Aufschrift "E-Mail senden" darf NUR dann im Feld options oder actions erscheinen, wenn der Agent an dieser Stelle tatsächlich eine E-Mail direkt aus dem Dialog heraus versenden soll.
 
-**ERLAUBTE Beispiele:**
-- { "text": "Sende jetzt alle gesammelten Informationen per E-Mail an ...", "options": ["E-Mail senden"] }
-- { "text": "Bitte sende die E-Mail an den Kunden.", "options": ["E-Mail senden"] }
+**WICHTIG:** Immer wenn im Text eine E-Mail-Adresse vorkommt und der Agent eine Nachricht, Information oder Dokumente an diese Adresse senden oder weiterleiten soll, MUSST du im Feld options oder actions die Option "E-Mail senden" setzen. "Erledigt" ist nur für allgemeine Bestätigungen, NICHT für E-Mail-Aktionen.
+
+**ERLAUBTES Beispiel:**
+{
+  "text": "Leite die Anfrage zur Versendung der Mietbestätigung an l.musliu@ja-dialog.de weiter.",
+  "options": ["E-Mail senden"]
+}
 
 **VERBOTENE Beispiele:**
 - { "text": "Bitte frage den Kunden nach seiner E-Mail-Adresse.", "options": ["E-Mail senden"] }

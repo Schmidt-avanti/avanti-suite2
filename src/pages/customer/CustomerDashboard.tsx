@@ -38,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -955,6 +956,9 @@ const CustomerDashboard = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Outbound-Zeit erfassen</DialogTitle>
+              <DialogDescription>
+                Erfasse hier die Outbound-Zeit für den Kunden. Bitte Datum, Minuten und eine kurze Beschreibung angeben.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
