@@ -1,4 +1,3 @@
-
 import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -31,6 +30,7 @@ interface Task {
   endkunde_id?: string;
   source?: string;
   follow_up_date?: string; // Wiedervorlage-Datum hinzugefügt
+  followup_note?: string; // Followup-Notiz hinzugefügt
 }
 
 interface TasksTableProps {
@@ -77,6 +77,16 @@ const TaskRow = memo(({ task, isMobile, onRowClick }: {
       </TableCell>
       <TableCell>
         <TaskStatusBadge status={task.status} follow_up_date={task.follow_up_date} />
+        {task.status === 'followup' && task.followup_note && (
+          <div
+            className="mt-1 rounded bg-yellow-50 border border-yellow-200 px-3 py-1 text-xs text-yellow-900 flex items-center gap-2 max-w-xs"
+            title={task.followup_note}
+            style={{ wordBreak: 'break-word' }}
+          >
+            <span role="img" aria-label="Kommentar">📝</span>
+            <span className="italic">{task.followup_note}</span>
+          </div>
+        )}
       </TableCell>
       {!isMobile && (
         <TableCell>{task.customer?.name || 'Unbekannt'}</TableCell>

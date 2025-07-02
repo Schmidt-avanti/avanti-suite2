@@ -320,7 +320,7 @@ const TaskDetail = () => {
       <FollowUpDialog
         open={activeDialog === 'followUp'}
         onOpenChange={(isOpen) => !isOpen && setActiveDialog('none')}
-        onSave={handleFollowUp}
+        onSave={(date, note) => handleFollowUp(date, note)}
       />
       <CloseTaskDialog
         open={activeDialog === 'closeTask'}

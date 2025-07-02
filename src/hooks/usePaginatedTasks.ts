@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -102,6 +101,7 @@ export const usePaginatedTasks = (
             assigned_to,
             customer_id,
             follow_up_date,
+            followup_note,
             customer:customer_id(id, name)
           `)
           .order('created_at', { ascending: false })
@@ -201,19 +201,18 @@ export const usePaginatedTasks = (
             readable_id: rawTask.readable_id,
             endkunde_id: rawTask.endkunde_id,
             endkunde_email: rawTask.endkunde_email,
-
             customer: rawTask.customer,
             creator: rawTask.creator,
             assignee: rawTask.assignee,
             attachments: rawTask.attachments,
             description: rawTask.description,
             matched_use_case_id: rawTask.matched_use_case_id,
-            // Add these required fields to fix TypeScript errors
             customer_id: rawTask.customer_id,
             created_by: rawTask.created_by,
             assigned_to: rawTask.assigned_to,
             follow_up_date: rawTask.follow_up_date,
-            closing_comment: rawTask.closing_comment
+            closing_comment: rawTask.closing_comment,
+            followup_note: rawTask.followup_note
           };
         });
         

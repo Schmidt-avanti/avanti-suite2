@@ -79,6 +79,7 @@ export interface Task {
   // total_time_seconds is a duplicate of total_duration_seconds in the DB schema, using one.
   is_blank_task?: boolean; // Flag für Blanko-Aufgabe ohne Ava-Unterstützung
   matched_use_case_title?: string | null; // Added for displaying in TaskDetailInfo
+  followup_note?: string; // Notiz zur Wiedervorlage
 }
 
 export interface User {
@@ -183,6 +184,7 @@ export interface DetailedTask extends Task {
   assignee: User | null;
   endkunde: Endkunde | null;
   // matched_use_case_title is inherited from Task
+  followup_note?: string;
 }
 
 export interface Message {

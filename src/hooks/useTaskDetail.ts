@@ -247,35 +247,31 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
     }
   }, [id, logTaskStatusChange, toast, user?.id]);
 
-  const handleFollowUp = async (followUpDate: Date) => {
+  const handleFollowUp = async (followUpDate: Date, followupNote: string) => {
     try {
-      console.log("Setting follow-up for task", id, "with date", followUpDate.toISOString());
-      
+      console.log("Setting follow-up for task", id, "with date", followUpDate.toISOString(), "and note", followupNote);
       if (!id) {
         throw new Error("Keine Aufgaben-ID vorhanden");
       }
-      
       const { error } = await supabase
         .from('tasks')
         .update({ 
           status: 'followup' as TaskStatus, 
-          follow_up_date: followUpDate.toISOString()
+          follow_up_date: followUpDate.toISOString(),
+          followup_note: followupNote
         })
         .eq('id', id);
-      
       if (error) {
         console.error("Supabase update error:", error);
         throw new Error(`Datenbankfehler: ${error.message}`);
       }
-      
       await logTaskStatusChange(id!, task.status as TaskStatus, 'followup');
-      
       setTask({
         ...task,
         status: 'followup' as TaskStatus,
-        follow_up_date: followUpDate.toISOString()
+        follow_up_date: followUpDate.toISOString(),
+        followup_note: followupNote
       });
-      
       toast({
         title: "Wiedervorlage erstellt",
         description: `Die Aufgabe wurde wiedervorgelegt.`,
