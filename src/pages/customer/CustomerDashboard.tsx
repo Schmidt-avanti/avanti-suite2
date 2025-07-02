@@ -682,8 +682,10 @@ const CustomerDashboard = () => {
               </Select>
             </div>
           )}
-          {/* Für Kunden: Info-Text */}
+          {/* Für Kunden und Admins: Info-Text */}
           {user?.role === 'customer' && customer ? (
+            <p className="text-muted-foreground">Dashboard für {customer.name}</p>
+          ) : user?.role === 'admin' && customer ? (
             <p className="text-muted-foreground">Dashboard für {customer.name}</p>
           ) : user?.role === 'admin' && !selectedCustomerId ? (
             <p className="text-muted-foreground">Bitte wählen Sie einen Kunden aus</p>
