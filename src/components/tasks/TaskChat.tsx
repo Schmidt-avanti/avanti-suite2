@@ -33,7 +33,8 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [], openAvaSumma
     setHasNewMessages,
     fetchMessages,
     initialMessageSent,
-    setInitialMessageSent
+    setInitialMessageSent,
+    setMessages
   } = useTaskMessages(taskId, initialMessages);
 
   const {
@@ -146,7 +147,6 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [], openAvaSumma
                 role: 'user',
                 created_by: user?.id
               });
-            
             if (error) throw error;
             fetchMessages(); // Nachrichten aktualisieren
             setInputValue(''); // Eingabefeld leeren
@@ -159,20 +159,62 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [], openAvaSumma
             });
           }
         };
-        
         saveUserMessageOnly();
       } else {
-        // Normaler Ablauf für reguläre Aufgaben mit Ava
-        sendMessage(inputValue, null, selectedOptions);
+        // NEU: Freitext-Nachricht auch bei regulären Aufgaben sofort speichern
+        const saveAndSend = async () => {
+          try {
+            await supabase.from('task_messages').insert({
+              task_id: taskId,
+              content: inputValue.trim(),
+              role: 'user',
+              created_by: user?.id
+            });
+            fetchMessages(); // Nachrichten aktualisieren
+            setInputValue(''); // Eingabefeld leeren
+            // Danach wie gehabt die Edge Function aufrufen
+            sendMessage(inputValue, null, selectedOptions);
+          } catch (error) {
+            console.error('Error saving user message:', error);
+            toast({
+              variant: "destructive",
+              title: "Fehler",
+              description: "Nachricht konnte nicht gespeichert werden."
+            });
+          }
+        };
+        saveAndSend();
       }
       // Enable auto-scroll when user sends a message
       setAutoScroll(true);
     }
   };
 
-  const handleOptionSelect = (option: string) => {
-    // Bei Blanko-Aufgaben keine Optionen anzeigen/auswählen
+  const handleOptionSelect = async (option: string) => {
     if (!isBlankTask) {
+      // Optimistische User-Message lokal einfügen
+      const tempId = `temp-${Date.now()}`;
+      const optimisticMessage = {
+        id: tempId,
+        role: 'user' as const,
+        content: option,
+        created_at: new Date().toISOString(),
+        created_by: user?.id,
+        creatorName: user?.firstName || user?.email || undefined,
+      };
+      setMessages((prev) => [...prev, optimisticMessage]);
+      // Nachricht in die Datenbank speichern
+      try {
+        await supabase.from('task_messages').insert({
+          task_id: taskId,
+          content: option,
+          role: 'user',
+          created_by: user?.id
+        });
+        fetchMessages(); // Nachrichten aktualisieren, um echte ID zu bekommen
+      } catch (error) {
+        console.error('Fehler beim Speichern der User-Message:', error);
+      }
       sendMessage("", option, selectedOptions);
       setAutoScroll(true);
     }

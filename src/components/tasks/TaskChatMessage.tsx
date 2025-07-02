@@ -39,14 +39,14 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
-  const [emailTo, setEmailTo] = useState('hausmeister@ffo-verwaltung.de'); // Default to Frankfurt contact
-  const [emailCc, setEmailCc] = useState('info@hv-nuernberg.de'); // Default CC to Mr. Nürnberg
+  const [emailTo, setEmailTo] = useState('');
+  const [emailCc, setEmailCc] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
   
   // Parse JSON content and extract text and options
   const parseMessageContent = () => {
     if (message.role !== "assistant") {
-      return { text: message.content, options: [], suggested_confirmation_text: null };
+      return { text: message.content, options: [], suggested_confirmation_text: null, actions: [] };
     }
     
     try {
@@ -55,7 +55,8 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
       return { 
         text: parsedContent.text || message.content, 
         options: Array.isArray(parsedContent.options) ? parsedContent.options : [],
-        suggested_confirmation_text: parsedContent.suggested_confirmation_text || null
+        suggested_confirmation_text: parsedContent.suggested_confirmation_text || null,
+        actions: parsedContent.actions || []
       };
     } catch (e) {
       // Not valid JSON, try to extract options from text
@@ -69,24 +70,24 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
             o.trim().replace(/"/g, '').replace(/^\[|\]$/g, '')
           );
           
-          return { text: content, options, suggested_confirmation_text: null };
+          return { text: content, options, suggested_confirmation_text: null, actions: [] };
         } catch (err) {
-          return { text: content, options: [], suggested_confirmation_text: null };
+          return { text: content, options: [], suggested_confirmation_text: null, actions: [] };
         }
       } else {
         // Check for key list patterns that might contain key options
         const listMatch = content.match(/(?:\d+\.\s+(.*?)(?:\n|$))+/g);
         if (listMatch && content.toLowerCase().includes('schlüssel')) {
           const defaultOptions = ["Hausschlüssel", "Wohnungsschlüssel", "Briefkastenschlüssel"];
-          return { text: content, options: defaultOptions, suggested_confirmation_text: null };
+          return { text: content, options: defaultOptions, suggested_confirmation_text: null, actions: [] };
         }
         
-        return { text: content, options: [], suggested_confirmation_text: null };
+        return { text: content, options: [], suggested_confirmation_text: null, actions: [] };
       }
     }
   };
 
-  const { text, options, suggested_confirmation_text } = parseMessageContent();
+  const { text, options, suggested_confirmation_text, actions } = parseMessageContent();
   
   // Filter out options that have already been selected
   const availableOptions = options.filter(option => !selectedOptions.has(option));
@@ -120,73 +121,49 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
   // Message is from assistant
   const isAssistantMessage = message.role === "assistant" && message.content;
   
-  // Check if the message indicates a forwarding to Hausmeister situation
+  // Neue Logik: Button 'E-Mail senden' anzeigen, wenn die KI explizit 'E-Mail senden' als Option/Aktion liefert
   const shouldShowEmailButton = () => {
     if (!isAssistantMessage) return false;
-    
-    const lowerContent = displayText.toLowerCase();
-    
-    // Keywords that indicate the message should be forwarded to a Hausmeister
-    const forwardingKeywords = [
-      "weitergeleitet",
-      "hausmeister",
-      "weiterleiten",
-      "reparatur", 
-      "instandsetzung",
-      "sanierung",
-      "handwerker", 
-      "techniker",
-      "termin vereinbar"
-    ];
-    
-    // Check if any of the forwarding keywords are present in the message
-    return forwardingKeywords.some(keyword => lowerContent.includes(keyword));
+    // Prüfe, ob im JSON-Content 'options' oder 'actions' das Signal 'E-Mail senden' oder 'send_email' enthalten ist
+    const { options = [], actions = [] } = parseMessageContent();
+    return (
+      options.includes('E-Mail senden') ||
+      options.includes('Email senden') ||
+      options.includes('send_email') ||
+      actions.includes('E-Mail senden') ||
+      actions.includes('Email senden') ||
+      actions.includes('send_email')
+    );
   };
 
-  // Function to get email contact based on location
-  const getContactInfo = () => {
-    const location = (endkundeOrt || '').toLowerCase().trim();
-    
-    // If Berlin, use Sven Gärtner
-    if (location && location.includes('berlin')) {
-      return {
-        email: 'gaertner@nuernberg.berlin',
-        name: 'Sven Gärtner'
-      };
-    }
-    
-    // Default to Frankfurt/Fürstenwalde contact
-    return {
-      email: 'hausmeister@ffo-verwaltung.de',
-      name: 'Herr Gora'
-    };
-  };
-  
   // Handle preparing and opening email dialog
-  const handleEmailClick = () => {
-    // Get contact information based on location
-    const { email: contactEmail, name: contactName } = getContactInfo();
-    
-    // Create subject line
-    const subject = taskTitle ? `Weiterleitung: ${taskTitle}` : 'Weiterleitung einer Kundenanfrage';
-    
-    // Create email body with message content
-    let body = '';
-    
-    if (readableId) {
-      body += `Aufgabe: #${readableId}\n`;
+  const handleEmailClick = async () => {
+    try {
+      setSendingEmail(true);
+      // Hole die E-Mail-Daten dynamisch von der Edge Function
+      const { data, error } = await supabase.functions.invoke('handle-task-chat', {
+        body: {
+          taskId,
+          generate_email_content: true
+        }
+      });
+      if (error) throw error;
+      if (!data || !data.content) throw new Error('Keine E-Mail-Daten vom Server erhalten');
+      const parsed = JSON.parse(data.content);
+      setEmailTo(parsed.email_to || '');
+      setEmailCc(parsed.email_cc || '');
+      setEmailSubject(parsed.email_subject || '');
+      setEmailBody(parsed.email_body || '');
+      setEmailDialogOpen(true);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Laden der E-Mail-Daten",
+        description: (err as Error).message || 'Unbekannter Fehler'
+      });
+    } finally {
+      setSendingEmail(false);
     }
-    
-    body += displayText;
-    
-    // Set email dialog content
-    setEmailTo(contactEmail);
-    setEmailCc('info@hv-nuernberg.de');
-    setEmailSubject(subject);
-    setEmailBody(body);
-    
-    // Open the email dialog
-    setEmailDialogOpen(true);
   };
   
   // Send email using Supabase Edge Function
@@ -241,6 +218,11 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
     }
   };
 
+  // Beim Rendern der Optionen:
+  // Wenn 'E-Mail senden' in den Optionen enthalten ist, zeige NICHT den generischen Button, sondern NUR den eigenen E-Mail-Button mit Icon an.
+  const showCustomEmailButton = isAssistantMessage && (options.includes('E-Mail senden') || options.includes('Email senden') || options.includes('send_email'));
+  const filteredOptions = options.filter(option => option !== 'E-Mail senden' && option !== 'Email senden' && option !== 'send_email');
+
   return (
     <div className={`flex flex-col mb-4 ${message.role === "assistant" ? "items-start" : "items-end"}`}>
       <div className={`
@@ -271,9 +253,9 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
         <div className="text-sm whitespace-pre-wrap">
           {displayText}
         </div>
-        {availableOptions.length > 0 && (
+        {filteredOptions.length > 0 && (
           <div className={`flex flex-wrap gap-2 mt-3 ${isMobile ? 'flex-col' : ''}`}>
-            {availableOptions.map((option, idx) => (
+            {filteredOptions.map((option, idx) => (
               <Button
                 key={idx}
                 variant="outline"
@@ -306,8 +288,8 @@ export const TaskChatMessage: React.FC<TaskChatMessageProps> = ({
           </div>
         )}
         
-        {/* Email button for messages that need to be forwarded */} 
-        {isAssistantMessage && shouldShowEmailButton() && (
+        {/* E-Mail Button nur anzeigen, wenn Option vorhanden */}
+        {showCustomEmailButton && (
           <div className="flex mt-3">
             <Button
               variant="secondary"

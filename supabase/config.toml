@@ -32,3 +32,7 @@ verify_jwt = true
 
 [functions.generate-schwungrad-email]
 verify_jwt = true
+
+[functions.handle-task-chat]
+import_map = "import_map.json"
+verify_jwt = true

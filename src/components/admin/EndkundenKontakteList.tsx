@@ -16,6 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Kontakt {
   id: string;
@@ -23,7 +25,7 @@ interface Kontakt {
   email: string | null;
   phone: string | null;
   role: string | null;
-  "Main Arbeitgeber": string | null;
+  customer_id?: string | null;
 }
 
 const EndkundenKontakteList: React.FC = () => {
@@ -34,62 +36,56 @@ const EndkundenKontakteList: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [kontaktToEdit, setKontaktToEdit] = useState<Kontakt | null>(null);
   const [kontaktToDelete, setKontaktToDelete] = useState<Kontakt | null>(null);
-
+  const [kunden, setKunden] = useState<{id: string, name: string}[]>([]);
+  const [selectedKunde, setSelectedKunde] = useState<string>('all');
+  const { user } = useAuth();
 
   useEffect(() => {
-    if (endkundeId) {
-      fetchKontakte();
-    }
-  }, [endkundeId]);
+    const fetchKunden = async () => {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, name');
+      if (!error && data) setKunden(data);
+    };
+    fetchKunden();
+  }, []);
+
+  useEffect(() => {
+    fetchKontakte();
+  }, [selectedKunde]);
 
   const fetchKontakte = async () => {
-    if (!endkundeId) return;
     setLoading(true);
     setError(null);
+    let allowedCustomerIds: string[] | null = null;
+    if (user?.role === 'agent' || user?.role === 'customer') {
+      const { data: assignments, error: assignError } = await supabase
+        .from('user_customer_assignments')
+        .select('customer_id')
+        .eq('user_id', user.id);
+      if (!assignError && assignments) {
+        allowedCustomerIds = assignments.map(a => a.customer_id);
+      }
+    }
     try {
-        // 1. Fetch the Endkunde to get the string of contact IDs
-        const { data: endkundeData, error: endkundeError } = await supabase
-            .from('endkunden')
-            .select('endkunden_contacts')
-            .eq('id', endkundeId)
-            .single();
-
-        if (endkundeError) {
-            throw new Error(`Fehler beim Laden des Endkunden: ${endkundeError.message}`);
+      let query = supabase
+        .from('endkunden_contacts')
+        .select('id, name, email, phone, role, customer_id');
+      if (user?.role === 'admin') {
+        if (selectedKunde && selectedKunde !== 'all') {
+          query = query.eq('customer_id', selectedKunde);
         }
-
-        const contactIdsString = endkundeData?.endkunden_contacts;
-
-        if (!contactIdsString) {
-            setKontakte([]);
-            setLoading(false);
-            return;
-        }
-
-        const contactIds = contactIdsString.split(',').map(id => id.trim()).filter(id => id);
-
-        if (contactIds.length === 0) {
-            setKontakte([]);
-            setLoading(false);
-            return;
-        }
-
-        // 2. Fetch the contacts using the array of IDs
-        const { data: contactsData, error: contactsError } = await supabase
-            .from('endkunden_contacts')
-            .select('id, name, email, phone, role, "Main Arbeitgeber"')
-            .in('id', contactIds);
-
-        if (contactsError) {
-            throw new Error(`Fehler beim Laden der Kontakte: ${contactsError.message}`);
-        }
-
-        setKontakte(contactsData || []);
+      } else if (allowedCustomerIds) {
+        query = query.in('customer_id', allowedCustomerIds);
+      }
+      const { data: contactsData, error: contactsError } = await query;
+      if (contactsError) throw new Error(`Fehler beim Laden der Kontakte: ${contactsError.message}`);
+      setKontakte(contactsData || []);
     } catch (err: any) {
-        setError(err.message);
-        console.error(err);
+      setError(err.message);
+      console.error(err);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -210,6 +206,19 @@ const EndkundenKontakteList: React.FC = () => {
         </Button>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex items-center gap-4">
+          <Select value={selectedKunde} onValueChange={setSelectedKunde}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Kunde filtern..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Kunden</SelectItem>
+              {kunden.map(k => (
+                <SelectItem key={k.id} value={k.id}>{k.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         {showForm && (
           <EndkundenKontaktForm
             kontaktToEdit={kontaktToEdit}

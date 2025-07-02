@@ -1,4 +1,3 @@
-
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +12,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Search, Menu, X } from 'lucide-react';
 import { ShortBreakButton } from '@/components/short-break/ShortBreakButton';
 import { NotificationButton } from '@/components/notifications/NotificationButton';
-import { ScreenShareButton } from '@/components/screen-share/ScreenShareButton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useState } from 'react';
@@ -106,7 +104,6 @@ const Navbar = () => {
             <>
               <ShortBreakButton />
               <NotificationButton />
-              <ScreenShareButton />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className={`relative ${isMobile ? 'h-8 w-8 ml-1' : 'h-9 w-9'} bg-gray-100 rounded-full flex items-center justify-center`}>

@@ -153,7 +153,7 @@ const CreateTaskPage = () => {
             body: {
               taskId: task.id,
               useCaseId: selectedUseCaseId,
-              message: "", // Or taskData.description for initial context
+              message: taskData.description, // Beschreibung aus dem Formular verwenden
               buttonChoice: null,
               isAutoInitialization: true
             }

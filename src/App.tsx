@@ -30,6 +30,8 @@ import UseCaseDetailPage from "@/pages/admin/UseCaseDetailPage";
 import CreateKnowledgeArticle from "@/pages/admin/CreateKnowledgeArticle";
 import WhatsappAccountsAdminPage from "@/pages/admin/WhatsappAccounts";
 import ProcessingTimeRedirect from "@/pages/admin/ProcessingTime";
+import EndkundenAdminPage from "@/pages/admin/Endkunden";
+import EndkundenKontaktePage from "@/pages/admin/EndkundenKontakte";
 
 // Supervisor Pages
 import LiveAgentOverview from "@/pages/supervisor/LiveAgentOverview";
@@ -41,6 +43,7 @@ import AgentDashboard from "@/pages/agent/Dashboard";
 
 // Client Pages
 import ClientDashboard from "@/pages/customer/Dashboard";
+import CustomerDashboard from "@/pages/customer/CustomerDashboard";
 
 // Task Pages
 import CreateTask from "@/pages/tasks/CreateTask";
@@ -189,6 +192,22 @@ function App() {
                         </ProtectedRoute>
                       }
                     />
+                    <Route
+                      path="/admin/endkunden"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'agent', 'customer']}>
+                          <EndkundenAdminPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/endkunden-kontakte"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'agent', 'customer']}>
+                          <EndkundenKontaktePage />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Supervisor */}
                     <Route
@@ -232,6 +251,14 @@ function App() {
                       element={
                         <ProtectedRoute allowedRoles={['customer']}>
                           <ClientDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/customer-dashboard"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'customer']}>
+                          <CustomerDashboard />
                         </ProtectedRoute>
                       }
                     />

@@ -78,6 +78,7 @@ const Sidebar = () => {
       label: "Admin Dashboard",
       role: "admin",
     },
+
     {
       to: "/admin/endkunden",
       icon: <Users className="h-5 w-5" />,
@@ -85,9 +86,21 @@ const Sidebar = () => {
       role: "admin",
     },
     {
+      to: "/admin/endkunden-kontakte",
+      icon: <Users className="h-5 w-5" />,
+      label: "Endkundenkontakte",
+      role: "admin",
+    },
+    {
       to: "/admin/customers",
       icon: <Users className="h-5 w-5" />,
       label: "Kunden",
+      role: "admin",
+    },
+    {
+      to: "/customer/customer-dashboard",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      label: "Kunden Dashboard",
       role: "admin",
     },
     {
@@ -108,6 +121,7 @@ const Sidebar = () => {
       label: "Einstellungen",
       role: "admin",
     },
+
   ];
 
   return (

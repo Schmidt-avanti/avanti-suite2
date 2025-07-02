@@ -21,6 +21,7 @@ import EndkundenForm from '@/components/admin/EndkundenForm';
 import AssignContactDialog from '@/components/admin/AssignContactDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { Endkunde, EndkundenContact } from '../../types/db.types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EndkundenListProps {
   customerId: string | null;
@@ -28,6 +29,7 @@ interface EndkundenListProps {
 }
 
 const EndkundenList: React.FC<EndkundenListProps> = ({ customerId, refreshTrigger }) => {
+  const { user } = useAuth();
   const [endkunden, setEndkunden] = useState<Endkunde[]>([]);
   const [contactsMap, setContactsMap] = useState<Record<string, EndkundenContact>>({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,11 +44,25 @@ const EndkundenList: React.FC<EndkundenListProps> = ({ customerId, refreshTrigge
   const [lastSelectedRowIndex, setLastSelectedRowIndex] = useState<number | null>(null);
 
   const fetchEndkunden = useCallback(async () => {
-    let endkundenQuery = supabase.from('endkunden').select('*');
-    if (customerId) {
-      endkundenQuery = endkundenQuery.eq('customer_ID', customerId);
+    let allowedCustomerIds: string[] | null = null;
+    if (user?.role === 'agent' || user?.role === 'customer') {
+      // Hole alle zugeordneten customer_ids
+      const { data: assignments, error: assignError } = await supabase
+        .from('user_customer_assignments')
+        .select('customer_id')
+        .eq('user_id', user.id);
+      if (!assignError && assignments) {
+        allowedCustomerIds = assignments.map(a => a.customer_id);
+      }
     }
-
+    let endkundenQuery = supabase.from('endkunden').select('*');
+    if (user?.role === 'admin') {
+      if (customerId) {
+        endkundenQuery = endkundenQuery.eq('customer_ID', customerId);
+      }
+    } else if (allowedCustomerIds) {
+      endkundenQuery = endkundenQuery.in('customer_ID', allowedCustomerIds);
+    }
     const { data: endkundenData, error: endkundenError } = await endkundenQuery;
 
     if (endkundenError) {
@@ -87,7 +103,7 @@ const EndkundenList: React.FC<EndkundenListProps> = ({ customerId, refreshTrigge
 
     const newContactsMap = new Map(contactsData.map(c => [c.id, c]));
     setContactsMap(Object.fromEntries(newContactsMap));
-  }, [customerId]);
+  }, [user?.role, customerId]);
 
   useEffect(() => {
     fetchEndkunden();

@@ -37,7 +37,7 @@ const Index = () => {
       } else if (user.role === "agent") {
         navigate("/agent/dashboard", { replace: true });
       } else if (user.role === "customer") {
-        navigate("/meine-aufgaben", { replace: true });
+        navigate("/admin/customer-dashboard", { replace: true });
       } else {
         navigate("/error", { replace: true });
       }

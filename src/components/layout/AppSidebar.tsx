@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -72,10 +71,28 @@ const AppSidebar = () => {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
+                {/* Dashboard */}
+                {user.role !== 'customer' && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/dashboard"
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                            isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                          }`
+                        }
+                      >
+                        <LayoutDashboard className="h-5 w-5 text-sidebar-primary" />
+                        <span className="truncate">Dashboard</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <NavLink
-                      to="/dashboard"
+                      to="/admin/customer-dashboard"
                       className={({ isActive }) =>
                         `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
                           isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
@@ -83,7 +100,7 @@ const AppSidebar = () => {
                       }
                     >
                       <LayoutDashboard className="h-5 w-5 text-sidebar-primary" />
-                      <span className="truncate">Dashboard</span>
+                      <span className="truncate">Kunden Dashboard</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -168,21 +185,24 @@ const AppSidebar = () => {
                     </SidebarMenuItem>
                   </>
                 )}
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/whatsapp"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                        }`
-                      }
-                    >
-                      <MessageSquare className="h-5 w-5 text-sidebar-primary" />
-                      <span className="truncate">WhatsApp</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {/* WhatsApp nur für Nicht-Kunden */}
+                {user.role !== 'customer' && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/whatsapp"
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                            isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                          }`
+                        }
+                      >
+                        <MessageSquare className="h-5 w-5 text-sidebar-primary" />
+                        <span className="truncate">WhatsApp</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
                 
                 {/* Call Center Navigation Item - visible to admin and agent roles */}
                 {showCallCenter && (
@@ -483,6 +503,36 @@ const AppSidebar = () => {
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/admin/endkunden"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Users className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Endkunden</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to="/admin/endkunden-kontakte"
+                            className={({ isActive }) =>
+                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                              }`
+                            }
+                          >
+                            <Users className="h-5 w-5 text-sidebar-primary" />
+                            <span className="truncate">Endkundenkontakte</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
                     </SidebarMenu>
                   </div>
                 </SidebarGroupContent>
@@ -493,21 +543,7 @@ const AppSidebar = () => {
 
         <SidebarFooter>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <NavLink
-                  to="/settings"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                      isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                    }`
-                  }
-                >
-                  <Settings className="h-5 w-5 text-sidebar-primary" />
-                  <span className="truncate">Einstellungen</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {/* Einstellungen entfernt */}
           </SidebarMenu>
         </SidebarFooter>
       </div>
