@@ -1,15 +1,11 @@
 
 # supabase/config.toml
 project_id = "knoevkvjyuchhcmzsdpq"
-# services = [
-#   {id = "gotrue", name = "GoTrue", port = 9999},
-#   {id = "storage", name = "Storage", port = 5000},
-# ]
+
 
 [api]
 port = 54321
-# types = "types"
-# auto_update_types = true
+
 
 # Webhook functions should not require auth
 [functions.twilio-voice-webhook]
