@@ -35,6 +35,28 @@ export const useTaskDetail = (id: string | undefined, user: any) => {
       if (taskError) throw taskError;
       if (!taskData) throw new Error('Aufgabe nicht gefunden');
 
+      // NEU: Kunden dürfen nur Aufgaben ihres eigenen Kunden sehen
+      if (user?.role === 'customer') {
+        // Hole die customer_id des eingeloggten Kunden
+        const { data: assignment, error: assignmentError } = await supabase
+          .from('user_customer_assignments')
+          .select('customer_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (assignmentError) throw assignmentError;
+        if (!assignment || !assignment.customer_id) throw new Error('Keine Kundenzuweisung für diesen Benutzer gefunden');
+        if (taskData.customer_id !== assignment.customer_id) {
+          setTask(null);
+          setIsLoading(false);
+          toast({
+            variant: "destructive",
+            title: "Nicht berechtigt",
+            description: "Sie dürfen diese Aufgabe nicht einsehen.",
+          });
+          return;
+        }
+      }
+
       const [customerResult, creatorResult, assigneeResult, endkundeResult, useCaseResult] = await Promise.all([
         taskData.customer_id // This is for "our customer"
           ? supabase.from('customers').select('id, name, street, zip, city, email').eq('id', taskData.customer_id).maybeSingle() // Correct table, phone assumed not to exist here

@@ -291,7 +291,7 @@ function App() {
                     <Route
                       path="/tasks/:id"
                       element={
-                        <ProtectedRoute allowedRoles={['admin', 'agent']}>
+                        <ProtectedRoute allowedRoles={['admin', 'agent', 'customer']}>
                           <TaskDetail />
                         </ProtectedRoute>
                       }

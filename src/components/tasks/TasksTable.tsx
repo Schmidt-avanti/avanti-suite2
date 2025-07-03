@@ -36,6 +36,9 @@ interface Task {
 interface TasksTableProps {
   tasks: Task[];
   isLoading: boolean;
+  onStatusHeaderClick?: () => void;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 // Memoize individual rows for better performance with large datasets
@@ -109,7 +112,7 @@ const TaskRow = memo(({ task, isMobile, onRowClick }: {
 
 TaskRow.displayName = 'TaskRow';
 
-export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
+export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading, onStatusHeaderClick, sortField, sortOrder }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -140,7 +143,18 @@ export const TasksTable: React.FC<TasksTableProps> = ({ tasks, isLoading }) => {
           <TableRow>
             {!isMobile && <TableHead className="w-[100px]">ID</TableHead>}
             <TableHead>Titel</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead
+              className="cursor-pointer select-none"
+              onClick={onStatusHeaderClick}
+              title="Nach Wiedervorlage sortieren"
+            >
+              Status
+              {sortField === 'follow_up_date' && (
+                <span className="ml-1 align-middle">
+                  {sortOrder === 'asc' ? '▲' : '▼'}
+                </span>
+              )}
+            </TableHead>
             {!isMobile && <TableHead>Kunde</TableHead>}
             {!isMobile && <TableHead>Agent</TableHead>}
             <TableHead>Quelle</TableHead>

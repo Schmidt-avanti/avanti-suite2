@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { Bar } from 'react-chartjs-2';
 import 'chart.js/auto';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription } from '@/components/ui/alert-dialog';
 
 // UI-Komponenten
 import {
@@ -43,7 +44,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { CalendarIcon, Plus, PlusCircle } from 'lucide-react';
+import { CalendarIcon, Plus, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -129,6 +130,11 @@ const CustomerDashboard = () => {
   });
   const [recentTasks, setRecentTasks] = useState<any[]>([]);
   const [dailyUsage, setDailyUsage] = useState<{date: string, minutes: number}[]>([]);
+  const [manageOutboundDialogOpen, setManageOutboundDialogOpen] = useState(false);
+  const [outboundTimes, setOutboundTimes] = useState<any[]>([]);
+  const [editingOutbound, setEditingOutbound] = useState<any | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // Hilfsfunktion: Abrechnungsintervall für einen Kunden berechnen
   function getBillingInterval(startDateStr: string | undefined, reference: Date = new Date()) {
@@ -467,7 +473,6 @@ const CustomerDashboard = () => {
 
   const handleAddOutboundTime = async () => {
     if (!customer?.id || !user?.id) return;
-    
     try {
       if (newOutboundEntry.minutes <= 0) {
         toast({
@@ -477,7 +482,6 @@ const CustomerDashboard = () => {
         });
         return;
       }
-      
       const { error } = await supabase
         .from('outbound_times')
         .insert({
@@ -487,25 +491,19 @@ const CustomerDashboard = () => {
           minutes: newOutboundEntry.minutes,
           description: newOutboundEntry.description
         });
-        
       if (error) throw error;
-      
       toast({
         title: 'Erfolgreich',
         description: 'Die Outbound-Zeit wurde erfolgreich gespeichert.'
       });
-      
-      // Formular zurücksetzen
       setNewOutboundEntry({
         date: new Date(),
         minutes: 0,
         description: ''
       });
-      
-      // Dialog schließen und Daten neu laden
       setOutboundDialogOpen(false);
       fetchOutboundUsage();
-      
+      fetchRecentTasksAndDailyUsage();
     } catch (error: any) {
       toast({
         title: 'Fehler',
@@ -516,68 +514,90 @@ const CustomerDashboard = () => {
   };
 
   // Aufgaben und Tagesverlauf laden
-  useEffect(() => {
-    const fetchRecentTasksAndDailyUsage = async () => {
-      // Debug: Rolle, User, Customer, Zeitraum
-      console.log('TAGESVERLAUF-DEBUG: Rolle:', user?.role, 'user.id:', user?.id, 'customer.id:', customer?.id, 'contract_type:', customer?.contract_type);
-      if (!customer?.id) return;
-      // UTC-Korrektur für from/to
-      const from = new Date(Date.UTC(dateRange.from.getFullYear(), dateRange.from.getMonth(), dateRange.from.getDate()));
-      const to = new Date(Date.UTC(dateRange.to.getFullYear(), dateRange.to.getMonth(), dateRange.to.getDate()));
-      const fromStr = from.toISOString().slice(0, 10);
-      const toStr = to.toISOString().slice(0, 10);
-      // Letzte 10 Aufgaben (nur existierende Felder abfragen)
-      const { data: tasksData } = await supabase
-        .from('tasks')
-        .select('id, title, status, created_at')
+  const fetchRecentTasksAndDailyUsage = async () => {
+    // Debug: Rolle, User, Customer, Zeitraum
+    console.log('TAGESVERLAUF-DEBUG: Rolle:', user?.role, 'user.id:', user?.id, 'customer.id:', customer?.id, 'contract_type:', customer?.contract_type);
+    if (!customer?.id) return;
+    // UTC-Korrektur für from/to
+    const from = new Date(Date.UTC(dateRange.from.getFullYear(), dateRange.from.getMonth(), dateRange.from.getDate()));
+    const to = new Date(Date.UTC(dateRange.to.getFullYear(), dateRange.to.getMonth(), dateRange.to.getDate()));
+    const fromStr = from.toISOString().slice(0, 10);
+    const toStr = to.toISOString().slice(0, 10);
+    // Letzte 10 Aufgaben (nur existierende Felder abfragen)
+    const { data: tasksData } = await supabase
+      .from('tasks')
+      .select('id, title, status, created_at')
+      .eq('customer_id', customer.id)
+      .gte('created_at', `${fromStr}T00:00:00Z`)
+      .lte('created_at', `${toStr}T23:59:59Z`)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    setRecentTasks(tasksData || []);
+    // Tagesverlauf: je nach Vertragstyp
+    let days: string[] = [];
+    let d = new Date(from);
+    while (d <= to) {
+      if (d.getDay() !== 0 && d.getDay() !== 6) {
+        days.push(d.toISOString().slice(0, 10));
+      }
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+    let usageMap: Record<string, number> = {};
+    if (customer.contract_type === 'outbound') {
+      // Outbound: Minuten aus outbound_times
+      const { data: outboundData } = await supabase
+        .from('outbound_times')
+        .select('date, minutes')
         .eq('customer_id', customer.id)
+        .gte('date', fromStr)
+        .lte('date', toStr);
+      (outboundData || []).forEach(entry => {
+        if (!usageMap[entry.date]) usageMap[entry.date] = 0;
+        usageMap[entry.date] += entry.minutes || 0;
+      });
+    } else {
+      // Inbound: Minuten aus task_times
+      const { data: taskTimes } = await supabase
+        .from('task_times')
+        .select('time_spent_task, created_at, tasks!inner(customer_id)')
+        .eq('tasks.customer_id', customer.id)
         .gte('created_at', `${fromStr}T00:00:00Z`)
-        .lte('created_at', `${toStr}T23:59:59Z`)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      setRecentTasks(tasksData || []);
-      // Tagesverlauf: je nach Vertragstyp
-      let days: string[] = [];
-      let d = new Date(from);
-      while (d <= to) {
-        if (d.getDay() !== 0 && d.getDay() !== 6) {
-          days.push(d.toISOString().slice(0, 10));
-        }
-        d.setUTCDate(d.getUTCDate() + 1);
-      }
-      let usageMap: Record<string, number> = {};
-      if (customer.contract_type === 'outbound') {
-        // Outbound: Minuten aus outbound_times
-        const { data: outboundData } = await supabase
-          .from('outbound_times')
-          .select('date, minutes')
-          .eq('customer_id', customer.id)
-          .gte('date', fromStr)
-          .lte('date', toStr);
-        (outboundData || []).forEach(entry => {
-          if (!usageMap[entry.date]) usageMap[entry.date] = 0;
-          usageMap[entry.date] += entry.minutes || 0;
-        });
-      } else {
-        // Inbound: Minuten aus task_times
-        const { data: taskTimes } = await supabase
-          .from('task_times')
-          .select('time_spent_task, created_at, tasks!inner(customer_id)')
-          .eq('tasks.customer_id', customer.id)
-          .gte('created_at', `${fromStr}T00:00:00Z`)
-          .lte('created_at', `${toStr}T23:59:59Z`);
-        (taskTimes || []).forEach(t => {
-          const day = t.created_at.slice(0, 10);
-          if (!usageMap[day]) usageMap[day] = 0;
-          usageMap[day] += t.time_spent_task || 0;
-        });
-      }
-      // Debug: Zeitraum und Daten
-      console.log('TAGESVERLAUF-DEBUG: Zeitraum:', { from, to, fromStr, toStr, days }, 'usageMap:', usageMap);
-      setDailyUsage(days.map(day => ({ date: day, minutes: Math.ceil((usageMap[day] || 0) / 60) })));
-    };
+        .lte('created_at', `${toStr}T23:59:59Z`);
+      (taskTimes || []).forEach(t => {
+        const day = t.created_at.slice(0, 10);
+        if (!usageMap[day]) usageMap[day] = 0;
+        usageMap[day] += t.time_spent_task || 0;
+      });
+    }
+    // Debug: Zeitraum und Daten
+    console.log('TAGESVERLAUF-DEBUG: Zeitraum:', { from, to, fromStr, toStr, days }, 'usageMap:', usageMap);
+    setDailyUsage(days.map(day => ({ date: day, minutes: Math.ceil((usageMap[day] || 0) / 60) })));
+  };
+  useEffect(() => {
     fetchRecentTasksAndDailyUsage();
   }, [customer, dateRange]);
+
+  // Outbound-Zeiten für den Zeitraum laden (nur für Admin)
+  useEffect(() => {
+    const fetchOutboundTimes = async () => {
+      if (user?.role !== 'admin' || !customer?.id || customer.contract_type !== 'outbound') {
+        setOutboundTimes([]);
+        return;
+      }
+      const from = format(dateRange.from, 'yyyy-MM-dd');
+      const to = format(dateRange.to, 'yyyy-MM-dd');
+      const { data, error } = await supabase
+        .from('outbound_times')
+        .select('id, date, minutes, description, created_by')
+        .eq('customer_id', customer.id)
+        .gte('date', from)
+        .lte('date', to)
+        .order('date', { ascending: false });
+      if (!error && data) setOutboundTimes(data);
+      else setOutboundTimes([]);
+    };
+    if (manageOutboundDialogOpen) fetchOutboundTimes();
+  }, [user, customer, dateRange, manageOutboundDialogOpen]);
 
   // Hilfskomponente: DateRangePicker
   const DateRangePicker = () => (
@@ -658,6 +678,49 @@ const CustomerDashboard = () => {
       </div>
     );
   }
+
+  const handleSaveOutboundEdit = async () => {
+    if (!editingOutbound) return;
+    try {
+      const { error } = await supabase
+        .from('outbound_times')
+        .update({
+          date: editingOutbound.date,
+          minutes: editingOutbound.minutes,
+          description: editingOutbound.description
+        })
+        .eq('id', editingOutbound.id);
+      if (error) throw error;
+      toast({ title: 'Gespeichert', description: 'Die Outbound-Zeit wurde aktualisiert.' });
+      setOutboundTimes(prev => prev.map(e => e.id === editingOutbound.id ? { ...e, ...editingOutbound } : e));
+      setEditingOutbound(null);
+      // Grafiken und Zeitnutzung aktualisieren
+      fetchOutboundUsage();
+      fetchRecentTasksAndDailyUsage();
+    } catch (error: any) {
+      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteOutbound = async () => {
+    if (!deleteTargetId) return;
+    try {
+      const { error } = await supabase
+        .from('outbound_times')
+        .delete()
+        .eq('id', deleteTargetId);
+      if (error) throw error;
+      toast({ title: 'Gelöscht', description: 'Die Outbound-Zeit wurde gelöscht.' });
+      setOutboundTimes(prev => prev.filter(e => e.id !== deleteTargetId));
+      setDeleteDialogOpen(false);
+      setDeleteTargetId(null);
+      // Grafiken und Zeitnutzung aktualisieren
+      fetchOutboundUsage();
+      fetchRecentTasksAndDailyUsage();
+    } catch (error: any) {
+      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+    }
+  };
 
   return (
     <div className="container mx-auto p-4 space-y-6">
@@ -881,7 +944,7 @@ const CustomerDashboard = () => {
                   {outboundMinutes.percentage.toFixed(1)}% genutzt
                 </div>
                 {user?.role === 'admin' && customer?.contract_type === 'outbound' && (
-                  <div className="px-6 pb-4">
+                  <div className="px-6 pb-2 flex flex-col gap-2">
                     <Button 
                       size="sm" 
                       variant="secondary"
@@ -890,6 +953,15 @@ const CustomerDashboard = () => {
                     >
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Outbound-Zeit eintragen
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setManageOutboundDialogOpen(true)}
+                    >
+                      <ClipboardList className="mr-2 h-4 w-4" />
+                      Outbound-Zeiten verwalten
                     </Button>
                   </div>
                 )}
@@ -1015,6 +1087,86 @@ const CustomerDashboard = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Outbound Zeiten verwalten Modal */}
+      {user?.role === 'admin' && customer?.contract_type === 'outbound' && (
+        <Dialog open={manageOutboundDialogOpen} onOpenChange={setManageOutboundDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Outbound-Zeiten verwalten</DialogTitle>
+              <DialogDescription>
+                Alle Outbound-Zeiten für den gewählten Zeitraum. Sie können Einträge bearbeiten oder löschen.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm border">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-2 py-1 border">Datum</th>
+                    <th className="px-2 py-1 border">Minuten</th>
+                    <th className="px-2 py-1 border">Beschreibung</th>
+                    <th className="px-2 py-1 border">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {outboundTimes.length === 0 ? (
+                    <tr><td colSpan={4} className="text-center py-4 text-muted-foreground">Keine Outbound-Zeiten im Zeitraum</td></tr>
+                  ) : outboundTimes.map((entry) => (
+                    <tr key={entry.id} className="border-b">
+                      <td className="px-2 py-1 border">{format(parseISO(entry.date), 'dd.MM.yyyy')}</td>
+                      <td className="px-2 py-1 border">{entry.minutes}</td>
+                      <td className="px-2 py-1 border">{entry.description}</td>
+                      <td className="px-2 py-1 border flex gap-2">
+                        <Button size="icon" variant="ghost" onClick={() => setEditingOutbound(entry)}><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="destructive" onClick={() => { setDeleteTargetId(entry.id); setDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" /></Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Bearbeiten-Modal (Platzhalter) */}
+            {editingOutbound && (
+              <Dialog open={true} onOpenChange={() => setEditingOutbound(null)}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Outbound-Zeit bearbeiten</DialogTitle>
+                  </DialogHeader>
+                  {/* Felder für Datum, Minuten, Beschreibung */}
+                  <div className="grid gap-2">
+                    <Label>Datum</Label>
+                    <Input type="date" value={editingOutbound.date} onChange={e => setEditingOutbound({ ...editingOutbound, date: e.target.value })} />
+                    <Label>Minuten</Label>
+                    <Input type="number" value={editingOutbound.minutes} onChange={e => setEditingOutbound({ ...editingOutbound, minutes: parseInt(e.target.value) })} />
+                    <Label>Beschreibung</Label>
+                    <Textarea value={editingOutbound.description} onChange={e => setEditingOutbound({ ...editingOutbound, description: e.target.value })} />
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setEditingOutbound(null)}>Abbrechen</Button>
+                    <Button onClick={handleSaveOutboundEdit}>Speichern</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Bestätigungsdialog für Löschen */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eintrag löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Soll dieser Outbound-Zeit-Eintrag wirklich gelöscht werden? Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteOutbound}>Löschen</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
