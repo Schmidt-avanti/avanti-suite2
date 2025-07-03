@@ -32,6 +32,7 @@ import WhatsappAccountsAdminPage from "@/pages/admin/WhatsappAccounts";
 import ProcessingTimeRedirect from "@/pages/admin/ProcessingTime";
 import EndkundenAdminPage from "@/pages/admin/Endkunden";
 import EndkundenKontaktePage from "@/pages/admin/EndkundenKontakte";
+import DevelopmentPage from "@/pages/admin/Development";
 
 // Supervisor Pages
 import LiveAgentOverview from "@/pages/supervisor/LiveAgentOverview";
@@ -205,6 +206,14 @@ function App() {
                       element={
                         <ProtectedRoute allowedRoles={['admin', 'agent', 'customer']}>
                           <EndkundenKontaktePage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/development"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <DevelopmentPage />
                         </ProtectedRoute>
                       }
                     />

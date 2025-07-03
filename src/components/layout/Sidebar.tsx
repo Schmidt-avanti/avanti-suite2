@@ -6,6 +6,7 @@ import {
   Users,
   Calendar,
   Phone,
+  ClipboardList,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,6 +90,12 @@ const Sidebar = () => {
       to: "/admin/endkunden-kontakte",
       icon: <Users className="h-5 w-5" />,
       label: "Endkundenkontakte",
+      role: "admin",
+    },
+    {
+      to: "/admin/development",
+      icon: <ClipboardList className="h-5 w-5" />,
+      label: "Development",
       role: "admin",
     },
     {
