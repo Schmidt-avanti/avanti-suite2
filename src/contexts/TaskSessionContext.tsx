@@ -389,7 +389,54 @@ export const useTaskSessionTracker = (taskId: string | null, isActive: boolean =
   // Fetch task total duration directly from the database
   const fetchTotalDuration = useCallback(async (taskId: string) => {
     try {
-      // Try to fetch from tasks table first (most reliable source of truth)
+      // Get detailed sessions data including user info for logging/verification
+      const { data: detailedSessions, error: detailError } = await supabase
+        .from('task_sessions')
+        .select('id, user_id, duration_seconds')
+        .eq('task_id', taskId)
+        .not('duration_seconds', 'is', null);
+      
+      if (!detailError && detailedSessions) {
+        // Group by user to see individual contributions
+        const userContributions: Record<string, number> = {};
+        let totalSeconds = 0;
+        
+        detailedSessions.forEach(session => {
+          const userId = session.user_id;
+          const duration = session.duration_seconds || 0;
+          
+          // Add to user's contribution
+          if (!userContributions[userId]) {
+            userContributions[userId] = 0;
+          }
+          userContributions[userId] += duration;
+          
+          // Add to total
+          totalSeconds += duration;
+        });
+        
+        // Log detailed breakdown
+        console.log(`===== TASK TIME VERIFICATION FOR TASK ${taskId} =====`);
+        console.log(`Total sessions found: ${detailedSessions.length}`);
+        console.log('Per-user contributions:');
+        Object.entries(userContributions).forEach(([userId, time]) => {
+          console.log(`  User ${userId}: ${time}s (${formatDuration(time)})`);
+        });
+        console.log(`TOTAL across all users: ${totalSeconds}s (${formatDuration(totalSeconds)})`);
+        console.log('===============================================');
+        
+        setTotalDuration(totalSeconds);
+        
+        // Also update the tasks table for consistency
+        await supabase
+          .from('tasks')
+          .update({ total_duration_seconds: totalSeconds })
+          .eq('id', taskId);
+          
+        return;
+      }
+      
+      // Fallback 1: Try to fetch from tasks table
       const { data, error } = await supabase
         .from('tasks')
         .select('total_duration_seconds')
@@ -402,7 +449,7 @@ export const useTaskSessionTracker = (taskId: string | null, isActive: boolean =
         return;
       }
       
-      // Fallback: Calculate using RPC function
+      // Fallback 2: Calculate using RPC function
       const { data: rpcData, error: rpcError } = await supabase
         .rpc('calculate_task_total_duration', { task_id: taskId });
       
@@ -412,7 +459,7 @@ export const useTaskSessionTracker = (taskId: string | null, isActive: boolean =
         return;
       }
       
-      console.error('Error fetching task duration:', error || rpcError);
+      console.error('Error fetching task duration:', detailError || error || rpcError);
     } catch (err) {
       console.error('Exception in fetchTotalDuration:', err);
     }

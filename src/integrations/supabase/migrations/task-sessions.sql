@@ -49,35 +49,44 @@ BEGIN
 END;
 $$;
 
--- Create RPC security policy for all authenticated users
+-- Make sure RLS is enabled first before adding policies
 BEGIN;
+  -- Enable row level security on task_sessions table
+  ALTER TABLE task_sessions ENABLE ROW LEVEL SECURITY;
+  
+  -- First clean up all existing policies to start fresh
+  DROP POLICY IF EXISTS "Enable task sessions for all authenticated users" ON task_sessions;
+  DROP POLICY IF EXISTS "Enable read access for all authenticated users" ON task_sessions;
+  DROP POLICY IF EXISTS "Enable write access for own sessions" ON task_sessions;
   DROP POLICY IF EXISTS "Enable RPC for authenticated users only" ON tasks;
   
+  -- Create a clear policy for task_sessions that allows all authenticated users to read ALL sessions
+  -- regardless of user_id (this is critical for cross-user time viewing)
+  CREATE POLICY "View all task sessions"
+    ON task_sessions
+    FOR SELECT
+    TO authenticated
+    USING (true);
+    
+  -- Create policy for creating/updating own sessions
+  CREATE POLICY "Manage own task sessions"
+    ON task_sessions
+    FOR ALL
+    TO authenticated
+    USING (auth.uid() = user_id);
+  
+  -- Tasks table policy
   CREATE POLICY "Enable RPC for authenticated users only" 
     ON tasks
     FOR ALL 
     TO authenticated
     USING (true);
     
-  -- Ensure task_sessions are accessible to all authenticated users
-  DROP POLICY IF EXISTS "Enable task sessions for all authenticated users" ON task_sessions;
-  CREATE POLICY "Enable task sessions for all authenticated users"
-    ON task_sessions
-    FOR ALL
-    TO authenticated
-    USING (true);
-    
   -- Grant explicit permissions to calculate_task_total_duration function
   GRANT EXECUTE ON FUNCTION calculate_task_total_duration TO authenticated;
   
-  -- Ensure sessions from all users are visible to everyone
-  ALTER TABLE task_sessions ENABLE ROW LEVEL SECURITY;
-  DROP POLICY IF EXISTS "Enable read access for all authenticated users" ON task_sessions;
-  CREATE POLICY "Enable read access for all authenticated users"
-    ON task_sessions
-    FOR SELECT
-    TO authenticated
-    USING (true);
+  -- Reset task_sessions permissions
+  GRANT ALL ON task_sessions TO authenticated;
 COMMIT;
 
 -- Create function to update total durations for all tasks
