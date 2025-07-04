@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SupervisorChatProvider } from "@/contexts/SupervisorChatContext";
+import { TaskSessionProvider } from "@/contexts/TaskSessionContext";
 import { ThemeProvider } from "@/components/ui/theme";
 
 // Layout
@@ -79,8 +80,9 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <AuthProvider>
-            <SupervisorChatProvider>
-              <Router>
+            <TaskSessionProvider>
+              <SupervisorChatProvider>
+                <Router>
                 <Toaster />
                 <Sonner />
                 <Routes>
@@ -354,8 +356,9 @@ function App() {
                   {/* Not Found */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </Router>
-            </SupervisorChatProvider>
+                </Router>
+              </SupervisorChatProvider>
+            </TaskSessionProvider>
           </AuthProvider>
         </TooltipProvider>
       </ThemeProvider>
