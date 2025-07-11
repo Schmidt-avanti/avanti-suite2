@@ -377,21 +377,18 @@ const CustomerDashboard = () => {
       const to = format(dateRange.to, 'yyyy-MM-dd');
       // Debug: Filterparameter anzeigen
       console.log('fetchInboundUsage: customer_id', customer.id, 'from', from, 'to', to);
-      // Alle task_times für den Kunden abrufen
-      const { data: taskTimesData, error } = await supabase
-        .from('task_times')
-        .select(`
-          time_spent_task,
-          tasks!inner(customer_id)
-        `)
-        .eq('tasks.customer_id', customer.id)
+      // Direkt die Tasks mit total_duration_seconds für den Kunden abrufen
+      const { data: tasksData, error } = await supabase
+        .from('tasks')
+        .select('total_duration_seconds')
+        .eq('customer_id', customer.id)
         .gte('created_at', `${from}T00:00:00Z`)
         .lte('created_at', `${to}T23:59:59Z`);
-      console.log('Geladene Inbound-Zeiten:', taskTimesData, error);
+      console.log('Geladene Tasks mit Zeitdaten:', tasksData, error);
       if (error) throw error;
       // Sekunden in Minuten umrechnen
-      const totalSeconds = taskTimesData?.reduce((sum, item) => {
-        return sum + (item.time_spent_task || 0);
+      const totalSeconds = tasksData?.reduce((sum, task) => {
+        return sum + (task.total_duration_seconds || 0);
       }, 0) || 0;
       const totalMinutes = Math.ceil(totalSeconds / 60);
       // Produkte abrufen, um die Inklusivminuten zu bestimmen
@@ -435,16 +432,21 @@ const CustomerDashboard = () => {
       const to = format(dateRange.to, 'yyyy-MM-dd');
       // Debug: Filterparameter anzeigen
       console.log('fetchOutboundUsage: customer_id', customer.id, 'from', from, 'to', to);
-      // Outbound-Zeiten für den Kunden und Zeitraum abrufen
-      const { data: outboundData, error } = await supabase
-        .from('outbound_times')
-        .select('minutes, date')
+      // Direkt die Tasks mit total_duration_seconds für den Kunden abrufen
+      // Hinweis: Wir nutzen jetzt die tasks Tabelle statt outbound_times
+      const { data: tasksData, error } = await supabase
+        .from('tasks')
+        .select('total_duration_seconds')
         .eq('customer_id', customer.id)
-        .gte('date', from)
-        .lte('date', to);
-      console.log('Geladene Outbound-Zeiten:', outboundData, error);
+        .gte('created_at', `${from}T00:00:00Z`)
+        .lte('created_at', `${to}T23:59:59Z`);
+      console.log('Geladene Tasks mit Zeitdaten:', tasksData, error);
       if (error) throw error;
-      const totalMinutes = outboundData?.reduce((sum, item) => sum + (item.minutes || 0), 0) || 0;
+      // Sekunden in Minuten umrechnen
+      const totalSeconds = tasksData?.reduce((sum, task) => {
+        return sum + (task.total_duration_seconds || 0);
+      }, 0) || 0;
+      const totalMinutes = Math.ceil(totalSeconds / 60);
       // Produkte abrufen, um die Outbound-Stunden zu bestimmen
       let includedHours = 0;
       if (customer.products && customer.products.length > 0) {
