@@ -432,21 +432,16 @@ const CustomerDashboard = () => {
       const to = format(dateRange.to, 'yyyy-MM-dd');
       // Debug: Filterparameter anzeigen
       console.log('fetchOutboundUsage: customer_id', customer.id, 'from', from, 'to', to);
-      // Direkt die Tasks mit total_duration_seconds für den Kunden abrufen
-      // Hinweis: Wir nutzen jetzt die tasks Tabelle statt outbound_times
-      const { data: tasksData, error } = await supabase
-        .from('tasks')
-        .select('total_duration_seconds')
+      // Outbound-Zeiten für den Kunden und Zeitraum abrufen
+      const { data: outboundData, error } = await supabase
+        .from('outbound_times')
+        .select('minutes, date')
         .eq('customer_id', customer.id)
-        .gte('created_at', `${from}T00:00:00Z`)
-        .lte('created_at', `${to}T23:59:59Z`);
-      console.log('Geladene Tasks mit Zeitdaten:', tasksData, error);
+        .gte('date', from)
+        .lte('date', to);
+      console.log('Geladene Outbound-Zeiten:', outboundData, error);
       if (error) throw error;
-      // Sekunden in Minuten umrechnen
-      const totalSeconds = tasksData?.reduce((sum, task) => {
-        return sum + (task.total_duration_seconds || 0);
-      }, 0) || 0;
-      const totalMinutes = Math.ceil(totalSeconds / 60);
+      const totalMinutes = outboundData?.reduce((sum, item) => sum + (item.minutes || 0), 0) || 0;
       // Produkte abrufen, um die Outbound-Stunden zu bestimmen
       let includedHours = 0;
       if (customer.products && customer.products.length > 0) {
