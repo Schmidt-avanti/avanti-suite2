@@ -1,11 +1,18 @@
-
 # supabase/config.toml
-project_id = "knoevkvjyuchhcmzsdpq"
 
+project_id = "knoevkvjyuchhcmzsdpq"
 
 [api]
 port = 54321
 
+[db]
+port = 5432
+shadow_port = 54320
+major_version = 15
+root_key = ""
+
+[db.pooler]
+enabled = false
 
 # Webhook functions should not require auth
 [functions.twilio-voice-webhook]
