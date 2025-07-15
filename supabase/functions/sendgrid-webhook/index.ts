@@ -261,6 +261,8 @@ serve(async (req)=>{
             content: event.text || event.html || '',
             message_id: event.message_id,
             thread_id: newThreadId,
+            // Include attachments
+            attachments: attachments.length > 0 ? attachments : null,
             // If this is a reply, find the original thread by message_id
             reply_to_id: event.in_reply_to ? (await supabase.from('email_threads').select('id').eq('message_id', event.in_reply_to).maybeSingle()).data?.id : null
           });
@@ -300,7 +302,8 @@ serve(async (req)=>{
               subject: event.subject || '',
               content: event.text || event.html || '',
               message_id: event.message_id,
-              thread_id: newThreadId
+              thread_id: newThreadId,
+              attachments: attachments.length > 0 ? attachments : null
             });
             if (threadError) {
               console.error('Error creating email thread:', threadError);
