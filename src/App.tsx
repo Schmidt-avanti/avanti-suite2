@@ -33,6 +33,11 @@ import ProcessingTimeRedirect from "@/pages/admin/ProcessingTime";
 import EndkundenAdminPage from "@/pages/admin/Endkunden";
 import EndkundenKontaktePage from "@/pages/admin/EndkundenKontakte";
 import DevelopmentPage from "@/pages/admin/Development";
+import NewUseCaseList from "@/pages/admin/NewUseCaseList";
+import NewUseCaseDetail from "@/pages/admin/NewUseCaseDetail";
+import NewUseCaseForm from "@/pages/admin/NewUseCaseForm";
+import ModernFlowTest from '@/pages/admin/ModernFlowTest';
+import IntelligentDialogCreatorTest from '@/pages/admin/IntelligentDialogCreatorTest';
 
 // Supervisor Pages
 import LiveAgentOverview from "@/pages/supervisor/LiveAgentOverview";
@@ -214,6 +219,46 @@ function App() {
                       element={
                         <ProtectedRoute allowedRoles={['admin']}>
                           <DevelopmentPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/new-use-cases"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <NewUseCaseList />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/new-use-cases/new"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <NewUseCaseForm />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/new-use-cases/:id"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <NewUseCaseDetail />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/modern-flow-test"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <ModernFlowTest />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/intelligent-dialog-test"
+                      element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                          <IntelligentDialogCreatorTest />
                         </ProtectedRoute>
                       }
                     />

@@ -1,8 +1,8 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import dagre from 'dagre'; // Note: Add 'dagre' and '@types/dagre' to package.json
 import CustomNode from './CustomNode';
-import ReactFlow, { MiniMap, Controls, Background, Node, Edge } from 'reactflow';
-import 'reactflow/dist/style.css';
+import { ReactFlow, MiniMap, Controls, Background, Node, Edge } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import { ProcessMap, ProcessStep, ValidationResult } from '../../types/process';
 
 interface ProcessMapVisualizationProps {

@@ -85,7 +85,15 @@ const DevelopmentPage = () => {
   });
 
   const getTasksByStatus = (status: string) => {
-    return filteredTasks.filter(task => task.status === status);
+    // Aufgaben nach due_date aufsteigend sortieren, ohne due_date ans Ende
+    return filteredTasks
+      .filter(task => task.status === status)
+      .sort((a, b) => {
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      });
   };
 
   const getCategoryColor = (category: string) => {
@@ -261,21 +269,22 @@ const DevelopmentPage = () => {
           <p>Lade Aufgaben...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-6 gap-4">
+        <div className="flex gap-4 overflow-x-auto pb-4" style={{ minHeight: '60vh' }}>
           {statusColumns.map((column) => (
             <div
               key={column.id}
-              className="bg-muted/30 p-3 rounded-md"
+              className="bg-white border border-gray-300 p-3 rounded-lg min-w-[320px] max-w-[340px] flex flex-col shadow-sm"
+              style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, column.id)}
             >
-              <h3 className="font-medium mb-4">{column.name} ({getTasksByStatus(column.id).length})</h3>
-              <div className="space-y-3">
+              <h3 className="font-medium mb-4 sticky top-0 bg-white z-10 pb-2 border-b border-gray-200">{column.name} ({getTasksByStatus(column.id).length})</h3>
+              <div className="flex flex-col gap-3">
                 {getTasksByStatus(column.id).map((task) => (
                   <Card 
                     key={task.id}
-                    className="cursor-pointer"
+                    className="cursor-pointer shadow-md border border-muted bg-white hover:bg-muted/10 transition"
                     draggable
                     onDragStart={(e) => handleDragStart(e, task.id, task.status)}
                     onDragEnd={handleDragEnd}
@@ -296,7 +305,7 @@ const DevelopmentPage = () => {
                         </p>
                       )}
                       <div className="flex justify-between items-center">
-                        <span className={`text-xs px-2 py-1 rounded-md ${getPriorityColor(task.priority)}`}>
+                        <span className={`text-xs px-2 py-1 rounded-md ${getPriorityColor(task.priority)}`}> 
                           {task.priority === "high" ? "Hoch" : task.priority === "medium" ? "Mittel" : "Niedrig"}
                         </span>
                         {task.due_date && (

@@ -146,7 +146,7 @@ const KnowledgeArticleChat = ({ useCaseId, onContentUpdate }: KnowledgeArticleCh
           <Button 
             type="submit"
             disabled={isPending || (messages.length > 0 && !input.trim())}
-            className="self-end"
+            className="self-end px-6 py-3 mr-4 mb-4"
           >
             <Send className="h-4 w-4 mr-2" />
             {messages.length === 0 ? 'Generieren' : 'Senden'}

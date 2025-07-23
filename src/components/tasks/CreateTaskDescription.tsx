@@ -11,6 +11,7 @@ interface CreateTaskDescriptionProps {
   onDescriptionChange: (value: string) => void;
   onSubmit: () => void;
   isMatching: boolean;
+  placeholder?: string;
 }
 
 export function CreateTaskDescription({
@@ -18,6 +19,7 @@ export function CreateTaskDescription({
   onDescriptionChange,
   onSubmit,
   isMatching,
+  placeholder = "Beschreibung",
 }: CreateTaskDescriptionProps) {
   const { toast } = useToast();
   const minLength = 10;
@@ -42,7 +44,7 @@ export function CreateTaskDescription({
         <Textarea
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
-          placeholder="Was soll erledigt werden?"
+          placeholder={placeholder}
           className="min-h-[110px] max-h-[320px] w-full pl-4 pr-14 py-4 rounded-lg bg-muted/40 border border-muted shadow-inner focus-visible:ring-2 focus-visible:ring-primary/60 focus:border-primary transition-all placeholder:text-[16px] placeholder:text-muted-foreground font-normal text-base resize-y"
           disabled={isMatching}
           onKeyDown={(e) => {

@@ -10,10 +10,7 @@ import { Suspense, lazy, useState, useEffect } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TaskTimerProvider } from '@/contexts/TaskTimerContext';
 
-// Lazy load components that might not be needed immediately
-const FloatingChatButton = lazy(() =>
-  import('@/components/floating-chat/FloatingChatButton')
-);
+
 
 const AppLayout = () => {
   const location = useLocation();
@@ -79,9 +76,9 @@ const AppLayout = () => {
                   <Outlet />
                 </main>
               </div>
-              <Suspense fallback={null}>
-                <FloatingChatButton />
-              </Suspense>
+              
+              
+              
             </div>
           </SidebarProvider>
         </SearchProvider>

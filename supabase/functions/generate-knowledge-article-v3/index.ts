@@ -172,7 +172,7 @@ ${infoBlock ? `Info-Block: ${infoBlock}` : ""}`;
     }
 
     // Benutzeranfrage vorbereiten - erste Anfrage ist automatisch
-    const userMessage = userInput || "";
+    const userMessage = userInput || "Erstelle einen Wissensartikel basierend auf den bereitgestellten Use Case Informationen.";
 
     console.log("User message:", userMessage);
     console.log("Sending request to OpenAI Responses API...");

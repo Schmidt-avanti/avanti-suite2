@@ -133,8 +133,12 @@ const LoginForm = () => {
     }
   };
 
+  // After the welcome animation finishes we stay on the current page to avoid an
+  // unexpected second redirect that brings the user back to the start page.
+  // The initial role-based redirect already happened right after login via the
+  // `Index` route, so we don't need another navigation here.
   const handleTransitionComplete = () => {
-    navigate('/');
+    /* no-op */
   };
 
   return (

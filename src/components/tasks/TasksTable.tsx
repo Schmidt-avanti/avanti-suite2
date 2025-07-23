@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Table, 
@@ -14,6 +14,20 @@ import { de } from 'date-fns/locale';
 import { TaskStatusBadge } from './TaskStatusBadge';
 import type { TaskStatus } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { StickyNote } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Task {
   id: string;
@@ -47,6 +61,8 @@ const TaskRow = memo(({ task, isMobile, onRowClick }: {
   isMobile: boolean,
   onRowClick: (id: string) => void 
 }) => {
+  const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
+  
   const getSourceLabel = (source?: string) => {
     if (!source) return 'Unbekannt';
     
@@ -62,45 +78,58 @@ const TaskRow = memo(({ task, isMobile, onRowClick }: {
     }
   };
 
+  const handleNoteClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click
+    setIsNoteDialogOpen(true);
+  };
+
   return (
     <TableRow 
-      className="cursor-pointer hover:bg-muted/50"
+      className="cursor-pointer hover:bg-muted/50 h-20" // Fixed height for consistent rows
       onClick={() => onRowClick(task.id)}
     >
       {!isMobile && (
-        <TableCell className="font-mono text-xs">
+        <TableCell className="font-mono text-xs align-middle">
           {task.readable_id || '-'}
         </TableCell>
       )}
-      <TableCell className="font-medium">
-        {task.title}
-        {task.endkunde_id && (
-          <Badge variant="outline" className="ml-2 bg-blue-50">Endkunde</Badge>
-        )}
+      <TableCell className="font-medium align-middle">
+        <div className="flex items-center gap-2">
+          <span>{task.title}</span>
+          {task.endkunde_id && (
+            <Badge variant="outline" className="bg-blue-50 text-xs">Endkunde</Badge>
+          )}
+        </div>
       </TableCell>
-      <TableCell>
-        <TaskStatusBadge status={task.status} follow_up_date={task.follow_up_date} />
-        {task.status === 'followup' && task.followup_note && (
-          <div
-            className="mt-1 rounded bg-yellow-50 border border-yellow-200 px-3 py-1 text-xs text-yellow-900 flex items-center gap-2 max-w-xs"
-            title={task.followup_note}
-            style={{ wordBreak: 'break-word' }}
-          >
-            <span role="img" aria-label="Kommentar">📝</span>
-            <span className="italic">{task.followup_note}</span>
-          </div>
-        )}
+      <TableCell className="align-middle">
+        <div className="flex flex-col gap-1 items-center">
+          <TaskStatusBadge status={task.status} follow_up_date={task.follow_up_date} />
+          {task.followup_note && (
+            <TooltipProvider>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center justify-center w-6 h-6 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors cursor-help">
+                    <StickyNote className="h-4 w-4" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs z-50">
+                  <p className="text-xs whitespace-pre-wrap">{task.followup_note}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </TableCell>
       {!isMobile && (
-        <TableCell>{task.customer?.name || 'Unbekannt'}</TableCell>
+        <TableCell className="align-middle">{task.customer?.name || 'Unbekannt'}</TableCell>
       )}
       {!isMobile && (
-        <TableCell>{task.assignee?.["Full Name"] || 'Nicht zugewiesen'}</TableCell>
+        <TableCell className="align-middle">{task.assignee?.["Full Name"] || 'Nicht zugewiesen'}</TableCell>
       )}
-      <TableCell>
+      <TableCell className="align-middle">
         {getSourceLabel(task.source)}
       </TableCell>
-      <TableCell className="text-right text-muted-foreground text-sm">
+      <TableCell className="text-right text-muted-foreground text-sm align-middle">
         {formatDistanceToNow(new Date(task.created_at), { 
           addSuffix: true,
           locale: de 

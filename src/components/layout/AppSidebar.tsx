@@ -1,567 +1,241 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  ClipboardList,
-  BookOpen,
-  BarChart3,
-  Users,
-  Building2,
-  FileText,
-  MessageSquare,
-  Settings,
-  Timer,
-  Radio,
-  Clock,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Receipt,
-  CreditCard,
-  Phone
+import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '../../hooks/use-is-mobile';
+
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Collapsible, 
+  CollapsibleContent, 
+  CollapsibleTrigger 
+} from '@/components/ui/collapsible';
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetTrigger 
+} from '@/components/ui/sheet';
+import { 
+  Sidebar, 
+  SidebarContent, 
+  SidebarFooter, 
+  SidebarGroup, 
+  SidebarGroupContent, 
+  SidebarGroupLabel, 
+  SidebarMenu, 
+  SidebarMenuButton, 
+  SidebarMenuItem, 
+  SidebarMenuSkeleton 
+} from '@/components/ui/sidebar';
+
+import { 
+  BookOpen, 
+  Briefcase, 
+  Building, 
+  ChevronDown, 
+  ChevronRight, 
+  ClipboardCheck, 
+  ClipboardList, 
+  Code, 
+  DollarSign, 
+  FileArchive, 
+  LayoutDashboard, 
+  Menu, 
+  MessageSquare, 
+  Settings, 
+  UserCheck, 
+  Users, 
+  X 
 } from 'lucide-react';
 
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@/components/ui/sidebar';
-import { useAuth } from '@/contexts/AuthContext';
-import { useIsMobile } from '@/hooks/use-mobile';
+interface NavItemProps {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  end?: boolean;
+}
 
-const AppSidebar = () => {
-  const { user } = useAuth();
-  const [adminOpen, setAdminOpen] = useState(true);
-  const [supervisorOpen, setSupervisorOpen] = useState(true);
-  const [accountingOpen, setAccountingOpen] = useState(true);
+const NavItem: React.FC<NavItemProps> = ({ href, label, icon, end }) => {
+  return (
+    <NavLink to={href} end={end}>
+      {({ isActive }) => (
+        <Button
+          variant={isActive ? 'secondary' : 'ghost'}
+          className="w-full justify-start items-center gap-3"
+        >
+          {icon}
+          <span className="truncate">{label}</span>
+        </Button>
+      )}
+    </NavLink>
+  );
+};
+
+export const AppSidebar = () => {
   const location = useLocation();
+  const { user, isLoading } = useAuth();
   const isMobile = useIsMobile();
-  const { setOpen } = useSidebar();
+  const [openGroups, setOpenGroups] = useState<string[]>(['aufgaben', 'admin', 'supervisor', 'accounting']);
 
-  // Close sidebar on mobile after navigation
-  useEffect(() => {
-    if (isMobile) {
-      setOpen(false);
-    }
-  }, [location.pathname, isMobile, setOpen]);
+  const toggleGroup = (group: string) => {
+    setOpenGroups(prev => 
+      prev.includes(group) ? prev.filter(g => g !== group) : [...prev, group]
+    );
+  };
 
-  if (!user) return null;
+  const renderSidebarContent = () => {
+    const dashboardPath = user?.role === 'agent' ? '/agent/dashboard' : '/dashboard';
+    return (
+      <>
+        {/* Company Logo */}
+        <div className="flex items-center justify-start px-3 py-6 mb-4">
+          <img 
+            src="/lovable-uploads/eff651fc-49c9-4b51-b5bc-d14c401b3934.png" 
+            alt="Avanti Suite" 
+            className="h-8 w-auto filter brightness-0 invert transition-transform duration-200 hover:scale-105"
+          />
+        </div>
+        
+        {/* Main Navigation */}
+        <NavItem
+          href={dashboardPath}
+          label="Dashboard"
+          icon={<LayoutDashboard size={18} />}
+        />
+        <NavItem
+          href="/knowledge"
+          label="Wissen"
+          icon={<BookOpen size={18} />}
+        />
+        <NavItem
+          href="/admin/use-cases"
+          label="Use Cases"
+          icon={<Briefcase size={18} />}
+        />
+        <NavItem
+          href="/tasks"
+          label="Aufgaben"
+          icon={<ClipboardList size={18} />}
+          end
+        />
+        <NavItem
+          href="/tasks/completed"
+          label="Abgeschlossen"
+          icon={<ClipboardCheck size={18} />}
+        />
 
-  // Check if user is admin or agent
-  const showCallCenter = user.role === 'admin' || user.role === 'agent';
+        {/* Customer Dashboard Link - Visible only to admin and customer roles */}
+        {(user?.role === 'admin' || user?.role === 'customer') && (
+          <NavItem
+            href="/admin/customer-dashboard"
+            label="Kunden Dashboard"
+            icon={<UserCheck size={18} />}
+          />
+        )}
+
+        {/* Role-based Navigation */}
+        {(user?.role === 'admin' || user?.role === 'supervisor' || user?.role === 'accounting') && (
+          <div className="mt-4 pt-4 border-t border-border/20">
+            {/* Supervisor Section */}
+            {(user.role === 'admin' || user.role === 'supervisor') && (
+              <Collapsible open={openGroups.includes('supervisor')} onOpenChange={() => toggleGroup('supervisor')}>
+                <CollapsibleTrigger className='w-full'>
+                  <div className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
+                    Supervisor
+                    {openGroups.includes('supervisor') ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="p-1">
+                    <NavItem href="/supervisor/tasks-review" label="Task Review" icon={<ClipboardCheck size={18} />} />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Accounting Section */}
+            {(user.role === 'admin' || user.role === 'accounting') && (
+              <Collapsible open={openGroups.includes('accounting')} onOpenChange={() => toggleGroup('accounting')}>
+                <CollapsibleTrigger className='w-full'>
+                  <div className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
+                    Accounting
+                    {openGroups.includes('accounting') ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="p-1 space-y-1">
+                  <NavItem href="/accounting/invoices" label="Rechnungen" icon={<FileArchive size={18} />} />
+                  <NavItem href="/accounting/payment-data" label="Zahlungsdaten" icon={<DollarSign size={18} />} />
+                  <NavItem href="/accounting/products" label="Produkte" icon={<Briefcase size={18} />} />
+                  <NavItem href="/accounting/product-options" label="Optionen" icon={<Settings size={18} />} />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Administration Section */}
+            {user.role === 'admin' && (
+               <Collapsible open={openGroups.includes('admin')} onOpenChange={() => toggleGroup('admin')}>
+                <CollapsibleTrigger className='w-full'>
+                  <div className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
+                    Administration
+                    {openGroups.includes('admin') ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="p-1 space-y-1">
+                  <NavItem href="/admin/users" label="Benutzer" icon={<Users size={18} />} />
+                  <NavItem href="/admin/customers" label="Kunden" icon={<Building size={18} />} />
+                  <NavItem href="/admin/use-cases" label="Use Cases" icon={<Briefcase size={18} />} />
+                  <NavItem href="/admin/intelligent-dialog-test" label="Neue Use Cases" icon={<Code size={18} />} />
+                  <NavItem href="/admin/prompts" label="Prompts" icon={<MessageSquare size={18} />} />
+                  <NavItem href="/admin/whatsapp-accounts" label="WhatsApp Konten" icon={<MessageSquare size={18} />} />
+                  <NavItem href="/admin/endkunden" label="Endkunden" icon={<Users size={18} />} />
+                  <NavItem href="/admin/endkunden-kontakte" label="Endkundenkontakte" icon={<Users size={18} />} />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
+        )}
+      </>
+    );
+  };
+
+  if (isLoading || !user) {
+    return (
+      <Sidebar className={isMobile ? 'hidden' : ''}>
+        <SidebarContent>
+          <div className="p-4 space-y-4">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="fixed top-4 left-4 z-50 bg-background/50 backdrop-blur-sm">
+            <Menu className="h-6 w-6" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-72 p-0">
+          <Sidebar>
+            <SidebarContent className='p-4'>
+              {renderSidebarContent()}
+            </SidebarContent>
+          </Sidebar>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   return (
     <Sidebar>
-      <div className="flex flex-col h-full w-full">
-        <div className="flex items-center px-4 pt-4 pb-4 border-b border-sidebar-border">
-          <img
-            alt="Avanti Logo"
-            className="h-8 object-contain"
-            src="/lovable-uploads/d7a21b7b-df81-4164-a2a2-cb4a06d4664f.png"
-          />
-        </div>
-        <SidebarContent className="mt-2">
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {/* Dashboard */}
-                {user.role !== 'customer' && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/dashboard"
-                        className={({ isActive }) =>
-                          `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                            isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                          }`
-                        }
-                      >
-                        <LayoutDashboard className="h-5 w-5 text-sidebar-primary" />
-                        <span className="truncate">Dashboard</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/admin/customer-dashboard"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                        }`
-                      }
-                    >
-                      <LayoutDashboard className="h-5 w-5 text-sidebar-primary" />
-                      <span className="truncate">Kunden Dashboard</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/tasks"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                        }`
-                      }
-                    >
-                      <ClipboardList className="h-5 w-5 text-sidebar-primary" />
-                      <span className="truncate">Aufgaben</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/tasks/completed"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                        }`
-                      }
-                    >
-                      <Check className="h-5 w-5 text-sidebar-primary" />
-                      <span className="truncate">Abgeschlossen</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/knowledge"
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                        }`
-                      }
-                    >
-                      <BookOpen className="h-5 w-5 text-sidebar-primary" />
-                      <span className="truncate">Wissen</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-
-                {/* Customer-only navigation for Use Cases and Reports */}
-                {user.role === 'customer' && (
-                  <>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to="/admin/use-cases"
-                          className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                            }`
-                          }
-                        >
-                          <FileText className="h-5 w-5 text-sidebar-primary" />
-                          <span className="truncate">Use Cases</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to="/reports"
-                          className={({ isActive }) =>
-                            `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                              isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                            }`
-                          }
-                        >
-                          <BarChart3 className="h-5 w-5 text-sidebar-primary" />
-                          <span className="truncate">Reports</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </>
-                )}
-                {/* WhatsApp nur für Nicht-Kunden */}
-                {user.role !== 'customer' && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/whatsapp"
-                        className={({ isActive }) =>
-                          `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                            isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                          }`
-                        }
-                      >
-                        <MessageSquare className="h-5 w-5 text-sidebar-primary" />
-                        <span className="truncate">WhatsApp</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-                
-                {/* Call Center Navigation Item - visible to admin and agent roles */}
-                {showCallCenter && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/call-center"
-                        className={({ isActive }) =>
-                          `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                            isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                          }`
-                        }
-                      >
-                        <Phone className="h-5 w-5 text-sidebar-primary" />
-                        <span className="truncate">Call Center</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          {user.role === 'admin' && (
-            <>
-              <SidebarGroup>
-                <SidebarGroupLabel
-                  className="flex items-center select-none cursor-pointer px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider"
-                  onClick={() => setSupervisorOpen((open) => !open)}
-                  tabIndex={0}
-                  role="button"
-                  aria-expanded={supervisorOpen}
-                >
-                  <span className="flex-1">Supervisor</span>
-                  {supervisorOpen ? (
-                    <ChevronDown className="ml-2 h-4 w-4 transition-all duration-200" />
-                  ) : (
-                    <ChevronRight className="ml-2 h-4 w-4 transition-all duration-200" />
-                  )}
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <div
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                      supervisorOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
-                    }`}
-                  >
-                    <SidebarMenu>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/supervisor/live-agents"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Radio className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Active Agents</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/reports"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <BarChart3 className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Reports</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/supervisor/short-breaks"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Timer className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Short-Break Tool</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/supervisor/processing-time"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Clock className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Live Monitoring</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </SidebarMenu>
-                  </div>
-                </SidebarGroupContent>
-              </SidebarGroup>
-
-              <SidebarGroup>
-                <SidebarGroupLabel
-                  className="flex items-center select-none cursor-pointer px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider"
-                  onClick={() => setAccountingOpen((open) => !open)}
-                  tabIndex={0}
-                  role="button"
-                  aria-expanded={accountingOpen}
-                >
-                  <span className="flex-1">Accounting</span>
-                  {accountingOpen ? (
-                    <ChevronDown className="ml-2 h-4 w-4 transition-all duration-200" />
-                  ) : (
-                    <ChevronRight className="ml-2 h-4 w-4 transition-all duration-200" />
-                  )}
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <div
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                      accountingOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
-                    }`}
-                  >
-                    <SidebarMenu>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/accounting/invoices"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Receipt className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Rechnung</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/accounting/payment-data"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <CreditCard className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Zahlungsdaten</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/accounting/products"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Settings className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Produkte</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/accounting/product-options"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Settings className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Optionen</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </SidebarMenu>
-                  </div>
-                </SidebarGroupContent>
-              </SidebarGroup>
-
-              <SidebarGroup>
-                <SidebarGroupLabel
-                  className="flex items-center select-none cursor-pointer px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider"
-                  onClick={() => setAdminOpen((open) => !open)}
-                  tabIndex={0}
-                  role="button"
-                  aria-expanded={adminOpen}
-                >
-                  <span className="flex-1">Admin</span>
-                  {adminOpen ? (
-                    <ChevronDown className="ml-2 h-4 w-4 transition-all duration-200" />
-                  ) : (
-                    <ChevronRight className="ml-2 h-4 w-4 transition-all duration-200" />
-                  )}
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <div
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                      adminOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
-                    }`}
-                  >
-                    <SidebarMenu>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/users"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Users className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Users</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/customers"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Building2 className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Kunden</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/use-cases"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <FileText className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Use Cases</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/development"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <ClipboardList className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Development</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/prompts"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <MessageSquare className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Prompts</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/whatsapp-accounts"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <MessageSquare className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">WhatsApp Konten</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/endkunden"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Users className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Endkunden</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to="/admin/endkunden-kontakte"
-                            className={({ isActive }) =>
-                              `flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                                isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                              }`
-                            }
-                          >
-                            <Users className="h-5 w-5 text-sidebar-primary" />
-                            <span className="truncate">Endkundenkontakte</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </SidebarMenu>
-                  </div>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </>
-          )}
-        </SidebarContent>
-
-        <SidebarFooter>
-          <SidebarMenu>
-            {/* Einstellungen entfernt */}
-          </SidebarMenu>
-        </SidebarFooter>
-      </div>
+      <SidebarContent className='p-2'>
+        {renderSidebarContent()}
+      </SidebarContent>
     </Sidebar>
   );
 };

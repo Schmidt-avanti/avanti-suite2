@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +43,7 @@ const CreateTaskPage = () => {
   const [alternativeUseCases, setAlternativeUseCases] = useState<SuggestedUseCase[]>([]);
   const [currentTaskDataForDialog, setCurrentTaskDataForDialog] = useState<Partial<TaskFormValues>>({});
   const [isBlankTask, setIsBlankTask] = useState(false);
+  const [showLowConfidenceMessage, setShowLowConfidenceMessage] = useState(false);
   const [taskSource, setTaskSource] = useState<'manual' | 'inbound' | 'outbound' | 'email' | 'chat'>('inbound');
 
   // Quelle-zu-Text-Mapping für das Dropdown
@@ -50,7 +51,6 @@ const CreateTaskPage = () => {
     { value: 'inbound', label: 'Inbound' },
     { value: 'outbound', label: 'Outbound' },
     { value: 'email', label: 'E-Mail' },
-    { value: 'chat', label: 'Chat' },
     { value: 'manual', label: 'Manuell' },
   ];
 
@@ -66,6 +66,21 @@ const CreateTaskPage = () => {
   const description = form.watch('description');
   const minLength = 10; 
   const descriptionValid = description.length >= minLength;
+
+  // Auto-select first customer when customers are loaded
+  useEffect(() => {
+    console.log('useEffect triggered:', { 
+      customersLength: customers?.length, 
+      customerId, 
+      isLoadingCustomers,
+      firstCustomer: customers?.[0] 
+    });
+    
+    if (customers && customers.length > 0 && (!customerId || customerId === '') && !isLoadingCustomers) {
+      console.log('Auto-selecting first customer:', customers[0]);
+      form.setValue('customerId', customers[0].id);
+    }
+  }, [customers, customerId, form, isLoadingCustomers]);
 
   const initializeTaskTimer = async (taskId: string, userId: string) => {
     try {
@@ -245,11 +260,51 @@ const CreateTaskPage = () => {
 
       if (matchData && (matchData.recommended_use_case || (matchData.alternative_use_cases && matchData.alternative_use_cases.length > 0))) {
         console.log('[onSubmitTrigger] Match found. Recommended:', matchData.recommended_use_case, 'Alternatives:', matchData.alternative_use_cases);
-        setRecommendedUseCase(matchData.recommended_use_case || null);
-        setAlternativeUseCases(matchData.alternative_use_cases || []);
-        setIsSuggestionDialogOpen(true);
-        console.log('[onSubmitTrigger] setIsSuggestionDialogOpen(true) called.');
-        // setIsMatching will be set to false by processTaskCreation or dialog close
+        
+        // Apply new confidence thresholds
+        const recommendedUseCase = matchData.recommended_use_case;
+        const alternativeUseCases = matchData.alternative_use_cases || [];
+        
+        // Filter use cases based on confidence thresholds
+        const highConfidenceUseCases = [];
+        const mediumConfidenceUseCases = [];
+        
+        // Check recommended use case
+        if (recommendedUseCase && recommendedUseCase.confidence >= 90) {
+          highConfidenceUseCases.push(recommendedUseCase);
+        } else if (recommendedUseCase && recommendedUseCase.confidence >= 80) {
+          mediumConfidenceUseCases.push(recommendedUseCase);
+        }
+        
+        // Check alternative use cases
+        alternativeUseCases.forEach(useCase => {
+          if (useCase.confidence >= 90) {
+            highConfidenceUseCases.push(useCase);
+          } else if (useCase.confidence >= 80) {
+            mediumConfidenceUseCases.push(useCase);
+          }
+        });
+        
+        // Decide what to show based on filtered results
+        if (highConfidenceUseCases.length > 0) {
+          // Show high confidence use cases as recommendations
+          setRecommendedUseCase(highConfidenceUseCases[0]);
+          setAlternativeUseCases(highConfidenceUseCases.slice(1).concat(mediumConfidenceUseCases));
+          setIsSuggestionDialogOpen(true);
+          console.log('[onSubmitTrigger] High confidence matches found, showing dialog.');
+        } else if (mediumConfidenceUseCases.length > 0) {
+          // Show medium confidence use cases as alternatives with low confidence message
+          setRecommendedUseCase(mediumConfidenceUseCases[0]);
+          setAlternativeUseCases(mediumConfidenceUseCases.slice(1));
+          setShowLowConfidenceMessage(true);
+          setIsSuggestionDialogOpen(true);
+          console.log('[onSubmitTrigger] Medium confidence matches found, showing dialog with low confidence message.');
+        } else {
+          // No use cases meet the 80% threshold, create task without dialog
+          console.log('[onSubmitTrigger] No use cases meet 80% confidence threshold. Proceeding without dialog.');
+          toast({ title: "Kein passender Use Case", description: "Es wurde kein spezifischer Use Case gefunden. Task wird ohne erstellt." });
+          processTaskCreation(values, null);
+        }
       } else {
         console.log('[onSubmitTrigger] No suitable use case found or data structure mismatch. Proceeding without dialog.');
         toast({ title: "Kein passender Use Case", description: "Es wurde kein spezifischer Use Case gefunden. Task wird ohne erstellt." });
@@ -294,7 +349,7 @@ const CreateTaskPage = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Kunde</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingCustomers}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCustomers}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Kunde auswählen" />
@@ -361,13 +416,14 @@ const CreateTaskPage = () => {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nachricht</FormLabel>
+                      <FormLabel>Aufgabe</FormLabel>
                       <FormControl>
                         <CreateTaskDescription
                           description={field.value}
                           onDescriptionChange={field.onChange}
                           onSubmit={form.handleSubmit(onSubmitTrigger)}
                           isMatching={isMatching}
+                          placeholder="Beschreibung"
                         />
                       </FormControl>
                       <FormMessage />
@@ -407,8 +463,9 @@ const CreateTaskPage = () => {
         <UseCaseSuggestionDialog
         isOpen={isSuggestionDialogOpen}
         onClose={() => {
-setIsSuggestionDialogOpen(false);
+          setIsSuggestionDialogOpen(false);
           setIsMatching(false); // Allow user to submit again or change details if dialog is cancelled
+          setShowLowConfidenceMessage(false); // Reset low confidence message state
           // currentTaskDataForDialog remains, so if they resubmit without changes, it's the same flow
         }}
         recommendedUseCase={recommendedUseCase}
@@ -416,6 +473,7 @@ setIsSuggestionDialogOpen(false);
         onSelectUseCase={handleUseCaseSelected}
         onRejectAll={handleRejectAllUseCases}
         taskDescription={currentTaskDataForDialog?.description || form.getValues("description")}
+        showLowConfidenceMessage={showLowConfidenceMessage}
       />
       )}
     </FormProvider>

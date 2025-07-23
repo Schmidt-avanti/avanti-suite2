@@ -66,14 +66,15 @@ const createUserFromSessionAndProfile = (session: Session, profileData: any): Us
   const role = (profileData.role || "customer") as UserRole;
   
   // Ensure role is one of our allowed types
-  if (!['admin', 'agent', 'customer'].includes(role)) {
+  const validRoles = ['admin', 'agent', 'customer', 'supervisor', 'accounting'];
+  if (!validRoles.includes(role)) {
     console.warn(`Invalid role found in profile: ${role}, defaulting to 'customer'`);
   }
   
   const userObj: any = {
     id: session.user.id,
     email: session.user.email ?? "",
-    role: (['admin', 'agent', 'customer'].includes(role) ? role : 'customer') as UserRole,
+    role: (validRoles.includes(role) ? role : 'customer') as UserRole,
     createdAt: session.user.created_at,
     firstName: profileData["Full Name"] || undefined,
     lastName: undefined,

@@ -19,7 +19,6 @@ import {
 import { Edit, Plus, Trash, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { UseCaseEditDialog } from "@/components/use-cases/UseCaseEditDialog";
-import { UpdateEmbeddingsButton } from "@/components/use-cases/UpdateEmbeddingsButton";
 import CreateKnowledgeArticleButton from "@/components/knowledge-articles/CreateKnowledgeArticleButton";
 import { 
   AlertDialog,
@@ -202,32 +201,7 @@ export default function UseCases() {
     },
   });
 
-  // Mutation zum Erstellen von Embeddings
-  const createEmbeddingMutation = useMutation({
-    mutationFn: async (useCaseId: string) => {
-      // API-Aufruf zum Erstellen des Embeddings mit der korrekten Edge Function
-      const { data, error } = await supabase.functions.invoke('generate-embeddings', {
-        body: JSON.stringify({ useCaseIds: [useCaseId] })
-      });
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["use_cases"] });
-      toast.success("Embedding erfolgreich erstellt", {
-        description: data?.processed?.length 
-          ? `Use Case erfolgreich aktualisiert` 
-          : "Keine Aktualisierung erforderlich"
-      });
-    },
-    onError: (error) => {
-      console.error("Error creating embedding:", error);
-      toast.error("Fehler beim Erstellen des Embeddings", {
-        description: error instanceof Error ? error.message : 'Unbekannter Fehler'
-      });
-    },
-  });
+
 
   // Sortierungsfunktion
   const requestSort = (key: string) => {
@@ -324,7 +298,6 @@ export default function UseCases() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Use Cases</h1>
         <div className="flex items-center gap-2">
-          <UpdateEmbeddingsButton />
           <Button asChild>
             <Link to="/admin/use-cases/create">
               <Plus className="mr-2 h-4 w-4" />
@@ -388,27 +361,19 @@ export default function UseCases() {
                 <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
               )}
             </TableHead>
-            <TableHead 
-              className="cursor-pointer hover:bg-muted/50"
-              onClick={() => requestSort('embedding')}
-            >
-              Embedding vorhanden {sortConfig.key === 'embedding' && (
-                <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
-              )}
-            </TableHead>
             <TableHead className="text-right">Aktionen</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center">
+              <TableCell colSpan={4} className="text-center">
                 Loading...
               </TableCell>
             </TableRow>
           ) : filteredUseCases.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center">
+              <TableCell colSpan={4} className="text-center">
                 {searchQuery ? `Keine Use Cases für "${searchQuery}" gefunden.` : 'Keine Use Cases gefunden.'}
               </TableCell>
             </TableRow>
@@ -422,13 +387,6 @@ export default function UseCases() {
                     <span className="text-green-600 font-medium">Vorhanden</span>
                   ) : (
                     <CreateKnowledgeArticleButton useCaseId={useCase.id} />
-                  )}
-                </TableCell>
-                <TableCell>
-                  {useCase.embedding ? (
-                    <span className="text-green-600 font-medium">Ja</span>
-                  ) : (
-                    <span className="text-red-600 font-medium">Nein</span>
                   )}
                 </TableCell>
                 <TableCell className="text-right">
@@ -451,17 +409,6 @@ export default function UseCases() {
                     <Trash className="mr-2 h-4 w-4" />
                     Löschen
                   </Button>
-                  {!useCase.embedding && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => useCase.id && createEmbeddingMutation.mutate(useCase.id)}
-                      disabled={createEmbeddingMutation.isPending}
-                    >
-                      <AlertCircle className="mr-2 h-4 w-4" />
-                      {createEmbeddingMutation.isPending ? 'Wird erstellt...' : 'Embedding erstellen'}
-                    </Button>
-                  )}
                 </TableCell>
               </TableRow>
             ))

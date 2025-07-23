@@ -72,7 +72,7 @@ export function NotificationButton() {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-0" align={isMobile ? "end" : "center"}>
+        <PopoverContent className="w-96 p-0" align="end">
           <NotificationList 
             notifications={notifications} 
             markAsRead={markAsRead}

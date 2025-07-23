@@ -36,6 +36,7 @@ import { usePromptTemplates } from "@/hooks/usePromptTemplates";
 import type { UseCaseType } from "@/types/use-case";
 import type { Customer, Message } from "@/types";
 import { ProcessMap, ProcessStep } from "@/types/process";
+import UseCaseProcessEditor from "@/components/use-cases/UseCaseProcessEditor";
 
 
 
@@ -101,7 +102,7 @@ const extractUseCaseJson = (content: string): UseCase | null => {
 };
 
 const CreateUseCasePage = () => {
-  const [step, setStep] = useState<Step>(Step.FORM);
+  const [step, setStep] = useState<0 | 1>(0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [type, setType] = useState<UseCaseType | "">("");
   const [topicInput, setTopicInput] = useState<string>("");
@@ -299,100 +300,158 @@ const CreateUseCasePage = () => {
   };
 
   const handleStartChat = () => {
-    if (selectedCustomerId && type && topicInput.trim() && templates.find((p) => p.type === type)) {
-      // Wechsle zur Chat-Ansicht und starte die Use-Case-Generierung
-      setStep(Step.CHAT);
-      
-      // Wir senden den User-Input (topicInput) als tatsächliche Benutzeranfrage
-      // und nicht mehr das Template als User-Input
-      const userMessage: Message = { role: "user", content: topicInput };
-      setMessages([userMessage]);
-      
-      setLoadingAI(true);
-      setError(null);
-      setAiResponseJson(null);
-      setRawResponse(null);
-      setResponseId(null);
-      
-      // API-Anfrage mit korrektem System-Prompt und User-Input
-      if (promptTemplate) {
-        generateUseCase(topicInput, promptTemplate);
-      }
-    } else {
+    // Debug logging
+    console.log("handleStartChat validation:", {
+      selectedCustomerId,
+      type,
+      topicInput: topicInput.trim(),
+      templatesLoaded: !isLoadingPrompts,
+      templatesCount: templates.length,
+      availableTemplateTypes: templates.map(t => t.type),
+      foundTemplate: templates.find((p) => p.type === type)
+    });
+
+    // Check basic required fields first
+    if (!selectedCustomerId) {
       toast.error("Fehlende Informationen", {
-        description: "Bitte wählen Sie Kunde und Typ aus und geben Sie ein Thema ein. Stellen Sie sicher, dass eine Prompt-Vorlage existiert."
+        description: "Bitte wählen Sie einen Kunden aus."
       });
+      return;
+    }
+
+    if (!type) {
+      toast.error("Fehlende Informationen", {
+        description: "Bitte wählen Sie einen Use Case Typ aus."
+      });
+      return;
+    }
+
+    if (!topicInput.trim()) {
+      toast.error("Fehlende Informationen", {
+        description: "Bitte geben Sie ein Use Case Thema ein."
+      });
+      return;
+    }
+
+    // Check if templates are still loading
+    if (isLoadingPrompts) {
+      toast.error("Bitte warten", {
+        description: "Prompt-Vorlagen werden noch geladen..."
+      });
+      return;
+    }
+
+    // Check if template exists for the selected type
+    const templateExists = templates.find((p) => p.type === type);
+    if (!templateExists) {
+      toast.error("Fehlende Prompt-Vorlage", {
+        description: `Keine Prompt-Vorlage für den Typ "${type}" gefunden. Verfügbare Typen: ${templates.map(t => t.type).join(", ")}`
+      });
+      return;
+    }
+
+    // All validations passed, proceed with use case generation
+    setStep(1);
+    
+    // Wir senden den User-Input (topicInput) als tatsächliche Benutzeranfrage
+    // und nicht mehr das Template als User-Input
+    const userMessage: Message = { role: "user", content: topicInput };
+    setMessages([userMessage]);
+    
+    setLoadingAI(true);
+    setError(null);
+    setAiResponseJson(null);
+    setRawResponse(null);
+    setResponseId(null);
+    
+    // API-Anfrage mit korrektem System-Prompt und User-Input
+    if (promptTemplate) {
+      generateUseCase(topicInput, promptTemplate);
     }
   };
 
-  if (step === Step.FORM) {
+  if (step === 0) {
     return (
-      <div className="p-4 md:p-6">
-        <h1 className="text-2xl font-bold mb-4">Neuen Use Case erstellen</h1>
-        <div className="space-y-4 max-w-2xl mx-auto">
-          <div>
-            <Label htmlFor="customer">Kunde</Label>
-            <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
-              <SelectTrigger><SelectValue placeholder="Kunde auswählen..." /></SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name} {c.industry ? `(${c.industry})` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {selectedCustomer && (
+      <div className="max-w-3xl mx-auto mt-8">
+        <div>
+          <h2 className="text-xl font-bold mb-4">Basisdaten</h2>
+          <div className="space-y-4 max-w-2xl mx-auto">
             <div>
-              <Label>Branche</Label>
-              <p className="text-sm p-2 bg-gray-100 rounded-md">{selectedCustomer.industry || "Keine Branche zugewiesen"}</p>
+              <Label htmlFor="customer">Kunde</Label>
+              <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
+                <SelectTrigger><SelectValue placeholder="Kunde auswählen..." /></SelectTrigger>
+                <SelectContent>
+                  {customers.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} {c.industry ? `(${c.industry})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          )}
-          <div>
-            <Label htmlFor="type">Use Case Typ</Label>
-            <Select onValueChange={(v) => setType(v as UseCaseType)} value={type}>
-              <SelectTrigger><SelectValue placeholder="Typ auswählen..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="forwarding_use_case">Weiterleitung</SelectItem>
-                <SelectItem value="direct_use_case">Direktbearbeitung</SelectItem>
-                <SelectItem value="knowledge_request">Wissensanfrage</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {selectedCustomerId && type && (
-            <div className="space-y-2">
-              <Label htmlFor="topic">Use Case Thema</Label>
-              <div className="text-sm text-muted-foreground mb-2">
-                Beschreiben Sie hier detailliert, worum es im Use Case gehen soll. Je mehr Details Sie angeben, 
-                desto besser kann der Use Case generiert werden.
+            <div>
+              <Label htmlFor="type">Use Case Typ</Label>
+              <Select onValueChange={(v) => setType(v as UseCaseType)} value={type}>
+                <SelectTrigger><SelectValue placeholder="Typ auswählen..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="forwarding_use_case">Weiterleitung</SelectItem>
+                  <SelectItem value="direct_use_case">Direktbearbeitung</SelectItem>
+                  <SelectItem value="knowledge_request">Wissensanfrage</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {selectedCustomerId && type && (
+              <div className="space-y-2">
+                <Label htmlFor="topic">Use Case Thema</Label>
+                <div className="text-sm text-muted-foreground mb-2">
+                  Beschreiben Sie hier detailliert, worum es im Use Case gehen soll. Je mehr Details Sie angeben, 
+                  desto besser kann der Use Case generiert werden.
+                </div>
+                <Textarea
+                  id="topic"
+                  placeholder="z.B. Automatische Erstellung von Monatsberichten für Kunden mit Zusammenfassung der erledigten Aufgaben..."
+                  value={topicInput}
+                  onChange={(e) => setTopicInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Wenn Enter gedrückt wird (ohne Shift) und der Button nicht deaktiviert ist
+                    if (e.key === 'Enter' && !e.shiftKey && 
+                        selectedCustomerId && type && topicInput.trim() && !isLoadingCustomers && !isLoadingPrompts) {
+                      e.preventDefault(); // Verhindert den Zeilenumbruch
+                      handleStartChat();
+                    }
+                  }}
+                  rows={5}
+                  className="resize-none"
+                />
               </div>
-              <Textarea
-                id="topic"
-                placeholder="z.B. Automatische Erstellung von Monatsberichten für Kunden mit Zusammenfassung der erledigten Aufgaben..."
-                value={topicInput}
-                onChange={(e) => setTopicInput(e.target.value)}
-                onKeyDown={(e) => {
-                  // Wenn Enter gedrückt wird (ohne Shift) und der Button nicht deaktiviert ist
-                  if (e.key === 'Enter' && !e.shiftKey && 
-                      selectedCustomerId && type && topicInput.trim() && !isLoadingCustomers && !isLoadingPrompts) {
-                    e.preventDefault(); // Verhindert den Zeilenumbruch
-                    handleStartChat();
-                  }
-                }}
-                rows={5}
-                className="resize-none"
-              />
-            </div>
-          )}
-          
-          <Button 
-            onClick={handleStartChat} 
-            disabled={!selectedCustomerId || !type || !topicInput.trim() || isLoadingCustomers || isLoadingPrompts}
-          >
-            {loadingAI || isLoadingCustomers || isLoadingPrompts ? "Lade..." : "Use Case generieren"}
+            )}
+            
+            <Button 
+              onClick={handleStartChat} 
+              disabled={!selectedCustomerId || !type || !topicInput.trim() || isLoadingCustomers || isLoadingPrompts}
+            >
+              {loadingAI || isLoadingCustomers || isLoadingPrompts ? "Lade..." : "Use Case generieren"}
+            </Button>
+          </div>
+          <Button className="mt-6" onClick={() => setStep(1)}>
+            Weiter zum Prozess-Editor
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 1) {
+    return (
+      <div className="max-w-3xl mx-auto mt-8">
+        <h2 className="text-xl font-bold mb-4">Prozess/Schritte</h2>
+        <UseCaseProcessEditor />
+        <div className="flex gap-4 mt-6">
+          <Button variant="secondary" onClick={() => setStep(0)}>
+            Zurück
+          </Button>
+          <Button disabled>Speichern (folgt)</Button>
         </div>
       </div>
     );
@@ -410,7 +469,7 @@ const CreateUseCasePage = () => {
         rawResponse={rawResponse}
         aiResponseJson={aiResponseJson}
         onSave={handleSave}
-        onBack={() => setStep(Step.FORM)}
+        onBack={() => setStep(0)}
         handleKeyDown={handleKeyDown}
         textareaRef={textareaRef}
       />

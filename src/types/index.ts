@@ -1,5 +1,5 @@
 // Update UserRole type to match database constraint
-export type UserRole = 'admin' | 'agent' | 'customer' | 'supervisor';
+export type UserRole = 'admin' | 'agent' | 'customer' | 'supervisor' | 'accounting';
 
 // Define TaskActivityAction type that was missing
 export type TaskActivityAction = 'open' | 'close' | 'status_change' | 'assign' | 'comment';

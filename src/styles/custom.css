@@ -9,3 +9,38 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;              /* Chrome, Safari, Opera */
 }
+
+/* Entfernt den blauen Outline-Rahmen bei Bildern im Editor und ersetzt ihn durch einen dezenten Shadow */
+.prose img:focus, .prose img:active {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #2563eb !important;
+  border-radius: 0.5rem;
+}
+
+/* Optional: Entfernt auch bei allen anderen Bildern im Editor den Outline */
+.tiptap img:focus, .tiptap img:active {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #2563eb !important;
+  border-radius: 0.5rem;
+}
+
+/* Entfernt den blauen Rahmen beim Fokus auf dem Editor */
+.ProseMirror:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #2563eb22 !important;
+  border: none !important;
+}
+
+/* Kompakte Listen für Editor: Kein Abstand zwischen Listeneinträgen */
+.prose ul, .prose ol {
+  margin-top: 0.25em !important;
+  margin-bottom: 0.25em !important;
+  padding-left: 1.2em !important;
+}
+.prose li {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1.5 !important;
+}

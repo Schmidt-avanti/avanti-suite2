@@ -96,30 +96,28 @@ export const UseCaseSuggestionDialog: React.FC<UseCaseSuggestionDialogProps> = (
           {recommendedUseCase && (
             <Card className={hasHighConfidenceRecommendation ? "border-primary border-2" : "border-dashed"}>
               <CardHeader>
-                <div className="flex justify-between items-start">
+                <div className="flex items-center justify-between">
                   <CardTitle>{recommendedUseCase.title}</CardTitle>
-                  <Badge variant={(hasHighConfidenceRecommendation && !showLowConfidenceMessage) ? "default" : "secondary"}>
-                    {(hasHighConfidenceRecommendation && !showLowConfidenceMessage) ? "Empfehlung" : (showLowConfidenceMessage ? `Vorschlag (${recommendedUseCase.confidence ?? 'N/A'}%)` : `Vorschlag (${recommendedUseCase.confidence ?? 'N/A'}%)`)}
-                  </Badge>
+                  <div className="flex gap-2">
+                    <Badge variant={(hasHighConfidenceRecommendation && !showLowConfidenceMessage) ? "default" : "secondary"}>
+                      {(hasHighConfidenceRecommendation && !showLowConfidenceMessage) ? "Empfehlung" : "Vorschlag"}
+                    </Badge>
+                    {recommendedUseCase.confidence !== null && recommendedUseCase.confidence !== undefined && (
+                      <Badge 
+                        variant="outline"
+                        className={`${
+                          recommendedUseCase.confidence > 90 
+                            ? 'bg-green-100 text-green-800 border-green-300' 
+                            : 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                        }`}
+                      >
+                        {recommendedUseCase.confidence}%
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                {recommendedUseCase.type && <CardDescription>Typ: {recommendedUseCase.type}</CardDescription>}
               </CardHeader>
               <CardContent>
-                {recommendedUseCase.reasoning && (
-                  <p className="text-sm text-muted-foreground mb-2">
-                    <strong>Begründung:</strong> {recommendedUseCase.reasoning}
-                  </p>
-                )}
-                {recommendedUseCase.confidence !== null && recommendedUseCase.confidence !== undefined && (
-                  <p className="text-sm text-muted-foreground mb-2">
-                    <strong>Konfidenz:</strong> {recommendedUseCase.confidence}%
-                  </p>
-                )}
-                {recommendedUseCase.information_needed && (
-                  <p className="text-sm">
-                    <strong>Benötigte Infos:</strong> {recommendedUseCase.information_needed}
-                  </p>
-                )}
                 <Button onClick={() => onSelectUseCase(recommendedUseCase.id)} className="w-full mt-4" variant={(hasHighConfidenceRecommendation && !showLowConfidenceMessage) ? "default" : "outline"}>
                   Diesen Use Case auswählen
                 </Button>
@@ -137,15 +135,23 @@ export const UseCaseSuggestionDialog: React.FC<UseCaseSuggestionDialogProps> = (
               {alternativeUseCases.map((uc) => (
                 <Card key={uc.id} className={`mb-3 ${!hasHighConfidenceRecommendation ? 'border-dashed' : ''}`}>
                   <CardHeader>
-                    <CardTitle>{uc.title}</CardTitle>
-                    {uc.type && <CardDescription>Typ: {uc.type}</CardDescription>}
+                    <div className="flex items-center justify-between">
+                      <CardTitle>{uc.title}</CardTitle>
+                      {uc.confidence !== null && uc.confidence !== undefined && (
+                        <Badge 
+                          variant="outline"
+                          className={`${
+                            uc.confidence > 90 
+                              ? 'bg-green-100 text-green-800 border-green-300' 
+                              : 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                          }`}
+                        >
+                          {uc.confidence}%
+                        </Badge>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    {uc.information_needed && (
-                      <p className="text-sm">
-                        <strong>Benötigte Infos:</strong> {uc.information_needed}
-                      </p>
-                    )}
                     <Button 
                       onClick={() => onSelectUseCase(uc.id)} 
                       variant="outline" 

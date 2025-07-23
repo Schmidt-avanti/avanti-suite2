@@ -70,21 +70,41 @@ const Knowledge = () => {
     },
   });
 
+  // Pre-fill customer dropdown with first available customer for admins/agents
+  React.useEffect(() => {
+    if (customers && customers.length > 0 && selectedCustomer === 'all' && user?.role !== 'customer') {
+      // For admins: select first customer from all customers
+      // For agents: select first customer from assigned customers
+      setSelectedCustomer(customers[0].id);
+    }
+  }, [customers, selectedCustomer, user?.role]);
+
   const { data: articles } = useQuery({
     queryKey: ['knowledge-articles', selectedCustomer, user?.role, user?.customer_id],
     queryFn: async () => {
+      console.log('Debug - Articles Query Parameters:', {
+        selectedCustomer,
+        userRole: user?.role,
+        userCustomerId: user?.customer_id
+      });
+      
       let query = supabase
         .from('knowledge_articles')
-        .select('id, title, content, created_at')
+        .select('id, title, content, created_at, customer_id, is_active')
         .eq('is_active', true);
-
+      
       if (user?.role === 'customer') {
         query = query.eq('customer_id', user.customer_id);
+        console.log('Debug - Articles: Filtering by user customer_id:', user.customer_id);
       } else if (selectedCustomer !== 'all') {
         query = query.eq('customer_id', selectedCustomer);
+        console.log('Debug - Articles: Filtering by selected customer:', selectedCustomer);
+      } else {
+        console.log('Debug - Articles: No customer filter applied (showing all)');
       }
-
+      
       const { data, error } = await query.order('created_at', { ascending: false });
+      console.log('Debug - Articles Query Result:', { data, error, count: data?.length });
       if (error) throw error;
       return data;
     },
@@ -93,29 +113,59 @@ const Knowledge = () => {
   const { data: cases } = useQuery({
     queryKey: ['use-cases', selectedCustomer, user?.role, user?.customer_id],
     queryFn: async () => {
+      console.log('🔍 DEBUG - Use Cases Query Starting:', {
+        selectedCustomer,
+        userRole: user?.role,
+        userCustomerId: user?.customer_id,
+        userId: user?.id
+      });
+      
       let query = supabase
         .from('use_cases')
-        .select('id, title, information_needed, created_at')
+        .select('id, title, information_needed, created_at, customer_id, is_active')
         .eq('is_active', true);
-
+      
       if (user?.role === 'customer') {
+        console.log('🔍 DEBUG - Filtering for customer role by customer_id:', user.customer_id);
         query = query.eq('customer_id', user.customer_id);
       } else if (selectedCustomer !== 'all') {
+        console.log('🔍 DEBUG - Filtering by selectedCustomer:', selectedCustomer);
         query = query.eq('customer_id', selectedCustomer);
+      } else {
+        console.log('🔍 DEBUG - No customer filter applied (showing all)');
       }
-
+      
       const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) throw error;
+      console.log('🔍 DEBUG - Use Cases Query Result:', { 
+        data: data?.length ? `${data.length} items` : 'empty array', 
+        error, 
+        firstItem: data?.[0],
+        count: data?.length 
+      });
+      
+      if (error) {
+        console.error('🔍 DEBUG - Use Cases Query Error:', error);
+        throw error;
+      }
       return data;
     },
   });
 
   const filteredItems = React.useMemo(() => {
     const items = viewType === 'articles' ? articles : cases;
+    console.log('Debug - filteredItems calculation:', {
+      viewType,
+      articles: articles?.length || 0,
+      cases: cases?.length || 0,
+      items: items?.length || 0,
+      searchQuery
+    });
     if (!items) return [];
-    return items.filter(item =>
+    const filtered = items.filter(item =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
+    console.log('Debug - filtered items:', filtered.length);
+    return filtered;
   }, [articles, cases, viewType, searchQuery]);
 
   return (

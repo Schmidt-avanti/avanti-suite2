@@ -47,19 +47,62 @@ export function EmailToCustomerDialog({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when dialog opens/closes
+  // Reset form when dialog opens/closes and generate email content
   useEffect(() => {
     if (open) {
       setRecipient(recipientEmail || "");
-      // Automatisch Betreff mit lesbarer Aufgabennummer vorausfüllen
-      setSubject(`Rückfrage zu Aufgabe ${readableId || ''}`);
-      setBody("");
+      setSubject(""); // Will be set by generateEmailContent
+      setBody(""); // Will be set by generateEmailContent
       setIncludeHistory(false);
       setAttachments([]);
       setError(null);
       setUploadProgress(0);
+      
+      // Generate email content automatically
+      generateEmailContent();
     }
-  }, [open, recipientEmail, readableId]);
+  }, [open, recipientEmail, readableId, taskId]);
+
+  const generateEmailContent = async () => {
+    try {
+      setIsSending(true); // Show loading state while generating
+      
+      const { data, error } = await supabase.functions.invoke(
+        'generate-customer-email',
+        { body: { taskId } }
+      );
+      
+      if (error) {
+        console.error('Error generating email content:', error);
+        // Fallback to manual subject if generation fails
+        setSubject(`Rückfrage zu Aufgabe ${readableId || ''}`);
+        setBody("Geben Sie hier Ihre Nachricht ein...");
+        toast({
+          variant: "destructive",
+          title: "E-Mail-Generierung fehlgeschlagen",
+          description: "Die automatische E-Mail-Generierung ist fehlgeschlagen. Bitte verfassen Sie die E-Mail manuell."
+        });
+      } else if (data) {
+        setSubject(data.subject || `Rückfrage zu Aufgabe ${readableId || ''}`);
+        setBody(data.body || "Geben Sie hier Ihre Nachricht ein...");
+        if (data.recipient && !recipientEmail) {
+          setRecipient(data.recipient);
+        }
+      }
+    } catch (error) {
+      console.error('Error in generateEmailContent:', error);
+      // Fallback to manual content
+      setSubject(`Rückfrage zu Aufgabe ${readableId || ''}`);
+      setBody("Geben Sie hier Ihre Nachricht ein...");
+      toast({
+        variant: "destructive",
+        title: "E-Mail-Generierung fehlgeschlagen",
+        description: "Die automatische E-Mail-Generierung ist fehlgeschlagen. Bitte verfassen Sie die E-Mail manuell."
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const recipientMinLength = 5; // Basic validation for email
   const subjectMinLength = 3;

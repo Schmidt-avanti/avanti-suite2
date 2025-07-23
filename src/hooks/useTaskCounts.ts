@@ -50,7 +50,8 @@ export const useTaskCounts = () => {
       };
 
       // For role-based filtering, get the customer IDs first
-      let customerFilter: Record<string, unknown> = {};
+      let customerIds: string[] = [];
+      let shouldFilterByCustomer = false;
       
       if (user.role === 'agent') {
         const { data: assignedCustomers } = await supabase
@@ -59,9 +60,8 @@ export const useTaskCounts = () => {
           .eq('user_id', user.id);
 
         if (assignedCustomers && assignedCustomers.length > 0) {
-          const customerIds = assignedCustomers.map(ac => ac.customer_id);
-          // Fix: Use lowercase customer_id to match the database column name
-          customerFilter = { "customer_id": { in: customerIds.join(',') } };
+          customerIds = assignedCustomers.map(ac => ac.customer_id);
+          shouldFilterByCustomer = true;
         } else {
           // No assigned customers, return empty counts
           return {
@@ -80,8 +80,8 @@ export const useTaskCounts = () => {
           .maybeSingle();
 
         if (userAssignment) {
-          // Fix: Use lowercase customer_id to match the database column name
-          customerFilter = { "customer_id": userAssignment.customer_id };
+          customerIds = [userAssignment.customer_id];
+          shouldFilterByCustomer = true;
         } else {
           // No customer assignment, return empty counts
           return {
@@ -94,6 +94,23 @@ export const useTaskCounts = () => {
         }
       }
 
+      // Helper function to build query with proper customer filtering
+      const buildQuery = (status?: string) => {
+        let query = supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true });
+        
+        if (status) {
+          query = query.eq('status', status);
+        }
+        
+        if (shouldFilterByCustomer && customerIds.length > 0) {
+          query = query.in('customer_id', customerIds);
+        }
+        
+        return query;
+      };
+
       // Run count queries in parallel for better performance
       const [
         { count: newCount, error: newError },
@@ -103,38 +120,19 @@ export const useTaskCounts = () => {
         { count: totalCount, error: totalError }
       ] = await Promise.all([
         // New tasks
-        supabase
-          .from('tasks')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'new')
-          .match(customerFilter),
+        buildQuery('new'),
         
         // In progress tasks
-        supabase
-          .from('tasks')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'in_progress')
-          .match(customerFilter),
+        buildQuery('in_progress'),
         
         // Follow-up tasks
-        supabase
-          .from('tasks')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'followup')
-          .match(customerFilter),
+        buildQuery('followup'),
         
         // Completed tasks
-        supabase
-          .from('tasks')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'completed')
-          .match(customerFilter),
+        buildQuery('completed'),
         
         // Total tasks
-        supabase
-          .from('tasks')
-          .select('*', { count: 'exact', head: true })
-          .match(customerFilter)
+        buildQuery()
       ]);
 
       // Log any errors
