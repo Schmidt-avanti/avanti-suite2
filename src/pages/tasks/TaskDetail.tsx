@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTaskSessionTracker } from '@/contexts/TaskSessionContext';
+import { useTaskTimer } from '@/hooks/useTaskTimer';
 import { useAuth } from '@/contexts/AuthContext';
 import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
 import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
@@ -17,7 +17,6 @@ import { EmailReplyPanel } from '@/components/tasks/EmailReplyPanel';
 import { EmailThreadHistory } from '@/components/tasks/EmailThreadHistory';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { useTaskMessages } from '@/hooks/useTaskMessages';
-import { useTaskChatMessages } from '@/hooks/useTaskChatMessages';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
@@ -68,11 +67,16 @@ const TaskDetail = () => {
     handleAssignTask
   } = useTaskDetail(id, user);
 
-  // Use the new task session tracker to display accumulated time across all users
-  const taskId = task?.id || null;
-  const isTaskActive = !!(task?.id && task.status !== 'completed' && task.status !== 'cancelled' && isActive);
-  
-  const { formattedTime } = useTaskSessionTracker(taskId, isTaskActive);
+  // Pass task status to timer hook if available
+  const timerTaskId = task?.id || '';
+  const timerStatus = task?.status;
+  const timerIsActive = !!(task?.id && task.status !== 'completed' && task.status !== 'cancelled');
+
+  const { formattedTime } = useTaskTimer({
+    taskId: timerTaskId,
+    isActive: timerIsActive,
+    status: timerStatus,
+  });
 
   // Check URL parameters for the 'new' flag and reset status update flag on new task ID
   useEffect(() => {
@@ -82,22 +86,7 @@ const TaskDetail = () => {
   }, [id]);
 
   // Fetch task messages for chat history
-  const { messages, selectedOptions, setSelectedOptions } = useTaskMessages(id || null);
-  
-  // Handle functions declared later
-  const handleOpenAvaSummaryDialogFromChat = (data: { summaryDraft: string; textToAgent: string; options: string[] }) => {
-    console.log("Opening AVA Summary with provided data from chat.");
-    setAvaSummaryInitialData(data);
-    setActiveDialog('avaSummary');
-  };
-  
-  // Get chat message functions
-  const { sendMessage } = useTaskChatMessages({
-    taskId: id || undefined,
-    useCaseId: task?.matched_use_case_id,
-    onMessageSent: () => {},
-    openAvaSummaryDialog: handleOpenAvaSummaryDialogFromChat
-  });
+  const { messages } = useTaskMessages(id || null);
 
   // Fetch email threads for this task
   const { threads: emailThreads } = useEmailThreads(id || null);
@@ -173,7 +162,11 @@ const TaskDetail = () => {
     }
   };
 
-
+  const handleOpenAvaSummaryDialogFromChat = (data: { summaryDraft: string; textToAgent: string; options: string[] }) => {
+    console.log("Opening AVA Summary with provided data from chat.");
+    setAvaSummaryInitialData(data);
+    setActiveDialog('avaSummary');
+  };
 
   const handleOpenAvaSummaryDialogOnDemand = async () => {
     if (!id) {
@@ -256,7 +249,7 @@ const TaskDetail = () => {
         <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-0">
           <TaskDetailHeader
             task={task}
-            formattedTimeString={formattedTime}
+            formattedTime={formattedTime}
             isUnassigned={isUnassigned}
             user={user}
             canAssignOrForward={canAssignOrForward}
@@ -311,7 +304,11 @@ const TaskDetail = () => {
                     openAvaSummaryDialog={handleOpenAvaSummaryDialogFromChat}
                     isReadOnly={isCompleted}
                     isBlankTask={task.is_blank_task}
-                  />
+                  >
+                    <TaskChatMessage
+                      onSendMessage={(text) => sendMessage(text, null, new Set())}
+                    />
+                  </TaskChat>
                 </CardContent>
               </Card>
             </div>

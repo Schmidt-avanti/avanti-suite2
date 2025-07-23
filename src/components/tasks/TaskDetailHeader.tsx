@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   ArrowLeft, Clock, CheckCircle, Calendar, Mail, 
   UserPlus, Forward, X, RefreshCw, AlertTriangle, Loader2
@@ -12,7 +11,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface TaskDetailHeaderProps {
   task: DetailedTask;
-  formattedTimeString?: string;
+  formattedTime: string;
   isUnassigned: boolean;
   user: any;
   canAssignOrForward: boolean;
@@ -33,7 +32,7 @@ interface TaskDetailHeaderProps {
 
 export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   task,
-  formattedTimeString,
+  formattedTime,
   isUnassigned,
   user,
   canAssignOrForward,
@@ -70,17 +69,10 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
             Zurück zur Übersicht
           </Button>
           
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <div className="flex items-center text-gray-500 ml-4 cursor-help">
-                <Clock className="h-4 w-4 mr-1" />
-                <span className="text-sm font-medium">{formattedTimeString || 'Zeit: 00:00'}</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-sm">Gesamtzeit aller Benutzer für diese Aufgabe</p>
-            </TooltipContent>
-          </Tooltip>
+          <div className="flex items-center text-gray-500 ml-4">
+            <Clock className="h-4 w-4 mr-1" />
+            <span className="text-sm font-medium">{formattedTime}</span>
+          </div>
           
           <TaskStatusBadge status={detailedTask.status as TaskStatus} className="ml-4" />
           {isCompleted && (
