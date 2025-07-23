@@ -97,11 +97,24 @@ export const AppSidebar = () => {
         </div>
         
         {/* Main Navigation */}
-        <NavItem
-          href={dashboardPath}
-          label="Dashboard"
-          icon={<LayoutDashboard size={18} />}
-        />
+        {/* Customer Dashboard as first item for customers */}
+        {user?.role === 'customer' && (
+          <NavItem
+            href="/admin/customer-dashboard"
+            label="Kunden Dashboard"
+            icon={<UserCheck size={18} />}
+          />
+        )}
+        
+        {/* Dashboard - Only visible to admin and agent roles */}
+        {(user?.role === 'admin' || user?.role === 'agent') && (
+          <NavItem
+            href={dashboardPath}
+            label="Dashboard"
+            icon={<LayoutDashboard size={18} />}
+          />
+        )}
+        
         <NavItem
           href="/knowledge"
           label="Wissen"
@@ -124,8 +137,8 @@ export const AppSidebar = () => {
           icon={<ClipboardCheck size={18} />}
         />
 
-        {/* Customer Dashboard Link - Visible only to admin and customer roles */}
-        {(user?.role === 'admin' || user?.role === 'customer') && (
+        {/* Customer Dashboard Link - Visible only to admin (not customers, as they have it at the top) */}
+        {user?.role === 'admin' && (
           <NavItem
             href="/admin/customer-dashboard"
             label="Kunden Dashboard"

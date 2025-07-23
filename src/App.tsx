@@ -11,6 +11,7 @@ import { ThemeProvider } from "@/components/ui/theme";
 // Layout
 import AppLayout from "@/components/layout/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import CustomerRedirect from "@/components/CustomerRedirect";
 
 // Auth Pages
 import Login from "@/pages/auth/Login";
@@ -100,6 +101,12 @@ function App() {
 
                   {/* Protected routes */}
                   <Route element={<AppLayout />}>
+                    {/* Role-based dashboard redirect */}
+                    <Route
+                      path="/dashboard-redirect"
+                      element={<CustomerRedirect />}
+                    />
+                    
                     {/* Knowledge route for all roles (with sidebar) */}
                     <Route
                       path="/knowledge"
@@ -112,7 +119,7 @@ function App() {
                     <Route
                       path="/dashboard"
                       element={
-                        <ProtectedRoute>
+                        <ProtectedRoute allowedRoles={['admin', 'agent']}>
                           <Dashboard />
                         </ProtectedRoute>
                       }

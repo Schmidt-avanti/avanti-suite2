@@ -48,8 +48,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (!allowedRoles.includes(user.role)) {
     console.log(`User role '${user.role}' not authorized for this route. Allowed roles:`, allowedRoles);
     
-    // Rolle stimmt nicht für Bereich! → immer Weiterleitung nach allgemeinem Dashboard
-    return <Navigate to="/dashboard" replace />;
+    // Redirect to role-based dashboard redirect which will handle the appropriate routing
+    return <Navigate to="/dashboard-redirect" replace />;
   }
 
   return <>{children}</>;
