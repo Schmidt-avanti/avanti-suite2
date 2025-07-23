@@ -78,8 +78,8 @@ export function AvaTaskSummaryDialog({
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
-  const [emailTo, setEmailTo] = useState('hausmeister@ffo-verwaltung.de'); // Default to Frankfurt contact
-  const [emailCc, setEmailCc] = useState('info@hv-nuernberg.de'); // Default CC to Mr. Nürnberg
+  const [emailTo, setEmailTo] = useState(''); // Empty by default
+  const [emailCc, setEmailCc] = useState(''); // Empty by default
   const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
@@ -604,27 +604,50 @@ export function AvaTaskSummaryDialog({
 
   // Prepare email content and open the email dialog
   const handlePrepareEmail = () => {
-    // Get contact information based on location
-    const { email: contactEmail, name: contactName } = getContactInfo();
-
-    console.log(`Preparing email to: ${contactName} <${contactEmail}>`);
-
-    // Use the edited summary for the email body
-    let summaryText = editedSummary;
-
     // Format email body with task information
     let body = '';
-
+    
     if (readableId) {
       body += `Aufgabe: #${readableId}\n`;
     }
-
-    body += summaryText;
-
-    // Set email dialog content
+    
+    body += editedSummary;
+    
+    // Set email subject based on task title
     const subject = taskTitle ? `Weiterleitung: ${taskTitle}` : 'Weiterleitung einer Kundenanfrage';
-    setEmailTo(contactEmail);
-    setEmailCc('info@hv-nuernberg.de'); // Always ensure CC is set to the default
+    
+    // Special case for ZEIDLER GLAS + FENSTER GmbH
+    const normalizedCustomerName = (customerName || '').trim();
+    if (normalizedCustomerName === 'ZEIDLER GLAS + FENSTER GmbH' || 
+        normalizedCustomerName.includes('ZEIDLER')) {
+      console.log('Using Zeidler-specific email: sales@zeidler-glas.de');
+      setEmailTo('sales@zeidler-glas.de');
+      setEmailCc('');
+    } else {
+      // SIMPLIFIED LOGIC for other customers: Use the email from Zuständiger Kontakt
+      // Look for the first contact with an email address in endkundeContacts
+      const contactWithEmail = endkundeContacts?.find(contact => contact.email);
+      
+      if (contactWithEmail?.email) {
+        // Use the email directly from the contact
+        console.log(`Using contact email: ${contactWithEmail.email}`);
+        setEmailTo(contactWithEmail.email);
+      } else {
+        // No contact email found
+        console.log('No contact email found, leaving recipient blank');
+        setEmailTo('');
+      }
+    }
+    
+    // Special case for Hausverwaltung Nürnberg - always set CC
+    if (normalizedCustomerName === 'Hausverwaltung Nürnberg' || 
+        normalizedCustomerName.includes('Nürnberg')) {
+      setEmailCc('info@hv-nuernberg.de');
+    } else {
+      // For all other customers, leave CC blank
+      setEmailCc('');
+    }
+    
     setEmailSubject(subject);
     setEmailBody(body);
 
