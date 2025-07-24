@@ -14,6 +14,7 @@ const EndkundenAdminPage = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
@@ -63,7 +64,7 @@ const EndkundenAdminPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="flex space-x-2">
               <Button onClick={() => setIsImportModalOpen(true)} disabled={!selectedCustomerId}>
                 Daten importieren
               </Button>

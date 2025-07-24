@@ -20,8 +20,11 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import EndkundenForm from '@/components/admin/EndkundenForm';
 import AssignContactDialog from '@/components/admin/AssignContactDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { Endkunde, EndkundenContact } from '../../types/db.types';
+import { Database } from '@/integrations/supabase/database.types';
 import { useAuth } from '@/contexts/AuthContext';
+
+type Endkunde = Database['public']['Tables']['endkunden']['Row'];
+type EndkundenContact = Database['public']['Tables']['endkunden_contacts']['Row'];
 
 interface EndkundenListProps {
   customerId: string | null;
@@ -42,8 +45,24 @@ const EndkundenList: React.FC<EndkundenListProps> = ({ customerId, refreshTrigge
   const { toast } = useToast();
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [lastSelectedRowIndex, setLastSelectedRowIndex] = useState<number | null>(null);
+  const [customerName, setCustomerName] = useState<string>('');
 
   const fetchEndkunden = useCallback(async () => {
+    // Fetch customer name if customerId is provided
+    if (customerId) {
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .select('name')
+        .eq('id', customerId)
+        .single();
+      
+      if (!customerError && customerData) {
+        setCustomerName(customerData.name);
+      }
+    } else {
+      setCustomerName('');
+    }
+
     let allowedCustomerIds: string[] | null = null;
     if (user?.role === 'agent' || user?.role === 'customer') {
       // Hole alle zugeordneten customer_ids
@@ -201,7 +220,7 @@ const EndkundenList: React.FC<EndkundenListProps> = ({ customerId, refreshTrigge
 
       toast({
         title: 'Erfolgreich gelöscht',
-        description: `Der Endkunde "${endkundeToDelete.Firma || `${endkundeToDelete.Vorname} ${endkundeToDelete.Nachname}`}" wurde erfolgreich entfernt.`,
+        description: `Der Endkunde "${endkundeToDelete.Vorname} ${endkundeToDelete.Nachname}" wurde erfolgreich entfernt.`,
       });
 
       fetchEndkunden();
@@ -369,7 +388,14 @@ const EndkundenList: React.FC<EndkundenListProps> = ({ customerId, refreshTrigge
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{selectedEndkunde ? 'Endkunde bearbeiten' : 'Endkunde hinzufügen'}</DialogTitle>
+            <DialogTitle>
+              {selectedEndkunde ? 'Endkunde bearbeiten' : 'Endkunde hinzufügen'}
+              {customerName && (
+                <div className="text-sm font-normal text-gray-600 mt-1">
+                  Kunde: {customerName}
+                </div>
+              )}
+            </DialogTitle>
           </DialogHeader>
           <EndkundenForm
             key={selectedEndkunde?.id || 'new'}

@@ -5,7 +5,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/database.types';
-import { Endkunde, EndkundenContact, EndkundeWithContacts } from '../../types/db.types';
+
+type Endkunde = Database['public']['Tables']['endkunden']['Row'];
+type EndkundenContact = Database['public']['Tables']['endkunden_contacts']['Row'];
 
 interface EndkundenFormProps {
   initialValues: Partial<Endkunde> | null;
@@ -45,7 +47,8 @@ const EndkundenForm: React.FC<EndkundenFormProps> = ({ initialValues, onSave, on
   useEffect(() => {
     if (initialValues) {
       setValues(initialValues);
-      const initialContactIds = new Set<string>(initialValues.endkunden_contacts?.split(',').filter(Boolean) || []);
+      // endkunden_contacts is a single UUID, not comma-separated
+      const initialContactIds = new Set<string>(initialValues.endkunden_contacts ? [initialValues.endkunden_contacts] : []);
       setAssignedContactIds(initialContactIds);
     } else {
       setValues({});
@@ -59,20 +62,24 @@ const EndkundenForm: React.FC<EndkundenFormProps> = ({ initialValues, onSave, on
 
   const handleContactToggle = (contactId: string) => {
     setAssignedContactIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(contactId)) {
-        newSet.delete(contactId);
+      // Since endkunden_contacts is a single UUID, only allow one selection
+      if (prev.has(contactId)) {
+        return new Set(); // Deselect if already selected
       } else {
-        newSet.add(contactId);
+        return new Set([contactId]); // Select only this contact
       }
-      return newSet;
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!values.Nachname || !values.Vorname) {
-      toast({ title: 'Fehler', description: 'Vorname und Nachname sind Pflichtfelder.', variant: 'destructive' });
+    if (!values.Nachname || !values.Adresse) {
+      toast({ title: 'Fehler', description: 'Nachname und Adresse sind Pflichtfelder.', variant: 'destructive' });
+      return;
+    }
+
+    if (!customerId) {
+      toast({ title: 'Fehler', description: 'Bitte wählen Sie einen Kunden aus, bevor Sie einen Endkunden hinzufügen.', variant: 'destructive' });
       return;
     }
 
@@ -81,13 +88,18 @@ const EndkundenForm: React.FC<EndkundenFormProps> = ({ initialValues, onSave, on
     const endkundeToSave = {
       ...values,
       Nachname: values.Nachname!,
-      Vorname: values.Vorname!,
-      Adresse: values.Adresse || '',
-      Ort: values.Ort || '',
-      Postleitzahl: values.Postleitzahl || '',
-      customer_ID: values.id ? values.customer_ID : customerId,
-      endkunden_contacts: Array.from(assignedContactIds).join(','),
+      Vorname: values.Vorname || null,
+      Adresse: values.Adresse!,
+      Ort: values.Ort || null,
+      Postleitzahl: values.Postleitzahl || null,
+      customer_ID: customerId, // Always use the passed customerId for new entries
+      endkunden_contacts: assignedContactIds.size > 0 ? Array.from(assignedContactIds)[0] : null, // Single UUID, not comma-separated
     };
+
+    // For existing entries, preserve the original customer_ID
+    if (values.id) {
+      endkundeToSave.customer_ID = values.customer_ID;
+    }
 
     const { error } = await supabase.from('endkunden').upsert(endkundeToSave, { onConflict: 'id' });
 
@@ -108,12 +120,12 @@ const EndkundenForm: React.FC<EndkundenFormProps> = ({ initialValues, onSave, on
                 <Input name="Nachname" value={values.Nachname || ''} onChange={handleValueChange} required />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700">Vorname *</label>
-                <Input name="Vorname" value={values.Vorname || ''} onChange={handleValueChange} required />
+                <label className="block text-sm font-medium text-gray-700">Vorname</label>
+                <Input name="Vorname" value={values.Vorname || ''} onChange={handleValueChange} />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700">Adresse</label>
-                <Input name="Adresse" value={values.Adresse || ''} onChange={handleValueChange} />
+                <label className="block text-sm font-medium text-gray-700">Adresse *</label>
+                <Input name="Adresse" value={values.Adresse || ''} onChange={handleValueChange} required />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">Postleitzahl</label>
@@ -126,7 +138,8 @@ const EndkundenForm: React.FC<EndkundenFormProps> = ({ initialValues, onSave, on
         </div>
 
       <div className="space-y-2 pt-4 border-t">
-        <h3 className="text-lg font-medium">Zugeordnete Ansprechpartner</h3>
+        <h3 className="text-lg font-medium">Ansprechpartner zuordnen</h3>
+        <p className="text-sm text-gray-600">Wählen Sie einen Ansprechpartner für diesen Endkunden aus (optional):</p>
         <div className="space-y-2 p-4 border rounded-lg bg-gray-50 max-h-60 overflow-y-auto">
             {allContacts.length > 0 ? allContacts.map((contact) => (
             <div key={contact.id} className="flex items-center">
