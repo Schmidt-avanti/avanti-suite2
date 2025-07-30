@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTaskTimer } from '@/hooks/useTaskTimer';
+//import { useTaskTimer } from '@/hooks/useTaskTimer';
+import { useTaskSessionTracker } from '@/contexts/TaskSessionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { FollowUpDialog } from '@/components/tasks/FollowUpDialog';
 import { CloseTaskDialog } from '@/components/tasks/CloseTaskDialog';
@@ -68,15 +69,19 @@ const TaskDetail = () => {
   } = useTaskDetail(id, user);
 
   // Pass task status to timer hook if available
-  const timerTaskId = task?.id || '';
-  const timerStatus = task?.status;
-  const timerIsActive = !!(task?.id && task.status !== 'completed' && task.status !== 'cancelled');
+ // OLD import (removed)
+// import { useTaskTimer } from '@/hooks/useTaskTimer';
 
-  const { formattedTime } = useTaskTimer({
-    taskId: timerTaskId,
-    isActive: timerIsActive,
-    status: timerStatus,
-  });
+// NEW import
+
+
+// ...
+
+// Add this where you had `useTaskTimer`
+const taskId = task?.id || null;
+const isTaskActive = !!(task?.id && task.status !== 'completed' && task.status !== 'cancelled' && isActive);
+const { formattedTime } = useTaskSessionTracker(taskId, isTaskActive);
+
 
   // Check URL parameters for the 'new' flag and reset status update flag on new task ID
   useEffect(() => {
@@ -249,7 +254,7 @@ const TaskDetail = () => {
         <div className="bg-white/95 rounded-2xl shadow-lg border border-gray-100 overflow-hidden p-0">
           <TaskDetailHeader
             task={task}
-            formattedTime={formattedTime}
+            formattedTimeString={formattedTime}
             isUnassigned={isUnassigned}
             user={user}
             canAssignOrForward={canAssignOrForward}

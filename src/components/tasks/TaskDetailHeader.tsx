@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   ArrowLeft, Clock, CheckCircle, Calendar, Mail, 
-  UserPlus, Forward, X, RefreshCw, AlertTriangle, Loader2
+  UserPlus, Forward, X, PhoneIcon, RefreshCw, AlertTriangle, Loader2
 } from "lucide-react";
 import { TaskStatusBadge } from './TaskStatusBadge';
 import type { DetailedTask, TaskStatus } from '@/types';
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import PhoneInterface from '@/components/call-center/PhoneInterface';
 
 interface TaskDetailHeaderProps {
   task: DetailedTask;
-  formattedTime: string;
+  formattedTimeString?: string;
   isUnassigned: boolean;
   user: any;
   canAssignOrForward: boolean;
@@ -32,7 +34,7 @@ interface TaskDetailHeaderProps {
 
 export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   task,
-  formattedTime,
+  formattedTimeString,
   isUnassigned,
   user,
   canAssignOrForward,
@@ -52,8 +54,35 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
 }) => {
   const detailedTask = task as DetailedTask; // Explicit type assertion
   const isEmailTask = task.source === 'email';
+  const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
   
+  // Extract phone number from endkunde data if available
+  const getPhoneNumber = () => {
+    if (detailedTask.endkunde_id) {
+      // Phone for endkunde is not available in the current Endkunde type
+      // If it were, it would be task.endkunde.phone (mapped from task.endkunde.telefon)
+      // For now, this block can be removed or commented out, as task.endkunde.phone will be undefined.
+    }
+    
+    // Fallback to customer phone if available
+    if (detailedTask.customer && detailedTask.customer.phone) {
+      return detailedTask.customer.phone;
+    }
+    
+    return '';
+  };
 
+  const getCustomerName = () => {
+    if (detailedTask.endkunde_id && detailedTask.endkunde) {
+      return `${detailedTask.endkunde.Vorname || ''} ${detailedTask.endkunde.Nachname || ''}`.trim();
+    }
+    
+    if (detailedTask.customer) {
+      return detailedTask.customer.name;
+    }
+    
+    return '';
+  };
   
   return (
     <div className="bg-blue-50 p-4 rounded-t-xl flex flex-col gap-2">
@@ -69,10 +98,17 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
             Zurück zur Übersicht
           </Button>
           
-          <div className="flex items-center text-gray-500 ml-4">
-            <Clock className="h-4 w-4 mr-1" />
-            <span className="text-sm font-medium">{formattedTime}</span>
-          </div>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <div className="flex items-center text-gray-500 ml-4 cursor-help">
+                <Clock className="h-4 w-4 mr-1" />
+                <span className="text-sm font-medium">{formattedTimeString || 'Zeit: 00:00'}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-sm">Gesamtzeit aller Benutzer für diese Aufgabe</p>
+            </TooltipContent>
+          </Tooltip>
           
           <TaskStatusBadge status={detailedTask.status as TaskStatus} className="ml-4" />
           {isCompleted && (
@@ -137,7 +173,16 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           </Button>
         )}
         
-
+        {/* Call button - new addition */}
+        <Button
+          variant="outline"
+          className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200"
+          onClick={() => setPhoneDialogOpen(true)}
+          disabled={isCompleted}
+        >
+          <PhoneIcon className="h-4 w-4 mr-2" />
+          Anrufen
+        </Button>
         
         {/* Email button */}
         <Button
@@ -188,7 +233,16 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
         )}
       </div>
       
-
+      {/* Phone dialog */}
+      <Dialog open={phoneDialogOpen} onOpenChange={setPhoneDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <PhoneInterface 
+            onClose={() => setPhoneDialogOpen(false)}
+            initialPhoneNumber={getPhoneNumber()}
+            customerName={getCustomerName()}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
