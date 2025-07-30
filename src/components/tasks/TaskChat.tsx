@@ -18,9 +18,10 @@ interface TaskChatProps {
   openAvaSummaryDialog: (data: { summaryDraft: string; textToAgent: string; options: string[] }) => void;
   isReadOnly?: boolean; // Added isReadOnly prop
   isBlankTask?: boolean; // Flag für Blanko-Aufgaben ohne Ava
+  children?: React.ReactNode; // Added children prop
 }
 
-export function TaskChat({ taskId, useCaseId, initialMessages = [], openAvaSummaryDialog, isReadOnly, isBlankTask = false }: TaskChatProps) {
+export function TaskChat({ taskId, useCaseId, initialMessages = [], openAvaSummaryDialog, isReadOnly, isBlankTask = false, children }: TaskChatProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [emailJustSent, setEmailJustSent] = useState(false);
@@ -295,6 +296,7 @@ export function TaskChat({ taskId, useCaseId, initialMessages = [], openAvaSumma
         // For now, assuming it was part of the props that changed and might not be needed directly here
         // or needs to be re-evaluated based on TaskChatInput's current props.
       />
+      {children}
     </div>
   );
 }

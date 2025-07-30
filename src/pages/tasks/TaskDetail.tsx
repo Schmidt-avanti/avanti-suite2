@@ -309,11 +309,7 @@ const { formattedTime } = useTaskSessionTracker(taskId, isTaskActive);
                     openAvaSummaryDialog={handleOpenAvaSummaryDialogFromChat}
                     isReadOnly={isCompleted}
                     isBlankTask={task.is_blank_task}
-                  >
-                    <TaskChatMessage
-                      onSendMessage={(text) => sendMessage(text, null, new Set())}
-                    />
-                  </TaskChat>
+                  />
                 </CardContent>
               </Card>
             </div>
