@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { format, subDays, startOfMonth, endOfMonth, subMonths, subWeeks, startOfWeek, endOfWeek, parseISO, addMonths } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
@@ -129,60 +129,12 @@ const CustomerDashboard = () => {
     description: ''
   });
   const [recentTasks, setRecentTasks] = useState<any[]>([]);
-  const [filteredTasks, setFilteredTasks] = useState<any[]>([]);
-  const [activeTaskFilter, setActiveTaskFilter] = useState<'all' | 'open' | 'completed' | 'followup'>('all');
   const [dailyUsage, setDailyUsage] = useState<{date: string, minutes: number}[]>([]);
   const [manageOutboundDialogOpen, setManageOutboundDialogOpen] = useState(false);
   const [outboundTimes, setOutboundTimes] = useState<any[]>([]);
   const [editingOutbound, setEditingOutbound] = useState<any | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-
-  // Calculate task statistics from all tasks (not filtered)
-  const calculateTaskStats = (tasks: any[]) => {
-    const stats: TaskStats = {
-      total: tasks.length,
-      open: tasks.filter(task => task.status === 'new').length,
-      inProgress: tasks.filter(task => task.status === 'in_progress').length,
-      completed: tasks.filter(task => task.status === 'completed').length,
-      followup: tasks.filter(task => task.status === 'followup').length
-    };
-    setTaskStats(stats);
-  };
-
-  // Task filtering function (only filters displayed tasks, not statistics)
-  const filterTasks = (tasks: any[]) => {
-    let filtered = [...tasks];
-
-    switch (activeTaskFilter) {
-      case 'open':
-        filtered = tasks.filter(t => t.status === 'new' || t.status === 'in_progress');
-        break;
-      case 'completed':
-        filtered = tasks.filter(t => t.status === 'completed');
-        break;
-      case 'followup':
-        filtered = tasks.filter(t => t.status === 'followup');
-        break;
-      case 'all':
-      default:
-        filtered = tasks;
-        break;
-    }
-
-    setFilteredTasks(filtered.slice(0, 10)); // Limit to 10 tasks for display
-  };
-
-  // Handle metric card clicks
-  const handleTaskFilterClick = (filter: 'all' | 'open' | 'completed' | 'followup') => {
-    setActiveTaskFilter(filter);
-    filterTasks(recentTasks);
-  };
-
-  // Update filtered tasks when activeTaskFilter changes
-  React.useEffect(() => {
-    filterTasks(recentTasks);
-  }, [activeTaskFilter, recentTasks]);
 
   // Hilfsfunktion: Abrechnungsintervall für einen Kunden berechnen
   function getBillingInterval(startDateStr: string | undefined, reference: Date = new Date()) {
@@ -371,7 +323,40 @@ const CustomerDashboard = () => {
     fetchProductsAndOptions();
   }, [customer]);
 
-  // Task statistics are now calculated in filterTasks function to ensure consistency
+  // Effekt: Aufgabenstatistiken laden
+  useEffect(() => {
+    const fetchTaskStats = async () => {
+      if (!customer?.id) return;
+      
+      try {
+        const from = format(dateRange.from, 'yyyy-MM-dd');
+        const to = format(dateRange.to, 'yyyy-MM-dd');
+        
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('status')
+          .eq('customer_id', customer.id)
+          .gte('created_at', `${from}T00:00:00Z`)
+          .lte('created_at', `${to}T23:59:59Z`);
+          
+        if (error) throw error;
+        
+        const stats: TaskStats = {
+          total: data?.length || 0,
+          open: data?.filter(task => task.status === 'open').length || 0,
+          inProgress: data?.filter(task => task.status === 'in_progress').length || 0,
+          completed: data?.filter(task => task.status === 'completed').length || 0,
+          followup: data?.filter(task => task.status === 'followup').length || 0
+        };
+        
+        setTaskStats(stats);
+      } catch (error: any) {
+        console.error('Fehler beim Laden der Aufgabenstatistiken:', error.message);
+      }
+    };
+    
+    fetchTaskStats();
+  }, [customer, dateRange]);
 
   // Effekt: Inbound/Outbound Nutzung laden
   useEffect(() => {
@@ -392,21 +377,18 @@ const CustomerDashboard = () => {
       const to = format(dateRange.to, 'yyyy-MM-dd');
       // Debug: Filterparameter anzeigen
       console.log('fetchInboundUsage: customer_id', customer.id, 'from', from, 'to', to);
-      // Alle task_times für den Kunden abrufen
-      const { data: taskTimesData, error } = await supabase
-        .from('task_times')
-        .select(`
-          time_spent_task,
-          tasks!inner(customer_id)
-        `)
-        .eq('tasks.customer_id', customer.id)
+      // Direkt die Tasks mit total_duration_seconds für den Kunden abrufen
+      const { data: tasksData, error } = await supabase
+        .from('tasks')
+        .select('total_duration_seconds')
+        .eq('customer_id', customer.id)
         .gte('created_at', `${from}T00:00:00Z`)
         .lte('created_at', `${to}T23:59:59Z`);
-      console.log('Geladene Inbound-Zeiten:', taskTimesData, error);
+      console.log('Geladene Tasks mit Zeitdaten:', tasksData, error);
       if (error) throw error;
       // Sekunden in Minuten umrechnen
-      const totalSeconds = taskTimesData?.reduce((sum, item) => {
-        return sum + (item.time_spent_task || 0);
+      const totalSeconds = tasksData?.reduce((sum, task) => {
+        return sum + (task.total_duration_seconds || 0);
       }, 0) || 0;
       const totalMinutes = Math.ceil(totalSeconds / 60);
       // Produkte abrufen, um die Inklusivminuten zu bestimmen
@@ -538,22 +520,16 @@ const CustomerDashboard = () => {
     const to = new Date(Date.UTC(dateRange.to.getFullYear(), dateRange.to.getMonth(), dateRange.to.getDate()));
     const fromStr = from.toISOString().slice(0, 10);
     const toStr = to.toISOString().slice(0, 10);
-    // Alle Aufgaben im Zeitraum laden (für korrekte Statistiken und Filterung)
+    // Letzte 10 Aufgaben (nur existierende Felder abfragen)
     const { data: tasksData } = await supabase
       .from('tasks')
       .select('id, title, status, created_at')
       .eq('customer_id', customer.id)
       .gte('created_at', `${fromStr}T00:00:00Z`)
       .lte('created_at', `${toStr}T23:59:59Z`)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(10);
     setRecentTasks(tasksData || []);
-    
-    // First calculate statistics from all tasks
-    calculateTaskStats(tasksData || []);
-    
-    // Then apply task filtering for display
-    filterTasks(tasksData || []);
-    
     // Tagesverlauf: je nach Vertragstyp
     let days: string[] = [];
     let d = new Date(from);
@@ -789,13 +765,7 @@ const CustomerDashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0 }}
         >
-          <Card 
-            className={cn(
-              "cursor-pointer transition-all duration-200 hover:shadow-md",
-              activeTaskFilter === 'all' ? "ring-2 ring-blue-500 bg-blue-50" : "hover:bg-gray-50"
-            )}
-            onClick={() => handleTaskFilterClick('all')}
-          >
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Aufgaben Gesamt</CardTitle>
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
@@ -815,13 +785,7 @@ const CustomerDashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
         >
-          <Card 
-            className={cn(
-              "cursor-pointer transition-all duration-200 hover:shadow-md",
-              activeTaskFilter === 'open' ? "ring-2 ring-yellow-500 bg-yellow-50" : "hover:bg-gray-50"
-            )}
-            onClick={() => handleTaskFilterClick('open')}
-          >
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Offene Aufgaben</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
@@ -841,13 +805,7 @@ const CustomerDashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          <Card 
-            className={cn(
-              "cursor-pointer transition-all duration-200 hover:shadow-md",
-              activeTaskFilter === 'completed' ? "ring-2 ring-green-500 bg-green-50" : "hover:bg-gray-50"
-            )}
-            onClick={() => handleTaskFilterClick('completed')}
-          >
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Erledigte Aufgaben</CardTitle>
               <FileCheck2 className="h-4 w-4 text-muted-foreground" />
@@ -867,13 +825,7 @@ const CustomerDashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
-          <Card 
-            className={cn(
-              "cursor-pointer transition-all duration-200 hover:shadow-md",
-              activeTaskFilter === 'followup' ? "ring-2 ring-purple-500 bg-purple-50" : "hover:bg-gray-50"
-            )}
-            onClick={() => handleTaskFilterClick('followup')}
-          >
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Wiedervorlage</CardTitle>
               <RefreshCw className="h-4 w-4 text-muted-foreground" />
@@ -1023,48 +975,21 @@ const CustomerDashboard = () => {
       <div className="grid gap-4 md:grid-cols-2 mt-4">
         <Card>
           <CardHeader>
-            <CardTitle>
-              Letzte 10 Aufgaben
-              {activeTaskFilter !== 'all' && (
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  ({activeTaskFilter === 'open' ? 'Offene' : 
-                    activeTaskFilter === 'completed' ? 'Erledigte' : 
-                    activeTaskFilter === 'followup' ? 'Wiedervorlage' : 'Alle'})
-                </span>
-              )}
-            </CardTitle>
-            <CardDescription>
-              {filteredTasks.length === 0 ? 'Keine Aufgaben gefunden' : `${filteredTasks.length} Aufgaben angezeigt`}
-            </CardDescription>
+            <CardTitle>Letzte 10 Aufgaben</CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredTasks.length === 0 ? (
-              <div className="text-muted-foreground">
-                Keine Aufgaben für den gewählten Filter gefunden.
-              </div>
+            {recentTasks.length === 0 ? (
+              <div className="text-muted-foreground">Keine Aufgaben im Zeitraum</div>
             ) : (
               <ul className="space-y-2">
-                {filteredTasks.map(task => (
+                {recentTasks.map(task => (
                   <li key={task.id} className="border-b pb-1">
                     <div className="flex justify-between items-center">
                       <span className="font-medium">{task.title || 'Ohne Titel'}</span>
                       <span className="text-xs text-muted-foreground">{format(parseISO(task.created_at), 'dd.MM.yyyy')}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs text-muted-foreground">
-                        Status: <span className={cn(
-                          "font-medium",
-                          task.status === 'new' ? 'text-blue-600' :
-                          task.status === 'in_progress' ? 'text-yellow-600' :
-                          task.status === 'completed' ? 'text-green-600' :
-                          task.status === 'followup' ? 'text-purple-600' : 'text-gray-600'
-                        )}>
-                          {task.status === 'new' ? 'Neu' :
-                           task.status === 'in_progress' ? 'In Bearbeitung' :
-                           task.status === 'completed' ? 'Erledigt' :
-                           task.status === 'followup' ? 'Wiedervorlage' : task.status}
-                        </span>
-                      </div>
+                    <div className="text-xs text-muted-foreground">
+                      Status: {task.status}
                     </div>
                   </li>
                 ))}
