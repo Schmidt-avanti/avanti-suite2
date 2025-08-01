@@ -17,6 +17,7 @@ const CallCenter: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState('dialer');
   const [isLoading, setIsLoading] = React.useState(true);
   const { user } = useAuth();
+  //random comment to commit migration changes
   
   const isAdmin = user?.role === 'admin';
   
