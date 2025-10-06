@@ -1,4 +1,4 @@
--- Erstellung der Tabelle für Kunden-Dokumente
+-- Erstellung der Tabelle für Kunden-Dokumenten
 CREATE TABLE IF NOT EXISTS customer_documents (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
